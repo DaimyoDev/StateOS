@@ -1,0 +1,928 @@
+import React, { useState, useMemo, useCallback } from "react";
+import useGameStore from "../../../store"; // Adjust path to your store
+import CouncilCompositionPieChart from "../../charts/CouncilCompositionPieChart"; // Ensure this path is correct
+import "./GovernmentSubTabStyles.css"; // General styles for these government sub-tabs
+import "./CityOverviewTab.css"; // Specific styles for CityOverviewTab
+
+// Helper functions
+const getRatingDescriptor = (ratingString) => ratingString || "N/A";
+const getUnemploymentDescriptor = (rate) => {
+  if (rate == null) return "N/A";
+  if (rate < 4) return "Very Low";
+  if (rate < 6) return "Low";
+  if (rate < 8) return "Moderate";
+  if (rate < 10) return "High";
+  return "Very High";
+};
+const getEconomicOutlookClass = (outlook) => {
+  if (!outlook) return "mood-average";
+  const ol = outlook.toLowerCase();
+  if (ol.includes("booming") || ol.includes("strong growth"))
+    return "mood-excellent";
+  if (ol.includes("moderate growth") || ol.includes("slow growth"))
+    return "mood-good";
+  if (ol.includes("stagnant")) return "mood-average";
+  if (ol.includes("recession") || ol.includes("declining")) return "mood-poor";
+  return "mood-average";
+};
+const getMoodClass = (mood) => {
+  if (!mood) return "mood-average";
+  const m = mood.toLowerCase();
+  if (m.includes("prospering") || m.includes("optimistic"))
+    return "mood-excellent";
+  if (m.includes("content")) return "mood-good";
+  if (m.includes("concerned")) return "mood-average";
+  if (m.includes("frustrated") || m.includes("very unhappy"))
+    return "mood-poor";
+  return "mood-average";
+};
+const formatPercentage = (value, precision = 1) => {
+  if (value == null || isNaN(value)) return "N/A";
+  return `${value.toFixed(precision)}%`;
+};
+const formatBudgetKey = (key) => {
+  // Renamed to be more generic for keys
+  if (typeof key !== "string") return "Invalid Key";
+  return key
+    .replace(/([A-Z])/g, " $1")
+    .replace(/^./, (str) => str.toUpperCase());
+};
+
+// Helper to format law values for display
+const formatLawValue = (key, value) => {
+  if (value === null || value === undefined) return "N/A";
+  if (key === "minimumWage") {
+    return `$${Number(value).toFixed(2)} / hour`;
+  }
+  if (typeof value === "object") {
+    // For things like alcoholSalesHours
+    return Object.entries(value)
+      .map(
+        ([dayType, hours]) =>
+          `${formatBudgetKey(dayType)}: ${hours.start} - ${hours.end}`
+      )
+      .join(", ");
+  }
+  if (typeof value === "string") {
+    return value.replace(/_/g, " ").replace(/^./, (str) => str.toUpperCase());
+  }
+  return String(value);
+};
+
+const CityOverviewTab = () => {
+  const [activeSubTab, setActiveSubTab] = useState("summary");
+
+  const activeCampaign = useGameStore((state) => state.activeCampaign);
+  const { openViewPoliticianModal } = useGameStore((state) => state.actions);
+  const currentTheme = useGameStore(
+    (state) => state.availableThemes[state.activeThemeName]
+  );
+
+  const { startingCity, governmentOffices = [] } = activeCampaign || {};
+  const {
+    id: cityId,
+    name: cityName,
+    population,
+    demographics,
+    economicProfile,
+    stats,
+    cityLaws, // Destructure cityLaws
+  } = startingCity || {};
+
+  const {
+    type,
+    wealth,
+    mainIssues = [],
+    economicOutlook,
+    publicSafetyRating,
+    educationQuality,
+    infrastructureState,
+    overallCitizenMood,
+    unemploymentRate,
+    budget,
+    healthcareQuality,
+    environmentRating,
+    cultureArtsRating,
+  } = stats || {};
+
+  const taxRates = budget?.taxRates;
+  const incomeSources = budget?.incomeSources;
+  const expenseAllocations = budget?.expenseAllocations;
+
+  const { ageDistribution, educationLevels } = demographics || {};
+
+  const { dominantIndustries, gdpPerCapita } = economicProfile || {};
+
+  const citySpecificFilledLocalOffices = useMemo(() => {
+    if (!governmentOffices || !cityId) {
+      // Ensure we have offices to filter and a cityId to match
+      return [];
+    }
+    return governmentOffices.filter((office) => {
+      // Condition 1: Is it a local city level office?
+      const isLocalCityLevel = office.level.includes("local_city");
+      // Condition 2: Does it have a holder (incumbent)?
+      const hasHolder = !!office.holder;
+      const isForThisCity = office.cityId === cityId;
+
+      return isLocalCityLevel && hasHolder && isForThisCity;
+    });
+  }, [governmentOffices, cityId]); // Depends on the global list and the current city's ID
+
+  const mayorOffice = useMemo(() => {
+    // Now finds the mayor from the correctly filtered city-specific offices
+    return citySpecificFilledLocalOffices.find((office) =>
+      office.officeNameTemplateId.includes("mayor")
+    );
+  }, [citySpecificFilledLocalOffices]);
+
+  const councilOffices = useMemo(() => {
+    if (!citySpecificFilledLocalOffices) return [];
+
+    return citySpecificFilledLocalOffices
+      .filter(
+        (office) =>
+          office.officeNameTemplateId.includes("city_council") ||
+          office.officeNameTemplateId.includes("city_municipal_council")
+      )
+      .sort((a, b) => {
+        const officeNameA = a.officeName || ""; // Default to empty string if undefined
+        const officeNameB = b.officeName || ""; // Default to empty string if undefined
+
+        const matchA = officeNameA.match(/\(Seat (\d+)\)/);
+        const matchB = officeNameB.match(/\(Seat (\d+)\)/);
+
+        const seatNumA = matchA ? parseInt(matchA[1]) : NaN;
+        const seatNumB = matchB ? parseInt(matchB[1]) : NaN;
+
+        const aHasNum = !isNaN(seatNumA);
+        const bHasNum = !isNaN(seatNumB);
+
+        if (aHasNum && bHasNum) {
+          // Both have numbers, sort numerically
+          return seatNumA - seatNumB;
+        } else if (aHasNum && !bHasNum) {
+          // a has a number, b doesn't; a should come first
+          return -1;
+        } else if (!aHasNum && bHasNum) {
+          // b has a number, a doesn't; b should come first
+          return 1;
+        } else {
+          // Neither has a parseable seat number in the "(Seat N)" format,
+          // or both are NaN. Sort by the full office name alphabetically.
+          return officeNameA.localeCompare(officeNameB);
+        }
+      });
+  }, [citySpecificFilledLocalOffices]);
+
+  // councilPartyComposition should now work correctly as it depends on the refined councilOffices
+  const councilPartyComposition = useMemo(() => {
+    // ... (existing logic is likely fine if councilOffices is correct)
+    if (!councilOffices || councilOffices.length === 0) return [];
+    const partyData = {};
+    councilOffices.forEach((office) => {
+      const holder = office.holder;
+      if (holder) {
+        const partyName = holder.partyName || "Independent/Other";
+        // Ensure partyKey is robust, using partyId if available
+        const partyKey = holder.partyId || partyName; // Prioritize partyId for uniqueness
+        if (!partyData[partyKey]) {
+          partyData[partyKey] = {
+            count: 0,
+            color: holder.partyColor || "#CCCCCC",
+            id: holder.partyId || partyKey, // Store the ID used as key
+            name: partyName, // Store the display name
+          };
+        }
+        partyData[partyKey].count++;
+      }
+    });
+    // Transform for pie chart: Use the stored name for display, not the partyKey if it was an ID
+    return Object.values(partyData).map((data) => ({
+      id: data.id,
+      name: data.name, // Use the stored display name
+      popularity: data.count, // 'popularity' here means seat count
+      color: data.color,
+    }));
+  }, [councilOffices]);
+
+  const handlePoliticianClick = (politician) => {
+    if (politician && openViewPoliticianModal)
+      openViewPoliticianModal(politician);
+    else
+      console.warn(
+        "Politician data missing or action not available for modal.",
+        politician
+      );
+  };
+
+  const formatOfficeTitleForDisplay = useCallback(
+    (office, currentCityNameForDisplay) => {
+      if (!office || !office.officeName) return "Office"; // Default fallback
+
+      let processedOfficeName = office.officeName;
+
+      // --- Step 1: Replace placeholders ---
+      if (currentCityNameForDisplay) {
+        // Replace specific placeholder for Philippines
+        if (processedOfficeName.includes("{cityNameOrMunicipalityName}")) {
+          processedOfficeName = processedOfficeName.replace(
+            /{cityNameOrMunicipalityName}/g, // Global replace
+            currentCityNameForDisplay
+          );
+        }
+        // Replace a more generic placeholder as well, if present
+        if (processedOfficeName.includes("{cityName}")) {
+          processedOfficeName = processedOfficeName.replace(
+            /{cityName}/g, // Global replace
+            currentCityNameForDisplay
+          );
+        }
+      }
+      // Now 'processedOfficeName' has the actual city/municipality name
+
+      const officeNameLower = processedOfficeName.toLowerCase();
+
+      // --- Step 2: Handle Mayor ---
+      if (office.officeNameTemplateId === "mayor") {
+        // After placeholder replacement, name might be "Mayor of ActualCity"
+        // You can decide if you want to keep "Mayor of ActualCity" or just "Mayor"
+        // For consistency with current code, returning just "Mayor"
+        return `Mayor`;
+      }
+
+      // --- Step 3: Handle City Council (or equivalent) ---
+      if (
+        office.officeNameTemplateId &&
+        office.officeNameTemplateId.includes("city_council")
+      ) {
+        // Pattern A: Explicitly numbered seats like "(Seat N)"
+        const seatMatchNumeric = processedOfficeName.match(/\(Seat (\d+)\)/i);
+        if (seatMatchNumeric && seatMatchNumeric[1]) {
+          return `Council Seat ${seatMatchNumeric[1]}`;
+        }
+
+        // Pattern B: "At-Large" variations (primarily for US, but kept for generality)
+        if (
+          officeNameLower.includes("at-large") ||
+          officeNameLower.includes("at large")
+        ) {
+          if (
+            officeNameLower.match(/district\s+at-large/i) ||
+            officeNameLower.match(/at-large\s+district/i)
+          ) {
+            return "Council District At-Large";
+          }
+          const atLargePositionMatch =
+            processedOfficeName.match(
+              /(?:Position\s*|Post\s*)?([A-Z0-9]+)\s*(At-Large|At Large)/i
+            ) ||
+            processedOfficeName.match(
+              /(At-Large|At Large)\s*(?:Position\s*|Post\s*)?([A-Z0-9]+)/i
+            );
+          if (
+            atLargePositionMatch &&
+            atLargePositionMatch[1] &&
+            !atLargePositionMatch[1].toLowerCase().includes("large")
+          ) {
+            return `Council At-Large, Position ${atLargePositionMatch[1]}`;
+          } else if (
+            atLargePositionMatch &&
+            atLargePositionMatch[2] &&
+            !atLargePositionMatch[2].toLowerCase().includes("large")
+          ) {
+            return `Council At-Large, Position ${atLargePositionMatch[2]}`;
+          }
+          return "Council Member At-Large";
+        }
+
+        // Pattern C: Named or numbered districts (e.g., "District A", "District 7", "Ward 3")
+        // Added "Distrito" for Philippines context
+        const districtWordMatch = processedOfficeName.match(
+          /(District|Distrito|Ward|Precinct|Area|Zone)\s+([A-Za-z0-9]+(?:-[A-Za-z0-9]+)?)/i
+        );
+        if (districtWordMatch && districtWordMatch[1] && districtWordMatch[2]) {
+          // Check if it's explicitly a council/sangguniang position
+          if (
+            officeNameLower.includes("council") ||
+            officeNameLower.includes("sangguniang") ||
+            officeNameLower.includes("konsehal")
+          ) {
+            return `Council ${districtWordMatch[1]} ${districtWordMatch[2]}`;
+          }
+          // If templateId implies council, and we found a district, format it as such
+          return `Council ${districtWordMatch[1]} ${districtWordMatch[2]}`;
+        }
+
+        // Pattern D: Simple seat number without "(Seat N)" (e.g. "Council Seat 1", "Konsehal 1")
+        const simpleSeatMatch = processedOfficeName.match(
+          /(?:Council\s*Seat|Seat|Councilmember|Konsehal)\s*(\d+)/i
+        );
+        if (simpleSeatMatch && simpleSeatMatch[1]) {
+          return `Council Seat ${simpleSeatMatch[1]}`;
+        }
+
+        // Pattern E: Philippines specific titles like "Sangguniang Panlungsod Member"
+        // After placeholder replacement, this might be "Sangguniang Panlungsod Member of Manila"
+        // We want to simplify it.
+        if (officeNameLower.includes("sangguniang panlungsod member")) {
+          return "Sangguniang Panlungsod Member"; // Or "City Councilor"
+        }
+        if (officeNameLower.includes("sangguniang bayan member")) {
+          return "Sangguniang Bayan Member"; // Or "Municipal Councilor"
+        }
+        if (
+          officeNameLower.startsWith("konsehal") &&
+          officeNameLower.length <= 10
+        ) {
+          // "Konsehal" (Councilor) might be standalone
+          return "Councilor"; // Or more specific like "City Councilor" based on context if available
+        }
+
+        // Fallback: General cleanup - try to remove the (now substituted) city name if it's redundant
+        // and generic prefixes.
+        let cleanedName = processedOfficeName;
+        if (currentCityNameForDisplay) {
+          // More careful removal: only if it's clearly a prefix and part of a common structure
+          const patternsToRemoveCity = [
+            new RegExp(
+              `^${currentCityNameForDisplay.replace(
+                /[.*+?^${}()|[\]\\]/g,
+                "\\$&"
+              )}\\s*(City\\s*Council|Sangguniang\\s*Panlungsod|Sangguniang\\s*Bayan)?\\s*Member\\s*(-)?\\s*`,
+              "i"
+            ),
+            new RegExp(
+              `^${currentCityNameForDisplay.replace(
+                /[.*+?^${}()|[\]\\]/g,
+                "\\$&"
+              )}\\s*(City\\s*Council|Sangguniang\\s*Panlungsod|Sangguniang\\s*Bayan)?\\s*(-)?\\s*`,
+              "i"
+            ),
+            new RegExp(
+              `^(City\\s*Council|Sangguniang\\s*Panlungsod|Sangguniang\\s*Bayan)\\s*(Member)?\\s*of\\s*${currentCityNameForDisplay.replace(
+                /[.*+?^${}()|[\]\\]/g,
+                "\\$&"
+              )}\\s*(-)?\\s*`,
+              "i"
+            ),
+          ];
+          for (const pattern of patternsToRemoveCity) {
+            if (pattern.test(cleanedName)) {
+              cleanedName = cleanedName.replace(pattern, "").trim();
+              break;
+            }
+          }
+        }
+
+        // Remove common prefixes more generally
+        cleanedName = cleanedName
+          .replace(/^(City\s*Council|Council)\s*(Member|Seat)?\s*(-)?\s*/i, "")
+          .trim();
+        cleanedName = cleanedName
+          .replace(
+            /^(Sangguniang\s*(Panlungsod|Bayan))\s*(Member)?\s*(-)?\s*/i,
+            ""
+          )
+          .trim();
+        cleanedName = cleanedName.replace(/^Konsehal\s*(-)?\s*/i, "").trim();
+        cleanedName = cleanedName.replace(/^-\s*/, "").trim(); // Leading hyphen
+
+        if (cleanedName.length > 0 && !cleanedName.match(/^\(Seat \d+\)$/i)) {
+          const finalCleanedName =
+            cleanedName.charAt(0).toUpperCase() + cleanedName.slice(1);
+          // Avoid prepending "Council" if it already implies a specific role like "District 1" or is generic enough
+          if (
+            !finalCleanedName.toLowerCase().startsWith("council") &&
+            !finalCleanedName.toLowerCase().startsWith("district") &&
+            !finalCleanedName.toLowerCase().startsWith("ward") &&
+            !finalCleanedName.toLowerCase().startsWith("seat") &&
+            !finalCleanedName.toLowerCase().includes("at-large") &&
+            !finalCleanedName.toLowerCase().includes("sangguniang") &&
+            !finalCleanedName.toLowerCase().includes("konsehal")
+          ) {
+            return `Council ${finalCleanedName}`;
+          }
+          return finalCleanedName;
+        }
+
+        // Last resort generic titles if cleaning results in an empty string
+        if (office.countryContext === "PH") {
+          // Hypothetical: if you add country context to office
+          return officeNameLower.includes("bayan")
+            ? "Municipal Councilor"
+            : "City Councilor";
+        }
+        return "City Council Member"; // Generic default
+      }
+
+      // Default for any other office types not caught above
+      return processedOfficeName; // Return the name after placeholder replacement
+    },
+    []
+  );
+
+  const renderSubTabContent = () => {
+    switch (activeSubTab) {
+      case "summary":
+        return (
+          <>
+            <section className="city-section">
+              <h4>Core Vitals & Profile</h4>
+              <div className="city-stats-grid three-col">
+                <div className="stat-item">
+                  <strong>Population:</strong>{" "}
+                  <span>{population?.toLocaleString() || "N/A"}</span>
+                </div>
+                <div className="stat-item">
+                  <strong>City Type:</strong> <span>{type || "N/A"}</span>
+                </div>
+                <div className="stat-item">
+                  <strong>Wealth Level:</strong> <span>{wealth || "N/A"}</span>
+                </div>
+                <div className="stat-item">
+                  <strong>Economic Outlook:</strong>
+                  <span
+                    className={`stat-descriptor ${getEconomicOutlookClass(
+                      economicOutlook
+                    )}`}
+                  >
+                    {economicOutlook || "N/A"}
+                  </span>
+                </div>
+                <div className="stat-item">
+                  <strong>Unemployment:</strong>
+                  <span>
+                    {unemploymentRate != null
+                      ? `${parseFloat(unemploymentRate).toFixed(1)}% `
+                      : "N/A"}
+                  </span>
+                  <span
+                    className={`stat-descriptor mood-${getUnemploymentDescriptor(
+                      parseFloat(unemploymentRate)
+                    )
+                      ?.toLowerCase()
+                      .replace(/\s+/g, "-")}`}
+                  >
+                    ({getUnemploymentDescriptor(parseFloat(unemploymentRate))})
+                  </span>
+                </div>
+                <div className="stat-item">
+                  <strong>GDP per Capita:</strong>{" "}
+                  <span>${gdpPerCapita?.toLocaleString() || "N/A"}</span>
+                </div>
+                <div className="stat-item">
+                  <strong>Dominant Industries:</strong>{" "}
+                  <span>{dominantIndustries?.join(", ") || "N/A"}</span>
+                </div>
+              </div>
+            </section>
+            <section className="city-section">
+              <h4>Citizen Wellbeing & Concerns</h4>
+              <div className="city-stats-grid one-col">
+                <div className="stat-item">
+                  <strong>Overall Citizen Mood:</strong>
+                  <span
+                    className={`stat-descriptor ${getMoodClass(
+                      overallCitizenMood
+                    )}`}
+                  >
+                    {overallCitizenMood || "N/A"}
+                  </span>
+                </div>
+                <div className="stat-item">
+                  <strong>Key Local Issues:</strong>
+                  {mainIssues.length > 0 ? (
+                    <ul className="key-issues-list">
+                      {mainIssues.map((issue, index) => (
+                        <li key={index}>{issue}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <span>None Specified</span>
+                  )}
+                </div>
+              </div>
+            </section>
+          </>
+        );
+      case "demographics":
+        return (
+          <section className="city-section">
+            <h4>Demographics</h4>
+            {demographics ? (
+              <div className="city-stats-grid two-col">
+                {ageDistribution && (
+                  <div className="stat-item sub-section">
+                    <strong>Age Distribution:</strong>
+                    <ul>
+                      <li>
+                        Youth (0-17):{" "}
+                        {formatPercentage(ageDistribution.youth, 0)}
+                      </li>
+                      <li>
+                        Young Adult (18-34):{" "}
+                        {formatPercentage(ageDistribution.youngAdult, 0)}
+                      </li>
+                      <li>
+                        Adult (35-59):{" "}
+                        {formatPercentage(ageDistribution.adult, 0)}
+                      </li>
+                      <li>
+                        Senior (60+):{" "}
+                        {formatPercentage(ageDistribution.senior, 0)}
+                      </li>
+                    </ul>
+                  </div>
+                )}
+                {educationLevels && (
+                  <div className="stat-item sub-section">
+                    <strong>Education Levels (Adults):</strong>
+                    <ul>
+                      <li>
+                        High School or Less:{" "}
+                        {formatPercentage(educationLevels.highSchoolOrLess, 0)}
+                      </li>
+                      <li>
+                        Some College:{" "}
+                        {formatPercentage(educationLevels.someCollege, 0)}
+                      </li>
+                      <li>
+                        Bachelors or Higher:{" "}
+                        {formatPercentage(educationLevels.bachelorsOrHigher, 0)}
+                      </li>
+                    </ul>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p>No demographic data available.</p>
+            )}
+          </section>
+        );
+      case "services":
+        return (
+          <section className="city-section">
+            <h4>Public Services & Infrastructure Ratings</h4>
+            <div className="city-stats-grid three-col">
+              <div className="stat-item">
+                <strong>Public Safety:</strong>{" "}
+                <span
+                  className={`stat-descriptor rating-${(
+                    publicSafetyRating || "average"
+                  )
+                    .toLowerCase()
+                    .replace(/\s+/g, "-")}`}
+                >
+                  {getRatingDescriptor(publicSafetyRating)}
+                </span>
+              </div>
+              <div className="stat-item">
+                <strong>Education Quality:</strong>{" "}
+                <span
+                  className={`stat-descriptor rating-${(
+                    educationQuality || "average"
+                  )
+                    .toLowerCase()
+                    .replace(/\s+/g, "-")}`}
+                >
+                  {getRatingDescriptor(educationQuality)}
+                </span>
+              </div>
+              <div className="stat-item">
+                <strong>Infrastructure State:</strong>{" "}
+                <span
+                  className={`stat-descriptor rating-${(
+                    infrastructureState || "average"
+                  )
+                    .toLowerCase()
+                    .replace(/\s+/g, "-")}`}
+                >
+                  {getRatingDescriptor(infrastructureState)}
+                </span>
+              </div>
+              <div className="stat-item">
+                <strong>Healthcare Quality:</strong>{" "}
+                <span
+                  className={`stat-descriptor rating-${(
+                    healthcareQuality || "average"
+                  )
+                    .toLowerCase()
+                    .replace(/\s+/g, "-")}`}
+                >
+                  {getRatingDescriptor(healthcareQuality)}
+                </span>
+              </div>
+              <div className="stat-item">
+                <strong>Environment Rating:</strong>{" "}
+                <span
+                  className={`stat-descriptor rating-${(
+                    environmentRating || "average"
+                  )
+                    .toLowerCase()
+                    .replace(/\s+/g, "-")}`}
+                >
+                  {getRatingDescriptor(environmentRating)}
+                </span>
+              </div>
+              <div className="stat-item">
+                <strong>Culture & Arts Rating:</strong>{" "}
+                <span
+                  className={`stat-descriptor rating-${(
+                    cultureArtsRating || "average"
+                  )
+                    .toLowerCase()
+                    .replace(/\s+/g, "-")}`}
+                >
+                  {getRatingDescriptor(cultureArtsRating)}
+                </span>
+              </div>
+            </div>
+          </section>
+        );
+      case "budget":
+        return (
+          <>
+            {budget ? (
+              <section className="city-section">
+                <h4>City Budget & Taxes (Annual Estimate)</h4>
+                <div className="city-stats-grid two-col budget-summary-grid">
+                  <div className="stat-item">
+                    <strong>Total Income:</strong> $
+                    {budget.totalAnnualIncome?.toLocaleString() || "N/A"}
+                  </div>
+                  <div className="stat-item">
+                    <strong>Total Expenses:</strong> $
+                    {budget.totalAnnualExpenses?.toLocaleString() || "N/A"}
+                  </div>
+                  <div className="stat-item">
+                    <strong>Balance:</strong>{" "}
+                    <span
+                      className={
+                        budget.balance >= 0 ? "text-success" : "text-error"
+                      }
+                    >
+                      ${budget.balance?.toLocaleString() || "N/A"}
+                    </span>
+                  </div>
+                  <div className="stat-item">
+                    <strong>Accumulated Debt/Surplus:</strong>
+                    <span
+                      className={
+                        budget.accumulatedDebt > 0
+                          ? "text-error"
+                          : budget.accumulatedDebt < 0
+                          ? "text-success"
+                          : "text-neutral"
+                      }
+                    >
+                      $
+                      {Math.abs(budget.accumulatedDebt)?.toLocaleString() ||
+                        "N/A"}
+                      {budget.accumulatedDebt > 0
+                        ? " (Debt)"
+                        : budget.accumulatedDebt < 0
+                        ? " (Surplus)"
+                        : " (Balanced)"}
+                    </span>
+                  </div>
+                </div>
+
+                {taxRates && (
+                  <div className="tax-rates-subsection">
+                    <h5>Current Tax Rates:</h5>
+                    <div className="city-stats-grid three-col">
+                      <div className="stat-item">
+                        Property Tax:{" "}
+                        <span>
+                          {formatPercentage(taxRates.property * 100, 2)}
+                        </span>
+                      </div>
+                      <div className="stat-item">
+                        Sales Tax:{" "}
+                        <span>{formatPercentage(taxRates.sales * 100, 1)}</span>
+                      </div>
+                      <div className="stat-item">
+                        Business Tax:{" "}
+                        <span>
+                          {formatPercentage(taxRates.business * 100, 1)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="budget-details-container">
+                  <div className="budget-column income-sources">
+                    <h5>Detailed Income Sources:</h5>
+                    {incomeSources &&
+                    typeof incomeSources === "object" &&
+                    Object.keys(incomeSources).length > 0 ? (
+                      <ul className="budget-breakdown-list">
+                        {Object.entries(incomeSources).map(([key, value]) => (
+                          <li key={`income-${key}`}>
+                            <span>{formatBudgetKey(key)}:</span>
+                            <span>
+                              $
+                              {typeof value === "number"
+                                ? value.toLocaleString()
+                                : String(value)}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p>No detailed income sources available.</p>
+                    )}
+                  </div>
+
+                  <div className="budget-column expense-allocations">
+                    <h5>Detailed Expense Allocations:</h5>
+                    {expenseAllocations &&
+                    typeof expenseAllocations === "object" &&
+                    Object.keys(expenseAllocations).length > 0 ? (
+                      <ul className="budget-breakdown-list">
+                        {Object.entries(expenseAllocations).map(
+                          ([key, value]) => {
+                            return (
+                              <li key={`expense-${key}`}>
+                                <span>{formatBudgetKey(key)}:</span>
+                                <span>
+                                  $
+                                  {typeof value === "number"
+                                    ? value.toLocaleString()
+                                    : String(value)}
+                                </span>
+                              </li>
+                            );
+                          }
+                        )}
+                      </ul>
+                    ) : (
+                      <p>No detailed expense allocations available.</p>
+                    )}
+                  </div>
+                </div>
+              </section>
+            ) : (
+              <p>No budget data available.</p>
+            )}
+          </>
+        );
+      case "government":
+        return (
+          <section className="city-officials-section city-section">
+            <h4>City Government & Council</h4>
+            <div className="officials-layout">
+              <div className="officials-list-container">
+                {mayorOffice && mayorOffice.holder ? (
+                  <div className="official-entry mayor-entry">
+                    <strong>
+                      {formatOfficeTitleForDisplay(mayorOffice, cityName)}:{" "}
+                    </strong>
+                    <span
+                      className="politician-name-link"
+                      onClick={() => handlePoliticianClick(mayorOffice.holder)}
+                      title={`View profile of ${mayorOffice.holder.name}`}
+                    >
+                      {mayorOffice.holder.name}
+                    </span>
+                    {mayorOffice.holder.partyName &&
+                      ` (${mayorOffice.holder.partyName})`}
+                  </div>
+                ) : (
+                  <p>Mayor's office information not available or vacant.</p>
+                )}
+
+                {councilOffices.length > 0 ? (
+                  <div className="council-entries">
+                    <h5>City Council Members:</h5>
+                    <ul className="officials-list">
+                      {councilOffices.map((office) => (
+                        // office.holder is already checked by citySpecificFilledLocalOffices filter
+                        <li key={office.officeId} className="official-entry">
+                          <strong>
+                            {formatOfficeTitleForDisplay(office, cityName)}:{" "}
+                          </strong>
+                          <span
+                            className="politician-name-link"
+                            onClick={() => handlePoliticianClick(office.holder)}
+                            title={`View profile of ${office.holder.name}`}
+                          >
+                            {office.holder.name}
+                          </span>
+                          {office.holder.partyName &&
+                            ` (${office.holder.partyName})`}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : (
+                  // Show this message only if there's a mayor (or some indication that council *should* exist)
+                  // but no council members are found. If mayor is also missing, a more general message might be better.
+                  (mayorOffice ||
+                    citySpecificFilledLocalOffices.length === 0) && (
+                    <p>
+                      City council member information not available or no seats
+                      filled/defined.
+                    </p>
+                  )
+                )}
+              </div>
+              {councilPartyComposition.length > 0 && (
+                <div className="council-pie-chart-container">
+                  <h5>Council Party Breakdown</h5>
+                  <div className="pie-chart-wrapper-council">
+                    <CouncilCompositionPieChart
+                      councilCompositionData={councilPartyComposition}
+                      themeColors={currentTheme?.colors}
+                      themeFonts={currentTheme?.fonts}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+        );
+      case "laws": // NEW SUB-TAB FOR CITY LAWS
+        return (
+          <section className="city-section city-laws-section">
+            <h4>Current City Ordinances & Laws</h4>
+            {cityLaws &&
+            typeof cityLaws === "object" &&
+            Object.keys(cityLaws).length > 0 ? (
+              <ul className="city-laws-list">
+                {Object.entries(cityLaws).map(([key, value]) => (
+                  <li key={`law-${key}`} className="law-item">
+                    <span className="law-name">{formatBudgetKey(key)}:</span>{" "}
+                    {/* Re-using formatBudgetKey for consistency */}
+                    <span className="law-value">
+                      {formatLawValue(key, value)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p>
+                No specific city laws data available or data is not an object.
+              </p>
+            )}
+          </section>
+        );
+      default:
+        return <p>Select a sub-tab to view details.</p>;
+    }
+  };
+
+  return (
+    <div className="city-overview-tab">
+      <h2 className="city-main-title">
+        {cityName || "City"} - City Management
+      </h2>
+
+      <div className="sub-tab-navigation">
+        <button
+          onClick={() => setActiveSubTab("summary")}
+          className={activeSubTab === "summary" ? "active" : ""}
+        >
+          Summary
+        </button>
+        <button
+          onClick={() => setActiveSubTab("demographics")}
+          className={activeSubTab === "demographics" ? "active" : ""}
+        >
+          Demographics
+        </button>
+        <button
+          onClick={() => setActiveSubTab("services")}
+          className={activeSubTab === "services" ? "active" : ""}
+        >
+          Services
+        </button>
+        <button
+          onClick={() => setActiveSubTab("budget")}
+          className={activeSubTab === "budget" ? "active" : ""}
+        >
+          Budget & Taxes
+        </button>
+        <button
+          onClick={() => setActiveSubTab("government")}
+          className={activeSubTab === "government" ? "active" : ""}
+        >
+          Government
+        </button>
+        <button
+          onClick={() => setActiveSubTab("laws")}
+          className={activeSubTab === "laws" ? "active" : ""}
+        >
+          City Laws
+        </button>{" "}
+        {/* NEW BUTTON */}
+      </div>
+
+      <div className="sub-tab-content-area">{renderSubTabContent()}</div>
+    </div>
+  );
+};
+
+export default CityOverviewTab;

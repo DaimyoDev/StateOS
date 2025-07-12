@@ -1,0 +1,23 @@
+{
+  "name": "stateos",
+  "version": "1.0.0",
+  "description": "",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "keywords": [],
+  "author": "Raymond Brown",
+  "license": "ISC",
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "cross-env": "^7.0.3",
+    "electron": "^36.2.0",
+    "electron-is-dev": "^3.0.1"
+  },
+  "dependencies": {
+    "react-confetti": "^6.4.0",
+    "react-virtualized-auto-sizer": "^1.0.26",
+    "react-window": "^1.8.11"
+  }
+}

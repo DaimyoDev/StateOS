@@ -1,0 +1,38 @@
+/* ui-src/src/components/maps/JapanMap.css */
+.interactive-japan-map {
+  width: 100%; /* Fill the .map-render-wrapper */
+  height: 100%; /* Fill the .map-render-wrapper */
+  object-fit: contain; /* If SVG has intrinsic dimensions, this helps scale it down.
+                          Relies on preserveAspectRatio="xMidYMid meet" in the SVG itself. */
+  display: block;
+  /* You might not need margin: auto here if .map-render-wrapper handles centering */
+  background-color: var(--map-background-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--element-radius, 4px);
+  box-shadow: var(--panel-shadow);
+}
+
+.prefecture-path {
+  fill: var(--map-region-default-fill); /* NEW */
+  stroke: var(--map-region-border); /* NEW */
+  stroke-width: 0.5px;
+  transition: fill 0.01s var(--transition-speed),
+    stroke-width 0.01s var(--transition-speed),
+    filter 0.01s var(--transition-speed, ease-in-out);
+  cursor: pointer;
+  filter: drop-shadow(1px 1px 0px rgba(0, 0, 0, 0.3));
+}
+
+.prefecture-path:hover {
+  fill: var(--map-region-hover-fill); /* NEW */
+  stroke-width: 1px;
+  filter: drop-shadow(2px 2px 1px rgba(0, 0, 0, 0.8));
+}
+
+.prefecture-path.selected {
+  fill: var(--accent-color);
+  stroke: var(
+    --accent-border-color
+  ); /* Use the theme's accent border for selected regions */
+  stroke-width: 1.5px;
+}

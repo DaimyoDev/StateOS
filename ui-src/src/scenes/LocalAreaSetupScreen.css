@@ -1,0 +1,162 @@
+/* ui-src/src/scenes/LocalAreaSetupScreen.css */
+.local-area-setup-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: max-content;
+  background-color: var(--primary-bg);
+  padding: 20px;
+  font-family: var(--font-main);
+}
+
+.setup-panel-las {
+  background-color: var(--ui-panel-bg);
+  padding: 30px 40px;
+  border-radius: var(--element-radius);
+  box-shadow: var(--panel-shadow);
+  width: 90%;
+  color: var(--primary-text);
+  text-align: center;
+}
+
+.setup-title-las {
+  font-family: var(--font-heading);
+  color: var(--accent-color);
+  font-size: 2em;
+  margin-bottom: 20px;
+}
+
+.summary-text-las {
+  margin-bottom: 25px;
+  line-height: 1.7;
+  color: var(--secondary-text);
+  background-color: var(--secondary-bg);
+  padding: 15px;
+  border-radius: var(--element-radius);
+  border: 1px solid var(--border-color);
+}
+.summary-text-las strong {
+  color: var(--primary-text);
+}
+
+.form-group {
+  /* Re-use from PoliticianCreator or define globally */
+  margin-bottom: 20px;
+  text-align: left;
+}
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--secondary-text);
+  font-size: 0.9em;
+}
+.form-group input[type="text"] {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--element-radius);
+  border: 1px solid var(--border-color);
+  background-color: var(--input-bg);
+  color: var(--input-text);
+  font-family: var(--font-main);
+  font-size: 1em;
+}
+.form-group input[type="text"]:focus {
+  border-color: var(--accent-border-color);
+  box-shadow: 0 0 0 2px var(--input-focus-shadow-color);
+  outline: none;
+}
+
+.form-actions-las {
+  margin-top: 30px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.summary-grid-las {
+  display: grid;
+  grid-template-columns: 1fr; /* Stack items by default */
+  gap: 15px;
+  margin-bottom: 25px;
+  padding: 15px;
+  background-color: var(--secondary-bg);
+  border-radius: var(--element-radius);
+  border: 1px solid var(--border-color);
+}
+
+.summary-item-las {
+  padding-bottom: 10px;
+  border-bottom: 1px dashed var(--border-color); /* Softer separator */
+}
+.summary-item-las:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.summary-label {
+  display: block;
+  font-size: 0.85em;
+  color: var(--secondary-text);
+  margin-bottom: 3px;
+}
+
+.summary-value {
+  font-size: 1.1em;
+  font-weight: 600; /* Inter or Montserrat weight */
+  color: var(--primary-text);
+}
+
+.summary-detail {
+  font-size: 0.9em;
+  color: var(--secondary-text);
+  margin-left: 5px;
+}
+
+.political-landscape-summary {
+  margin-top: 20px;
+  margin-bottom: 25px;
+}
+
+.summary-section-title {
+  font-family: var(--font-heading);
+  color: var(--accent-color);
+  text-align: center;
+  font-size: 1.3em;
+  margin-bottom: 15px;
+}
+
+.city-name-group {
+  /* Specific styling for city name input section */
+  margin-top: 25px;
+  padding-top: 25px;
+  border-top: 1px solid var(--border-color);
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--secondary-text);
+  font-size: 0.9em;
+  font-weight: 500; /* Slightly more emphasis */
+}
+
+.form-group input[type="text"] {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--element-radius);
+  border: 1px solid var(--border-color);
+  background-color: var(--input-bg);
+  color: var(--input-text);
+  font-family: var(--font-main);
+  font-size: 1em;
+}
+.form-group input[type="text"]:focus {
+  border-color: var(--accent-border-color);
+  box-shadow: 0 0 0 2px var(--input-focus-shadow-color);
+  outline: none;
+}
+
+.form-actions-las {
+  margin-top: 30px;
+  display: flex;
+  justify-content: space-between;
+}

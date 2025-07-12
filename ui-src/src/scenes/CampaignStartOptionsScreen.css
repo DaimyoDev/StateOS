@@ -1,0 +1,64 @@
+/* ui-src/src/scenes/CampaignStartOptionsScreen.css */
+.campaign-start-options-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  background-color: var(--primary-bg);
+  color: var(--primary-text);
+  font-family: var(--font-main);
+  padding: 20px;
+}
+
+.options-panel {
+  background-color: var(--ui-panel-bg);
+  padding: 30px 40px;
+  border-radius: var(--element-radius);
+  box-shadow: var(--panel-shadow);
+  text-align: center;
+  width: 100%;
+  max-width: 600px; /* Adjust as needed */
+}
+
+.options-title {
+  font-family: var(--font-heading);
+  color: var(--accent-color);
+  font-size: 2.5em; /* Example size */
+  margin-bottom: 15px;
+}
+
+.options-subtitle {
+  font-size: 1.1em;
+  color: var(--secondary-text);
+  margin-bottom: 30px;
+}
+
+.options-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 15px; /* Space between the two main choice buttons */
+  margin-bottom: 30px;
+}
+
+.options-button {
+  /* Common styling for the two main choice buttons */
+  padding-top: 15px; /* Larger padding for these important buttons */
+  padding-bottom: 15px;
+  font-size: 1.1em; /* Slightly larger font */
+}
+
+.disabled-option-note {
+  font-size: 0.9em;
+  color: var(--disabled-text);
+  margin-top: -10px; /* Adjust to position nicely below disabled button */
+  margin-bottom: 10px;
+}
+
+.back-button-csos {
+  /* csos for CampaignStartOptionsScreen, to avoid class name clashes if needed */
+  margin-top: 20px;
+  background-color: var(--button-bg); /* Using the general button style */
+  color: var(--button-text);
+  /* Ensure it picks up other .menu-button styles or define them here */
+}

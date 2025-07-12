@@ -1,0 +1,85 @@
+/* ui-src/src/components/modals/ProposePolicyModal.css */
+.propose-policy-modal-content {
+  padding: 20px;
+  min-height: 400px; /* Give it some default height */
+  display: flex;
+  flex-direction: column;
+}
+
+.policy-selection-area {
+  margin-bottom: 20px;
+  display: flex;
+  gap: 20px; /* Space between area and policy select if they become side-by-side */
+  flex-wrap: wrap;
+}
+.policy-selection-area .form-group {
+  flex: 1; /* Allow them to share space */
+  min-width: 200px; /* Prevent them from becoming too narrow */
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 500;
+  color: var(--secondary-text);
+}
+
+.form-group select {
+  width: 100%;
+  padding: 10px;
+  border-radius: var(--element-radius);
+  border: 1px solid var(--border-color);
+  background-color: var(--input-bg);
+  color: var(--input-text);
+  font-family: var(--font-main);
+  font-size: 1em;
+}
+
+.policy-details-preview {
+  margin-top: 15px;
+  padding: 15px;
+  background-color: var(--secondary-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--element-radius);
+  flex-grow: 1; /* Allow details to take up space */
+  min-height: 150px; /* Ensure it has some height */
+  font-size: 0.9em;
+}
+
+.policy-details-preview h4 {
+  margin-top: 0;
+  color: var(--accent-color);
+  font-family: var(--font-heading);
+}
+.policy-description {
+  font-style: italic;
+  color: var(--secondary-text);
+  margin-bottom: 10px;
+}
+.policy-cost strong,
+.policy-effects-preview strong {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--primary-text);
+}
+.policy-cost span {
+  margin-right: 15px;
+}
+.policy-effects-preview ul {
+  list-style: disc;
+  padding-left: 20px;
+  margin: 0;
+}
+.policy-effects-preview li {
+  margin-bottom: 3px;
+}
+
+.propose-policy-modal-content .modal-actions {
+  margin-top: auto; /* Push to bottom */
+  padding-top: 20px;
+  border-top: 1px solid var(--border-color);
+}

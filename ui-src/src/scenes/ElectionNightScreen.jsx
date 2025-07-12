@@ -1,0 +1,1017 @@
+// ui-src/src/scenes/ElectionNightScreen.jsx
+import React, { useEffect, useState, useCallback, useMemo } from "react";
+import useGameStore from "../store";
+import "./ElectionNightScreen.css";
+import WinnerAnnouncementModal from "../components/modals/WinnerAnnouncementModal";
+import { getRandomInt, calculateAdultPopulation } from "../utils/generalUtils";
+
+const SIMULATION_SPEEDS = {
+  superSlow: 20000, // Adjusted for better viewing
+  slow: 10000,
+  normal: 5000, // Adjusted
+  fast: 1500, // Adjusted
+};
+
+const distributeVoteChunkProportionally = (candidates, voteChunk) => {
+  let processedCandidates = candidates.map((c) => ({
+    ...c,
+    currentVotes: c.currentVotes || 0,
+    basePolling: c.polling || c.baseScore || 1, // Use baseScore as a fallback for polling
+  }));
+
+  if (voteChunk <= 0 || processedCandidates.length === 0) {
+    return candidates.map((c) => ({ ...c, currentVotes: c.currentVotes || 0 }));
+  }
+
+  const candidatesWithChunkWeight = processedCandidates.map((candidate) => {
+    const randomPerformanceFactor = 0.7 + Math.random() * 0.6; // Small random swing
+    return {
+      ...candidate,
+      // Ensure basePolling is a positive number for weight calculation
+      chunkWeight:
+        Math.max(0.1, candidate.basePolling) * randomPerformanceFactor,
+    };
+  });
+
+  const totalChunkWeight = candidatesWithChunkWeight.reduce(
+    (sum, c) => sum + c.chunkWeight,
+    0
+  );
+
+  let distributedInChunk = 0;
+
+  if (totalChunkWeight > 0) {
+    for (let i = 0; i < candidatesWithChunkWeight.length; i++) {
+      const candidate = candidatesWithChunkWeight[i];
+      const proportionOfChunk = candidate.chunkWeight / totalChunkWeight;
+      const votesForCandidateThisChunk = Math.floor(
+        proportionOfChunk * voteChunk
+      );
+      const originalCandidate = processedCandidates.find(
+        (pc) => pc.id === candidate.id
+      );
+      if (originalCandidate) {
+        originalCandidate.currentVotes += votesForCandidateThisChunk;
+        distributedInChunk += votesForCandidateThisChunk;
+      }
+    }
+  } else if (processedCandidates.length > 0) {
+    const equalShare = Math.floor(voteChunk / processedCandidates.length);
+    processedCandidates.forEach((candidate) => {
+      candidate.currentVotes += equalShare;
+      distributedInChunk += equalShare;
+    });
+  }
+
+  let remainder = voteChunk - distributedInChunk;
+  if (remainder > 0 && processedCandidates.length > 0) {
+    const sortedForRemainder = candidatesWithChunkWeight.sort(
+      (a, b) => b.chunkWeight - a.chunkWeight
+    );
+    for (let i = 0; i < remainder; i++) {
+      const candidateToReceiveRemainder = processedCandidates.find(
+        (pc) => pc.id === sortedForRemainder[i % sortedForRemainder.length].id
+      );
+      if (candidateToReceiveRemainder) {
+        candidateToReceiveRemainder.currentVotes++;
+      }
+    }
+  }
+  return processedCandidates.map(({ ...rest }) => rest);
+};
+
+const FeaturedElectionCard = ({ election }) => {
+  const sortedCandidates = useMemo(() => {
+    if (!election?.candidates || election.candidates.length === 0) return [];
+    return [...election.candidates]
+      .map((c) => ({ ...c, currentVotes: c.currentVotes || 0 }))
+      .sort((a, b) => (b.currentVotes || 0) - (a.currentVotes || 0));
+  }, [election?.candidates]);
+
+  const projectedWinners = useMemo(() => {
+    if (!election?.isComplete || !sortedCandidates.length) return [];
+    const seats = election.numberOfSeatsToFill || 1;
+    return sortedCandidates.slice(0, seats);
+  }, [election?.isComplete, sortedCandidates, election?.numberOfSeatsToFill]);
+
+  if (!election) {
+    return (
+      <div className="featured-election-placeholder">
+        Select an election to view details.
+      </div>
+    );
+  }
+
+  const currentTotalVotesInCard =
+    election.candidates?.reduce((sum, c) => sum + (c.currentVotes || 0), 0) ||
+    0;
+
+  return (
+    <div
+      className={`election-card featured-election-card ${
+        election.isComplete ? "complete" : "in-progress"
+      }`}
+    >
+      <h2 className="important-heading">{election.officeName}</h2>
+      <div className="election-progress-details">
+        <p>Reporting: {election.percentReported?.toFixed(0) ?? 0}%</p>
+        <div className="reporting-bar-container">
+          <div
+            className="reporting-bar"
+            style={{ width: `${election.percentReported ?? 0}%` }}
+          ></div>
+        </div>
+        {election.totalEligibleVoters != null && (
+          <p>
+            Eligible Voters:{" "}
+            {(election.totalEligibleVoters || 0).toLocaleString()}
+          </p>
+        )}
+        {election.voterTurnoutPercentage != null && (
+          <p>Expected Turnout: {election.voterTurnoutPercentage.toFixed(1)}%</p>
+        )}
+        <p>
+          Total Expected Votes:{" "}
+          {(election.totalExpectedVotes || 0).toLocaleString()}
+        </p>
+        {(election.numberOfSeatsToFill || 1) > 1 && (
+          <p>Seats to Fill: {election.numberOfSeatsToFill}</p>
+        )}
+      </div>
+      <h3 className="results-title">Current Results:</h3>
+      {(election.electoralSystem === "PartyListPR" ||
+        election.electoralSystem === "MMP") &&
+        election.candidates?.every((c) => c.isListCandidate) && (
+          <p className="system-note">
+            <i>
+              Live results show individual performance; party-based allocation
+              determines final PR/List MPs.
+            </i>
+          </p>
+        )}
+      <ul className="results-list">
+        {sortedCandidates.map((candidate) => {
+          const percentage =
+            currentTotalVotesInCard > 0
+              ? ((candidate.currentVotes || 0) / currentTotalVotesInCard) * 100
+              : 0;
+          const isProjectedWinnerInCard = projectedWinners.some(
+            (w) => w.id === candidate.id
+          );
+          return (
+            <li
+              key={candidate.id}
+              className={`candidate-result ${
+                isProjectedWinnerInCard && !election.isComplete
+                  ? "winning-position-mmd"
+                  : ""
+              } ${
+                isProjectedWinnerInCard && election.isComplete
+                  ? "winner-final"
+                  : ""
+              }`}
+            >
+              <span
+                className="candidate-name politician-name-link"
+                title={`View profile of ${candidate.name}`}
+              >
+                {candidate.name}
+                {isProjectedWinnerInCard &&
+                  !election.isComplete &&
+                  (election.numberOfSeatsToFill || 1) > 1 && (
+                    <span className="winning-indicator-live"> (Leading)</span>
+                  )}
+                {isProjectedWinnerInCard && election.isComplete && (
+                  <span className="winning-indicator-final"> (Elected)</span>
+                )}
+              </span>
+              <span className="party-name">
+                {" "}
+                ({candidate.partyName || "Independent"})
+              </span>
+              <span className="vote-count">
+                {" "}
+                {(candidate.currentVotes || 0).toLocaleString()} votes (
+                {percentage.toFixed(1)}%)
+              </span>
+              <div
+                className="vote-bar-container"
+                title={`${percentage.toFixed(1)}%`}
+              >
+                <div
+                  className="vote-bar"
+                  style={{
+                    width: `${Math.min(100, percentage)}%`,
+                    backgroundColor:
+                      candidate.partyColor || "var(--disabled-bg, #ccc)",
+                  }}
+                ></div>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+      {election.isComplete && (
+        <div className="winner-announcement">
+          {projectedWinners.length > 0 ? (
+            <>
+              <strong>
+                Projected Winner{projectedWinners.length > 1 ? "s" : ""}:
+              </strong>
+              {projectedWinners.length === 1 ? (
+                <span
+                  className="politician-name-link"
+                  title={`View profile of ${projectedWinners[0].name}`}
+                >
+                  {" "}
+                  {projectedWinners[0].name} (
+                  {projectedWinners[0].partyName || "Independent"})
+                </span>
+              ) : (
+                <ul className="projected-winners-list">
+                  {projectedWinners.map((winner) => (
+                    <li key={winner.id}>
+                      <span
+                        className="politician-name-link"
+                        title={`View profile of ${winner.name}`}
+                      >
+                        {winner.name}
+                      </span>{" "}
+                      ({winner.partyName || "Independent"})
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </>
+          ) : (
+            <strong>
+              {election.candidates?.length > 0
+                ? "Results Certified / No Clear Winner(s)"
+                : "No Candidates Ran"}
+            </strong>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const ElectionListItem = ({ election, onSelect, isSelected }) => {
+  const leadingCandidate =
+    election.candidates?.length > 0
+      ? [...election.candidates].sort(
+          (a, b) => (b.currentVotes || 0) - (a.currentVotes || 0)
+        )[0]
+      : null;
+  return (
+    <li
+      className={`election-list-sidebar-item ${isSelected ? "selected" : ""} ${
+        election.isComplete ? "complete" : "in-progress"
+      }`}
+      onClick={() => onSelect(election.id)}
+    >
+      <div className="election-list-item-header">
+        <strong>{election.officeName}</strong>
+        <span> ({election.percentReported?.toFixed(0) ?? 0}% Rep.)</span>
+      </div>
+      {leadingCandidate && (leadingCandidate.currentVotes || 0) > 0 && (
+        <div className="election-list-item-leader">
+          Leading: {leadingCandidate.name} (
+          {(leadingCandidate.currentVotes || 0).toLocaleString()} votes)
+        </div>
+      )}
+      {(!leadingCandidate || (leadingCandidate.currentVotes || 0) === 0) &&
+        election.candidates?.length > 0 &&
+        !election.isComplete && (
+          <div className="election-list-item-leader">Vote counting...</div>
+        )}
+      {election.isComplete &&
+        (!leadingCandidate || (leadingCandidate.currentVotes || 0) === 0) &&
+        election.candidates?.length > 0 && (
+          <div className="election-list-item-leader">Results complete.</div>
+        )}
+      {(election.candidates?.length || 0) === 0 && (
+        <div className="election-list-item-leader">No candidates.</div>
+      )}
+    </li>
+  );
+};
+
+const ElectionNightScreen = () => {
+  const store = useGameStore();
+  const activeCampaign = store.activeCampaign;
+  const {
+    navigateTo,
+    openWinnerAnnouncementModal,
+    closeWinnerAnnouncementModal,
+    openViewPoliticianModal,
+    processElectionResults,
+  } = store.actions;
+  const isWinnerAnnouncementModalOpenGlobal =
+    store.isWinnerAnnouncementModalOpen;
+  const winnerAnnouncementDataGlobal = store.winnerAnnouncementData;
+
+  const [liveElections, setLiveElections] = useState([]);
+  const [simulationSpeed, setSimulationSpeed] = useState(
+    SIMULATION_SPEEDS.normal
+  );
+  const [isPaused, setIsPaused] = useState(false);
+  const [allSimulationsComplete, setAllSimulationsComplete] = useState(false);
+  const allSimulationsCompleteRef = React.useRef(allSimulationsComplete);
+  const [featuredElectionId, setFeaturedElectionId] = useState(null);
+  const [winnerAnnouncementQueue, setWinnerAnnouncementQueue] = useState([]);
+
+  useEffect(() => {
+    allSimulationsCompleteRef.current = allSimulationsComplete;
+  }, [allSimulationsComplete]);
+
+  const electionDateForThisScreen = useMemo(
+    () => activeCampaign?.viewingElectionNightForDate,
+    [activeCampaign?.viewingElectionNightForDate]
+  );
+
+  useEffect(() => {
+    const currentCampaignElections = activeCampaign?.elections;
+    if (currentCampaignElections && electionDateForThisScreen) {
+      const electionsToday = currentCampaignElections.filter(
+        (e) =>
+          e.electionDate.year === electionDateForThisScreen.year &&
+          e.electionDate.month === electionDateForThisScreen.month &&
+          e.electionDate.day === electionDateForThisScreen.day &&
+          e.outcome?.status === "upcoming"
+      );
+
+      const initialSimData = electionsToday.map((election) => {
+        let turnoutForSim = election.voterTurnoutPercentage;
+        if (turnoutForSim == null || turnoutForSim < 5 || turnoutForSim > 95) {
+          let min = 30,
+            max = 70; /* ... your existing turnout adjustment ... */
+          turnoutForSim = getRandomInt(min, max);
+        }
+        const eligibleVotersForSim =
+          election.totalEligibleVoters ||
+          /* ... your existing calculation ... */ Math.floor(
+            ((election.entityDataSnapshot?.population || 1000) *
+              calculateAdultPopulation(
+                1,
+                election.entityDataSnapshot?.demographics
+              )) /
+              (election.entityDataSnapshot?.demographics ? 100 : 1) || 0.7
+          );
+        const totalExpectedVotes = Math.max(
+          0,
+          Math.round(eligibleVotersForSim * (turnoutForSim / 100))
+        );
+
+        let simEntities = []; // This will hold parties for PR, or candidates for others
+
+        console.log(
+          `--- [SimSetup] Processing: ${election.officeName} (ID: ${election.id}, System: ${election.electoralSystem}) ---`
+        );
+
+        if (election.electoralSystem === "PartyListPR") {
+          console.log(`   PartyListPR: Populating parties for simulation.`);
+          if (
+            election.partyLists &&
+            Object.keys(election.partyLists).length > 0
+          ) {
+            Object.entries(election.partyLists).forEach(
+              ([partyId, individualCandidateListOnParty]) => {
+                // A party is considered if it's in partyLists.
+                // Its strength (basePolling) is important.
+                const partyInfoFromSnapshots =
+                  activeCampaign.generatedPartiesSnapshot?.find(
+                    (p) => p.id === partyId
+                  ) ||
+                  activeCampaign.customPartiesSnapshot?.find(
+                    (p) => p.id === partyId
+                  );
+
+                const partyName =
+                  partyInfoFromSnapshots?.name ||
+                  election.partyListDetails?.[partyId]?.name ||
+                  `Party ${partyId.slice(-4)}`;
+                const partyColor =
+                  partyInfoFromSnapshots?.color ||
+                  election.partyListDetails?.[partyId]?.color ||
+                  "#888";
+
+                // Determine base polling for the party
+                // This needs to come from a reliable source of party strength.
+                // Example sources: pre-election polling for parties, national support, etc.
+                let partyBasePolling =
+                  election.partyListDetails?.[partyId]?.basePopularity || // Ideal
+                  election.partyListDetails?.[partyId]?.polling || // Alternative
+                  partyInfoFromSnapshots?.popularity || // From general party snapshot
+                  10; // Absolute fallback
+
+                // Optional: If you want to average candidate polling if party polling is absent
+                if (
+                  partyBasePolling === 10 &&
+                  individualCandidateListOnParty &&
+                  individualCandidateListOnParty.length > 0
+                ) {
+                  let sumListCandidatePolling = 0;
+                  let countListCandidatePolling = 0;
+                  individualCandidateListOnParty.forEach((c) => {
+                    const candPolling = c.polling || c.baseScore;
+                    if (typeof candPolling === "number") {
+                      sumListCandidatePolling += candPolling;
+                      countListCandidatePolling++;
+                    }
+                  });
+                  if (countListCandidatePolling > 0) {
+                    partyBasePolling =
+                      sumListCandidatePolling / countListCandidatePolling;
+                  }
+                }
+
+                simEntities.push({
+                  id: partyId, // Crucial: This is the Party's ID
+                  name: partyName, // Party's Name (for distributeVoteChunk & display)
+                  partyName: partyName, // For consistency if components expect it
+                  partyColor: partyColor,
+                  currentVotes: 0,
+                  basePolling: Math.max(1, partyBasePolling), // Party's strength
+                  isPartyEntity: true, // Flag to identify this as a party object
+                });
+              }
+            );
+            console.log(
+              `   PartyListPR: ${simEntities.length} parties prepared for simulation for ${election.officeName}.`
+            );
+          } else {
+            console.warn(
+              `   PartyListPR: election.partyLists is missing or empty for ${election.officeName}.`
+            );
+          }
+        } else if (election.electoralSystem === "MMP") {
+          // MMP: Simulate constituency candidates individually
+          console.log(
+            `   MMP: Populating constituency candidates for ${election.officeName}.`
+          );
+          if (election.mmpData?.constituencyCandidatesByParty) {
+            Object.values(
+              election.mmpData.constituencyCandidatesByParty
+            ).forEach((list) => {
+              if (list && Array.isArray(list))
+                simEntities.push(
+                  ...list.map((c) => ({ ...c, isPartyEntity: false }))
+                );
+            });
+          }
+          if (election.mmpData?.independentConstituencyCandidates) {
+            simEntities.push(
+              ...election.mmpData.independentConstituencyCandidates.map(
+                (c) => ({ ...c, isPartyEntity: false })
+              )
+            );
+          }
+          // Visual fallback for MMP if no constituency candidates (simulates individuals)
+          if (simEntities.length === 0 && election.partyLists) {
+            Object.values(election.partyLists).forEach((list) => {
+              if (list && Array.isArray(list))
+                simEntities.push(
+                  ...list.map((c) => ({
+                    ...c,
+                    isListCandidate: true,
+                    isMMPListFallback: true,
+                    isPartyEntity: false,
+                  }))
+                );
+            });
+          }
+          console.log(
+            `   MMP: ${simEntities.length} individual candidates prepared.`
+          );
+        } else {
+          // Other systems (FPTP, etc.)
+          console.log(
+            `   ${election.electoralSystem}: Populating individual candidates for ${election.officeName}.`
+          );
+          simEntities = (election.candidates || []).map((c) => ({
+            ...c,
+            isPartyEntity: false,
+          }));
+          console.log(
+            `   ${election.electoralSystem}: ${simEntities.length} individual candidates prepared.`
+          );
+        }
+
+        // A final general fallback (less likely to be needed if above is thorough)
+        if (simEntities.length === 0 && election.candidates?.length > 0) {
+          simEntities = [...election.candidates].map((c) => ({
+            ...c,
+            isPartyEntity: false,
+          }));
+          console.log(
+            `   FALLBACK: Used ${simEntities.length} from election.candidates for ${election.officeName}.`
+          );
+        }
+
+        if (simEntities.length === 0) {
+          console.error(
+            `---> [SimSetup] FINAL: NO ENTITIES (candidates/parties) for simulation for ${election.officeName}`
+          );
+        }
+
+        return {
+          ...election, // Original election data (includes partyLists, mmpData for processElectionResults)
+          // 'candidates' now holds the entities that votes will be distributed to:
+          // - For PartyListPR: Array of Party Objects
+          // - For MMP: Array of Constituency Candidate Objects
+          // - For FPTP etc.: Array of Candidate Objects
+          candidates: simEntities.map((entity) => ({
+            ...entity,
+            currentVotes: 0, // Reset votes
+            // Ensure basePolling is present; it should have been set when entity was created
+            basePolling:
+              entity.basePolling ||
+              (simEntities.length > 0
+                ? Math.max(1, 100 / simEntities.length)
+                : 1),
+          })),
+          // 'livePartyResults' is now redundant if 'election.candidates' holds parties for PR.
+          // FeaturedElectionCard can directly check if election.candidates[0].isPartyEntity.
+          // However, if you want to keep a separate structure for PR display, you can populate it:
+          livePartyResults:
+            election.electoralSystem === "PartyListPR"
+              ? simEntities.map((p) => ({ ...p, currentVotes: 0 })) // Clone party entities for distinct display tracking
+              : [],
+          totalExpectedVotes,
+          percentReported: 0,
+          voterTurnoutPercentage: turnoutForSim,
+          totalEligibleVoters: eligibleVotersForSim,
+          isComplete:
+            (totalExpectedVotes === 0 && simEntities.length > 0) ||
+            simEntities.length === 0,
+          winnerAnnounced: false,
+        };
+      });
+
+      setLiveElections(initialSimData);
+      const allInitiallyComplete = initialSimData.every((e) => e.isComplete);
+      setAllSimulationsComplete(allInitiallyComplete);
+      allSimulationsCompleteRef.current = allInitiallyComplete;
+
+      // Set or update featuredElectionId only if necessary based on the new initialSimData
+      // This logic ensures a valid election is featured when the simulation data loads/reloads.
+      const currentFeaturedIdInComponentState = featuredElectionId; // Read from component state
+      if (initialSimData.length > 0) {
+        const featuredStillValid = initialSimData.some(
+          (e) => e.id === currentFeaturedIdInComponentState
+        );
+        if (!featuredStillValid) {
+          // If current is no longer valid or was never set
+          setFeaturedElectionId(initialSimData[0].id);
+        }
+        // If featuredStillValid is true, we don't need to change featuredElectionId here.
+      } else {
+        setFeaturedElectionId(null); // No elections to feature
+      }
+    } else {
+      // No campaign or date, so clear everything related to live simulation
+      setLiveElections([]);
+      setAllSimulationsComplete(true);
+      allSimulationsCompleteRef.current = true;
+      setFeaturedElectionId(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeCampaign?.elections, electionDateForThisScreen]);
+
+  const createAnnouncementData = useCallback(
+    (election, sortedCandidatesFromSim) => {
+      const officeName = election.officeName;
+      const electionId = election.id;
+      const electoralSystem = election.electoralSystem;
+      const seatsToFill = election.numberOfSeatsToFill || 1;
+      let projectedWinners = [];
+      let noCand = false,
+        noVote = false;
+
+      if (!sortedCandidatesFromSim || sortedCandidatesFromSim.length === 0) {
+        if (
+          election.totalExpectedVotes > 0 &&
+          election.candidates?.length === 0
+        )
+          noCand = true;
+        else if (
+          election.totalExpectedVotes === 0 &&
+          election.candidates?.length > 0
+        )
+          noVote = true;
+        else if (
+          election.candidates?.length === 0 &&
+          election.totalExpectedVotes === 0
+        ) {
+          noCand = true;
+          noVote = true;
+        } // Both
+      } else {
+        projectedWinners = sortedCandidatesFromSim.slice(0, seatsToFill);
+      }
+
+      const modalWinners = projectedWinners.map((w) => ({
+        id: w.id,
+        name: w.name,
+        partyName: w.partyName || "Independent",
+        partyColor: w.partyColor || "#808080",
+      }));
+
+      if (noCand);
+      else if (noVote && modalWinners.length === 0);
+      else if (modalWinners.length > 0);
+
+      return {
+        officeName,
+        winners: modalWinners,
+        isMultiWinner: seatsToFill > 1,
+        electionId,
+        electoralSystem,
+        noCandidates: noCand,
+        noVotes: noVote,
+      };
+    },
+    []
+  );
+
+  const runSimulationTick = useCallback(() => {
+    setLiveElections((prevElections) => {
+      // Create deep copies of elections, their candidates, and livePartyResults for immutable update
+      let newLiveElectionsData = prevElections.map((e) => ({
+        ...e,
+        candidates: e.candidates.map((c) => ({ ...c })), // Candidates can be party objects for PR
+        livePartyResults: e.livePartyResults // This is the dedicated array for PR party results display
+          ? e.livePartyResults.map((pr) => ({ ...pr }))
+          : [], // Initialize if it wasn't there, though initialSimData should handle it
+      }));
+      let newlyCompletedForQueue = [];
+
+      for (let i = 0; i < newLiveElectionsData.length; i++) {
+        const election = newLiveElectionsData[i]; // This is a mutable copy for this tick
+
+        if (election.isComplete) {
+          if (!election.winnerAnnounced) {
+            // For PR, createAnnouncementData needs to look at livePartyResults (or candidates if they are parties)
+            // For others, it uses individual candidates.
+            const entitiesForAnnouncement =
+              election.electoralSystem === "PartyListPR"
+                ? [...(election.livePartyResults || [])].sort(
+                    (a, b) => (b.currentVotes || 0) - (a.currentVotes || 0)
+                  )
+                : [...(election.candidates || [])].sort(
+                    (a, b) => (b.currentVotes || 0) - (a.currentVotes || 0)
+                  );
+
+            const annData = createAnnouncementData(
+              election,
+              entitiesForAnnouncement
+            );
+            if (annData) newlyCompletedForQueue.push(annData);
+            newLiveElectionsData[i].winnerAnnounced = true;
+          }
+          continue; // Skip to next election if this one is already complete
+        }
+
+        // Calculate current total votes already distributed for this election
+        // For PR, election.candidates ARE the parties. For others, they are individuals.
+        const currentTotalSimulatedVotes = election.candidates.reduce(
+          (s, entity) => s + (entity.currentVotes || 0),
+          0
+        );
+
+        const remainingVotes = Math.max(
+          0,
+          election.totalExpectedVotes - currentTotalSimulatedVotes
+        );
+
+        let votesThisTick = 0;
+        if (
+          election.totalExpectedVotes === 0 ||
+          election.candidates.length === 0
+        ) {
+          votesThisTick = 0; // No votes to distribute or no entities to distribute to
+        } else if (remainingVotes > 0) {
+          votesThisTick = Math.min(
+            remainingVotes,
+            Math.max(
+              1, // Ensure at least 1 vote is processed if possible
+              Math.round(
+                election.totalExpectedVotes * ((Math.random() * 10 + 5) / 100) // Distribute 5-15% of total expected votes per tick (example)
+              )
+            )
+          );
+        }
+
+        if (votesThisTick > 0 && election.candidates.length > 0) {
+          // distributeVoteChunkProportionally will update currentVotes on the entities
+          // in election.candidates (which are parties for PR, individuals for others)
+          newLiveElectionsData[i].candidates =
+            distributeVoteChunkProportionally(
+              election.candidates, // Pass the array of (parties or individuals)
+              votesThisTick
+            );
+        }
+
+        // If it's a PartyListPR election, explicitly update livePartyResults
+        // to match the state of election.candidates (which are party objects)
+        if (election.electoralSystem === "PartyListPR") {
+          newLiveElectionsData[i].livePartyResults = newLiveElectionsData[
+            i
+          ].candidates.map((partyEntity) => ({
+            // partyEntity is from election.candidates
+            partyId: partyEntity.id,
+            partyName: partyEntity.name,
+            partyColor: partyEntity.partyColor, // Ensure party objects have partyColor
+            currentVotes: partyEntity.currentVotes || 0,
+          }));
+        }
+
+        // Recalculate final sum after distribution for this tick
+        const finalSumOfVotes = (
+          election.electoralSystem === "PartyListPR" &&
+          newLiveElectionsData[i].livePartyResults.length > 0
+            ? newLiveElectionsData[i].livePartyResults
+            : newLiveElectionsData[i].candidates
+        ).reduce((s, entity) => s + (entity.currentVotes || 0), 0);
+
+        const nowComplete =
+          (election.electoralSystem === "PartyListPR"
+            ? newLiveElectionsData[i].livePartyResults.length === 0
+            : newLiveElectionsData[i].candidates.length === 0) || // No entities to simulate
+          election.totalExpectedVotes === 0 ||
+          finalSumOfVotes >= election.totalExpectedVotes;
+
+        if (nowComplete) {
+          newLiveElectionsData[i].percentReported = 100;
+          newLiveElectionsData[i].isComplete = true;
+          if (!election.winnerAnnounced) {
+            // For PR, createAnnouncementData needs to look at livePartyResults (or candidates if they are parties)
+            // For others, it uses individual candidates.
+            const entitiesForFinalAnnouncement =
+              election.electoralSystem === "PartyListPR"
+                ? [...(newLiveElectionsData[i].livePartyResults || [])].sort(
+                    (a, b) => (b.currentVotes || 0) - (a.currentVotes || 0)
+                  )
+                : [...(newLiveElectionsData[i].candidates || [])].sort(
+                    (a, b) => (b.currentVotes || 0) - (a.currentVotes || 0)
+                  );
+
+            const annData = createAnnouncementData(
+              newLiveElectionsData[i],
+              entitiesForFinalAnnouncement
+            );
+            if (annData) newlyCompletedForQueue.push(annData);
+            newLiveElectionsData[i].winnerAnnounced = true;
+          }
+        } else if (election.totalExpectedVotes > 0) {
+          newLiveElectionsData[i].percentReported = Math.min(
+            (finalSumOfVotes / election.totalExpectedVotes) * 100,
+            99.9 // Don't show 100% until truly complete
+          );
+        } else {
+          // No expected votes, but might have candidates/parties (e.g. uncontested)
+          newLiveElectionsData[i].percentReported = 100;
+        }
+      } // End of for loop iterating through elections
+
+      // Logic to update winnerAnnouncementQueue and allSimulationsComplete state
+      if (newlyCompletedForQueue.length > 0) {
+        const uniqueItems = newlyCompletedForQueue.filter(
+          (item, idx, self) =>
+            idx === self.findIndex((t) => t.electionId === item.electionId)
+        );
+        setWinnerAnnouncementQueue((queue) => {
+          const currentIds = new Set(queue.map((item) => item.electionId));
+          const toAdd = uniqueItems.filter(
+            (item) => !currentIds.has(item.electionId)
+          );
+          return toAdd.length > 0 ? [...queue, ...toAdd] : queue;
+        });
+      }
+
+      const allDone = newLiveElectionsData.every((e) => e.isComplete);
+      if (allDone !== allSimulationsCompleteRef.current) {
+        // Compare with ref to avoid stale closure issue
+        allSimulationsCompleteRef.current = allDone; // Update ref immediately
+        setAllSimulationsComplete(allDone); // Trigger re-render
+      }
+
+      return newLiveElectionsData;
+    });
+  }, [createAnnouncementData]);
+
+  useEffect(() => {
+    if (
+      isPaused ||
+      allSimulationsCompleteRef.current ||
+      liveElections.length === 0 ||
+      isWinnerAnnouncementModalOpenGlobal
+    )
+      return;
+    const timer = setTimeout(runSimulationTick, simulationSpeed);
+    return () => clearTimeout(timer);
+  }, [
+    runSimulationTick,
+    isPaused,
+    simulationSpeed,
+    liveElections,
+    isWinnerAnnouncementModalOpenGlobal,
+  ]);
+
+  useEffect(() => {
+    if (
+      winnerAnnouncementQueue.length > 0 &&
+      !isWinnerAnnouncementModalOpenGlobal &&
+      openWinnerAnnouncementModal
+    ) {
+      const nextAnnouncement = winnerAnnouncementQueue[0];
+      openWinnerAnnouncementModal(nextAnnouncement);
+      setWinnerAnnouncementQueue((prevQueue) => prevQueue.slice(1));
+    }
+  }, [
+    winnerAnnouncementQueue,
+    isWinnerAnnouncementModalOpenGlobal,
+    openWinnerAnnouncementModal,
+  ]);
+
+  const handleSkipToResults = useCallback(() => {
+    setIsPaused(true);
+    let announcements = [];
+    setLiveElections((prev) =>
+      prev.map((election) => {
+        if (election.isComplete && election.winnerAnnounced) return election;
+        const finalCands = distributeVoteChunkProportionally(
+          election.candidates.map((c) => ({ ...c, currentVotes: 0 })),
+          election.totalExpectedVotes
+        );
+        const sortedCands = [...finalCands].sort(
+          (a, b) => (b.currentVotes || 0) - (a.currentVotes || 0)
+        );
+        let annData = null;
+        if (!election.winnerAnnounced)
+          annData = createAnnouncementData(election, sortedCands);
+        if (annData) announcements.push(annData);
+        return {
+          ...election,
+          candidates: finalCands,
+          percentReported: 100,
+          isComplete: true,
+          winnerAnnounced: election.winnerAnnounced || !!annData,
+        };
+      })
+    );
+    if (announcements.length > 0) {
+      const uniqueAnns = announcements.filter(
+        (item, idx, self) =>
+          idx === self.findIndex((t) => t.electionId === item.electionId)
+      );
+      setWinnerAnnouncementQueue((queue) => {
+        const currentIds = new Set(queue.map((item) => item.electionId));
+        const toAdd = uniqueAnns.filter(
+          (item) => !currentIds.has(item.electionId)
+        );
+        return toAdd.length > 0 ? [...queue, ...toAdd] : queue;
+      });
+    }
+    setAllSimulationsComplete(true);
+    allSimulationsCompleteRef.current = true;
+  }, [createAnnouncementData]);
+
+  const handleFinalizeAndContinue = () => {
+    if (
+      winnerAnnouncementQueue.length > 0 ||
+      isWinnerAnnouncementModalOpenGlobal
+    )
+      return;
+    liveElections.forEach((election) => {
+      if (election.isComplete) processElectionResults(election.id, election); // Pass the final simulated state
+    });
+    if (navigateTo) navigateTo("CampaignGameScreen");
+  };
+
+  const featuredElection = useMemo(
+    () => liveElections.find((e) => e.id === featuredElectionId),
+    [liveElections, featuredElectionId]
+  );
+
+  if (!activeCampaign || !electionDateForThisScreen)
+    return (
+      <div className="election-night-screen-container">
+        Loading election data...
+      </div>
+    );
+
+  return (
+    <>
+      <div className="election-night-screen-container new-layout">
+        <div className="election-night-main-header">
+          <div className="header-title-date">
+            <h1 className="important-heading">Election Night Live</h1>
+            <p className="header-date">
+              Date: {electionDateForThisScreen.month}/
+              {electionDateForThisScreen.day}/{electionDateForThisScreen.year}
+            </p>
+          </div>
+          <div className="header-controls">
+            <div className="simulation-controls">
+              <button
+                onClick={() => setIsPaused(!isPaused)}
+                className="action-button small-button"
+                disabled={
+                  allSimulationsCompleteRef.current &&
+                  winnerAnnouncementQueue.length === 0 &&
+                  !isWinnerAnnouncementModalOpenGlobal
+                }
+              >
+                {isPaused ? "Resume" : "Pause"}
+              </button>
+              {Object.entries(SIMULATION_SPEEDS).map(
+                ([speedKey, speedValue]) => (
+                  <button
+                    key={speedKey}
+                    onClick={() => setSimulationSpeed(speedValue)}
+                    className={`action-button small-button speed-button ${
+                      simulationSpeed === speedValue ? "active" : ""
+                    }`}
+                  >
+                    {speedKey
+                      .replace(/([A-Z])/g, " $1")
+                      .replace(/^./, (str) => str.toUpperCase())}
+                  </button>
+                )
+              )}
+            </div>
+            <WinnerAnnouncementModal
+              isOpen={isWinnerAnnouncementModalOpenGlobal} // Use store state
+              onClose={() => {
+                if (closeWinnerAnnouncementModal)
+                  closeWinnerAnnouncementModal();
+              }}
+              winnerData={winnerAnnouncementDataGlobal} // Use store state
+            />
+            <div className="finalize-controls">
+              {!allSimulationsCompleteRef.current && (
+                <button
+                  onClick={handleSkipToResults}
+                  className="action-button small-button button-delete"
+                >
+                  Skip to Results
+                </button>
+              )}
+              {allSimulationsCompleteRef.current && (
+                <button
+                  onClick={handleFinalizeAndContinue}
+                  className="action-button small-button continue-button"
+                  disabled={
+                    winnerAnnouncementQueue.length > 0 ||
+                    isWinnerAnnouncementModalOpenGlobal
+                  }
+                >
+                  Finalize & Continue
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="election-night-body-layout">
+          <div className="main-election-panel">
+            {featuredElection ? (
+              <FeaturedElectionCard
+                election={featuredElection}
+                openViewPoliticianModal={openViewPoliticianModal}
+              />
+            ) : liveElections.length > 0 ? (
+              <div className="featured-election-placeholder">
+                Select an election from the list to view details.
+              </div>
+            ) : (
+              <p className="no-results">
+                No elections being simulated for this date.
+              </p>
+            )}
+          </div>
+          <aside className="elections-sidebar-list">
+            <h4>All Races</h4>
+            {liveElections.length > 0 ? (
+              <ul>
+                {liveElections.map((election) => (
+                  <ElectionListItem
+                    key={election.id}
+                    election={election}
+                    onSelect={setFeaturedElectionId}
+                    isSelected={featuredElectionId === election.id}
+                  />
+                ))}
+              </ul>
+            ) : (
+              <p>No election races.</p>
+            )}
+          </aside>
+        </div>
+      </div>
+    </>
+  );
+};
+
+export default ElectionNightScreen;

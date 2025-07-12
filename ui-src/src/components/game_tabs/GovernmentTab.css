@@ -1,0 +1,48 @@
+.office-level-section {
+  margin-bottom: 25px;
+}
+
+.office-level-section h3 {
+  font-family: var(--font-heading);
+  color: var(--accent-color);
+  font-size: 1.4em;
+  margin-top: 0;
+  margin-bottom: 15px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.office-holder-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.office-holder-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 5px; /* Less padding than full cards */
+  margin-bottom: 5px;
+  background-color: var(--input-bg); /* Subtle background for each item */
+  border-radius: var(--element-radius);
+  border: 1px solid transparent; /* For consistent spacing, or use --border-color */
+}
+
+.office-title {
+  font-weight: 500; /* Inter weight */
+  color: var(--primary-text);
+  flex-basis: 60%; /* Give more space to office title */
+}
+
+.office-holder-name {
+  font-size: 0.9em;
+  color: var(--secondary-text);
+  text-align: right;
+  flex-basis: 40%;
+}
+
+.office-holder-name.vacant {
+  font-style: italic;
+  color: var(--disabled-text);
+}

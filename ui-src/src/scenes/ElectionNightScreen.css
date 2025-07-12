@@ -1,0 +1,320 @@
+/* ui-src/src/scenes/ElectionNightScreen.css */
+
+/* --- Main Container & Header --- */
+.election-night-screen-container.new-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100vh; /* Make screen take full viewport height */
+  overflow: hidden; /* Prevent main page scroll if content overflows */
+  background-color: var(--primary-bg, #f4f4f4); /* Use theme */
+  color: var(--primary-text);
+  font-family: var(--font-main);
+}
+
+.election-night-main-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 20px;
+  background-color: var(--secondary-bg, #e9ecef); /* Theme */
+  border-bottom: 1px solid var(--border-color, #dee2e6);
+  flex-shrink: 0; /* Header should not shrink */
+}
+
+.header-title-date .important-heading {
+  margin: 0;
+  font-size: 1.8em; /* Adjust as needed */
+  color: var(--primary-text);
+}
+.header-title-date .header-date {
+  margin: 0;
+  font-size: 0.9em;
+  color: var(--secondary-text);
+}
+
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 20px; /* Space between sim controls and finalize controls */
+}
+
+.simulation-controls,
+.finalize-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.simulation-controls .action-button.small-button,
+.finalize-controls .action-button.small-button {
+  padding: 6px 10px; /* Make buttons in header smaller */
+  font-size: 0.85em;
+}
+.speed-button.active {
+  /* Copied from previous CSS for consistency */
+  background-color: var(--accent-color, #f59e0b);
+  color: var(--accent-text, #422006);
+  border-color: var(--accent-border-color, #f59e0b);
+}
+
+/* --- Body Layout (Main Panel + Sidebar) --- */
+.election-night-body-layout {
+  display: flex;
+  flex-grow: 1; /* Body takes remaining vertical space */
+  overflow: hidden; /* Prevent body layout from causing page scroll */
+}
+
+.main-election-panel {
+  flex-grow: 3; /* Main panel takes more space, e.g., 3 parts */
+  padding: 20px;
+  overflow-y: auto; /* Allow main panel content to scroll if needed */
+  background-color: var(--primary-bg); /* Or a slightly different shade */
+  border-right: 1px solid var(--border-color);
+}
+
+.elections-sidebar-list {
+  flex-grow: 1; /* Sidebar takes less space, e.g., 1 part */
+  min-width: 350px; /* Ensure sidebar has a minimum width */
+  max-width: 25%; /* And a maximum width */
+  padding: 15px;
+  background-color: var(--secondary-bg, #f8f9fa);
+  overflow-y: auto; /* Sidebar list itself is scrollable */
+  border-left: 1px solid var(--border-color); /* Optional: for themes where it differs from primary bg */
+}
+
+.elections-sidebar-list h4 {
+  font-family: var(--font-heading);
+  color: var(--primary-text);
+  margin-top: 0;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 1.1em;
+}
+
+.elections-sidebar-list ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* --- Featured Election Card Styling (in Main Panel) --- */
+.featured-election-card {
+  /* Re-use .election-card styles, but ensure it's distinct */
+  background-color: var(
+    --ui-panel-bg,
+    #ffffff
+  ); /* Can be same as panels or slightly different */
+  border: 1px solid var(--border-color);
+  border-radius: var(--element-radius);
+  padding: 20px;
+  box-shadow: var(--panel-shadow);
+}
+.featured-election-card h2 {
+  font-size: 1.6em;
+  color: var(--accent-color);
+  margin-bottom: 15px;
+}
+.featured-election-card .election-progress-details {
+  margin-bottom: 15px;
+}
+.featured-election-card .results-list {
+  max-height: none; /* Allow full height for featured */
+}
+.featured-election-placeholder {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  font-size: 1.2em;
+  color: var(--secondary-text);
+  text-align: center;
+}
+
+/* --- Election List Item Styling (in Sidebar) --- */
+.election-list-sidebar-item {
+  padding: 12px 10px;
+  margin-bottom: 8px;
+  background-color: var(
+    --ui-panel-bg,
+    #fff
+  ); /* Or a slightly different shade */
+  border: 1px solid var(--border-color);
+  border-radius: var(--element-radius);
+  cursor: pointer;
+  transition: background-color 0.2s, box-shadow 0.2s;
+}
+.election-list-sidebar-item:hover {
+  background-color: var(--highlight-bg);
+  border-color: var(--accent-border-color);
+  box-shadow: var(--item-hover-shadow);
+}
+.election-list-sidebar-item.selected {
+  background-color: var(--accent-color);
+  color: var(--accent-text);
+  border-color: var(--accent-color);
+}
+.election-list-sidebar-item.selected strong,
+.election-list-sidebar-item.selected span,
+.election-list-sidebar-item.selected .election-list-item-leader {
+  color: var(--accent-text);
+}
+
+.election-list-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 4px;
+}
+.election-list-item-header strong {
+  font-size: 0.95em;
+  font-family: var(--font-heading);
+}
+.election-list-item-header span {
+  /* For reporting percentage */
+  font-size: 0.8em;
+  color: var(--secondary-text); /* Overridden by .selected if active */
+}
+
+.election-list-item-leader {
+  font-size: 0.85em;
+  color: var(--primary-text); /* Overridden by .selected if active */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.election-list-sidebar-item.complete .election-list-item-header strong::after {
+  content: " (✓ Complete)";
+  color: var(--secondary-text);
+  font-size: 0.8em;
+  margin-left: 5px;
+}
+.election-list-sidebar-item.in-progress
+  .election-list-item-header
+  strong::after {
+  content: " (Counting...)";
+  color: var(--secondary-text);
+  font-size: 0.8em;
+  margin-left: 5px;
+}
+
+.continue-button {
+  display: block;
+}
+
+.featured-election-card .candidate-result {
+  display: flex;
+  flex-wrap: wrap; /* Allow wrapping for smaller screens or long names */
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px dotted var(--secondary-bg, #f0f0f0); /* Use a lighter border */
+}
+.featured-election-card .candidate-result:last-child {
+  border-bottom: none;
+}
+
+.featured-election-card .candidate-name {
+  font-weight: bold;
+  flex-basis: 100%; /* Allow name and party to take full width first */
+  margin-bottom: 4px; /* Space before vote count if it wraps */
+}
+@media (min-width: 500px) {
+  /* Adjust breakpoint as needed */
+  .featured-election-card .candidate-name {
+    flex-basis: 40%; /* For wider screens, allow side-by-side */
+    margin-bottom: 0;
+  }
+}
+
+.featured-election-card .party-name {
+  font-size: 0.85em;
+  color: var(--secondary-text);
+  margin-left: 5px; /* If on same line as name */
+  flex-basis: 100%; /* On small screens, below name */
+}
+@media (min-width: 500px) {
+  .featured-election-card .party-name {
+    flex-basis: auto; /* Allow it to fit next to name */
+    margin-left: 8px;
+  }
+}
+
+.featured-election-card .vote-count {
+  font-size: 0.9em;
+  font-weight: bold;
+  color: var(--primary-text);
+  text-align: right;
+  margin-left: auto; /* Push to the right if name/party don't take full width */
+  padding-left: 10px; /* Space from name/party if they are short */
+  flex-shrink: 0; /* Prevent it from shrinking too much */
+}
+
+/* Styles for the individual candidate vote bars */
+.vote-bar-container {
+  width: 100%; /* Make the container take the full width of its parent li (or available space) */
+  background-color: var(
+    --progress-track-bg,
+    #e0e0e0
+  ); /* Theme variable for track */
+  border-radius: var(--element-radius, 4px);
+  height: 14px; /* Adjust height as desired */
+  margin-top: 4px; /* Space below the vote count text */
+  overflow: hidden; /* Ensure the inner bar respects the radius */
+}
+
+.vote-bar-container {
+  width: 100%;
+  background-color: var(--progress-track-bg, #e0e0e0);
+  border-radius: var(--element-radius, 4px);
+  height: 16px; /* Slightly increased height for more presence */
+  margin-top: 6px; /* More space below the vote count text */
+  overflow: hidden;
+  /* Add a subtle inset shadow to the container to give the track some depth */
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.15);
+  position: relative; /* For potential future pseudo-elements or overlays */
+}
+
+.vote-bar {
+  height: 100%;
+  /* background-color is set inline via style prop (candidate.partyColor) */
+  border-radius: var(--element-radius, 4px); /* Match container's radius */
+  transition: width 0.4s ease-in-out; /* Slightly slower for a smoother feel */
+  text-align: right;
+  font-size: 0.75em;
+  line-height: 16px; /* Match new height */
+  color: var(--button-text, #ffffff);
+  padding-right: 5px;
+  box-sizing: border-box;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  inset: 0 -1px 1px rgba(255, 255, 255, 0.1); /* Subtle top highlight for 3D feel */
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* Winner announcement styling - ensure it's distinct */
+.featured-election-card .winner-announcement {
+  margin-top: 15px;
+  padding: 10px 15px;
+  background-color: var(
+    --highlight-bg,
+    rgba(0, 0, 0, 0.05)
+  ); /* Or a success-like theme color */
+  border: 1px solid var(--accent-border-color, var(--accent-color));
+  border-left-width: 5px; /* Emphasize with a thicker left border */
+  border-radius: var(--element-radius);
+  text-align: center;
+}
+
+.featured-election-card .winner-announcement strong {
+  font-family: var(--font-heading);
+  color: var(--accent-color); /* Ensure text is readable on highlight-bg */
+  font-size: 1.1em;
+}
+
+/* Make sure no-results message is styled if it was missed */
+.no-results {
+  padding: 20px;
+  text-align: center;
+  color: var(--secondary-text);
+  font-style: italic;
+}

@@ -1,0 +1,292 @@
+/* ui-src/src/components/game_tabs/government_tabs/GovernmentSubTabStyles.css */
+
+.city-overview-tab {
+  /* Overall container for this specific tab content */
+  padding: 0px 10px 10px 10px; /* Reduce top padding if GovernmentTab adds its own title */
+}
+
+.city-main-title {
+  /* Title like "Springfield - State of the City" */
+  color: var(--accent-color);
+  margin-top: 0;
+  margin-bottom: 25px;
+  border-bottom: 2px solid var(--border-color); /* More prominent border */
+  padding-bottom: 12px;
+  font-size: 1.6em; /* Larger title for the tab */
+  text-align: center;
+}
+
+.sub-tab-navigation {
+  display: flex;
+  flex-wrap: wrap; /* Allow tabs to wrap on smaller screens */
+  gap: 5px; /* Spacing between tab buttons */
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-color, #ddd);
+}
+
+.sub-tab-navigation button {
+  padding: 8px 15px; /* Adjusted padding */
+  font-size: 0.95em; /* Slightly smaller font */
+  font-family: var(--font-main);
+  cursor: pointer;
+  background-color: var(--button-bg, #f0f0f0);
+  color: var(--accent-text, #333);
+  border: 1px solid var(--border-color, #ccc);
+  border-bottom: none; /* Remove bottom border for tab effect */
+  border-radius: var(--element-radius, 6px) var(--element-radius, 6px) 0 0; /* Rounded top corners */
+  transition: background-color 0.2s ease, color 0.2s ease;
+  margin-right: 2px; /* Slight separation */
+}
+
+.sub-tab-navigation button:hover {
+  background-color: var(--accent-color, #e0e0e0);
+  color: var(--accent-text, #111);
+  opacity: 1;
+}
+
+.sub-tab-navigation button.active {
+  background-color: var(
+    --accent-color,
+    #007bff
+  ); /* Use accent color for active tab */
+  color: var(--accent-text, #ffffff); /* Ensure text is readable on accent bg */
+  border-color: var(--accent-border-color, var(--accent-bg, #007bff));
+  border-bottom: 1px solid var(--accent-bg); /* Match background to "connect" to content */
+  opacity: 1;
+  font-weight: bold;
+}
+
+.sub-tab-content-area {
+  padding-top: 15px; /* Space between tabs and content */
+}
+
+.city-section {
+  /* Wrapper for each logical group of stats */
+  margin-bottom: 30px;
+  background-color: var(--secondary-bg); /* Subtle background for sections */
+  padding: 15px;
+  border-radius: var(--element-radius);
+  border: 1px solid var(--border-color);
+}
+
+.city-section h4 {
+  /* Section titles like "Core Vitals" */
+  font-family: var(--font-heading);
+  color: var(--primary-text);
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 1.25em; /* Slightly larger section titles */
+  border-bottom: 1px solid var(--accent-border-color, var(--accent-color)); /* Accent border */
+  padding-bottom: 8px;
+}
+
+.city-stats-grid {
+  display: grid;
+  gap: 12px 18px; /* row-gap column-gap */
+}
+
+.city-stats-grid.one-col {
+  grid-template-columns: 1fr;
+}
+.city-stats-grid.two-col {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+.city-stats-grid.three-col {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.stat-item {
+  background-color: var(
+    --primary-bg
+  ); /* Slight contrast if section has secondary-bg */
+  padding: 10px 12px;
+  border-radius: calc(
+    var(--element-radius) - 2px
+  ); /* Slightly smaller radius if nested */
+  border: 1px solid var(--border-color);
+  font-size: 0.95em;
+  line-height: 1.5;
+}
+
+.stat-item strong {
+  /* The label, e.g., "Population:" */
+  color: var(--secondary-text);
+  font-weight: 600; /* Make labels a bit bolder */
+  display: block;
+  margin-bottom: 3px;
+  font-size: 0.9em;
+}
+
+.stat-item span:not(.stat-descriptor):not(.politician-name-link) {
+  /* The value next to the label */
+  color: var(--primary-text);
+  font-weight: 500;
+}
+
+.stat-descriptor {
+  /* For text like (Very Low), (Good) */
+  margin-left: 8px;
+  font-style: italic;
+  font-size: 0.9em;
+  opacity: 0.9;
+}
+
+/* Color coding for descriptors (add more as needed based on your RATING_LEVELS, MOOD_LEVELS etc.) */
+.stat-descriptor.rating-excellent,
+.stat-descriptor.mood-prospering,
+.stat-descriptor.mood-optimistic,
+.stat-descriptor.unemployment-very-low {
+  color: var(--success-text, green);
+  font-weight: bold;
+}
+.stat-descriptor.rating-good,
+.stat-descriptor.mood-content,
+.stat-descriptor.unemployment-low {
+  color: var(
+    --success-text,
+    green
+  ); /* Can be same as excellent or slightly less intense */
+  opacity: 0.8;
+}
+.stat-descriptor.rating-average,
+.stat-descriptor.mood-concerned,
+.stat-descriptor.unemployment-moderate {
+  color: var(--accent-color, orange); /* Or a neutral/warning color */
+}
+.stat-descriptor.rating-poor,
+.stat-descriptor.mood-frustrated,
+.stat-descriptor.unemployment-high {
+  color: var(--error-text, red);
+  opacity: 0.8;
+}
+.stat-descriptor.rating-very-poor,
+.stat-descriptor.mood-very-unhappy,
+.stat-descriptor.unemployment-very-high {
+  color: var(--error-text, red);
+  font-weight: bold;
+}
+
+/* Key Issues List */
+.key-issues-list {
+  list-style: none;
+  padding-left: 0;
+  margin-top: 5px;
+}
+.key-issues-list li {
+  background-color: var(
+    --highlight-bg,
+    rgba(0, 0, 0, 0.03)
+  ); /* Subtle highlight for each issue */
+  padding: 6px 10px;
+  border-radius: var(--element-radius);
+  margin-bottom: 5px;
+  font-size: 0.9em;
+}
+
+.text-success {
+  color: var(--success-text, green);
+  font-weight: bold;
+}
+.text-error {
+  color: var(--error-text, red);
+  font-weight: bold;
+}
+
+.budget-details-container {
+  display: flex;
+  flex-direction: row; /* Default, but explicit */
+  justify-content: space-between; /* Or space-around */
+  gap: 20px; /* Space between columns */
+  margin-top: 20px;
+  padding-top: 15px;
+  border-top: 1px solid var(--ui-border-color, #ccc); /* Separator */
+}
+
+.budget-column {
+  flex: 1; /* Each column takes equal space */
+  min-width: 0; /* Allows flex items to shrink properly */
+}
+
+.budget-column h5 {
+  margin-bottom: 10px;
+  color: var(--primary-text); /* Use theme color */
+  border-bottom: 1px solid var(--ui-subtle-border-color, #eee);
+  padding-bottom: 5px;
+}
+
+.budget-breakdown-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.budget-breakdown-list li {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  font-size: 0.9em;
+  border-bottom: 1px dashed var(--ui-very-subtle-border-color, #f0f0f0);
+}
+.budget-breakdown-list li:last-child {
+  border-bottom: none;
+}
+
+.budget-breakdown-list li span:first-child {
+  color: var(--secondary-text); /* Label color */
+  margin-right: 10px;
+}
+.budget-breakdown-list li span:last-child {
+  font-weight: bold;
+  color: var(--primary-text); /* Value color */
+}
+
+.tax-rates-subsection {
+  margin-top: 15px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--ui-very-subtle-border-color, #f0f0f0);
+}
+.tax-rates-subsection h5 {
+  margin-bottom: 8px;
+}
+
+.city-laws-section h4 {
+  margin-bottom: 15px;
+}
+
+.city-laws-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid; /* Using grid for potentially better alignment */
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(300px, 1fr)
+  ); /* Responsive columns */
+  gap: 10px 20px; /* Row and column gap */
+}
+
+.law-item {
+  background-color: var(
+    --ui-panel-bg,
+    #f9f9f9
+  ); /* Subtle background for each item */
+  padding: 10px 15px;
+  border-radius: var(--ui-border-radius-medium, 6px);
+  border: 1px solid var(--border-color, #eee);
+  display: flex; /* For aligning name and value if needed, or just let them flow */
+  justify-content: space-between; /* If you want name on left, value on right */
+  align-items: center;
+}
+
+.law-name {
+  font-weight: 500; /* Or bold */
+  color: var(--secondary-text);
+  margin-right: 8px;
+}
+
+.law-value {
+  color: var(--primary-text);
+  font-weight: bold;
+  text-align: right; /* If using flex justify-content: space-between */
+}

@@ -1,0 +1,207 @@
+/* WinnerAnnouncementModal.css */
+
+/* Style the specific dialog class passed to the base Modal */
+.modal-content.winner-announcement-modal-dialog-bg {
+  background-size: 250% 250%; /* For smooth animation */
+  background-image: linear-gradient(
+    -45deg,
+    var(--secondary-bg),
+    var(--button-bg, var(--accent-color)),
+    var(--button-bg),
+    var(--secondary-bg)
+  );
+  animation: gradientFlow 12s ease infinite alternate;
+  color: var(--button-text, #ffffff);
+  border: none;
+  box-shadow: var(--panel-shadow, 0 8px 25px rgba(0, 0, 0, 0.25));
+  border-radius: var(--element-radius, 8px);
+  display: flex; /* Use flex to manage inner layout */
+  flex-direction: column; /* Stack title, body, footer vertically */
+  max-height: 85vh; /* Prevent modal from being taller than viewport */
+  /* Ensure this dialog has a z-index higher than the confetti if confetti is not a child */
+  /* If confetti is a child of this, then internal z-indexes matter */
+  position: relative; /* For z-indexing context if needed for children */
+  z-index: 1010; /* Example: Higher than confetti's 1000 */
+}
+
+/* Styling for the base modal's title when inside our winner announcement */
+.modal-content.winner-announcement-modal-dialog-bg .modal-title {
+  color: inherit;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+  font-size: 1.4em;
+  padding: 15px 20px 10px 20px;
+  margin: 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1); /* Or a light border if text is dark */
+  flex-shrink: 0; /* Prevent title from shrinking if content overflows */
+}
+
+/* Ensure the base modal's actual header (if it's a separate div) and body are transparent */
+/* These might not be necessary if your base Modal component uses slots or passes down classNames correctly */
+.modal-content.winner-announcement-modal-dialog-bg .modal-header {
+  background: transparent !important;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.modal-content.winner-announcement-modal-dialog-bg .modal-body {
+  background: transparent !important;
+  padding: 0; /* Inner content will handle its padding */
+  overflow-y: auto; /* THIS WILL MAKE THE BODY SCROLLABLE IF CONTENT OVERFLOWS */
+  flex-grow: 1; /* Allow body to take available space */
+  /* min-height: 0; */ /* Helps with flex item overflow in some browsers */
+}
+
+/* The actual content wrapper inside WinnerAnnouncementModal.jsx (passed as children to Modal's body) */
+.winner-announcement-modal-content-inner {
+  padding: 20px 30px 15px 30px; /* Adjusted bottom padding */
+  text-align: center;
+  font-family: var(--font-main);
+  color: var(--primary-text); /* This should be your modal text color */
+  /* position: relative; No longer needed here if .modal-dialog handles z-index context */
+  /* z-index: 1; */
+}
+
+/* NEW: Styling for the list of multiple winners */
+.winner-modal-list {
+  list-style-type: none;
+  padding-left: 0;
+  margin-top: 10px;
+  margin-bottom: 15px;
+  max-height: 300px; /* Or another value, e.g., 40vh - specific max height for the list itself */
+  overflow-y: auto; /* Scrollbar for the list if it exceeds max-height */
+  text-align: left; /* Align list items to the left for readability */
+  border: 1px solid rgba(0, 0, 0, 0.1); /* Optional border for the list box */
+  background-color: rgba(
+    0,
+    0,
+    0,
+    0.03
+  ); /* Slight background for the list box */
+  border-radius: 4px;
+  padding: 10px;
+  color: var(--accent-text);
+}
+
+.winner-modal-list li {
+  padding: 5px 0;
+  font-size: 1em;
+  border-bottom: 1px dashed rgba(0, 0, 0, 0.08); /* Separator for list items */
+}
+.winner-modal-list li:last-child {
+  border-bottom: none;
+}
+
+.winner-announcement-modal-content-inner h2 {
+  /* This is for "PROJECTED WINNER!" */
+  font-family: var(--font-heading);
+  font-size: 1.5em;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-bottom: 5px;
+  font-weight: 700;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.winner-modal-name {
+  /* For single winner name */
+  font-family: var(--font-heading);
+  font-size: 2.4em;
+  margin: 5px 0 8px 0;
+  font-weight: 800;
+  word-break: break-word;
+  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.wins-for-text {
+  font-family: var(--font-main);
+  font-size: 1em;
+  margin-top: 0;
+  margin-bottom: 3px;
+  opacity: 0.95;
+  text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.2);
+}
+
+.winner-modal-office {
+  /* Changed from .office-name to be more specific */
+  font-family: var(--font-heading);
+  font-size: 1.6em;
+  margin-bottom: 10px;
+  font-weight: 600;
+  opacity: 0.95;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+  color: var(--accent-text);
+}
+
+.winner-modal-party {
+  /* Changed from .winner-party */
+  font-size: 1em;
+  margin-top: -5px;
+  margin-bottom: 15px;
+  opacity: 1;
+  text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.2);
+}
+
+.winner-modal-party span {
+  font-weight: bold;
+  background-color: rgba(
+    0,
+    0,
+    0,
+    0.2
+  ); /* Darker backing for party color text */
+  padding: 3px 7px;
+  border-radius: 4px;
+  color: var(
+    --button-text
+  ); /* Assuming party color is applied inline and this is a fallback */
+  text-shadow: none;
+}
+
+.congratulations-text {
+  font-family: var(--font-heading);
+  font-size: 1.4em;
+  margin-top: 15px; /* Reduced margin */
+  margin-bottom: 20px; /* Reduced margin */
+  font-weight: bold;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.modal-system-note {
+  /* For the PR/MMP note */
+  font-size: 0.8em;
+  margin-top: 10px;
+  font-style: italic;
+  opacity: 1;
+  color: var(--accent-text);
+}
+
+.close-winner-modal-button {
+  margin-top: 15px; /* Reduced margin */
+  padding: 12px 35px;
+  font-size: 1.05em;
+  background-color: var(--primary-bg);
+  color: var(--primary-text);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--button-shadow);
+  flex-shrink: 0; /* Prevent button from shrinking */
+}
+.close-winner-modal-button:hover {
+  background-color: var(--secondary-bg);
+  border-color: var(--accent-border-color);
+}
+.multi-win-text {
+  color: var(--accent-text);
+}
+
+/* Keyframes for gradientFlow (unchanged) */
+@keyframes gradientFlow {
+  0% {
+    background-position: 0% 0%;
+  }
+  50% {
+    background-position: 100% 100%;
+  }
+  100% {
+    background-position: 0% 0%;
+  }
+}

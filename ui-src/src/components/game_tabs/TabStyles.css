@@ -1,0 +1,29 @@
+/* ui-src/src/components/game_tabs/TabStyles.css */
+.tab-content-container {
+  /* Basic container for content within each tab */
+  animation: fadeInTabContent 0.3s ease-out;
+}
+
+.tab-title {
+  font-family: var(--font-heading);
+  color: var(--accent-color);
+  font-size: 2em;
+  margin-bottom: 25px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+/* Add more shared styles for elements commonly used within tabs:
+   panels, data grids, lists, input sections, etc.
+*/
+
+@keyframes fadeInTabContent {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

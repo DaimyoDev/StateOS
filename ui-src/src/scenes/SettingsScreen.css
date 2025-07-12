@@ -1,0 +1,35 @@
+.settings-screen-container {
+  padding: 20px;
+  color: var(--primary-text);
+  background-color: var(--primary-bg);
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.settings-screen-container h1 {
+  color: var(--accent-color);
+  font-family: var(--font-heading);
+  margin-bottom: 30px;
+}
+
+.theme-selection {
+  margin-bottom: 30px;
+  padding: 20px;
+  background-color: var(--secondary-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  width: 100%;
+  text-align: center;
+}
+
+.theme-selection h2 {
+  margin-bottom: 15px;
+  font-family: var(--font-heading);
+}
+
+.menu-button {
+  margin: 5px;
+}

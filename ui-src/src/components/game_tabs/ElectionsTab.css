@@ -1,0 +1,197 @@
+.elections-layout {
+  display: flex;
+  flex-direction: row;
+  gap: 20px;
+  margin-top: 15px;
+  height: calc(100% - 70px); /* Adjust based on tab-title height */
+}
+
+.upcoming-elections-panel {
+  flex: 1; /* Example: takes 1/3 or adjust with flex-basis */
+  background-color: var(--secondary-bg);
+  padding: 15px;
+  border-radius: var(--element-radius);
+  border: 1px solid var(--border-color);
+  overflow-y: auto; /* Scroll if many elections */
+  max-height: 75vh; /* Ensure it doesn't get too tall */
+}
+
+.upcoming-elections-panel h3 {
+  font-family: var(--font-heading);
+  color: var(--primary-text); /* Or accent */
+  font-size: 1.2em;
+  margin-top: 0;
+  margin-bottom: 10px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.elections-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.election-list-item {
+  padding: 10px;
+  margin-bottom: 8px;
+  border-radius: var(--element-radius);
+  border: 1px solid transparent; /* For spacing, or use theme border */
+  cursor: pointer;
+  transition: background-color var(--transition-speed),
+    border-color var(--transition-speed);
+  background-color: var(--input-bg); /* Use input-bg for list items */
+}
+
+.election-list-item:hover {
+  background-color: var(--highlight-bg);
+  border-color: var(--accent-border-color);
+}
+
+.election-list-item.selected {
+  background-color: var(--accent-color);
+  color: var(--accent-text);
+  border-color: var(--accent-color);
+}
+.election-list-item.selected .election-office,
+.election-list-item.selected .election-date,
+.election-list-item.selected .election-countdown {
+  color: var(--accent-text);
+}
+
+.election-office {
+  display: block;
+  font-weight: 600; /* Inter weight */
+  font-size: 1em;
+  margin-bottom: 3px;
+}
+
+.election-date,
+.election-countdown {
+  font-size: 0.8em;
+  color: var(--secondary-text);
+  margin-right: 10px;
+}
+
+.selected-election-details-panel {
+  flex: 2; /* Example: takes 2/3 or adjust */
+  background-color: var(
+    --secondary-bg
+  ); /* Or --ui-panel-bg if you want it distinct */
+  padding: 20px;
+  border-radius: var(--element-radius);
+  border: 1px solid var(--border-color);
+  overflow-y: auto; /* Scroll if details are very long */
+  max-height: 75vh;
+}
+
+.selected-election-details-panel h3 {
+  font-family: var(--font-heading);
+  color: var(--accent-color);
+  font-size: 1.4em;
+  margin-top: 0;
+  margin-bottom: 15px;
+}
+
+.selected-election-details-panel h4 {
+  font-family: var(--font-heading);
+  color: var(--primary-text);
+  font-size: 1.1em;
+  margin-top: 20px;
+  margin-bottom: 8px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.election-detail-grid p {
+  margin-bottom: 6px;
+  font-size: 0.9em;
+}
+.election-detail-grid p strong {
+  color: var(--secondary-text);
+  margin-right: 5px;
+}
+
+.candidate-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.candidate-item {
+  padding: 8px 0;
+  border-bottom: 1px dashed var(--border-color);
+  font-size: 0.9em;
+}
+.candidate-item:last-child {
+  border-bottom: none;
+}
+.candidate-name {
+  font-weight: 500;
+}
+.candidate-party {
+  margin-left: 8px;
+  color: var(--secondary-text);
+}
+.candidate-polling {
+  float: right; /* Basic alignment */
+  color: var(--accent-color);
+}
+
+.declare-candidacy-button {
+  margin-top: 25px;
+  width: 100%;
+  padding: 12px;
+}
+.candidacy-declared-note {
+  margin-top: 25px;
+  padding: 10px;
+  background-color: var(--highlight-bg);
+  color: var(--accent-text);
+  border-radius: var(--element-radius);
+  text-align: center;
+  font-weight: 600;
+}
+
+.no-election-selected {
+  text-align: center;
+  padding: 30px;
+  color: var(--secondary-text);
+  font-style: italic;
+}
+
+.election-list-item.past-election {
+  opacity: 0.6;
+  background-color: var(
+    --disabled-bg,
+    #555555
+  ); /* Or a specific "past event" color */
+  color: var(--disabled-text, #999999);
+}
+
+.election-list-item.past-election .election-office,
+.election-list-item.past-election .election-date,
+.election-list-item.past-election .election-countdown {
+  color: var(--disabled-text, #999999);
+}
+
+.deadline-passed-note {
+  font-size: 0.75em;
+  color: var(--error-text); /* Or a warning color */
+  margin-left: 10px;
+  font-style: italic;
+}
+
+.deadline-passed-note-detail,
+.election-over-note {
+  margin-top: 15px;
+  color: var(--secondary-text);
+  font-style: italic;
+  text-align: center;
+}
+
+.election-list-item .election-seat-population {
+  font-size: 0.8em;
+  color: var(--secondary-text, #555);
+  margin-left: 8px;
+  font-style: italic;
+}

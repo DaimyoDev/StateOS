@@ -1,0 +1,89 @@
+/* ui-src/src/components/game_tabs/DashboardTab.css */
+.dashboard-tab {
+  /* .ui-panel styles are applied via className */
+  padding: 20px;
+}
+
+.welcome-message {
+  font-size: 1.2em;
+  color: var(--accent-color);
+  font-family: var(--font-heading);
+  margin-bottom: 5px;
+}
+
+.current-date-dashboard {
+  font-size: 0.9em;
+  color: var(--secondary-text);
+  margin-bottom: 25px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 10px;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(320px, 1fr)
+  ); /* Responsive grid */
+  gap: 20px;
+}
+
+.info-card h3 {
+  font-family: var(--font-heading);
+  color: var(--primary-text); /* Or var(--accent-color) for more emphasis */
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 1.15em;
+  border-bottom: 1px solid var(--secondary-bg); /* Use a lighter border or var(--border-color) */
+  padding-bottom: 8px;
+}
+
+.info-card p {
+  margin: 8px 0;
+  font-size: 0.95em;
+  line-height: 1.5;
+  color: var(--primary-text);
+}
+
+.info-card p strong {
+  color: var(--secondary-text);
+  margin-right: 5px;
+}
+
+.player-status-card p,
+.city-snapshot-card p {
+  margin-bottom: 10px; /* More spacing for these key info cards */
+}
+
+.upcoming-events-card .event-item {
+  padding: 10px 0;
+  border-bottom: 1px dashed var(--border-color);
+}
+.upcoming-events-card .event-item:last-child {
+  border-bottom: none;
+}
+.upcoming-events-card .event-item p {
+  margin: 4px 0;
+}
+.upcoming-events-card .countdown {
+  font-style: italic;
+  color: var(--accent-color);
+  margin-left: 8px;
+}
+.upcoming-events-card .action-button {
+  font-size: 0.85em;
+  padding: 6px 10px;
+  margin-top: 8px;
+}
+
+.quick-actions-card .action-button-group {
+  display: flex;
+  flex-direction: column; /* Stack buttons vertically */
+  gap: 10px;
+}
+
+.quick-actions-card .action-button {
+  width: 100%; /* Make buttons full width of card */
+  text-align: left;
+  padding-left: 15px; /* Align text nicely */
+}

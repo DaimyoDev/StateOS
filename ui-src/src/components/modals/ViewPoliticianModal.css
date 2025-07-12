@@ -1,0 +1,188 @@
+/* ui-src/src/components/modals/ViewPoliticianModal.css */
+.view-politician-content {
+  padding: 10px 20px 20px 20px;
+  max-height: 80vh; /* Allow modal content to be reasonably tall before scrolling */
+  overflow-y: auto;
+  font-family: var(--font-main);
+  color: var(--primary-text);
+}
+
+.politician-header {
+  text-align: center;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.politician-header h3 {
+  font-family: var(--font-heading);
+  color: var(--accent-color);
+  margin: 0 0 5px 0;
+  font-size: 1.4em; /* Slightly larger */
+}
+
+.politician-header p {
+  margin: 4px 0;
+  font-size: 0.95em;
+  color: var(--secondary-text);
+}
+.politician-header p span {
+  /* For party name with color */
+  font-weight: bold;
+}
+
+.politician-section {
+  margin-bottom: 25px;
+}
+
+.politician-section h4 {
+  font-family: var(--font-heading);
+  color: var(--primary-text);
+  border-bottom: 1px solid var(--secondary-bg);
+  padding-bottom: 8px;
+  margin-top: 0;
+  margin-bottom: 12px;
+  font-size: 1.15em;
+}
+
+/* Attributes Styling (mostly unchanged but ensure it's good) */
+.attributes-list {
+  list-style-type: none;
+  padding-left: 0;
+}
+
+.attributes-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  font-size: 0.9em;
+}
+
+.attribute-name {
+  color: var(--primary-text);
+  flex-basis: 35%; /* Adjust for space */
+  font-weight: 500; /* Slightly bolder labels */
+}
+
+.attribute-value {
+  font-weight: bold;
+  color: var(--accent-color);
+  flex-basis: 10%;
+  text-align: right;
+  margin-right: 10px; /* Space before bar */
+}
+
+.attribute-bar-container {
+  flex-basis: 50%; /* Adjust for space */
+  background-color: var(--progress-track-bg);
+  border-radius: var(--element-radius);
+  height: 12px; /* Slightly taller */
+}
+
+.attribute-bar {
+  height: 100%;
+  background-color: var(--progress-value-color); /* Use theme progress color */
+  border-radius: var(--element-radius);
+}
+
+/* Policy Stances Styling */
+.policy-stances-section h4 {
+  margin-bottom: 15px;
+}
+
+.stance-category {
+  background-color: var(
+    --secondary-bg,
+    #f8f9fa
+  ); /* Use secondary-bg for a subtle contrast */
+  /* Or you could use var(--highlight-bg) for a different feel */
+  border: 1px solid var(--border-color, #e0e0e0);
+  border-radius: var(--element-radius, 6px); /* Consistent rounding */
+  padding: 15px;
+  margin-bottom: 15px; /* Space between categories */
+  box-shadow: var(
+    --panel-shadow,
+    0 1px 3px rgba(0, 0, 0, 0.05)
+  ); /* Optional: subtle shadow for depth */
+}
+
+.stance-category h5 {
+  /* Category titles (e.g., Economy, Healthcare) */
+  font-family: var(--font-heading);
+  color: var(--accent-color); /* Use accent color for category titles */
+  font-size: 1.05em; /* Slightly adjusted from 1.1em for balance */
+  margin-top: 0;
+  margin-bottom: 10px; /* Space below category title before stances */
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--border-color); /* Subtle separator below category title */
+}
+
+.stances-list {
+  list-style-type: none;
+  padding-left: 0; /* Remove default ul padding if category div has padding */
+  margin: 0; /* Remove default ul margin */
+}
+
+.stance-item {
+  padding: 8px 0; /* Increased padding for better readability */
+  font-size: 0.9em;
+  line-height: 1.5; /* Increased line height */
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start; /* Align items to the start if text wraps */
+  border-bottom: 1px dotted var(--border-color, #eee); /* Dotted for softer separation */
+}
+
+.stance-item:last-child {
+  border-bottom: none;
+}
+
+.stance-question {
+  color: var(--primary-text);
+  font-weight: 500;
+  margin-right: 10px;
+  flex-basis: 48%; /* Adjust for better wrapping with answer */
+  flex-shrink: 0;
+  padding-bottom: 3px; /* Small space if answer wraps below */
+}
+
+.stance-answer {
+  color: var(
+    --secondary-text
+  ); /* Use secondary-text for the answer for differentiation */
+  text-align: right;
+  flex-basis: 48%; /* Adjust for better wrapping */
+  flex-grow: 1; /* Allow it to take remaining space */
+  font-style: italic; /* Make stance itself italic */
+}
+
+.background-section .narrative {
+  font-style: italic;
+  color: var(--secondary-text);
+  line-height: 1.5;
+  background-color: var(--secondary-bg);
+  padding: 10px;
+  border-radius: var(--element-radius);
+  margin-top: 5px;
+}
+
+.close-politician-modal-button {
+  /* If you need specific styling for this button */
+  display: block;
+  margin-left: auto;
+  margin-right: auto; /* Center the button */
+}
+
+.modal-content {
+  max-width: 60%;
+}
+
+.modal-button-container {
+  display: flex;
+  justify-content: center; /* Horizontally center the button */
+  align-items: center; /* Vertically center if container has height (optional here) */
+  margin-top: 20px; /* Apply the top margin here */
+  width: 100%; /* Ensure the container takes width for centering */
+}

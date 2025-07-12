@@ -1,0 +1,286 @@
+/* ui-src/src/components/game_tabs/CareerActionsTab.css */
+.career-actions-tab {
+  /* Uses .tab-content-container and .tab-title from TabStyles.css */
+  display: flex;
+  flex-direction: column;
+  gap: 25px; /* Space between sections */
+}
+
+.current-status-card,
+.available-offices-card,
+.current-role-actions,
+.personal-actions {
+  /* Uses .info-card styles from LocalAreaTab.css or a global .info-card style */
+  /* If not, define similar styles here: */
+  background-color: var(--secondary-bg);
+  padding: 20px;
+  border-radius: var(--element-radius);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--panel-shadow);
+}
+
+.current-status-card h3,
+.available-offices-card h3,
+.current-role-actions h3,
+.personal-actions h3 {
+  font-family: var(--font-heading);
+  color: var(--accent-color);
+  font-size: 1.4em; /* Make section titles a bit larger */
+  margin-top: 0;
+  margin-bottom: 15px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.current-status-card p {
+  margin-bottom: 8px;
+  font-size: 1em;
+}
+
+.office-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.office-list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px dashed var(--border-color);
+}
+.office-list-item:last-child {
+  border-bottom: none;
+}
+
+.office-info {
+  flex-grow: 1;
+}
+
+.office-details {
+  font-size: 0.85em;
+  color: var(--secondary-text);
+}
+
+.office-list-item .button-action.small-button {
+  /* From ManagePoliticiansScreen or define here */
+  padding: 6px 12px;
+  font-size: 0.9em;
+  min-width: auto; /* Allow it to be smaller */
+  flex-shrink: 0; /* Prevent button from shrinking if office name is long */
+  margin-left: 15px;
+}
+
+.current-role-actions p,
+.personal-actions p {
+  color: var(--secondary-text);
+  font-style: italic;
+}
+
+/* ui-src/src/components/game_tabs/CareerActionsTab.css */
+.career-actions-tab {
+  /* .ui-panel styling likely from TabStyles.css or app.css */
+  padding: 20px;
+}
+
+.career-actions-tab .tab-title {
+  margin-top: 0;
+  margin-bottom: 25px;
+}
+
+/* Re-use .info-card from TabStyles.css or LocalAreaTab.css if general enough */
+/* .info-card { ... } */
+
+.info-card h3 {
+  font-family: var(--font-heading);
+  color: var(--accent-color);
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 1.2em;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 8px;
+}
+
+.current-status-card p,
+.available-offices-card p, /* For the fallback message */
+.current-role-actions p,
+.personal-actions p {
+  margin: 8px 0;
+  font-size: 0.95em;
+  line-height: 1.5;
+}
+
+.office-list {
+  list-style-type: none;
+  padding: 0;
+}
+
+.office-list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 5px;
+  border-bottom: 1px dashed var(--secondary-bg);
+}
+.office-list-item:last-child {
+  border-bottom: none;
+}
+
+.office-info {
+  flex-grow: 1;
+}
+
+.office-details {
+  font-size: 0.85em;
+  color: var(--secondary-text);
+}
+
+.action-button.small-button {
+  /* For Declare Candidacy button */
+  padding: 6px 12px;
+  font-size: 0.85em;
+  margin-left: 10px; /* Space from office info */
+}
+
+.candidacy-declared-note, /* If you add notes within this tab */
+.deadline-passed-note-detail {
+  font-style: italic;
+  color: var(--secondary-text);
+  font-size: 0.9em;
+  margin-top: 5px;
+}
+
+.current-role-actions .action-button-group,
+.personal-actions .action-button-group {
+  display: grid; /* Or flex with wrap */
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.current-role-actions .action-button,
+.personal-actions .action-button {
+  width: 100%; /* Make buttons take full width of their grid cell */
+}
+/* ui-src/src/components/game_tabs/CareerActionsTab.css */
+.career-actions-tab {
+  /* .ui-panel styling likely from TabStyles.css or app.css */
+  padding: 20px;
+}
+
+.career-actions-tab .tab-title {
+  margin-top: 0;
+  margin-bottom: 25px;
+}
+
+/* Re-use .info-card from TabStyles.css or LocalAreaTab.css if general enough */
+/* .info-card { ... } */
+
+.info-card h3 {
+  font-family: var(--font-heading);
+  color: var(--accent-color);
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 1.2em;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 8px;
+}
+
+.current-status-card p,
+.available-offices-card p, /* For the fallback message */
+.current-role-actions p,
+.personal-actions p {
+  margin: 8px 0;
+  font-size: 0.95em;
+  line-height: 1.5;
+}
+
+.office-list {
+  list-style-type: none;
+  padding: 0;
+}
+
+.office-list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 5px;
+  border-bottom: 1px dashed var(--secondary-bg);
+}
+.office-list-item:last-child {
+  border-bottom: none;
+}
+
+.office-info {
+  flex-grow: 1;
+}
+
+.office-name1 {
+  font-weight: bold;
+  display: block; /* Make it take its own line if needed */
+  margin-bottom: 3px;
+  color: var(--primary-text);
+}
+
+.office-details {
+  font-size: 0.85em;
+  color: var(--secondary-text);
+}
+
+.action-button.small-button {
+  /* For Declare Candidacy button */
+  padding: 6px 12px;
+  font-size: 0.85em;
+  margin-left: 10px; /* Space from office info */
+}
+
+.candidacy-declared-note, /* If you add notes within this tab */
+.deadline-passed-note-detail {
+  font-style: italic;
+  color: var(--secondary-text);
+  font-size: 0.9em;
+  margin-top: 5px;
+}
+
+.current-role-actions .action-button-group,
+.personal-actions .action-button-group {
+  display: grid; /* Or flex with wrap */
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.current-role-actions .action-button,
+.personal-actions .action-button {
+  width: 100%; /* Make buttons take full width of their grid cell */
+}
+
+.current-role-actions .action-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 15px;
+  flex-wrap: wrap;
+}
+
+.current-role-actions .action-group label {
+  font-weight: 500;
+  color: var(--secondary-text);
+}
+
+.current-role-actions .action-group select {
+  padding: 8px 10px;
+  border-radius: var(--element-radius);
+  border: 1px solid var(--border-color);
+  background-color: var(--input-bg);
+  color: var(--input-text);
+  font-family: var(--font-main);
+  min-width: 150px;
+  flex-grow: 1; /* Allow select to grow */
+}
+
+.current-role-actions .action-group .action-button {
+  margin: 0; /* Remove default margin from .action-button if it's in a flex group like this */
+  flex-shrink: 0;
+}

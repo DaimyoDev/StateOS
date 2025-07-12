@@ -1,0 +1,149 @@
+.policy-vote-details-modal-content {
+  padding: 20px;
+  font-family: var(--font-main);
+  color: var(--primary-text);
+
+  /* --- Add these styles for scrollability --- */
+  /* 1. Set a maximum height.
+     '70vh' means 70% of the viewport height. Adjust this value as needed.
+     You could also use a fixed pixel value like '600px' or '650px'.
+     Consider the overall height of your generic <Modal> component's
+     title bar and any built-in padding/margins it might have.
+     Using calc() can also be helpful, e.g., max-height: calc(100vh - 200px);
+     if you know the modal's non-content parts take up about 200px. */
+  max-height: 75vh; /* Let's start with 75% of viewport height */
+
+  /* 2. Enable vertical scrolling when content overflows this max-height. */
+  overflow-y: auto;
+
+  /* Optional: If you encounter issues with flexbox children,
+     you might ensure this container behaves well as a flex container itself,
+     though it might not be necessary if its children manage their own layout.
+  display: flex;
+  flex-direction: column; */
+}
+
+.policy-vote-details-modal-content h3 {
+  /* Policy Name */
+  font-family: var(--font-heading);
+  color: var(--accent-color);
+  font-size: 1.5em;
+  margin-top: 0;
+  margin-bottom: 5px;
+  text-align: center;
+}
+.policy-description-summary {
+  font-style: italic;
+  color: var(--secondary-text);
+  margin-bottom: 20px;
+  text-align: center;
+  font-size: 0.9em;
+}
+
+.vote-summary-tally {
+  text-align: center;
+  margin-bottom: 25px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid var(--border-color);
+}
+.vote-summary-tally h4 {
+  font-size: 1.2em;
+  margin-bottom: 10px;
+  color: var(--primary-text);
+}
+.tally-counts span {
+  margin: 0 15px;
+  font-size: 1.1em;
+  font-weight: bold;
+}
+.tally-yea {
+  color: var(--success-text, green);
+}
+.tally-nay {
+  color: var(--error-text, red);
+}
+.tally-abstain {
+  color: var(--secondary-text, grey);
+}
+
+.vote-details-columns {
+  display: flex;
+  justify-content: space-around;
+  gap: 20px;
+  margin-bottom: 25px;
+}
+
+.vote-column {
+  flex: 1;
+  min-width: 150px;
+  background-color: var(--secondary-bg);
+  padding: 15px;
+  border-radius: var(--element-radius);
+  border: 1px solid var(--border-color);
+}
+.vote-column h4 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  font-size: 1.1em;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 5px;
+}
+.vote-column ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 0.9em;
+}
+.vote-column li {
+  margin-bottom: 4px;
+}
+
+.party-vote-breakdown-section {
+  margin-top: 20px;
+  padding-top: 15px;
+  border-top: 1px solid var(--border-color);
+}
+.party-vote-breakdown-section h4 {
+  font-size: 1.2em;
+  margin-bottom: 15px;
+  text-align: center;
+}
+.party-vote-chart-container {
+  /* Placeholder for chart - for now, we'll use a list */
+  min-height: 100px; /* Example */
+}
+.party-vote-list {
+  list-style: none;
+  padding: 0;
+}
+.party-vote-list li {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 10px;
+  margin-bottom: 5px;
+  background-color: var(--secondary-bg);
+  border-radius: var(--element-radius);
+  border-left: 5px solid; /* Color will be set by inline style */
+  align-items: center;
+}
+.party-vote-list li strong {
+  font-weight: 600;
+}
+.party-vote-list li span {
+  margin-left: 10px;
+  font-size: 0.9em;
+}
+.party-vote-yea {
+  color: var(--success-text);
+}
+.party-vote-nay {
+  color: var(--error-text);
+}
+.party-vote-abstain {
+  color: var(--secondary-text);
+}
+
+.close-vote-details-button {
+  display: block;
+  margin: 30px auto 0 auto; /* Center and space from content */
+}

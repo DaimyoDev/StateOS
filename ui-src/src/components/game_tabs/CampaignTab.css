@@ -1,0 +1,352 @@
+/* ui-src/src/components/game_tabs/CampaignTab.css */
+
+/* Main container for the entire Campaign Management Tab */
+.campaign-tab-content {
+  padding: 20px; /* Retained from your original */
+  display: flex;
+  flex-direction: column;
+  gap: 20px; /* Retained: Space between top-level sections/cards */
+}
+
+/* Main title of the Campaign Management Tab */
+.campaign-tab-content .tab-title {
+  /* Assuming this is styled globally or in TabStyles.css */
+  /* If specific styling needed here, add it, e.g.: */
+  font-family: var(--font-heading);
+  color: var(--accent-color);
+  font-size: 1.6em; /* Example size */
+  margin-top: 0;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+/* --- Sub-Tab Navigation --- */
+.campaign-sub-nav {
+  /* Class used in the JSX for the sub-tab button container */
+  display: flex;
+  flex-wrap: wrap;
+  border-bottom: 2px solid var(--border-color, #ccc); /* Consistent with your theme's border */
+  margin-bottom: 25px;
+}
+
+.campaign-sub-nav button {
+  padding: 10px 18px;
+  cursor: pointer;
+  border: none; /* Clean tab look */
+  border-bottom: 3px solid transparent; /* Space for active indicator */
+  background-color: transparent;
+  font-family: var(--font-main);
+  font-size: 1em;
+  color: var(--secondary-text); /* Non-active tab text color */
+  margin-right: 8px;
+  margin-bottom: -2px; /* Aligns button bottom border with container bottom border */
+  transition: color 0.15s var(--transition-speed, ease-in-out),
+    border-color 0.15s var(--transition-speed, ease-in-out);
+}
+
+.campaign-sub-nav button:hover {
+  color: var(--accent-text); /* Hover text color */
+}
+
+.campaign-sub-nav button.active {
+  color: var(--accent-text); /* Active tab text color */
+  border-bottom-color: var(--accent-color); /* Active tab underline color */
+  font-weight: 600;
+}
+
+/* --- Styles for sections/cards (to be used within sub-tabs) --- */
+/* These styles are based on your provided CSS.
+   Ensure the JSX in your sub-tab components uses these class names
+   for the relevant sections. */
+
+/* Example: If your "Current Status Overview" card uses .current-status-card */
+.current-status-card, 
+.available-offices-card,
+.current-role-actions,
+.personal-actions,
+.jobs-info-card, /* For the new Jobs tab card */
+.current-office-details, /* For the new Office tab card */
+.campaign-overview-main, /* For sections within overview tab */
+.current-polling-section {
+  /* For sections within overview tab */
+  /* Apply general .info-card styling here if not globally defined */
+  background-color: var(--secondary-bg);
+  padding: 18px 20px;
+  border-radius: var(--element-radius);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--panel-shadow);
+  margin-bottom: 20px; /* Consistent spacing between cards within a sub-tab */
+}
+.sub-tab-content > .info-card:last-child, /* Ensure last card in a sub-tab has no bottom margin */
+.sub-tab-content > section:last-child {
+  margin-bottom: 0;
+}
+
+/* Titles for these cards/sections (typically h3) */
+.current-status-card h3,
+.available-offices-card h3,
+.current-role-actions h3,
+.personal-actions h3,
+.jobs-info-card h3,
+.current-office-details h3,
+.campaign-overview-main h3,
+.current-polling-section h3 {
+  /* If using h3 for polling section title */
+  font-family: var(--font-heading);
+  color: var(--accent-color);
+  font-size: 1.3em; /* Standardized size for these section titles */
+  margin-top: 0;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-color); /* Use main border color */
+}
+
+/* Sub-titles within cards (typically h4) */
+.current-polling-section h4, /* From your .current-standing h4 */
+.campaign-finances h4 {
+  /* From your .campaign-finances h4 */
+  font-family: var(--font-heading);
+  color: var(--primary-text);
+  margin-bottom: 10px;
+  font-size: 1.15em; /* Slightly smaller than h3 */
+  /* border-bottom: 1px solid var(--secondary-bg); /* Your original had secondary-bg */
+  padding-bottom: 5px;
+}
+
+/* Paragraphs within these cards */
+.current-status-card p,
+.available-offices-card p,
+.current-role-actions p,
+.personal-actions p,
+.jobs-info-card p,
+.current-office-details p,
+.campaign-overview-main p,
+.campaign-finances p {
+  margin: 8px 0;
+  font-size: 0.95em;
+  line-height: 1.6;
+  color: var(--primary-text);
+}
+
+.current-status-card p strong,
+.campaign-overview-main p strong {
+  /* For labels like "Population:" */
+  color: var(--secondary-text);
+  margin-right: 5px;
+}
+
+/* List styling for elections (was .current-standing ul/li) */
+.office-list {
+  list-style-type: none;
+  padding-left: 0;
+  font-family: var(--font-main);
+}
+
+.office-list-item {
+  padding: 10px 5px; /* Adjusted padding slightly */
+  border-bottom: 1px dashed var(--border-color); /* Changed to main border-color for consistency */
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 1em;
+}
+.office-list-item:last-child {
+  border-bottom: none;
+}
+
+.office-info {
+  flex-grow: 1;
+  margin-right: 10px;
+}
+.office-name1 {
+  /* As defined in your JSX for office name */
+  font-weight: bold;
+  display: block;
+  margin-bottom: 3px;
+  color: var(--primary-text);
+}
+.office-details {
+  font-size: 0.85em;
+  color: var(--secondary-text);
+}
+.incumbent-marker {
+  /* From your .current-standing .incumbent-marker */
+  font-style: italic;
+  font-size: 0.85em;
+  color: var(--secondary-text);
+  margin-left: 5px;
+}
+.candidate-polling {
+  /* From your .current-standing .candidate-polling */
+  font-weight: bold;
+  color: var(--primary-text);
+  margin-left: 15px;
+}
+.player-candidate-name {
+  /* From your .current-standing .player-candidate-name */
+  font-weight: bold;
+}
+
+/* Styles for Staff List */
+.staff-list {
+  list-style: none;
+  padding: 0;
+}
+.staff-list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 5px;
+  border-bottom: 1px dashed var(--border-color);
+}
+.staff-list-item:last-child {
+  border-bottom: none;
+}
+.staff-hire-info {
+  flex-grow: 1;
+  margin-right: 10px;
+}
+.staff-description {
+  /* Match your JSX */
+  font-size: 0.9em;
+  color: var(--secondary-text);
+  margin: 3px 0 5px 0;
+}
+.staff-cost {
+  /* Match your JSX */
+  font-size: 0.85em;
+  font-style: italic;
+  color: var(--secondary-text);
+}
+
+/* Action Groups and Items (retaining your .action-item structure) */
+.action-group {
+  /* For OfficeSubTab's select + button combo */
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 15px;
+  flex-wrap: wrap;
+}
+.action-group label {
+  font-weight: 500;
+  color: var(--secondary-text);
+  margin-right: 5px;
+}
+.action-group select {
+  padding: 8px 10px;
+  border-radius: var(--element-radius);
+  border: 1px solid var(--border-color);
+  background-color: var(--input-bg);
+  color: var(--input-text);
+  font-family: var(--font-main);
+  min-width: 200px;
+  flex-grow: 1;
+}
+.action-group .action-button {
+  /* Button next to a select */
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.action-sub-group {
+  /* For buttons like "Propose Policy" */
+  margin-top: 10px;
+  margin-bottom: 15px;
+}
+
+/* Generic button group for multiple actions (as in Personal Actions, Field Ops) */
+/* This reuses your existing .action-button-group if it's defined globally or in TabStyles.css */
+/* If not, here's a version based on your last CampaignTab.css: */
+.action-button-group {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-top: 15px;
+}
+
+/* Ensure .action-button and .small-button styles are consistent or defined globally */
+/* .action-button { ... } */
+/* .action-button.small-button { ... } */
+
+/* Fallback message if no active campaign */
+.no-active-campaign {
+  /* Your existing style */
+  text-align: center;
+  padding: 30px 15px;
+  font-family: var(--font-main);
+  color: var(--secondary-text);
+  background-color: var(--secondary-bg);
+  border-radius: var(--element-radius);
+  border: 1px dashed var(--border-color);
+}
+.no-active-campaign p {
+  margin-bottom: 10px;
+  line-height: 1.6;
+}
+
+/* Campaign Finances (if shown in Overview or elsewhere) */
+.campaign-finances {
+  /* Your existing style */
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px dashed var(--border-color);
+}
+.campaign-finances h4 {
+  /* Your existing style, but sub-title size standardized */
+  font-family: var(--font-heading);
+  color: var(--primary-text);
+  font-size: 1.15em;
+  margin-bottom: 8px;
+}
+.campaign-finances p {
+  /* Your existing style */
+  margin: 4px 0;
+  font-size: 0.95em;
+}
+
+.campaign-tab-content input[type="text"], /* Assuming you might have text inputs */
+.campaign-tab-content input[type="number"],
+.campaign-tab-content select {
+  background-color: var(--input-bg, #fff);
+  color: var(--input-text, #333);
+  border: 1px solid var(--border-color, #ccc);
+  border-radius: var(--element-radius, 4px);
+  padding: 8px 12px;
+  font-family: var(--font-main, "sans-serif");
+  font-size: 0.95em; /* Or a specific theme font size variable */
+  box-sizing: border-box;
+  transition: border-color 0.15s var(--transition-speed, ease-in-out),
+    box-shadow 0.15s var(--transition-speed, ease-in-out);
+  margin: 0; /* Reset browser default margins */
+  /* Consider a default width or allow flexbox to size them */
+}
+
+/* Placeholder text styling */
+.campaign-tab-content input[type="text"]::placeholder,
+.campaign-tab-content input[type="number"]::placeholder {
+  color: var(
+    --input-placeholder-text,
+    #a0aec0
+  ); /* Using a general placeholder color var */
+}
+
+/* Focus state for inputs and selects */
+.campaign-tab-content input[type="text"]:focus,
+.campaign-tab-content input[type="number"]:focus,
+.campaign-tab-content select:focus {
+  outline: none;
+  border-color: var(
+    --focus-ring-color,
+    #4d243d
+  ); /* From your Vintage Rosewood example */
+  box-shadow: 0 0 0 3px var(--input-focus-shadow-color, rgba(77, 36, 61, 0.3)); /* From Vintage Rosewood */
+}
+
+/* Specifics for number inputs (often narrower) */
+.campaign-tab-content input[type="number"] {
+  width: auto; /* Allow shrinking to content size */
+  min-width: 80px; /* But not too small */
+  max-width: 150px; /* Prevent from getting too large in flex contexts */
+}

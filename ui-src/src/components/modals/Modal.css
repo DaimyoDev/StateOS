@@ -1,0 +1,70 @@
+/* ui-src/src/components/modals/Modal.css */
+.modal-overlay {
+  position: fixed; /* Sit on top of everything */
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.65); /* Semi-transparent backdrop */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000; /* Ensure it's on top */
+  padding: 20px;
+}
+
+.modal-content {
+  background-color: var(--ui-panel-bg); /* Use theme's panel background */
+  padding: 25px 30px;
+  border-radius: var(--element-radius);
+  box-shadow: var(--panel-shadow), 0 0 0 100vw rgba(0, 0, 0, 0.5); /* Stronger shadow + ensure it stands out */
+  color: var(--primary-text);
+  width: 100%;
+  max-width: 500px; /* Adjust as needed for typical modal width */
+  display: flex;
+  flex-direction: column;
+  gap: 20px; /* Space between title, body, actions */
+  animation: fadeInModal 0.2s ease-out; /* Simple fade-in animation */
+}
+
+@keyframes fadeInModal {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.modal-title {
+  font-family: var(--font-heading);
+  color: var(--accent-color);
+  font-size: 1.8em;
+  text-align: center;
+  margin-bottom: 0; /* Gap handles spacing */
+}
+
+.modal-body {
+  font-size: 1em;
+  line-height: 1.6;
+  color: var(--secondary-text); /* Or primary-text if it's important info */
+  text-align: center; /* Often good for confirmation dialogs */
+}
+
+.modal-actions {
+  display: flex;
+  /* Changed from flex-end to space-between */
+  justify-content: space-between;
+  gap: 15px; /* Space between action buttons if they were closer */
+  margin-top: 10px;
+  border-top: 1px solid var(--border-color);
+  padding-top: 20px;
+}
+
+.modal-button {
+  /* For general styling of buttons within modals */
+  min-width: 100px; /* Give modal buttons a decent default size */
+  padding: 10px 20px;
+}

@@ -1,0 +1,110 @@
+/* ui-src/src/components/game_tabs/LocalAreaTab.css */
+
+.local-area-tab {
+  /* .ui-panel styles are applied to the root by className */
+  padding: 20px;
+}
+
+.local-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.info-card {
+  background-color: var(--secondary-bg);
+  padding: 15px 20px;
+  border-radius: var(--element-radius);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--panel-shadow);
+  /* Add this to prevent grid items from overflowing if their content is too wide */
+  overflow: hidden; /* This will clip content that tries to expand beyond the card's boundary */
+}
+
+.info-card h3 {
+  font-family: var(--font-heading);
+  color: var(--accent-color);
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 1.2em;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 8px;
+}
+
+.info-card h4 {
+  font-family: var(--font-heading);
+  color: var(--primary-text);
+  margin-top: 15px;
+  margin-bottom: 8px;
+  font-size: 1em;
+}
+
+.info-card p {
+  margin: 8px 0;
+  font-size: 0.95em;
+  line-height: 1.5;
+  color: var(--primary-text);
+}
+
+.info-card p strong {
+  color: var(--secondary-text);
+  margin-right: 5px;
+}
+
+.issues-list {
+  list-style-type: disc;
+  padding-left: 20px;
+  margin-top: 5px;
+}
+
+.issues-list li {
+  margin-bottom: 5px;
+  font-size: 0.9em;
+  color: var(--primary-text);
+}
+
+.landscape-card {
+  padding: 10px;
+  display: flex; /* Allow content to be centered if pie-chart-wrapper doesn't take full width */
+  flex-direction: column; /* Stack title and chart wrapper */
+  align-items: center; /* Center chart wrapper if it's narrower than card */
+}
+
+.pie-chart-wrapper-local-tab {
+  /* REMOVE max-width: max-content; */
+  width: 100%; /* Make this wrapper take the full width of the landscape-card content area */
+  /* max-width: 500px; /* OPTIONAL: You can set a max-width for the chart area itself */
+  /* height: auto; /* Let content determine height */ /* Already like this */
+  display: flex;
+  justify-content: center; /* Centers the RegionPieChart component if it's narrower */
+  align-items: center;
+  /* border: 1px dashed blue; /* For debugging layout */
+}
+
+.city-finances-card p span {
+  font-weight: bold;
+}
+
+/* Local Actions Panel */
+.local-actions-panel {
+  margin-top: 30px;
+  padding: 20px;
+  /* .ui-panel styling from app.css should provide base */
+}
+
+.local-actions-panel .section-title {
+  /* Using h3 now for consistency */
+  font-family: var(--font-heading);
+  color: var(--primary-text);
+  margin-top: 0;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 10px;
+}
+
+.local-actions-panel .action-button-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}

@@ -1,0 +1,128 @@
+/* ui-src/src/components/game_tabs/government_tabs/GovernmentSubTabStyles.css */
+.city-overview-tab {
+  padding: 15px;
+}
+.city-overview-tab h3 {
+  color: var(--accent-color);
+  margin-top: 0;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 10px;
+}
+.city-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 15px;
+  margin-bottom: 20px;
+}
+.city-stats-grid .stat-item {
+  background-color: var(--secondary-bg);
+  padding: 10px;
+  border-radius: var(--element-radius);
+  font-size: 0.9em;
+}
+.city-stats-grid .stat-item strong {
+  color: var(--primary-text);
+  display: block; /* Or inline-block with margin */
+  margin-bottom: 3px;
+}
+.city-stats-grid .full-width {
+  grid-column: 1 / -1; /* Make item span full width */
+}
+.city-overview-tab h4 {
+  font-family: var(--font-heading);
+  color: var(--primary-text);
+  margin-top: 25px;
+  margin-bottom: 10px;
+  font-size: 1.1em;
+}
+
+/* For GovernmentTab.jsx sub-tabs */
+.sub-tab-navigation {
+  display: flex;
+  margin-bottom: 20px;
+  border-bottom: 2px solid var(--border-color);
+}
+.sub-tab-button {
+  padding: 10px 15px;
+  cursor: pointer;
+  border: none;
+  background-color: transparent;
+  color: var(--secondary-text);
+  font-family: var(--font-main);
+  font-size: 1em;
+  border-bottom: 2px solid transparent; /* For active indicator */
+  margin-bottom: -2px; /* Align with parent border */
+}
+.sub-tab-button.active {
+  color: var(--accent-color);
+  border-bottom-color: var(--accent-color);
+  font-weight: bold;
+}
+.sub-tab-button:disabled {
+  color: var(--disabled-text);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.sub-tab-content-area {
+  padding-top: 10px;
+}
+
+.city-officials-section {
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-color, #eee);
+}
+
+.city-officials-section h4 {
+  font-family: var(--font-heading);
+  color: var(--primary-text);
+  margin-bottom: 15px;
+  font-size: 1.2em;
+}
+
+.city-officials-section h5 {
+  /* For "City Council:" subheading */
+  font-family: var(--font-heading);
+  color: var(--secondary-text);
+  margin-top: 15px;
+  margin-bottom: 10px;
+  font-size: 1.1em;
+}
+
+.official-entry {
+  padding: 8px 0;
+  border-bottom: 1px dashed var(--secondary-bg, #f0f0f0);
+  font-size: 0.95em;
+}
+.official-entry:last-child {
+  border-bottom: none;
+}
+
+.official-entry strong {
+  color: var(--primary-text);
+}
+
+.politician-name-link {
+  color: var(--accent-color, #007bff); /* Use accent color for links */
+  cursor: pointer;
+  text-decoration: none; /* Or underline on hover */
+  font-weight: bold;
+}
+
+.politician-name-link:hover {
+  text-decoration: underline;
+  filter: brightness(1.2);
+}
+
+.officials-list {
+  list-style-type: none;
+  padding-left: 0; /* Reset default padding */
+}
+
+.no-data-message {
+  /* For the top-level check if no campaignData */
+  padding: 20px;
+  text-align: center;
+  color: var(--secondary-text);
+}

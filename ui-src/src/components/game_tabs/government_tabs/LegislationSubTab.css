@@ -1,0 +1,122 @@
+/* ui-src/src/components/game_tabs/government_tabs/GovernmentSubTabStyles.css */
+/* ... (your existing styles for CityOverviewTab, sub-tab navigation, etc.) ... */
+
+.legislation-sub-tab {
+  padding: 10px;
+}
+
+.legislation-section {
+  margin-bottom: 30px;
+}
+
+.legislation-section h4 {
+  font-family: var(--font-heading);
+  color: var(--primary-text);
+  font-size: 1.3em;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.legislation-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.legislation-item {
+  background-color: var(--secondary-bg);
+  border: 1px solid var(--border-color);
+  border-left-width: 5px;
+  border-radius: var(--element-radius);
+  padding: 15px;
+  margin-bottom: 12px;
+  box-shadow: var(--item-hover-shadow);
+}
+
+.legislation-item .legislation-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 8px;
+}
+
+.legislation-item .policy-name {
+  font-family: var(--font-heading);
+  font-size: 1.1em;
+  color: var(--accent-color); /* Use accent for policy names */
+  font-weight: 600;
+}
+
+.legislation-item .policy-status {
+  font-size: 0.85em;
+  font-style: italic;
+  color: var(--secondary-text);
+  padding: 3px 6px;
+  border-radius: 3px;
+  background-color: var(
+    --primary-bg
+  ); /* Slightly different background for status tag */
+}
+
+/* Status-specific styling */
+.legislation-item.status-proposed .policy-status,
+.legislation-item.status-voting_period_open .policy-status {
+  border-left: 3px solid var(--accent-color, orange); /* Example: Orange for pending */
+}
+.legislation-item.status-passed .policy-status,
+.legislation-item.status-effects_active .policy-status {
+  /* Assuming you might add an 'effects_active' status */
+  border-left: 3px solid var(--success-text, green);
+}
+.legislation-item.status-failed .policy-status {
+  border-left: 3px solid var(--error-text, red);
+}
+
+.legislation-item .policy-description {
+  font-size: 0.9em;
+  color: var(--primary-text);
+  margin-bottom: 10px;
+  line-height: 1.5;
+}
+
+.legislation-item .proposer-info,
+.legislation-item .voting-info {
+  font-size: 0.85em;
+  color: var(--secondary-text);
+  margin-top: 8px;
+}
+.legislation-item .voting-info strong {
+  color: var(--primary-text);
+}
+
+.legislation-item {
+  background-color: var(--secondary-bg);
+  border: 1px solid var(--border-color);
+  border-left-width: 5px;
+  border-radius: var(--element-radius);
+  padding: 15px;
+  margin-bottom: 12px;
+  box-shadow: var(--item-hover-shadow);
+  transition: background-color var(--transition-speed),
+    border-color var(--transition-speed); /* Added for hover */
+}
+
+/* Hover effect and cursor for clickable items */
+.legislation-item.clickable {
+  cursor: pointer;
+}
+
+.legislation-item.clickable:hover {
+  background-color: var(--highlight-bg); /* Use theme's highlight color */
+  border-left-color: var(
+    --accent-color
+  ); /* Or a brighter version of its status color */
+  /* border-color: var(--accent-border-color); Optional: change all borders on hover */
+}
+
+.voting-info.final-tally {
+  /* For concluded votes */
+  font-weight: 500;
+  color: var(--primary-text);
+}
