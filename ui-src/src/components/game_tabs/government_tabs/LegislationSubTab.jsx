@@ -167,7 +167,7 @@ const LegislationSubTab = ({ campaignData }) => {
               const councilMembers =
                 campaignData?.governmentOffices?.filter(
                   (off) =>
-                    off.officeNameTemplateId === "city_council" &&
+                    off.officeNameTemplateId.includes("council") &&
                     off.level === "local_city" &&
                     campaignData.startingCity?.name &&
                     off.officeName.includes(campaignData.startingCity.name) &&

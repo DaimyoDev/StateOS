@@ -348,7 +348,7 @@ export const createLegislationSlice = (set, get) => ({
         const councilMembers =
           activeCampaignContext?.governmentOffices?.filter(
             (off) =>
-              off.officeNameTemplateId === "city_council" &&
+              off.officeNameTemplateId.includes("council") &&
               off.level === "local_city" &&
               activeCampaignContext.startingCity?.name &&
               off.officeName.includes(
@@ -570,12 +570,11 @@ export const createLegislationSlice = (set, get) => ({
           (off) =>
             off.holder &&
             !off.holder.isPlayer &&
-            off.officeNameTemplateId === "city_council" &&
+            off.officeNameTemplateId.includes("council") &&
             off.level === "local_city" &&
             activeCampaign.startingCity?.name &&
             off.officeName.includes(activeCampaign.startingCity.name)
         ) || [];
-
       if (proposedLegislationList.length === 0) return;
 
       proposedLegislationList.forEach((proposal) => {

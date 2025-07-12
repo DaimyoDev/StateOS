@@ -388,7 +388,7 @@ export const simulateAIPolicyProposals = (campaign, getFromStore) => {
     if (
       office.holder &&
       !office.holder.isPlayer &&
-      (office.officeNameTemplateId === "city_council" || // Ensure these template IDs are correct
+      (office.officeNameTemplateId.includes("council") ||
         office.officeNameTemplateId === "mayor") &&
       Math.random() < 0.15 // AI decides to attempt a proposal
     ) {

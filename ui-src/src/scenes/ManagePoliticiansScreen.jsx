@@ -64,9 +64,12 @@ function ManagePoliticiansScreen() {
                   <div className="politician-actions">
                     <button
                       className="action-button small-button" // Primary action style
-                      onClick={() =>
-                        actions.initializeNewCampaignSetup(politician.id, "JPN")
-                      }
+                      onClick={() => {
+                        // Initialize the setup with the chosen politician ID, but no country
+                        actions.initializeNewCampaignSetup(politician.id);
+                        // Navigate to the screen where the player can choose the country
+                        actions.navigateTo("CampaignSetupScreen");
+                      }}
                     >
                       Use for Campaign
                     </button>

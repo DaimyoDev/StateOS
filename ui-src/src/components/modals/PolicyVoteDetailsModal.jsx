@@ -27,7 +27,7 @@ const PolicyVoteDetailsModal = ({ isOpen, onClose, proposalData }) => {
       const office = governmentOffices.find(
         (off) =>
           off.holder?.id === memberId &&
-          off.officeNameTemplateId === "city_council" && // Ensure they are a council member
+          off.officeNameTemplateId.includes("council") && // Ensure they are a council member
           off.officeName.includes(startingCityName)
       );
       return office?.holder

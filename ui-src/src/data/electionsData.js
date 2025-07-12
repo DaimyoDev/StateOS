@@ -423,7 +423,7 @@ export const ELECTION_TYPES_BY_COUNTRY = {
     {
       id: "city_municipal_council_phl", // Sangguniang Panlungsod/Bayan
       officeNameTemplate: "Councilor of {cityNameOrMunicipalityName}",
-      level: "local_city_or_municipality_council",
+      level: "local_city_council",
       frequencyYears: 3,
       electionMonth: 5,
       generatesOneWinner: false,
