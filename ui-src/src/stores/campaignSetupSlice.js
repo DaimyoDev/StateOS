@@ -1,14 +1,9 @@
-import { generateId, getRandomInt } from "../utils/generalUtils";
-import {
-  calculateNumberOfSeats,
-  generateRandomOfficeHolder,
-  getElectionInstances,
-} from "../utils/electionUtils"; // Import buildInstanceIdBase
+import { generateId } from "../utils/generalUtils";
 import { ELECTION_TYPES_BY_COUNTRY } from "../data/electionsData";
 import {
-  isMayorLikeElection,
-  isCityCouncilElectionType,
-} from "../utils/electionGenUtils";
+  generateRandomOfficeHolder,
+  calculateNumberOfSeats,
+} from "../utils/electionUtils";
 import { generateFullCityData } from "../utils/governmentUtils";
 
 export const createCampaignSetupSlice = (set, get) => {
@@ -56,144 +51,76 @@ export const createCampaignSetupSlice = (set, get) => {
       const initialGovernmentOffices = [];
       const countryElectionTypes =
         ELECTION_TYPES_BY_COUNTRY[setupState.selectedCountryId] || [];
-
+      const currentCountryData = availableCountriesData.find(
+        (c) => c.id === setupState.selectedCountryId
+      );
+      console.log(countryElectionTypes);
       countryElectionTypes.forEach((electionType) => {
-        // Determine if this electionType should generate an initial office holder for the starting city/region/country
-        // We are focusing on local (city) offices for initial setup, but can extend to state/national if desired.
-        // IMPORTANT: Re-use getElectionInstances and its helpers for consistent office name/instance ID generation
-        // This avoids duplicating complex logic here and ensures consistency with electionSlice.js.
-
-        const electionInstances = getElectionInstances(
-          // Use get().actions to call it from electionSlice
-          electionType,
-          {
-            // Pass minimal activeCampaign-like context
-            countryId: setupState.selectedCountryId,
-            regionId: setupState.selectedRegionId,
-            startingCity: newCityObject,
-            availableCountries: availableCountriesData,
+        if (
+          electionType.level.startsWith("local_") ||
+          electionType.level.startsWith("regional_") ||
+          electionType.level === "national"
+        ) {
+          let officeName = electionType.officeNameTemplate;
+          if (electionType.level.startsWith("local_"))
+            officeName = officeName.replace("{cityName}", cityName.trim());
+          else if (electionType.level.startsWith("regional_")) {
+            const regionData = currentCountryData?.regions?.find(
+              (r) => r.id === setupState.selectedRegionId
+            );
+            officeName = officeName.replace(
+              "{regionName}",
+              regionData?.name || "Region"
+            );
           }
-        );
-
-        electionInstances.forEach((instanceContext) => {
-          const {
-            resolvedOfficeName,
-            instanceIdBase,
-            entityData,
-            _isSingleSeatContest,
-            _effectiveElectoralSystem,
-            _effectiveGeneratesOneWinner,
-          } = instanceContext;
-
-          // Only create initial holders for offices that should have one at start (e.g., mayor, simple legislative seats)
-          // Skip large multi-member bodies that are only populated by elections (like full PR parliaments)
-          // For city councils, we want individual seats to be initialized.
-          // Check if it's a type that *should* have an initial holder
-          const shouldInitializeHolder =
-            isMayorLikeElection(electionType, setupState.selectedCountryId) ||
-            (isCityCouncilElectionType(
-              electionType,
-              setupState.selectedCountryId
-            ) &&
-              _isSingleSeatContest) || // If it's a single conceptual seat
-            (!electionType.generatesOneWinner &&
-              electionType.electoralSystem === "PartyListPR") || // Or if it's an at-large PR, then initialize the body
-            (electionType.generatesOneWinner &&
-              (electionType.level.includes("state") ||
-                electionType.level.includes("national")) &&
-              !electionType.id.includes("constituency") &&
-              !electionType.id.includes("district"));
-
-          if (shouldInitializeHolder) {
-            // Generate a random holder for this specific instance
+          const termLength = electionType.frequencyYears || 4;
+          const createOfficeEntry = (specificOfficeName, isSeatArg) => {
             const holder = generateRandomOfficeHolder(
               setupState.generatedPartiesInCountry,
-              resolvedOfficeName, // Use the already resolved name
+              specificOfficeName,
               setupState.selectedCountryId
             );
-
-            // Correctly set termEnds based on initial year (e.g., 2025) and term length
-            const initialYear = 2025; // Assuming campaign always starts in 2025
-            const termLength = electionType.frequencyYears || 4; // Use electionType's frequency
-            const termEndDate = {
-              year: initialYear + termLength - 1, // Term ends in the year before new term starts
-              month: electionType.electionMonth || getRandomInt(1, 12), // Use election's month or random
-              day: getRandomInt(1, 28), // Random day
-            };
-
-            const officeEntry = {
-              officeId: `initial_${instanceIdBase}_${generateId()}`, // Use resolved instanceIdBase
-              cityName: entityData.name, // Use the entity's name (city or district)
-              cityId: entityData.id, // Use the entity's ID (city or district)
+            let seatNumberSuffix = "";
+            if (isSeatArg) {
+              // Regex to find "Seat " followed by one or more digits in parentheses,
+              // and capture the digits.
+              const seatMatch = specificOfficeName.match(/Seat\s+(\d+)\)/);
+              const seatNumber = seatMatch && seatMatch[1] ? seatMatch[1] : "X"; // Use captured number or fallback to "X"
+              seatNumberSuffix = `_seat_${seatNumber}`;
+            }
+            initialGovernmentOffices.push({
+              officeId: `initial_${
+                electionType.id
+              }${seatNumberSuffix}_${generateId()}`,
+              cityName: newCityObject.name,
+              cityId: newCityObject.id,
               officeNameTemplateId: electionType.id,
-              officeName: resolvedOfficeName, // Use the fully resolved office name
+              officeName: specificOfficeName,
               level: electionType.level,
               holder,
-              termEnds: termEndDate,
-              instanceIdBase: instanceIdBase, // Fix: Add instanceIdBase
-            };
+              termEnds: {
+                year: 2025 + termLength - 1,
+                month: electionType.electionMonth,
+                day: 1,
+              },
+            });
+          };
 
-            // For multi-member legislative bodies (like PR councils that aren't exploded into seats)
-            if (
-              !electionType.generatesOneWinner &&
-              (electionType.electoralSystem === "PartyListPR" ||
-                electionType.electoralSystem === "MMP")
-            ) {
-              // This branch handles the creation of the *body itself* with its members if it's a legislative body.
-              // This setup assumes such bodies initially have a full set of members.
-              const numSeats = calculateNumberOfSeats(
-                electionType,
-                entityData.population
-              );
-              const initialMembers = [];
-              const initialCompositionByParty = {};
-              for (let i = 0; i < numSeats; i++) {
-                const memberHolder = generateRandomOfficeHolder(
-                  setupState.generatedPartiesInCountry,
-                  resolvedOfficeName,
-                  setupState.selectedCountryId
-                );
-                initialMembers.push({
-                  id: memberHolder.id,
-                  name: memberHolder.name,
-                  partyId: memberHolder.partyId,
-                  partyName: memberHolder.partyName,
-                  partyColor: memberHolder.partyColor,
-                  role:
-                    electionType.memberRoleName ||
-                    `Member, ${resolvedOfficeName}`,
-                  termEnds: termEndDate,
-                });
-                initialCompositionByParty[memberHolder.partyId] =
-                  (initialCompositionByParty[memberHolder.partyId] || 0) + 1;
-              }
-              initialGovernmentOffices.push({
-                officeId: `initial_body_${instanceIdBase}_${generateId()}`,
-                cityName: entityData.name,
-                cityId: entityData.id,
-                officeNameTemplateId: electionType.id,
-                officeName: resolvedOfficeName,
-                level: electionType.level,
-                holder: null, // No single holder for the body itself
-                members: initialMembers,
-                termEnds: termEndDate,
-                currentCompositionByParty: initialCompositionByParty,
-                instanceIdBase: instanceIdBase, // Fix: Add instanceIdBase
-              });
-            } else if (
-              electionType.generatesOneWinner ||
-              (isCityCouncilElectionType(
-                electionType,
-                setupState.selectedCountryId
-              ) &&
-                _isSingleSeatContest)
-            ) {
-              // This branch handles all single-winner offices (Mayor, District-based legislators, conceptual city council seats)
-              initialGovernmentOffices.push(officeEntry);
+          if (electionType.generatesOneWinner)
+            createOfficeEntry(officeName, false);
+          else {
+            const numSeats = calculateNumberOfSeats(
+              electionType,
+              newCityObject.population
+            );
+            for (let s_idx = 0; s_idx < numSeats; s_idx++) {
+              // Use s_idx to avoid conflicts
+              const seatSpecificName = `${officeName} (Seat ${s_idx + 1})`;
+              createOfficeEntry(seatSpecificName, true);
             }
           }
-        }); // End forEach instanceContext
-      }); // End forEach electionType
+        }
+      });
 
       const newActiveCampaign = {
         politician: { ...playerPoliticianData },
