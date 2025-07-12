@@ -604,9 +604,6 @@ export const createElectionSlice = (set) => ({
 
       // --- Step 1: Determine Vote Counts & Initial Candidate List ---
       if (simulatedElectionData) {
-        console.log(
-          `[ProcessResults] Using simulatedElectionData for ${electionToEnd.officeName}`
-        );
         totalVotesActuallyCast = simulatedElectionData.totalExpectedVotes || 0;
         electionToEnd.outcome.turnoutActual = totalVotesActuallyCast;
         electionToEnd.outcome.voterTurnoutPercentageActual =
@@ -615,9 +612,6 @@ export const createElectionSlice = (set) => ({
           (c) => ({ ...c, votes: c.currentVotes || 0 })
         );
       } else {
-        console.log(
-          `[ProcessResults] No simulatedElectionData for ${electionToEnd.officeName}, using fallback.`
-        );
         let turnoutPerc = electionToEnd.voterTurnoutPercentage;
         if (turnoutPerc == null || turnoutPerc < 5 || turnoutPerc > 95) {
           turnoutPerc = getRandomInt(40, 75);
@@ -649,15 +643,9 @@ export const createElectionSlice = (set) => ({
           ) {
             baseCandidatesForSim = [...electionToEnd.candidates];
           }
-          console.log(
-            `[ProcessResults Fallback MMP] Base candidates for sim: ${baseCandidatesForSim.length}`
-          );
         } else if (electionToEnd.electoralSystem !== "PartyListPR") {
           // For FPTP, SNTV, etc.
           baseCandidatesForSim = electionToEnd.candidates || [];
-          console.log(
-            `[ProcessResults Fallback Other Systems] Base candidates for sim: ${baseCandidatesForSim.length}`
-          );
         }
         // For PartyListPR fallback, candidatesWithFinalVotes will remain empty initially,
         // as party votes are generated directly in its specific block.
@@ -681,27 +669,14 @@ export const createElectionSlice = (set) => ({
           }));
         }
       }
-      console.log(
-        `[ProcessResults] Total Votes Cast set to: ${totalVotesActuallyCast}`
-      );
-      console.log(
-        "[ProcessResults] Initial candidatesWithFinalVotes (first 3):",
-        JSON.parse(JSON.stringify(candidatesWithFinalVotes.slice(0, 3)))
-      );
 
       // --- Step 2: Process based on Electoral System ---
 
       if (electionToEnd.electoralSystem === "PartyListPR") {
-        console.log(
-          `[ProcessResults PR] Processing ${electionToEnd.officeName}`
-        );
         let currentPartyVoteTotals = {};
         const firstSimEntity = candidatesWithFinalVotes?.[0];
 
         if (firstSimEntity && firstSimEntity.isPartyEntity === true) {
-          console.log(
-            "[ProcessResults PR] Using pre-aggregated party votes from simulation data."
-          );
           candidatesWithFinalVotes.forEach((partyEntity) => {
             if (partyEntity?.id && typeof partyEntity.votes === "number") {
               currentPartyVoteTotals[partyEntity.id] =
@@ -714,9 +689,6 @@ export const createElectionSlice = (set) => ({
           Object.keys(electionToEnd.partyLists).length > 0 &&
           totalVotesActuallyCast > 0
         ) {
-          console.warn(
-            "[ProcessResults PR] Using fallback vote generation for parties."
-          );
           const partiesInvolved = Object.keys(electionToEnd.partyLists);
           let totalBaseStrength = 0;
           const partyStrengths = partiesInvolved.map((pId) => {
@@ -758,10 +730,6 @@ export const createElectionSlice = (set) => ({
               currentPartyVoteTotals[sortedP[k % sortedP.length]] +=
                 Math.sign(remainder);
           }
-        } else {
-          console.error(
-            "[ProcessResults PR] Cannot determine party votes for PR."
-          );
         }
 
         const totalEffectivePartyListVotes = Object.values(
@@ -822,13 +790,6 @@ export const createElectionSlice = (set) => ({
           });
         }
       } else if (electionToEnd.electoralSystem === "MMP") {
-        console.log(
-          `[ProcessResults MMP] Processing ${electionToEnd.officeName}`
-        );
-        // For MMP, candidatesWithFinalVotes should contain constituency candidates with their votes.
-        // This is true if simulatedElectionData was provided and ElectionNightScreen prepared constituency candidates.
-        // Or, if !simulatedElectionData, the fallback logic for baseCandsForFallback and distributeVotesToCandidates should populate it.
-
         const numConstituencySeats =
           electionToEnd.mmpData?.numConstituencySeats ||
           (electionToEnd.voteTarget === "dual_candidate_and_party"
@@ -848,10 +809,6 @@ export const createElectionSlice = (set) => ({
               partySeatSummary[winner.partyId] =
                 (partySeatSummary[winner.partyId] || 0) + 1;
           });
-        } else {
-          console.warn(
-            "[ProcessResults MMP] No constituency candidates with votes to determine constituency winners."
-          );
         }
 
         // 2. Determine Party Votes for List Seats (using a consistent method)
@@ -863,10 +820,6 @@ export const createElectionSlice = (set) => ({
           firstMmpSimEntity.isPartyEntity === true &&
           firstMmpSimEntity.mmpPartyVote === true
         ) {
-          // Hypothetical mmpPartyVote flag
-          console.log(
-            "[ProcessResults MMP] Using pre-aggregated MMP party votes from sim data."
-          );
           candidatesWithFinalVotes.forEach((partyEntity) => {
             if (partyEntity?.id && typeof partyEntity.votes === "number") {
               // Assuming .votes here are party votes
@@ -881,9 +834,6 @@ export const createElectionSlice = (set) => ({
           candidatesWithFinalVotes.length > 0 &&
           !firstMmpSimEntity?.isPartyEntity
         ) {
-          console.log(
-            "[ProcessResults MMP] Deriving party votes from constituency candidate votes."
-          );
           candidatesWithFinalVotes.forEach((cand) => {
             if (cand.partyId && typeof cand.votes === "number") {
               // cand.votes are constituency votes
@@ -898,9 +848,6 @@ export const createElectionSlice = (set) => ({
           Object.keys(electionToEnd.partyLists).length > 0 &&
           totalVotesActuallyCast > 0
         ) {
-          console.warn(
-            "[ProcessResults MMP] No candidate sim data for party votes, using fallback for list seats."
-          );
           // Using a portion of totalVotesActuallyCast for the party vote, or full if no constituency votes.
           const partyVotePortion = totalVotesActuallyCast; // Or some fraction like totalVotesActuallyCast * 0.5;
           const partiesInvolved = Object.keys(electionToEnd.partyLists);
@@ -929,10 +876,6 @@ export const createElectionSlice = (set) => ({
                 ))
             );
           // Remainder ...
-        } else {
-          console.error(
-            "[ProcessResults MMP] Cannot determine party votes for MMP list seats."
-          );
         }
 
         const totalEffectiveMMPPartyVotes = Object.values(
@@ -1010,17 +953,10 @@ export const createElectionSlice = (set) => ({
         }
       } else {
         // FPTP, SNTV, BlockVote, etc.
-        console.log(
-          `[ProcessResults Other] System: ${electionToEnd.electoralSystem} for ${electionToEnd.officeName}`
-        );
         if (candidatesWithFinalVotes && candidatesWithFinalVotes.length > 0) {
           determinedWinnersArray = [...candidatesWithFinalVotes]
             .sort((a, b) => (b.votes || 0) - (a.votes || 0))
             .slice(0, seatsToFill);
-        } else {
-          console.warn(
-            `[ProcessResults Other] No candidates with final votes for ${electionToEnd.officeName}.`
-          );
         }
 
         // Calculate party performance for these systems
@@ -1253,12 +1189,23 @@ export const createElectionSlice = (set) => ({
                 (newComposition["independent"] || 0) + 1;
           });
           if (officeIndex !== -1) {
+            console.log(
+              `[ProcessResults DEBUG] UPDATING existing legislative body: ${electionToEnd.officeName}`
+            ); // Added log
             updatedGovernmentOfficesLocal[officeIndex].members = newMembers;
             updatedGovernmentOfficesLocal[officeIndex].termEnds = termEndDate;
             updatedGovernmentOfficesLocal[
               officeIndex
             ].currentCompositionByParty = newComposition;
+            // Ensure instanceIdBase and cityId are updated on existing legislative bodies
+            updatedGovernmentOfficesLocal[officeIndex].instanceIdBase =
+              electionToEnd.instanceIdBase; // Fix: Add instanceIdBase
+            updatedGovernmentOfficesLocal[officeIndex].cityId =
+              electionToEnd.entityDataSnapshot.id; // Fix: Add cityId
           } else {
+            console.log(
+              `[ProcessResults DEBUG] ADDING new legislative body: ${electionToEnd.officeName}`
+            ); // Added log
             updatedGovernmentOfficesLocal.push({
               officeId: `gov_office_body_${
                 electionToEnd.instanceIdBase || electionToEnd.id
@@ -1270,6 +1217,8 @@ export const createElectionSlice = (set) => ({
               members: newMembers,
               termEnds: termEndDate,
               currentCompositionByParty: newComposition,
+              instanceIdBase: electionToEnd.instanceIdBase, // Fix: Add instanceIdBase to new legislative bodies
+              cityId: electionToEnd.entityDataSnapshot.id, // Fix: Add cityId to new legislative bodies
             });
           }
           if (newMembers.some((mem) => mem.id === playerPoliticianData.id)) {
@@ -1277,78 +1226,66 @@ export const createElectionSlice = (set) => ({
             playerWonAnySeatThisElection = true;
           }
         } else {
-          // This block handles single-winner offices and the "conceptual seats" after explosion
-          determinedWinnersArray.forEach((winner, index) => {
-            const newHolder = { ...winner, role: "", termEnds: termEndDate };
-            delete newHolder.votes;
-            let finalOfficeName = electionToEnd.officeName;
+          // This block handles single-holder offices, like Mayor and conceptual seats.
+          // This entire block (including the determinedWinnersArray.forEach) is replaced by the robust map/push logic
+          // as per the detailed reasoning provided in the thought process.
+          const winner = determinedWinnersArray[0];
 
-            // The 'isConceptualSeatModel' logic below is for cases where conceptual seats were NOT
-            // pre-exploded. For correctly pre-exploded conceptual seats, electionToEnd.officeName
-            // should already contain the seat number (e.g., "City Council (Seat 1)").
-            const isConceptualSeatModel =
-              !electionToEnd.generatesOneWinner &&
-              seatsToFill > 1 &&
-              (electionToEnd.electoralSystem === "SNTV_MMD" ||
-                electionToEnd.electoralSystem === "BlockVote" ||
-                electionToEnd.electoralSystem === "PluralityMMD");
-            if (isConceptualSeatModel)
-              finalOfficeName = `${electionToEnd.officeName} (Seat ${
-                index + 1
-              })`;
+          const newHolder = { ...winner, role: "", termEnds: termEndDate };
+          delete newHolder.votes;
 
-            newHolder.role = finalOfficeName;
+          let finalOfficeName = electionToEnd.officeName;
+          const isConceptualSeatModel =
+            !electionToEnd.generatesOneWinner &&
+            seatsToFill > 1 &&
+            (electionToEnd.electoralSystem === "SNTV_MMD" ||
+              electionToEnd.electoralSystem === "BlockVote" ||
+              electionToEnd.electoralSystem === "PluralityMMD");
+          if (isConceptualSeatModel) {
+            finalOfficeName = `${electionToEnd.officeName} (Seat ${0 + 1})`;
+          }
+          newHolder.role = finalOfficeName;
 
-            // FIND/UPDATE existing office: Prioritize matching by instanceIdBase, fallback to officeName
-            const officeIndex = updatedGovernmentOfficesLocal.findIndex(
-              (off) => {
-                // If both the existing office and the current election have an instanceIdBase, use it for a precise match.
-                if (off.instanceIdBase && electionToEnd.instanceIdBase) {
-                  return off.instanceIdBase === electionToEnd.instanceIdBase;
-                }
-                // Fallback: If instanceIdBase is missing on the existing office or the election,
-                // try matching by officeName. This helps update older entries from previous game states.
-                return off.officeName === finalOfficeName;
+          const officeToProcess = {
+            officeId: `gov_office_${
+              electionToEnd.instanceIdBase || electionToEnd.officeNameTemplateId
+            }_${generateId()}`,
+            officeNameTemplateId: electionToEnd.officeNameTemplateId,
+            officeName: finalOfficeName,
+            level: electionToEnd.level,
+            holder: newHolder,
+            termEnds: termEndDate,
+            cityId: electionToEnd.entityDataSnapshot.id,
+            instanceIdBase: electionToEnd.instanceIdBase,
+          };
+
+          let officeWasUpdated = false;
+          updatedGovernmentOfficesLocal = updatedGovernmentOfficesLocal.map(
+            (office) => {
+              // Check if this existing 'office' matches the current conceptual seat being processed.
+              console.log(office.officeName, officeToProcess.officeName);
+              if (
+                (typeof office.instanceIdBase === "string" &&
+                  typeof officeToProcess.instanceIdBase === "string" &&
+                  office.instanceIdBase === officeToProcess.instanceIdBase) ||
+                office.officeName === officeToProcess.officeName
+              ) {
+                officeWasUpdated = true;
+                console.log(
+                  `[ProcessResults DEBUG] Replacing existing office: ${office.officeName} (Old Holder: ${office.holder?.name}) with new holder: ${officeToProcess.holder.name}`
+                );
+                return officeToProcess;
               }
-            );
+              return office;
+            }
+          );
 
-            if (officeIndex !== -1) {
-              // Found an existing office, update its holder and relevant details.
-              updatedGovernmentOfficesLocal[officeIndex].holder = newHolder;
-              updatedGovernmentOfficesLocal[officeIndex].termEnds = termEndDate;
-              // Crucially, ensure instanceIdBase and cityId are set on the existing office,
-              // especially for entries from older game states that might be missing them.
-              updatedGovernmentOfficesLocal[officeIndex].instanceIdBase =
-                electionToEnd.instanceIdBase;
-              updatedGovernmentOfficesLocal[officeIndex].cityId =
-                electionToEnd.entityDataSnapshot.id;
-              updatedGovernmentOfficesLocal[officeIndex].officeNameTemplateId =
-                electionToEnd.officeNameTemplateId;
-              updatedGovernmentOfficesLocal[officeIndex].officeName =
-                finalOfficeName; // Ensure the display name is up-to-date
-              updatedGovernmentOfficesLocal[officeIndex].level =
-                electionToEnd.level;
-            } else {
-              // No existing office found, create a new one.
-              updatedGovernmentOfficesLocal.push({
-                officeId: `gov_office_${
-                  electionToEnd.instanceIdBase ||
-                  electionToEnd.officeNameTemplateId
-                }_${generateId()}`, // Use instanceIdBase for a unique base, plus generateId
-                officeNameTemplateId: electionToEnd.officeNameTemplateId,
-                officeName: finalOfficeName,
-                level: electionToEnd.level,
-                holder: newHolder,
-                termEnds: termEndDate,
-                cityId: electionToEnd.entityDataSnapshot.id,
-                instanceIdBase: electionToEnd.instanceIdBase, // Store instanceIdBase for future lookups
-              });
-            }
-            if (newHolder.id === playerPoliticianData.id) {
-              newPlayerOffice = finalOfficeName;
-              playerWonAnySeatThisElection = true;
-            }
-          });
+          if (!officeWasUpdated) {
+            console.log(
+              `[ProcessResults DEBUG] Adding new office: ${officeToProcess.officeName} (Instance ID: ${officeToProcess.instanceIdBase})`
+            );
+            updatedGovernmentOfficesLocal.push(officeToProcess);
+          }
         }
       }
 
@@ -1404,7 +1341,13 @@ export const createElectionSlice = (set) => ({
         }`
       );
 
-      console.log(updatedGovernmentOfficesLocal);
+      console.log(
+        `[ProcessResults] FINAL governmentOffices count before returning (Line 1342): ${updatedGovernmentOfficesLocal.length}`
+      );
+      console.log(
+        "[ProcessResults] Final governmentOffices content (Line 1342):",
+        JSON.parse(JSON.stringify(updatedGovernmentOfficesLocal))
+      );
 
       return {
         activeCampaign: {

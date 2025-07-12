@@ -127,228 +127,120 @@ export const generateMayorElectionInstances = (
 };
 
 /**
- * Determines if a given election type is for a city council.
- * Councils are typically multi-winner and at a local city/municipality level.
- * @param {object} electionType - The election type configuration object.
- * @param {string} countryId - The ID of the current country.
- * @returns {boolean}
+ * Determines if an election type is for a city council.
+ * @param {object} electionType - The election type object.
+ * @param {string} countryId - The ID of the country.
+ * @returns {boolean} True if it's a city council election.
  */
-export const isCityCouncilElectionType = (electionType, countryId) => {
-  if (!electionType || electionType.generatesOneWinner === true) {
-    return false; // Councils are multi-winner elections.
-  }
-
-  const isCouncilLevel =
-    electionType.level === "local_city" ||
-    electionType.level === "local_city_council" || // If you use a more specific level for councils
-    electionType.level === "local_city_or_municipality_council"; // For PHL councils
-
-  if (!isCouncilLevel) {
-    return false;
-  }
-
-  // Check against known council election type IDs for explicitness
-  const knownCouncilTypeIds = {
-    USA: ["city_council_usa"],
-    PHL: ["city_municipal_council_phl"],
-    JPN: ["city_council"],
-    GER: ["city_council_deu"],
-    // Add other specific council IDs if they exist
-  };
-
-  if (
-    knownCouncilTypeIds[countryId] &&
-    knownCouncilTypeIds[countryId].includes(electionType.id)
-  ) {
-    return true;
-  }
-
-  // Fallback: if the ID or template name contains "council" and it matches level/multi-winner criteria.
-  // This helps catch generically named council elections.
-  if (
-    electionType.id?.toLowerCase().includes("council") ||
-    electionType.officeNameTemplate?.toLowerCase().includes("council")
-  ) {
-    return true;
-  }
-
-  // If it's a multi-winner election at a city level but doesn't match specific IDs or keywords,
-  // it might still be a council, but this could also catch other non-council multi-winner city elections.
-  // For now, the above checks should be fairly comprehensive for typical council definitions.
-
-  return false;
+export const isCityCouncilElectionType = (electionType) => {
+  return (
+    electionType.level.includes("local_city_council") ||
+    electionType.level.includes("local_city") || // Broad match
+    electionType.level.includes("local_municipality") || // Broad match
+    electionType.level.includes("local_city_or_municipality_council") || // PHL
+    electionType.id.includes("city_council") || // General ID check
+    electionType.id.includes("municipal_council") // PHL
+  );
 };
 
 /**
- * Generates election instances for various types of city council elections.
- * Handles districted (e.g., USA) vs. at-large councils.
- * @param {object} electionType - The election type configuration object.
- * @param {object} cityEntity - The city/municipality object (from activeCampaign.startingCity).
- * @param {string} countryId - The ID of the current country.
- * @param {object} currentCountryData - The full data object for the current country (used for rules like USA council districts).
- * @param {function} buildIdBaseFunc - Function to build the instance ID base.
- * @returns {Array<object>} An array of election instance objects.
+ * Generates election instances for a city council office.
+ * This function handles both district-based and at-large councils.
+ * @param {object} electionType - The election type definition.
+ * @param {object} cityData - The city data.
+ * @param {string} countryId - The country ID.
+ * @param {object} countryConfig - The country's configuration data.
+ * @param {Function} buildInstanceIdBaseLocal - Local instance ID builder.
+ * @returns {Array<object>} Array of instance contexts.
  */
 export const generateCityCouncilElectionInstances = (
   electionType,
-  cityEntity,
+  cityData,
   countryId,
-  currentCountryData,
-  buildIdBaseFunc
+  countryConfig,
+  buildInstanceIdBaseLocal
 ) => {
   const instances = [];
+  let baseOfficeNameTemplate = electionType.officeNameTemplate;
 
-  if (!cityEntity || !cityEntity.id || !cityEntity.name) {
-    console.warn(
-      `[electionGenUtils.generateCityCouncilInstances] Insufficient city data for council election type: ${electionType.id}, City ID: ${cityEntity?.id}`
+  // Resolve {cityName} and {cityNameOrMunicipalityName}
+  if (cityData?.name) {
+    baseOfficeNameTemplate = baseOfficeNameTemplate.replace(
+      /{cityName}/g,
+      cityData.name
     );
-    return instances;
+    baseOfficeNameTemplate = baseOfficeNameTemplate.replace(
+      /{cityNameOrMunicipalityName}/g,
+      cityData.name
+    );
   }
 
-  let resolvedOfficeName = electionType.officeNameTemplate;
+  // Determine if this city has predefined council districts
+  const hasPredefinedDistricts =
+    cityData.councilDistricts && cityData.councilDistricts.length > 0;
 
-  // --- USA City Council (Can be districted or at-large) ---
-  if (countryId === "USA" && electionType.id === "city_council_usa") {
-    const isDistrictedCouncil =
-      ((currentCountryData.id === "USA" && // Explicit check, though already in outer if
-        electionType.countrySpecificRules?.USA?.districted === true) ||
-        (electionType.electoralSystem === "FPTP" && // FPTP often implies single-member districts
-          electionType.officeNameTemplate.includes("{districtName}"))) && // Template indicative of districts
-      cityEntity.councilDistricts &&
-      cityEntity.councilDistricts.length > 0;
+  if (countryId === "USA" && hasPredefinedDistricts) {
+    // USA: If a city has defined districts, create one instance per district (single winner per district)
+    cityData.councilDistricts.forEach((district) => {
+      let resolvedOfficeName = baseOfficeNameTemplate;
+      resolvedOfficeName = resolvedOfficeName.replace(
+        /{districtName}/g,
+        district.name
+      );
+      // Ensure {districtNameOrAtLarge} is resolved based on district context
+      resolvedOfficeName = resolvedOfficeName.replace(
+        /{districtNameOrAtLarge}/g,
+        district.name // Replace with district name directly if districted
+      );
+      // Remove any leftover placeholder pattern if it didn't match anything
+      resolvedOfficeName = resolvedOfficeName.replace(
+        /\s*\(?\{districtNameOrAtLarge\}\)?/g,
+        ""
+      );
 
-    if (isDistrictedCouncil) {
-      cityEntity.councilDistricts.forEach((district) => {
-        if (!district || !district.id || !district.name) {
-          console.warn(
-            `[electionGenUtils.generateCityCouncilInstances] Skipping invalid district in ${cityEntity.name}:`,
-            district
-          );
-          return; // Skip this invalid district
-        }
-        instances.push({
-          instanceIdBase: buildIdBaseFunc(
-            electionType.id,
-            `${cityEntity.id}_${district.id}`
-          ),
-          entityType: "city_council_district",
-          entityData: {
-            id: district.id,
-            name: district.name,
-            population: district.population,
-            cityId: cityEntity.id,
-            cityName: cityEntity.name,
-            stats: district.stats || cityEntity.stats,
-            politicalLandscape:
-              district.politicalLandscape || cityEntity.politicalLandscape,
-            issues: district.issues || cityEntity.issues,
-            politicalLeaning:
-              district.politicalLeaning || cityEntity.politicalLeaning,
-          },
-          resolvedOfficeName: resolvedOfficeName
-            .replace("{cityName}", cityEntity.name)
-            .replace("{districtNameOrAtLarge}", district.name) // Handles templates with this combined placeholder
-            .replace("{districtName}", district.name), // Handles templates with specific district placeholder
-          _isSingleSeatContest: true, // Each district elects one councilor in this model
-          _effectiveElectoralSystem: "FPTP", // Common for US council districts
-          _effectiveGeneratesOneWinner: true,
-          ...electionType, // Preserve original type details
-          id: electionType.id, // Ensure original ID is kept if electionType is spread
-        });
-      });
-    } else {
-      // At-large city council for USA
       instances.push({
-        instanceIdBase: buildIdBaseFunc(electionType.id, cityEntity.id),
-        entityType: "city",
-        entityData: { ...cityEntity },
-        resolvedOfficeName: resolvedOfficeName
-          .replace("{cityName}", cityEntity.name)
-          .replace("{districtNameOrAtLarge}", "At-Large"), // Standard naming for at-large
-        _isSingleSeatContest: false, // At-large is multi-winner
-        _effectiveElectoralSystem: electionType.electoralSystem, // e.g., BlockVote, PluralityMMD
-        _effectiveGeneratesOneWinner: false,
-        ...electionType,
-        id: electionType.id,
+        instanceIdBase: buildInstanceIdBaseLocal(electionType.id, district.id),
+        entityType: "city_council_district",
+        entityData: { ...district, parentCityId: cityData.id },
+        resolvedOfficeName: resolvedOfficeName,
+        _isSingleSeatContest: true,
+        _effectiveElectoralSystem: "FPTP", // Assuming FPTP for district elections
+        _effectiveGeneratesOneWinner: true,
       });
+    });
+  } else {
+    // For all other countries, or USA cities without predefined districts, assume at-large or treat as single MMD contest.
+    let resolvedOfficeName = baseOfficeNameTemplate;
+
+    // Fix: Ensure {districtNameOrAtLarge} is resolved to "At-Large" for non-districted MMDs
+    if (resolvedOfficeName.includes("{districtNameOrAtLarge}")) {
+      if (
+        electionType.electoralSystem === "PluralityMMD" ||
+        electionType.electoralSystem === "BlockVote" ||
+        electionType.electoralSystem === "SNTV_MMD"
+      ) {
+        resolvedOfficeName = resolvedOfficeName.replace(
+          /{districtNameOrAtLarge}/g,
+          "At-Large"
+        );
+      } else {
+        // For other systems (like PartyListPR which doesn't use this phrasing), just remove the placeholder
+        resolvedOfficeName = resolvedOfficeName.replace(
+          /\s*\(?\{districtNameOrAtLarge\}\)?/g,
+          ""
+        );
+      }
     }
-  }
-  // --- PHL City/Municipal Council (Sangguniang Panlungsod/Bayan) ---
-  // Typically at-large, using BlockVote system.
-  else if (
-    countryId === "PHL" &&
-    electionType.id === "city_municipal_council_phl"
-  ) {
+
+    // Add a single instance representing the entire city council contest
     instances.push({
-      instanceIdBase: buildIdBaseFunc(electionType.id, cityEntity.id),
-      entityType: "city_or_municipality",
-      entityData: { ...cityEntity },
-      resolvedOfficeName: resolvedOfficeName.replace(
-        "{cityNameOrMunicipalityName}",
-        cityEntity.name
-      ),
-      _isSingleSeatContest: false,
-      _effectiveElectoralSystem: electionType.electoralSystem, // BlockVote
-      _effectiveGeneratesOneWinner: false,
-      ...electionType,
-      id: electionType.id,
-    });
-  }
-  // --- JPN City Council ---
-  // Typically at-large, using SNTV_MMD system.
-  else if (countryId === "JPN" && electionType.id === "city_council") {
-    instances.push({
-      instanceIdBase: buildIdBaseFunc(electionType.id, cityEntity.id),
-      entityType: "city",
-      entityData: { ...cityEntity },
-      resolvedOfficeName: resolvedOfficeName.replace(
-        "{cityName}",
-        cityEntity.name
-      ),
-      _isSingleSeatContest: false,
-      _effectiveElectoralSystem: electionType.electoralSystem, // SNTV_MMD
-      _effectiveGeneratesOneWinner: false,
-      ...electionType,
-      id: electionType.id,
-    });
-  }
-  // --- GER City Council ---
-  // Typically at-large, using PartyListPR system.
-  else if (countryId === "GER" && electionType.id === "city_council_deu") {
-    instances.push({
-      instanceIdBase: buildIdBaseFunc(electionType.id, cityEntity.id),
-      entityType: "city",
-      entityData: { ...cityEntity },
-      resolvedOfficeName: resolvedOfficeName.replace(
-        "{cityName}",
-        cityEntity.name
-      ),
-      _isSingleSeatContest: false,
-      _effectiveElectoralSystem: electionType.electoralSystem, // PartyListPR
-      _effectiveGeneratesOneWinner: false,
-      ...electionType,
-      id: electionType.id,
-    });
-  }
-  // --- Generic Council Fallback ---
-  // This catches other council types if they weren't specifically handled by country/ID above.
-  // It assumes an at-large election for the city.
-  else {
-    console.warn(
-      `[electionGenUtils.generateCityCouncilInstances] Using generic at-large logic for council type: ${electionType.id} in country ${countryId}. Check if specific rules are needed.`
-    );
-    instances.push({
-      instanceIdBase: buildIdBaseFunc(electionType.id, cityEntity.id),
-      entityType: "city", // Default entity type
-      entityData: { ...cityEntity },
-      resolvedOfficeName: resolvedOfficeName
-        .replace("{cityName}", cityEntity.name) // Attempt common placeholder
-        .replace("{cityNameOrMunicipalityName}", cityEntity.name), // Attempt PHL-style placeholder
-      _isSingleSeatContest: false, // Assuming councils are multi-winner
-      _effectiveElectoralSystem: electionType.electoralSystem,
-      _effectiveGeneratesOneWinner: false, // Explicitly false for councils
-      ...electionType,
-      id: electionType.id,
+      instanceIdBase: buildInstanceIdBaseLocal(electionType.id, cityData.id), // Base instance ID for the whole council
+      entityType: "city_council",
+      entityData: { ...cityData }, // Pass the whole city data
+      resolvedOfficeName: resolvedOfficeName,
+      _isSingleSeatContest: false, // This single instance covers multiple seats
+      _effectiveElectoralSystem: electionType.electoralSystem, // Use original system
+      _effectiveGeneratesOneWinner: electionType.generatesOneWinner, // Use original GOW
     });
   }
   return instances;
