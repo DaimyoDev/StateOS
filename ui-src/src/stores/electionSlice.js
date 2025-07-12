@@ -209,15 +209,19 @@ export const createElectionSlice = (set) => ({
 
           // Now, determine if we are creating "conceptual seat" items for an AT-LARGE MMD
           // (This is your "Model A" for Japanese councils, etc.)
+          const isPluralityMultiMemberSystem = [
+            "BlockVote",
+            "SNTV_MMD",
+            "PluralityMMD",
+          ].includes(effectiveElectionType.electoralSystem);
+
           const shouldCreateConceptualSeatItems =
-            !_isSingleSeatContest && // It's an at-large contest instance from getElectionInstances
-            !effectiveElectionType.generatesOneWinner &&
-            seatDetailsForThisContest.numberOfSeats > 1 &&
-            !(effectiveElectionType._modelAsSingleContest === true) &&
-            (effectiveElectionType.electoralSystem === "BlockVote" ||
-              (originalElectionType.id === "city_council_usa" &&
-                effectiveElectionType.electoralSystem === "PluralityMMD" &&
-                !entityData.councilDistricts));
+            !_isSingleSeatContest && // Ensure it's an at-large contest instance from getElectionInstances
+            !effectiveElectionType.generatesOneWinner && // The election type itself generates multiple winners as one contest
+            seatDetailsForThisContest.numberOfSeats > 1 && // There's more than one seat to fill
+            isPluralityMultiMemberSystem && // Use the new helper for cleaner check against common multi-member plurality systems
+            (effectiveElectionType.level.includes("council") || // Apply specifically to 'council' level elections
+              effectiveElectionType.level.includes("assembly")); // Or other similar multi-seat local bodies if applicable
 
           if (shouldCreateConceptualSeatItems) {
             const totalSeatsInCouncil = seatDetailsForThisContest.numberOfSeats;
@@ -1273,10 +1277,15 @@ export const createElectionSlice = (set) => ({
             playerWonAnySeatThisElection = true;
           }
         } else {
+          // This block handles single-winner offices and the "conceptual seats" after explosion
           determinedWinnersArray.forEach((winner, index) => {
             const newHolder = { ...winner, role: "", termEnds: termEndDate };
             delete newHolder.votes;
             let finalOfficeName = electionToEnd.officeName;
+
+            // The 'isConceptualSeatModel' logic below is for cases where conceptual seats were NOT
+            // pre-exploded. For correctly pre-exploded conceptual seats, electionToEnd.officeName
+            // should already contain the seat number (e.g., "City Council (Seat 1)").
             const isConceptualSeatModel =
               !electionToEnd.generatesOneWinner &&
               seatsToFill > 1 &&
@@ -1287,26 +1296,52 @@ export const createElectionSlice = (set) => ({
               finalOfficeName = `${electionToEnd.officeName} (Seat ${
                 index + 1
               })`;
+
             newHolder.role = finalOfficeName;
+
+            // FIND/UPDATE existing office: Prioritize matching by instanceIdBase, fallback to officeName
             const officeIndex = updatedGovernmentOfficesLocal.findIndex(
-              (off) => off.officeName === finalOfficeName
+              (off) => {
+                // If both the existing office and the current election have an instanceIdBase, use it for a precise match.
+                if (off.instanceIdBase && electionToEnd.instanceIdBase) {
+                  return off.instanceIdBase === electionToEnd.instanceIdBase;
+                }
+                // Fallback: If instanceIdBase is missing on the existing office or the election,
+                // try matching by officeName. This helps update older entries from previous game states.
+                return off.officeName === finalOfficeName;
+              }
             );
+
             if (officeIndex !== -1) {
+              // Found an existing office, update its holder and relevant details.
               updatedGovernmentOfficesLocal[officeIndex].holder = newHolder;
               updatedGovernmentOfficesLocal[officeIndex].termEnds = termEndDate;
+              // Crucially, ensure instanceIdBase and cityId are set on the existing office,
+              // especially for entries from older game states that might be missing them.
+              updatedGovernmentOfficesLocal[officeIndex].instanceIdBase =
+                electionToEnd.instanceIdBase;
+              updatedGovernmentOfficesLocal[officeIndex].cityId =
+                electionToEnd.entityDataSnapshot.id;
+              updatedGovernmentOfficesLocal[officeIndex].officeNameTemplateId =
+                electionToEnd.officeNameTemplateId;
+              updatedGovernmentOfficesLocal[officeIndex].officeName =
+                finalOfficeName; // Ensure the display name is up-to-date
+              updatedGovernmentOfficesLocal[officeIndex].level =
+                electionToEnd.level;
             } else {
+              // No existing office found, create a new one.
               updatedGovernmentOfficesLocal.push({
                 officeId: `gov_office_${
                   electionToEnd.instanceIdBase ||
                   electionToEnd.officeNameTemplateId
-                }_${
-                  isConceptualSeatModel ? `seat${index + 1}` : ""
-                }_${generateId()}`,
+                }_${generateId()}`, // Use instanceIdBase for a unique base, plus generateId
                 officeNameTemplateId: electionToEnd.officeNameTemplateId,
                 officeName: finalOfficeName,
                 level: electionToEnd.level,
                 holder: newHolder,
                 termEnds: termEndDate,
+                cityId: electionToEnd.entityDataSnapshot.id,
+                instanceIdBase: electionToEnd.instanceIdBase, // Store instanceIdBase for future lookups
               });
             }
             if (newHolder.id === playerPoliticianData.id) {
