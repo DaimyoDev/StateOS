@@ -177,8 +177,7 @@ export const ELECTION_TYPES_BY_COUNTRY = {
     },
     {
       id: "city_council_usa",
-      officeNameTemplate:
-        "City Council Member - {cityName} ({districtNameOrAtLarge})", // District or At-Large
+      officeNameTemplate: "City Council Member - {cityName} (At-Large)", // District or At-Large
       level: "local_city",
       frequencyYears: 4, // Common, can be 2
       electionMonth: 11, // Or other months

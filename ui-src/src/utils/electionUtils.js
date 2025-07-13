@@ -1878,6 +1878,10 @@ export const generateElectionParticipants = ({
  * Initializes the final election object for the store.
  */
 
+/**
+ * Initializes the final election object for the store.
+ */
+
 export const initializeElectionObject = ({
   electionType, // The effective election type for this specific instance (merged base + instance specifics)
   instanceContext, // { instanceIdBase, entityType, entityData, resolvedOfficeName, ... }

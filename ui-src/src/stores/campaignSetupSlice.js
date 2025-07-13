@@ -81,6 +81,7 @@ export const createCampaignSetupSlice = (set, get) => {
               setupState.selectedCountryId
             );
             let seatNumberSuffix = "";
+            let instanceBaseId = electionType.id;
             if (isSeatArg) {
               // Regex to find "Seat " followed by one or more digits in parentheses,
               // and capture the digits.
@@ -92,6 +93,7 @@ export const createCampaignSetupSlice = (set, get) => {
               officeId: `initial_${
                 electionType.id
               }${seatNumberSuffix}_${generateId()}`,
+              instanceBaseId: instanceBaseId,
               cityName: newCityObject.name,
               cityId: newCityObject.id,
               officeNameTemplateId: electionType.id,
