@@ -113,67 +113,93 @@ const CityOverviewTab = () => {
 
   const { dominantIndustries, gdpPerCapita } = economicProfile || {};
 
-  const citySpecificFilledLocalOffices = useMemo(() => {
-    if (!governmentOffices || !cityId) {
-      // Ensure we have offices to filter and a cityId to match
-      return [];
-    }
-    return governmentOffices.filter((office) => {
-      // Condition 1: Is it a local city level office?
-      const isLocalCityLevel = office.level.includes("local_city");
-      // Condition 2: Does it have a holder (incumbent)?
-      const hasHolder = !!office.holder;
-      const isForThisCity = office.cityId === cityId;
-
-      return isLocalCityLevel && hasHolder && isForThisCity;
-    });
-  }, [governmentOffices, cityId]); // Depends on the global list and the current city's ID
-
   const mayorOffice = useMemo(() => {
-    // Now finds the mayor from the correctly filtered city-specific offices
-    return citySpecificFilledLocalOffices.find((office) =>
-      office.officeNameTemplateId.includes("mayor")
+    if (!governmentOffices || !cityId) return null;
+    return governmentOffices.find(
+      (office) =>
+        (office.level === "local_city" || office.level === "city") && // Be explicit with levels
+        office.officeNameTemplateId &&
+        office.officeNameTemplateId.includes("mayor") &&
+        office.holder && // A mayor office should have a direct holder
+        office.cityId === cityId // Ensure it's for this specific city
     );
-  }, [citySpecificFilledLocalOffices]);
+  }, [governmentOffices, cityId]);
 
   const councilOffices = useMemo(() => {
-    if (!citySpecificFilledLocalOffices) return [];
+    if (!governmentOffices || governmentOffices.length === 0) return [];
 
-    return citySpecificFilledLocalOffices
-      .filter(
-        (office) =>
-          office.officeNameTemplateId.includes("city_council") ||
-          office.officeNameTemplateId.includes("city_municipal_council")
-      )
-      .sort((a, b) => {
-        const officeNameA = a.officeName || ""; // Default to empty string if undefined
-        const officeNameB = b.officeName || ""; // Default to empty string if undefined
+    let allCouncilMembersForDisplay = [];
 
-        const matchA = officeNameA.match(/\(Seat (\d+)\)/);
-        const matchB = officeNameB.match(/\(Seat (\d+)\)/);
+    governmentOffices.forEach((office) => {
+      // Check if it's a city/local level council office (either a body or an individual seat)
+      const isLocalCouncilOffice =
+        (office.level === "local_city" ||
+          office.level === "city_district" ||
+          office.level.includes("council")) &&
+        (office.officeNameTemplateId?.includes("city_council") ||
+          office.officeNameTemplateId?.includes("city_municipal_council")) &&
+        office.cityId === cityId; // Ensure it's for the current city
 
-        const seatNumA = matchA ? parseInt(matchA[1]) : NaN;
-        const seatNumB = matchB ? parseInt(matchB[1]) : NaN;
-
-        const aHasNum = !isNaN(seatNumA);
-        const bHasNum = !isNaN(seatNumB);
-
-        if (aHasNum && bHasNum) {
-          // Both have numbers, sort numerically
-          return seatNumA - seatNumB;
-        } else if (aHasNum && !bHasNum) {
-          // a has a number, b doesn't; a should come first
-          return -1;
-        } else if (!aHasNum && bHasNum) {
-          // b has a number, a doesn't; b should come first
-          return 1;
-        } else {
-          // Neither has a parseable seat number in the "(Seat N)" format,
-          // or both are NaN. Sort by the full office name alphabetically.
-          return officeNameA.localeCompare(officeNameB);
+      if (isLocalCouncilOffice) {
+        if (office.members && office.members.length > 0) {
+          // This is a legislative body with a 'members' array (e.g., At-Large MMD council)
+          office.members.forEach((member, index) => {
+            // Create a pseudo-office object for each member for consistent display
+            allCouncilMembersForDisplay.push({
+              ...office, // Inherit base office properties like level, officeNameTemplateId
+              officeId: `${office.officeId}_member_${member.id}`, // Unique ID for this member's 'seat'
+              officeName: member.role || `${office.officeName} Member`, // Use member's role or a default
+              holder: member, // The member is the 'holder' for this conceptual seat
+              // Add a conceptual seat number if the original office was an MMD
+              _conceptualSeatNumber: index + 1,
+            });
+          });
+        } else if (office.holder && office.numberOfSeatsToFill === 1) {
+          // This is an individual conceptual seat that was created as a single-winner election
+          allCouncilMembersForDisplay.push({
+            ...office, // Use the office as is
+            holder: office.holder,
+            _conceptualSeatNumber: office.officeName.match(
+              /\(Seat (\d+)\)/
+            )?.[1]
+              ? parseInt(office.officeName.match(/\(Seat (\d+)\)/)[1])
+              : undefined,
+          });
         }
-      });
-  }, [citySpecificFilledLocalOffices]);
+      }
+    });
+
+    // Now sort these conceptual council offices/members
+    return allCouncilMembersForDisplay.sort((a, b) => {
+      const officeNameA = a.officeName || "";
+      const officeNameB = b.officeName || "";
+
+      // Prefer using _conceptualSeatNumber if available
+      const seatNumA =
+        a._conceptualSeatNumber ||
+        (officeNameA.match(/\(Seat (\d+)\)/)?.[1]
+          ? parseInt(officeNameA.match(/\(Seat (\d+)\)/)[1])
+          : NaN);
+      const seatNumB =
+        b._conceptualSeatNumber ||
+        (officeNameB.match(/\(Seat (\d+)\)/)?.[1]
+          ? parseInt(officeNameB.match(/\(Seat (\d+)\)/)[1])
+          : NaN);
+
+      const aHasNum = !isNaN(seatNumA);
+      const bHasNum = !isNaN(seatNumB);
+
+      if (aHasNum && bHasNum) {
+        return seatNumA - seatNumB;
+      } else if (aHasNum && !bHasNum) {
+        return -1;
+      } else if (!aHasNum && bHasNum) {
+        return 1;
+      } else {
+        return officeNameA.localeCompare(officeNameB);
+      }
+    });
+  }, [governmentOffices, cityId]); // Depends on the global list and the current city's ID
 
   // councilPartyComposition should now work correctly as it depends on the refined councilOffices
   const councilPartyComposition = useMemo(() => {
@@ -799,7 +825,6 @@ const CityOverviewTab = () => {
                     <h5>City Council Members:</h5>
                     <ul className="officials-list">
                       {councilOffices.map((office) => (
-                        // office.holder is already checked by citySpecificFilledLocalOffices filter
                         <li key={office.officeId} className="official-entry">
                           <strong>
                             {formatOfficeTitleForDisplay(office, cityName)}:{" "}
@@ -818,10 +843,7 @@ const CityOverviewTab = () => {
                     </ul>
                   </div>
                 ) : (
-                  // Show this message only if there's a mayor (or some indication that council *should* exist)
-                  // but no council members are found. If mayor is also missing, a more general message might be better.
-                  (mayorOffice ||
-                    citySpecificFilledLocalOffices.length === 0) && (
+                  (mayorOffice || governmentOffices.length > 0) && ( // Check for any government offices if mayor is also missing
                     <p>
                       City council member information not available or no seats
                       filled/defined.

@@ -74,51 +74,122 @@ export const createCampaignSetupSlice = (set, get) => {
             );
           }
           const termLength = electionType.frequencyYears || 4;
-          const createOfficeEntry = (specificOfficeName, isSeatArg) => {
-            const holder = generateRandomOfficeHolder(
-              setupState.generatedPartiesInCountry,
-              specificOfficeName,
-              setupState.selectedCountryId
-            );
-            let seatNumberSuffix = "";
-            let instanceBaseId = electionType.id;
-            if (isSeatArg) {
-              // Regex to find "Seat " followed by one or more digits in parentheses,
-              // and capture the digits.
-              const seatMatch = specificOfficeName.match(/Seat\s+(\d+)\)/);
-              const seatNumber = seatMatch && seatMatch[1] ? seatMatch[1] : "X"; // Use captured number or fallback to "X"
-              seatNumberSuffix = `_seat_${seatNumber}`;
+
+          // Determine if this multi-winner election type should be treated as a single body
+          // (like U.S. City Council MMD) or generate individual conceptual seats (e.g., Japan BlockVote/SNTV MMD).
+          const isMultiWinnerSingleBodyOffice =
+            (!electionType.generatesOneWinner && // It's a multi-winner election
+              electionType.electoralSystem === "PluralityMMD" &&
+              !electionType.id === "city_council_usa") ||
+            electionType.electoralSystem === "PartyListPR";
+
+          if (
+            electionType.generatesOneWinner ||
+            isMultiWinnerSingleBodyOffice
+          ) {
+            // This path handles:
+            // 1. True single-winner offices (e.g., Mayor).
+            // 2. Multi-winner offices that should be represented as a single body (e.g., U.S. City Council MMD).
+
+            const numberOfSeatsForOffice = electionType.generatesOneWinner
+              ? 1
+              : calculateNumberOfSeats(electionType, newCityObject.population);
+
+            let holderForOffice = null;
+            let initialMembersArray = undefined; // Will be an array if multi-winner single body
+
+            if (electionType.generatesOneWinner) {
+              // For single-winner offices, generate one holder
+              holderForOffice = generateRandomOfficeHolder(
+                setupState.generatedPartiesInCountry,
+                officeName, // Use base office name for holder generation context
+                setupState.selectedCountryId
+              );
+            } else if (isMultiWinnerSingleBodyOffice) {
+              // For multi-winner offices treated as a single body, generate multiple members
+              initialMembersArray = [];
+              const memberRole =
+                electionType.memberRoleName || `Member, ${officeName}`;
+              // Loop to generate initial members for the multi-seat body
+              for (let i = 0; i < numberOfSeatsForOffice; i++) {
+                const member = generateRandomOfficeHolder(
+                  setupState.generatedPartiesInCountry,
+                  `${officeName} Member ${i + 1}`, // Provide unique context for each member
+                  setupState.selectedCountryId
+                );
+                initialMembersArray.push({
+                  id: member.id,
+                  name: member.name,
+                  partyId: member.partyId,
+                  partyName: member.partyName,
+                  partyColor: member.partyColor,
+                  role: memberRole, // Assign the role defined by electionType or default
+                  termEnds: {
+                    // Inherit termEnds from the body, as they serve the same term
+                    year: 2025 + termLength - 1,
+                    month: electionType.electionMonth,
+                    day: 1,
+                  },
+                });
+              }
             }
+
             initialGovernmentOffices.push({
-              officeId: `initial_${
-                electionType.id
-              }${seatNumberSuffix}_${generateId()}`,
-              instanceBaseId: instanceBaseId,
+              officeId: `initial_${electionType.id}_${generateId()}`,
               cityName: newCityObject.name,
               cityId: newCityObject.id,
               officeNameTemplateId: electionType.id,
-              officeName: specificOfficeName,
+              officeName: officeName,
               level: electionType.level,
-              holder,
+              holder: holderForOffice, // Will be null for legislative bodies, populated for single winner
+              members: initialMembersArray, // Populated for legislative bodies, undefined for single winner
               termEnds: {
                 year: 2025 + termLength - 1,
                 month: electionType.electionMonth,
                 day: 1,
               },
+              numberOfSeatsToFill: numberOfSeatsForOffice, // ADDED: number of seats for this office entry
             });
-          };
-
-          if (electionType.generatesOneWinner)
-            createOfficeEntry(officeName, false);
-          else {
-            const numSeats = calculateNumberOfSeats(
+          } else {
+            // This path handles multi-winner election types that *should* generate individual conceptual seats
+            // (e.g., BlockVote or SNTV_MMD where you want individual seat entries).
+            const numSeatsInBody = calculateNumberOfSeats(
               electionType,
               newCityObject.population
             );
-            for (let s_idx = 0; s_idx < numSeats; s_idx++) {
-              // Use s_idx to avoid conflicts
+            for (let s_idx = 0; s_idx < numSeatsInBody; s_idx++) {
               const seatSpecificName = `${officeName} (Seat ${s_idx + 1})`;
-              createOfficeEntry(seatSpecificName, true);
+              const holderForSeat = generateRandomOfficeHolder(
+                setupState.generatedPartiesInCountry,
+                seatSpecificName, // Use seat-specific name for holder generation context
+                setupState.selectedCountryId
+              );
+
+              const parentElectionInstanceIdBase = `${electionType.id}_${newCityObject.id}`;
+              const conceptualSeatInstanceIdBase = `${parentElectionInstanceIdBase}_seat${
+                s_idx + 1
+              }`;
+
+              console.log(conceptualSeatInstanceIdBase);
+
+              initialGovernmentOffices.push({
+                officeId: `initial_${electionType.id}_seat_${
+                  s_idx + 1
+                }_${generateId()}`,
+                cityName: newCityObject.name,
+                cityId: newCityObject.id,
+                officeNameTemplateId: electionType.id,
+                officeName: seatSpecificName,
+                level: electionType.level,
+                holder: holderForSeat,
+                termEnds: {
+                  year: 2025 + termLength - 1,
+                  month: electionType.electionMonth,
+                  day: 1,
+                },
+                numberOfSeatsToFill: 1,
+                instanceIdBase: conceptualSeatInstanceIdBase,
+              });
             }
           }
         }

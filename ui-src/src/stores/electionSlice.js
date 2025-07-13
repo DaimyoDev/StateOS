@@ -209,19 +209,17 @@ export const createElectionSlice = (set) => ({
 
           // Now, determine if we are creating "conceptual seat" items for an AT-LARGE MMD
           // (This is your "Model A" for Japanese councils, etc.)
-          const isPluralityMultiMemberSystem = [
-            "BlockVote",
-            "SNTV_MMD",
-            "PluralityMMD",
-          ].includes(effectiveElectionType.electoralSystem);
-
+          // MODIFIED: Removed the specific condition for "city_council_usa"
           const shouldCreateConceptualSeatItems =
-            !_isSingleSeatContest && // Ensure it's an at-large contest instance from getElectionInstances
-            !effectiveElectionType.generatesOneWinner && // The election type itself generates multiple winners as one contest
-            seatDetailsForThisContest.numberOfSeats > 1 && // There's more than one seat to fill
-            isPluralityMultiMemberSystem && // Use the new helper for cleaner check against common multi-member plurality systems
-            (effectiveElectionType.level.includes("council") || // Apply specifically to 'council' level elections
-              effectiveElectionType.level.includes("assembly")); // Or other similar multi-seat local bodies if applicable
+            (!_isSingleSeatContest && // It's an at-large contest instance from getElectionInstances
+              !effectiveElectionType.generatesOneWinner &&
+              seatDetailsForThisContest.numberOfSeats > 1 &&
+              !(effectiveElectionType._modelAsSingleContest === true) &&
+              (effectiveElectionType.electoralSystem === "BlockVote" ||
+                effectiveElectionType.electoralSystem === "SNTV_MMD")) ||
+            (originalElectionType.id === "city_council_usa" &&
+              effectiveElectionType.electoralSystem === "PluralityMMD" &&
+              !entityData.councilDistricts);
 
           if (shouldCreateConceptualSeatItems) {
             const totalSeatsInCouncil = seatDetailsForThisContest.numberOfSeats;
@@ -312,6 +310,7 @@ export const createElectionSlice = (set) => ({
             //    2. District-based races where getElectionInstances already returned one instance per district.
             //    3. At-large PR/MMP list contests.
             //    4. At-large MMDs (SNTV/BlockVote) IF you DON'T want to explode them into conceptual seat items.
+            //    5. NOW: U.S. City Councils using PluralityMMD will also come here.
             // )
             const partiesInScope =
               state.activeCampaign.generatedPartiesSnapshot.filter((p) => {
@@ -1152,15 +1151,24 @@ export const createElectionSlice = (set) => ({
           };
 
       if (determinedWinnersArray.length > 0) {
+        console.log(electionToEnd.level);
         const isLegislativeBodyElection =
           electionToEnd.electoralSystem === "PartyListPR" ||
           electionToEnd.electoralSystem === "MMP" ||
-          (seatsToFill > 1 &&
+          (electionToEnd.electoralSystem !== "SNTV_MMD" &&
+            electionToEnd.electoralSystem !== "BlockVote" &&
+            !(
+              electionToEnd.electoralSystem === "PluralityMMD" &&
+              electionToEnd.officeNameTemplateId === "city_council_usa"
+            ) &&
+            // Now, check for multi-seat and level for remaining legislative bodies
+            seatsToFill > 1 &&
             (electionToEnd.level.includes("parliament") ||
               electionToEnd.level.includes("council") ||
               electionToEnd.level.includes("assembly") ||
               electionToEnd.level.includes("house") ||
-              electionToEnd.level.includes("senate")));
+              electionToEnd.level.includes("senate") ||
+              electionToEnd.level === "local_city"));
         if (isLegislativeBodyElection) {
           const officeIndex = updatedGovernmentOfficesLocal.findIndex(
             (off) =>
@@ -1197,11 +1205,15 @@ export const createElectionSlice = (set) => ({
             updatedGovernmentOfficesLocal[
               officeIndex
             ].currentCompositionByParty = newComposition;
-            // Ensure instanceIdBase and cityId are updated on existing legislative bodies
-            updatedGovernmentOfficesLocal[officeIndex].instanceIdBase =
-              electionToEnd.instanceIdBase; // Fix: Add instanceIdBase
+            // ADDED: Update numberOfSeatsToFill for existing legislative body
+            updatedGovernmentOfficesLocal[officeIndex].numberOfSeatsToFill =
+              electionToEnd.numberOfSeatsToFill;
+            // ADDED: Update cityId for existing legislative body
             updatedGovernmentOfficesLocal[officeIndex].cityId =
-              electionToEnd.entityDataSnapshot.id; // Fix: Add cityId
+              electionToEnd.entityDataSnapshot.id;
+            // ADDED: Update instanceIdBase for existing legislative body
+            updatedGovernmentOfficesLocal[officeIndex].instanceIdBase =
+              electionToEnd.instanceIdBase;
           } else {
             console.log(
               `[ProcessResults DEBUG] ADDING new legislative body: ${electionToEnd.officeName}`
@@ -1218,7 +1230,8 @@ export const createElectionSlice = (set) => ({
               termEnds: termEndDate,
               currentCompositionByParty: newComposition,
               instanceIdBase: electionToEnd.instanceIdBase, // Fix: Add instanceIdBase to new legislative bodies
-              cityId: electionToEnd.entityDataSnapshot.id, // Fix: Add cityId to new legislative bodies
+              numberOfSeatsToFill: electionToEnd.numberOfSeatsToFill, // <--- ADDED THIS LINE
+              cityId: electionToEnd.entityDataSnapshot.id, // <--- ADDED THIS LINE
             });
           }
           if (newMembers.some((mem) => mem.id === playerPoliticianData.id)) {
@@ -1226,27 +1239,28 @@ export const createElectionSlice = (set) => ({
             playerWonAnySeatThisElection = true;
           }
         } else {
-          // This block handles single-holder offices, like Mayor and conceptual seats.
-          // This entire block (including the determinedWinnersArray.forEach) is replaced by the robust map/push logic
-          // as per the detailed reasoning provided in the thought process.
+          // This block handles single-winner offices, like Mayor and conceptual seats.
+          // MODIFIED: Simplified to only process one winner for a single office.
           const winner = determinedWinnersArray[0];
 
           const newHolder = { ...winner, role: "", termEnds: termEndDate };
           delete newHolder.votes;
 
-          let finalOfficeName = electionToEnd.officeName;
-          const isConceptualSeatModel =
-            !electionToEnd.generatesOneWinner &&
-            seatsToFill > 1 &&
-            (electionToEnd.electoralSystem === "SNTV_MMD" ||
-              electionToEnd.electoralSystem === "BlockVote" ||
-              electionToEnd.electoralSystem === "PluralityMMD");
-          if (isConceptualSeatModel) {
-            finalOfficeName = `${electionToEnd.officeName} (Seat ${0 + 1})`;
-          }
+          // For single-winner elections (including conceptual seats), the officeName
+          // will already be correctly formatted (e.g., "Mayor" or "City Council (Seat 1)").
+          const finalOfficeName = electionToEnd.officeName;
           newHolder.role = finalOfficeName;
 
-          const officeToProcess = {
+          let finalCityIdForOffice = electionToEnd.entityDataSnapshot.id;
+          if (finalCityIdForOffice.includes("_seat")) {
+            // If the entityDataSnapshot.id contains '_seat', strip it to get the original city ID
+            finalCityIdForOffice = finalCityIdForOffice.substring(
+              0,
+              finalCityIdForOffice.lastIndexOf("_seat")
+            );
+          }
+
+          const officeDataToSave = {
             officeId: `gov_office_${
               electionToEnd.instanceIdBase || electionToEnd.officeNameTemplateId
             }_${generateId()}`,
@@ -1255,36 +1269,45 @@ export const createElectionSlice = (set) => ({
             level: electionToEnd.level,
             holder: newHolder,
             termEnds: termEndDate,
-            cityId: electionToEnd.entityDataSnapshot.id,
+            cityId: finalCityIdForOffice,
             instanceIdBase: electionToEnd.instanceIdBase,
+            numberOfSeatsToFill: electionToEnd.numberOfSeatsToFill, // Should be 1 for single-winner or conceptual seats
           };
 
-          let officeWasUpdated = false;
-          updatedGovernmentOfficesLocal = updatedGovernmentOfficesLocal.map(
-            (office) => {
-              // Check if this existing 'office' matches the current conceptual seat being processed.
-              console.log(office.officeName, officeToProcess.officeName);
-              if (
-                (typeof office.instanceIdBase === "string" &&
-                  typeof officeToProcess.instanceIdBase === "string" &&
-                  office.instanceIdBase === officeToProcess.instanceIdBase) ||
-                office.officeName === officeToProcess.officeName
-              ) {
-                officeWasUpdated = true;
-                console.log(
-                  `[ProcessResults DEBUG] Replacing existing office: ${office.officeName} (Old Holder: ${office.holder?.name}) with new holder: ${officeToProcess.holder.name}`
-                );
-                return officeToProcess;
-              }
-              return office;
-            }
+          const officeIndex = updatedGovernmentOfficesLocal.findIndex(
+            (off) =>
+              (typeof off.instanceIdBase === "string" &&
+                off.instanceIdBase === electionToEnd.instanceIdBase) ||
+              (off.officeName === finalOfficeName &&
+                off.level === electionToEnd.level &&
+                off.cityId === electionToEnd.entityDataSnapshot.id)
           );
 
-          if (!officeWasUpdated) {
+          if (officeIndex !== -1) {
+            updatedGovernmentOfficesLocal[officeIndex] = {
+              ...updatedGovernmentOfficesLocal[officeIndex], // Keep existing properties
+              holder: officeDataToSave.holder,
+              termEnds: officeDataToSave.termEnds,
+              // Update other relevant properties if an existing office is being re-filled
+              officeName: officeDataToSave.officeName, // In case conceptual name changed
+              officeNameTemplateId: officeDataToSave.officeNameTemplateId,
+              level: officeDataToSave.level,
+              cityId: officeDataToSave.cityId,
+              instanceIdBase: officeDataToSave.instanceIdBase,
+              numberOfSeatsToFill: officeDataToSave.numberOfSeatsToFill,
+            };
             console.log(
-              `[ProcessResults DEBUG] Adding new office: ${officeToProcess.officeName} (Instance ID: ${officeToProcess.instanceIdBase})`
+              `[ProcessResults DEBUG] Updated existing single office: ${officeDataToSave.cityId} (Holder: ${officeDataToSave.holder.name})`
             );
-            updatedGovernmentOfficesLocal.push(officeToProcess);
+          } else {
+            updatedGovernmentOfficesLocal.push(officeDataToSave);
+            console.log(
+              `[ProcessResults DEBUG] Added new single office: ${officeDataToSave.officeName} (Holder: ${officeDataToSave.holder.name})`
+            );
+          }
+          if (newHolder.id === playerPoliticianData.id) {
+            newPlayerOffice = finalOfficeName;
+            playerWonAnySeatThisElection = true;
           }
         }
       }

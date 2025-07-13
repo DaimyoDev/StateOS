@@ -32,7 +32,7 @@ export const ELECTION_TYPES_BY_COUNTRY = {
       prAllocationMethod: null,
       mmpConstituencySeatsRatio: null,
       mmpListSeatsRatio: null,
-      _modelAsSingleContest: true,
+      _modelAsSingleContest: false,
       councilSeatPopulationTiers: [
         { popThreshold: 50000, extraSeatsRange: [0, 5] },
         { popThreshold: 100000, extraSeatsRange: [3, 8] },
