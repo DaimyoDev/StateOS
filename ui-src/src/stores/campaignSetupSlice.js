@@ -5,7 +5,7 @@ import {
   calculateNumberOfSeats,
 } from "../utils/electionUtils";
 import { generateFullCityData } from "../utils/governmentUtils";
-import { generateFullStateData } from "../utils/statesUtils.js";
+import { generateFullStateData } from "../utils/stateUtils.js";
 
 export const createCampaignSetupSlice = (set, get) => {
   return {
@@ -47,20 +47,22 @@ export const createCampaignSetupSlice = (set, get) => {
         return;
       }
 
-      // --- NEW: 2. Generate Full Dynamic State/Prefecture Data ---
-      const allPartiesInGameSnapshot = [
-        ...allCustomPartiesData, // Custom parties from setup
-        ...setupState.generatedPartiesInCountry, // Generated parties for the country
-      ];
-      // Ensure allPartiesInGameSnapshot is unique if there's overlap (e.g., player custom party also generated as AI)
-      const uniquePartiesMap = new Map();
-      allPartiesInGameSnapshot.forEach((p) => uniquePartiesMap.set(p.id, p));
-      const allUniqueParties = Array.from(uniquePartiesMap.values());
+      // --- 2. Generate Full Dynamic State/Prefecture Data ---
+      const currentCountryData = availableCountriesData.find(
+        (c) => c.id === setupState.selectedCountryId
+      );
+      const regionData = currentCountryData?.regions?.find(
+        (r) => r.id === setupState.selectedRegionId
+      );
+      const stateName = regionData?.name || "Selected Region";
 
-      const { dynamicState: currentActiveRegionObject } = generateFullStateData(
-        setupState.selectedRegionId,
-        setupState.selectedCountryId,
-        allUniqueParties
+      const stateGenerationParams = {
+        name: stateName,
+        countryId: setupState.selectedCountryId,
+        cities: [newCityObject], // The state's data is aggregated from the cities within it
+      };
+      const currentActiveRegionObject = generateFullStateData(
+        stateGenerationParams
       );
 
       if (!currentActiveRegionObject) {
@@ -76,9 +78,6 @@ export const createCampaignSetupSlice = (set, get) => {
       const initialGovernmentOffices = [];
       const countryElectionTypes =
         ELECTION_TYPES_BY_COUNTRY[setupState.selectedCountryId] || [];
-      const currentCountryData = availableCountriesData.find(
-        (c) => c.id === setupState.selectedCountryId
-      );
       console.log(countryElectionTypes);
       countryElectionTypes.forEach((electionType) => {
         if (
@@ -235,6 +234,8 @@ export const createCampaignSetupSlice = (set, get) => {
         newsAndEvents: [],
         availableCountries: availableCountriesData,
       };
+
+      console.log(newActiveCampaign.currentActiveRegion);
 
       get().actions.clearAllNews();
       set({ activeCampaign: newActiveCampaign });

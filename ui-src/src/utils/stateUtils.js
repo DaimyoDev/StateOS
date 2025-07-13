@@ -1,198 +1,155 @@
-// src/utils/statesUtils.js
-import { STATES_DATA } from "../data/statesData.js"; // Import the static state data you just created
-import { getRandomElement, getRandomInt, generateId } from "./generalUtils.js"; // Assuming these utilities exist
-import { generateFullAIPolitician } from "./electionUtils.js"; // For generating initial state leaders
-import { BASE_IDEOLOGIES } from "../data/ideologiesData.js"; // For generating party info if needed
-// You might also need to import COUNTRIES_DATA if generateFullAIPolitician uses country-specific naming rules
-// import { COUNTRIES_DATA } from "../data/countriesData.js";
+import { createStateObject } from "../data/stateData";
+import {
+  generateId,
+  getRandomElement,
+  getRandomInt,
+} from "../utils/generalUtils";
 
 /**
- * Retrieves the static data for a specific state/prefecture.
- * @param {string} stateId - The ID of the state/prefecture.
- * @returns {object|undefined} The state object, or undefined if not found.
+ * Generates a full state data object from a list of city data objects.
+ * This function aggregates city data to create a state-level overview.
+ *
+ * @param {object} params - The parameters for generating the state data.
+ * @param {string} params.name - The name of the state.
+ * @param {string} params.countryId - The ID of the country the state belongs to.
+ * @param {Array<object>} params.cities - An array of city objects within the state.
+ * @returns {object} The complete state data object.
  */
-export const getStateData = (stateId) => {
-  return STATES_DATA.find((state) => state.id === stateId);
-};
+export const generateFullStateData = (params = {}) => {
+  const { name, countryId, cities = [] } = params;
 
-/**
- * Generates an AI politician suitable for a state-level executive office.
- * @param {string} officeTitle - e.g., "Governor"
- * @param {string} stateId - The ID of the state for context.
- * @param {string} countryId - The ID of the country for politician name generation.
- * @param {Array<object>} allPartiesInGame - Snapshot of all parties in the game for leader generation.
- * @returns {object} A full AI politician object.
- */
-export const generateStateLeader = (
-  officeTitle,
-  stateId,
-  countryId,
-  allPartiesInGame = []
-) => {
-  // Find parties relevant to this state's political landscape
-  const staticState = getStateData(stateId);
-  const relevantParties = allPartiesInGame.filter((p) =>
-    staticState?.politicalLandscape.some((lp) => lp.id === p.id)
-  );
-
-  let partyInfo = null;
-  if (relevantParties.length > 0) {
-    partyInfo = getRandomElement(relevantParties);
-  } else {
-    // Fallback to independent if no specific state parties are available or found
-    partyInfo = {
-      id: `independent_state_leader_party_${generateId()}`,
-      name: "Independent",
-      ideology: getRandomElement(BASE_IDEOLOGIES)?.name || "Centrist",
-      color: "#888888",
-    };
-  }
-
-  // Pass countryId to generateFullAIPolitician for name generation
-  const leader = generateFullAIPolitician(partyInfo, false, countryId);
-
-  // Set initial office and a placeholder term end date.
-  // Term length for governors is often 4 years, but this should ideally come from electionsData.js
-  const termEndDate = { year: 2004, month: 1, day: 1 }; // Placeholder based on campaign starting year 2000 + 4 years
-
-  return {
-    ...leader,
-    role: officeTitle,
-    currentOffice: `${staticState?.name} ${officeTitle}`, // Explicitly set their current office for display
-    termEnds: termEndDate,
-  };
-};
-
-/**
- * Generates the full dynamic state object, including initial government and stats.
- * This is meant to be called once at campaign setup for a specific region.
- * @param {string} stateId - The ID of the state/prefecture to initialize.
- * @param {string} countryId - The ID of the country the state belongs to.
- * @param {Array<object>} allPartiesInGame - Snapshot of all parties in the game.
- * @returns {{dynamicState: object, initialStatePoliticians: Array<object>}|null} An initialized dynamic state object and an array of politicians generated for state offices, or null if state not found.
- */
-export const generateFullStateData = (stateId, countryId, allPartiesInGame) => {
-  const staticState = getStateData(stateId);
-  if (!staticState) {
-    console.warn(
-      `generateFullStateData: State with ID ${stateId} not found in STATES_DATA.`
-    );
-    return null;
-  }
-
-  // Generate initial government offices/holders for this state
-  const governmentOffices = [];
-  const initialStatePoliticians = []; // To hold all initial office holders for saving
-
-  // Example: Generate a Governor/Prefectural Governor/Premier
-  const governorOfficeNameTemplate =
-    staticState.type === "state"
-      ? "Governor"
-      : staticState.type === "prefecture"
-      ? "Prefectural Governor"
-      : "Premier";
-  const initialGovernor = generateStateLeader(
-    governorOfficeNameTemplate,
-    stateId,
-    countryId,
-    allPartiesInGame
-  );
-
-  if (initialGovernor) {
-    governmentOffices.push({
-      officeId: `gov_office_${stateId}_governor`, // Use a consistent ID generation
-      officeName: `${staticState.name} ${initialGovernor.role}`,
-      officeNameTemplateId: `${staticState.type}_governor`, // A template ID for this type of office
-      level: `local_${staticState.type}`,
-      holder: {
-        id: initialGovernor.id,
-        name: initialGovernor.name,
-        partyId: initialGovernor.partyId,
-        partyName: initialGovernor.partyName,
-        partyColor: initialGovernor.partyColor,
-        role: initialGovernor.role,
-        termEnds: initialGovernor.termEnds,
-      },
-      members: null, // This is an executive office, not a legislative body
-      currentCompositionByParty: null,
+  if (cities.length === 0) {
+    // Return a default state object if there are no cities
+    return createStateObject({
+      id: `state_${generateId()}`,
+      name: name || "Empty State",
+      countryId: countryId,
     });
-    initialStatePoliticians.push(initialGovernor);
   }
 
-  // You would expand this to include initial legislative bodies (e.g., State Assembly/Council)
-  // This would involve generating multiple "members" and their parties for composition.
-  // Example for a legislative body (simplified)
-  // if (staticState.legislativeBody) {
-  //     const assemblyMembers = [];
-  //     const numSeats = getRandomInt(staticState.legislativeBody.minSeats, staticState.legislativeBody.maxSeats);
-  //     const composition = {}; // Track party composition
+  // --- Aggregate Data from Cities ---
 
-  //     for (let i = 0; i < numSeats; i++) {
-  //         const memberPolitician = generateFullAIPolitician(getRandomElement(allPartiesInGame), false, countryId);
-  //         assemblyMembers.push({
-  //             id: memberPolitician.id,
-  //             name: memberPolitician.name,
-  //             partyId: memberPolitician.partyId,
-  //             partyName: memberPolitician.partyName,
-  //             partyColor: memberPolitician.partyColor,
-  //             role: `Member, ${staticState.legislativeBody.name}`,
-  //             termEnds: { year: 2004, month: 1, day: 1 } // Placeholder
-  //         });
-  //         composition[memberPolitician.partyId] = (composition[memberPolitician.partyId] || 0) + 1;
-  //         initialStatePoliticians.push(memberPolitician);
-  //     }
-
-  //     governmentOffices.push({
-  //         officeId: `gov_office_${stateId}_legislature`,
-  //         officeName: `${staticState.name} ${staticState.legislativeBody.name}`,
-  //         officeNameTemplateId: staticState.legislativeBody.id,
-  //         level: `local_${staticState.type}`,
-  //         holder: null,
-  //         members: assemblyMembers,
-  //         currentCompositionByParty: composition,
-  //     });
-  // }
-
-  return {
-    dynamicState: {
-      ...staticState, // Copy all static data
-      // Dynamic properties go here:
-      currentStats: { ...staticState.initialStats }, // Will be updated monthly
-      currentGovernmentOffices: governmentOffices, // State-level executive/legislative
-      currentLaws: [], // Laws specific to this state
-      // Add other dynamic state-level attributes as needed
-    },
-    initialStatePoliticians: initialStatePoliticians, // Politicians generated for state offices
-  };
-};
-
-/**
- * Calculates and updates the dynamic stats for a given state.
- * This function would be called monthly as part of your monthlyCalcUtils.
- * @param {object} stateObject - The dynamic state object from activeCampaign.
- * @param {Array<object>} activePolicies - Policies active at this state level.
- * @param {object} globalContext - Other global game state needed for calculations (e.g., current date, national economy).
- * @returns {object} The updated state object.
- */
-export const calculateStateMonthlyStats = (stateObject) => {
-  const updatedStats = { ...stateObject.currentStats };
-  // Implement complex calculations based on policies, events, and other factors.
-  // Example: Influence state economy based on state policies.
-  // Example: Adjust unemployment based on national economic trends.
-  // Example: Update citizen mood based on policy effects and budget balance.
-
-  // For demonstration: simple random fluctuations
-  updatedStats.economy = getRandomElement(["Booming", "Stable", "Stagnant"]);
-  updatedStats.unemploymentRate = parseFloat(
-    (updatedStats.unemploymentRate + getRandomInt(-10, 10) / 10).toFixed(1)
+  const totalPopulation = cities.reduce(
+    (sum, city) => sum + city.population,
+    0
   );
-  updatedStats.unemploymentRate = Math.max(
-    1.0,
-    Math.min(15.0, updatedStats.unemploymentRate)
-  ); // Clamp
 
-  return {
-    ...stateObject,
-    currentStats: updatedStats,
+  totalPopulation * getRandomInt(0, 10);
+
+  // Weighted Averages for Demographics
+  const weightedDemographics = {
+    ageDistribution: { youth: 0, youngAdult: 0, adult: 0, senior: 0 },
+    educationLevels: {
+      highSchoolOrLess: 0,
+      someCollege: 0,
+      bachelorsOrHigher: 0,
+    },
   };
+
+  cities.forEach((city) => {
+    const weight = city.population / totalPopulation;
+    for (const key in weightedDemographics.ageDistribution) {
+      weightedDemographics.ageDistribution[key] +=
+        city.demographics.ageDistribution[key] * weight;
+    }
+    for (const key in weightedDemographics.educationLevels) {
+      weightedDemographics.educationLevels[key] +=
+        city.demographics.educationLevels[key] * weight;
+    }
+  });
+
+  // GDP Per Capita (Weighted by Population)
+  const totalGDP = cities.reduce(
+    (sum, city) => sum + city.population * city.economicProfile.gdpPerCapita,
+    0
+  );
+  const averageGdpPerCapita =
+    totalPopulation > 0 ? totalGDP / totalPopulation : 0;
+
+  // Aggregate Main Issues and Dominant Industries
+  const allIssues = cities.flatMap((city) => city.stats.mainIssues);
+  const mainIssues = [...new Set(allIssues)]; // Get unique issues
+
+  const allIndustries = cities.flatMap(
+    (city) => city.economicProfile.dominantIndustries
+  );
+  const dominantIndustries = [...new Set(allIndustries)];
+
+  // Aggregate Budget Figures
+  const aggregatedBudget = cities.reduce(
+    (totals, city) => {
+      totals.totalAnnualIncome += city.stats.budget.totalAnnualIncome;
+      totals.totalAnnualExpenses += city.stats.budget.totalAnnualExpenses;
+      totals.balance += city.stats.budget.balance;
+      totals.accumulatedDebt += city.stats.budget.accumulatedDebt;
+      return totals;
+    },
+    {
+      totalAnnualIncome: 0,
+      totalAnnualExpenses: 0,
+      balance: 0,
+      accumulatedDebt: 0,
+    }
+  );
+
+  // For ratings, we can take a simple average for now
+  const averageRating = (key) => {
+    const ratingMap = {
+      Excellent: 5,
+      Good: 4,
+      Average: 3,
+      Poor: 2,
+      "Very Poor": 1,
+    };
+    const reverseRatingMap = [
+      "",
+      "Very Poor",
+      "Poor",
+      "Average",
+      "Good",
+      "Excellent",
+    ];
+    const totalScore = cities.reduce(
+      (sum, city) => sum + (ratingMap[city.stats[key]] || 3),
+      0
+    );
+    const averageScore = Math.round(totalScore / cities.length);
+    return reverseRatingMap[averageScore] || "Average";
+  };
+
+  const capitalCity = cities.length > 0 ? getRandomElement(cities) : null;
+
+  // Create the final state object
+  const stateData = {
+    id: `state_${generateId()}`,
+    name: name || "Unnamed State",
+    countryId: countryId,
+    capitalCityId: capitalCity ? capitalCity.id : null,
+    cities: cities.map((c) => c.id),
+    population: totalPopulation,
+    demographics: {
+      ageDistribution: weightedDemographics.ageDistribution,
+      educationLevels: weightedDemographics.educationLevels,
+    },
+    economicProfile: {
+      dominantIndustries: dominantIndustries,
+      gdpPerCapita: Math.round(averageGdpPerCapita),
+      keyIssues: mainIssues, // Using mainIssues as key economic issues for simplicity
+    },
+    stats: {
+      mainIssues: mainIssues,
+      economicOutlook: averageRating("economicOutlook"),
+      publicSafetyRating: averageRating("publicSafetyRating"),
+      educationQuality: averageRating("educationQuality"),
+      infrastructureState: averageRating("infrastructureState"),
+      overallCitizenMood: averageRating("overallCitizenMood"),
+      healthcareQuality: averageRating("healthcareQuality"),
+      environmentRating: averageRating("environmentRating"),
+      cultureArtsRating: averageRating("cultureArtsRating"),
+      budget: aggregatedBudget,
+    },
+    stateLaws: {}, // State laws would be generated by a separate, more complex function
+  };
+
+  return createStateObject(stateData);
 };
