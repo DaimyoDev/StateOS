@@ -131,7 +131,7 @@ export const createCampaignActionsSlice = (set, get) => {
                 hoursToSpend,
             })
           );
-          success = newActiveCampaign !== state.activeCampaign; // Check if update actually happened
+          success = newActiveCampaign !== state.activeCampaign;
           return { activeCampaign: newActiveCampaign };
         } else {
           success = false;
@@ -649,7 +649,6 @@ export const createCampaignActionsSlice = (set, get) => {
       });
     },
 
-    // --- NEW CAMPAIGN OVERHAUL ACTIONS (Generalized where appropriate) ---
     recruitVolunteers: (hoursToSpend = 2, politicianId = null) => {
       if (!get().actions.spendCampaignHours(hoursToSpend, politicianId)) {
         return;
@@ -674,7 +673,7 @@ export const createCampaignActionsSlice = (set, get) => {
           calculateAdultPopulation(
             city.population,
             city.demographics?.ageDistribution
-          ) || 100000; // fallback for division
+          ) || 100000;
         const nameRecFactor =
           (targetPoliticianInitial.nameRecognition || 0) / adultPopForNameRec;
         const baseRecruitsPerHour = getRandomInt(3, 8);

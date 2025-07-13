@@ -5,6 +5,7 @@ import {
   calculateNumberOfSeats,
 } from "../utils/electionUtils";
 import { generateFullCityData } from "../utils/governmentUtils";
+import { generateFullStateData } from "../utils/statesUtils.js";
 
 export const createCampaignSetupSlice = (set, get) => {
   return {
@@ -37,10 +38,7 @@ export const createCampaignSetupSlice = (set, get) => {
         playerDefinedCityName: cityName.trim(),
         countryId: setupState.selectedCountryId,
         regionId: setupState.selectedRegionId,
-        // Pass the regional political landscape as a base for the city's landscape
         basePoliticalLandscape: setupState.regionPoliticalLandscape,
-        // populationHint: someValueIfPlayerSelectedIt, // Optional
-        // archetypeHint: someValueIfPlayerSelectedIt, // Optional
       };
       const newCityObject = generateFullCityData(cityGenerationParams);
 
@@ -48,6 +46,33 @@ export const createCampaignSetupSlice = (set, get) => {
         alert("Critical error: Could not generate city data.");
         return;
       }
+
+      // --- NEW: 2. Generate Full Dynamic State/Prefecture Data ---
+      const allPartiesInGameSnapshot = [
+        ...allCustomPartiesData, // Custom parties from setup
+        ...setupState.generatedPartiesInCountry, // Generated parties for the country
+      ];
+      // Ensure allPartiesInGameSnapshot is unique if there's overlap (e.g., player custom party also generated as AI)
+      const uniquePartiesMap = new Map();
+      allPartiesInGameSnapshot.forEach((p) => uniquePartiesMap.set(p.id, p));
+      const allUniqueParties = Array.from(uniquePartiesMap.values());
+
+      const { dynamicState: currentActiveRegionObject } = generateFullStateData(
+        setupState.selectedRegionId,
+        setupState.selectedCountryId,
+        allUniqueParties
+      );
+
+      if (!currentActiveRegionObject) {
+        console.error("Failed to generate dynamic state/prefecture data.");
+        if (get().actions.addToast)
+          get().actions.addToast({
+            message: "Failed to set up region data.",
+            type: "error",
+          });
+        return;
+      }
+
       const initialGovernmentOffices = [];
       const countryElectionTypes =
         ELECTION_TYPES_BY_COUNTRY[setupState.selectedCountryId] || [];
@@ -170,8 +195,6 @@ export const createCampaignSetupSlice = (set, get) => {
                 s_idx + 1
               }`;
 
-              console.log(conceptualSeatInstanceIdBase);
-
               initialGovernmentOffices.push({
                 officeId: `initial_${electionType.id}_seat_${
                   s_idx + 1
@@ -203,6 +226,7 @@ export const createCampaignSetupSlice = (set, get) => {
         customPartiesSnapshot: [...allCustomPartiesData],
         generatedPartiesSnapshot: [...setupState.generatedPartiesInCountry],
         startingCity: newCityObject,
+        currentActiveRegion: currentActiveRegionObject,
         currentDate: { year: 2025, month: 1, day: 1 },
         elections: [],
         lastElectionYear: {},

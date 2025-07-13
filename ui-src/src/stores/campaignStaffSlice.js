@@ -1,6 +1,5 @@
 // ui-src/src/stores/campaignStaffSlice.js
 import { STAFF_ROLES_INFO } from "../data/campaignStaffData";
-import { getRandomInt } from "../utils/generalUtils";
 
 export const createCampaignStaffSlice = (set, get) => ({
   hireStaff: (roleId) => {
@@ -88,32 +87,6 @@ export const createCampaignStaffSlice = (set, get) => ({
             hiredStaff: state.activeCampaign.politician.hiredStaff.filter(
               (s) => s.id !== staffMemberId
             ),
-          },
-        },
-      };
-    });
-  },
-
-  // Placeholder for volunteer actions
-  recruitVolunteers: (amount) => {
-    set((state) => {
-      if (!state.activeCampaign || !state.activeCampaign.politician) return {};
-      // Cost, success chance, etc. would be involved
-      const currentVolunteers =
-        state.activeCampaign.politician.volunteerCount || 0;
-      const newVolunteers =
-        currentVolunteers + getRandomInt(5 * amount, 15 * amount); // amount could be effort level
-      get().actions.addToast?.({
-        message: `${newVolunteers - currentVolunteers} new volunteers joined!`,
-        type: "success",
-      });
-      return {
-        activeCampaign: {
-          ...state.activeCampaign,
-          politician: {
-            ...state.activeCampaign.politician,
-            volunteerCount: newVolunteers,
-            // campaignActionToday: true, // If this is a major action
           },
         },
       };

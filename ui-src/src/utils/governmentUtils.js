@@ -470,10 +470,7 @@ export const generateInitialCityStats = (
   };
 };
 
-// --- MAIN CITY GENERATION FUNCTION ---
 export const generateFullCityData = (params = {}) => {
-  // Params might include: playerDefinedCityName, countryId, regionId, populationHint, archetypeHint
-
   const id = `city_${generateId()}`;
   const name =
     params.playerDefinedCityName || generateCityName(params.countryId);
