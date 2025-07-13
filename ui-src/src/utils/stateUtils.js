@@ -21,6 +21,16 @@ export const generateFullStateData = (params = {}) => {
     legislativeDistricts,
   } = params;
 
+  let type = null;
+
+  if (countryId === "JPN") {
+    type = "Prefecture";
+  } else if (countryId === "PHL") {
+    type = "Region";
+  } else {
+    type = "State";
+  }
+
   // Weighted Averages for Demographics
   const weightedDemographics = {
     ageDistribution: { youth: 0, youngAdult: 0, adult: 0, senior: 0 },
@@ -113,6 +123,7 @@ export const generateFullStateData = (params = {}) => {
     cities: cities.map((c) => c.id),
     population: totalPopulation,
     legislativeDistricts: legislativeDistricts,
+    type: type,
     demographics: {
       ageDistribution: weightedDemographics.ageDistribution,
       educationLevels: weightedDemographics.educationLevels,

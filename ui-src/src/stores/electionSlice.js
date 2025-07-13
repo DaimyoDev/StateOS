@@ -1182,6 +1182,29 @@ export const createElectionSlice = (set) => ({
               newComposition["independent"] =
                 (newComposition["independent"] || 0) + 1;
           });
+
+          // Determine the correct ID property based on election level
+          let newOfficeLocationIdProps = {};
+          const entityId = electionToEnd.entityDataSnapshot.id;
+          if (electionToEnd.level.includes("local_city")) {
+            newOfficeLocationIdProps.cityId = entityId;
+          } else if (
+            electionToEnd.level.includes("local_state") ||
+            electionToEnd.level.includes("local_prefecture")
+          ) {
+            // Check country to assign stateId or prefectureId
+            if (electionToEnd.countryId === "JPN") {
+              newOfficeLocationIdProps.prefectureId = entityId;
+            } else {
+              // Default to stateId for USA/GER
+              newOfficeLocationIdProps.stateId = entityId;
+            }
+          } else if (electionToEnd.level.includes("local_province")) {
+            newOfficeLocationIdProps.provinceId = entityId;
+          } else if (electionToEnd.level.includes("national_")) {
+            newOfficeLocationIdProps.countryId = entityId; // Or specific national entity ID if applicable
+          }
+
           if (officeIndex !== -1) {
             console.log(
               `[ProcessResults DEBUG] UPDATING existing legislative body: ${electionToEnd.officeName}`
@@ -1194,9 +1217,11 @@ export const createElectionSlice = (set) => ({
             // ADDED: Update numberOfSeatsToFill for existing legislative body
             updatedGovernmentOfficesLocal[officeIndex].numberOfSeatsToFill =
               electionToEnd.numberOfSeatsToFill;
-            // ADDED: Update cityId for existing legislative body
-            updatedGovernmentOfficesLocal[officeIndex].cityId =
-              electionToEnd.entityDataSnapshot.id;
+            // ADDED: Update location ID for existing legislative body
+            Object.assign(
+              updatedGovernmentOfficesLocal[officeIndex],
+              newOfficeLocationIdProps
+            ); // Apply new ID props
             // ADDED: Update instanceIdBase for existing legislative body
             updatedGovernmentOfficesLocal[officeIndex].instanceIdBase =
               electionToEnd.instanceIdBase;
@@ -1217,7 +1242,7 @@ export const createElectionSlice = (set) => ({
               currentCompositionByParty: newComposition,
               instanceIdBase: electionToEnd.instanceIdBase, // Fix: Add instanceIdBase to new legislative bodies
               numberOfSeatsToFill: electionToEnd.numberOfSeatsToFill, // <--- ADDED THIS LINE
-              cityId: electionToEnd.entityDataSnapshot.id, // <--- ADDED THIS LINE
+              ...newOfficeLocationIdProps, // Apply new ID props
             });
           }
           if (newMembers.some((mem) => mem.id === playerPoliticianData.id)) {
@@ -1237,13 +1262,24 @@ export const createElectionSlice = (set) => ({
           const finalOfficeName = electionToEnd.officeName;
           newHolder.role = finalOfficeName;
 
-          let finalCityIdForOffice = electionToEnd.entityDataSnapshot.id;
-          if (finalCityIdForOffice.includes("_seat")) {
-            // If the entityDataSnapshot.id contains '_seat', strip it to get the original city ID
-            finalCityIdForOffice = finalCityIdForOffice.substring(
-              0,
-              finalCityIdForOffice.lastIndexOf("_seat")
-            );
+          // Determine the correct ID property based on election level
+          let newOfficeLocationIdProps = {};
+          const entityId = electionToEnd.entityDataSnapshot.id;
+          if (electionToEnd.level.includes("local_city")) {
+            newOfficeLocationIdProps.cityId = entityId;
+          } else if (
+            electionToEnd.level.includes("local_state") ||
+            electionToEnd.level.includes("local_prefecture")
+          ) {
+            if (electionToEnd.countryId === "JPN") {
+              newOfficeLocationIdProps.prefectureId = entityId;
+            } else {
+              newOfficeLocationIdProps.stateId = entityId;
+            }
+          } else if (electionToEnd.level.includes("local_province")) {
+            newOfficeLocationIdProps.provinceId = entityId;
+          } else if (electionToEnd.level.includes("national_")) {
+            newOfficeLocationIdProps.countryId = entityId;
           }
 
           const officeDataToSave = {
@@ -1255,7 +1291,7 @@ export const createElectionSlice = (set) => ({
             level: electionToEnd.level,
             holder: newHolder,
             termEnds: termEndDate,
-            cityId: finalCityIdForOffice,
+            ...newOfficeLocationIdProps, // Apply new ID props
             instanceIdBase: electionToEnd.instanceIdBase,
             numberOfSeatsToFill: electionToEnd.numberOfSeatsToFill, // Should be 1 for single-winner or conceptual seats
           };
@@ -1266,7 +1302,18 @@ export const createElectionSlice = (set) => ({
                 off.instanceIdBase === electionToEnd.instanceIdBase) ||
               (off.officeName === finalOfficeName &&
                 off.level === electionToEnd.level &&
-                off.cityId === electionToEnd.entityDataSnapshot.id)
+                // Check relevant ID based on level for existing office
+                (newOfficeLocationIdProps.cityId
+                  ? off.cityId === newOfficeLocationIdProps.cityId
+                  : newOfficeLocationIdProps.stateId
+                  ? off.stateId === newOfficeLocationIdProps.stateId
+                  : newOfficeLocationIdProps.prefectureId
+                  ? off.prefectureId === newOfficeLocationIdProps.prefectureId
+                  : newOfficeLocationIdProps.provinceId
+                  ? off.provinceId === newOfficeLocationIdProps.provinceId
+                  : newOfficeLocationIdProps.countryId
+                  ? off.countryId === newOfficeLocationIdProps.countryId
+                  : false))
           );
 
           if (officeIndex !== -1) {
@@ -1278,12 +1325,12 @@ export const createElectionSlice = (set) => ({
               officeName: officeDataToSave.officeName, // In case conceptual name changed
               officeNameTemplateId: officeDataToSave.officeNameTemplateId,
               level: officeDataToSave.level,
-              cityId: officeDataToSave.cityId,
+              ...newOfficeLocationIdProps, // Re-apply new ID props
               instanceIdBase: officeDataToSave.instanceIdBase,
               numberOfSeatsToFill: officeDataToSave.numberOfSeatsToFill,
             };
             console.log(
-              `[ProcessResults DEBUG] Updated existing single office: ${officeDataToSave.cityId} (Holder: ${officeDataToSave.holder.name})`
+              `[ProcessResults DEBUG] Updated existing single office: ${officeDataToSave.officeName} (Holder: ${officeDataToSave.holder.name})`
             );
           } else {
             updatedGovernmentOfficesLocal.push(officeDataToSave);

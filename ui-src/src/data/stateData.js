@@ -13,6 +13,7 @@ export const createStateObject = (params = {}) => ({
   legislativeDistricts: params.legislativeDistricts || null,
   cities: params.cities || [],
   population: params.population || 0,
+  type: params.type,
 
   demographics: {
     ageDistribution: params.ageDistribution || {
