@@ -5,7 +5,6 @@ import {
   calculateNumberOfSeats,
 } from "../utils/electionUtils";
 import { generateFullCityData } from "../utils/governmentUtils";
-import { generateFullStateData } from "../utils/stateUtils.js";
 
 export const createCampaignSetupSlice = (set, get) => {
   return {
@@ -47,33 +46,9 @@ export const createCampaignSetupSlice = (set, get) => {
         return;
       }
 
-      // --- 2. Generate Full Dynamic State/Prefecture Data ---
       const currentCountryData = availableCountriesData.find(
         (c) => c.id === setupState.selectedCountryId
       );
-      const regionData = currentCountryData?.regions?.find(
-        (r) => r.id === setupState.selectedRegionId
-      );
-      const stateName = regionData?.name || "Selected Region";
-
-      const stateGenerationParams = {
-        name: stateName,
-        countryId: setupState.selectedCountryId,
-        cities: [newCityObject], // The state's data is aggregated from the cities within it
-      };
-      const currentActiveRegionObject = generateFullStateData(
-        stateGenerationParams
-      );
-
-      if (!currentActiveRegionObject) {
-        console.error("Failed to generate dynamic state/prefecture data.");
-        if (get().actions.addToast)
-          get().actions.addToast({
-            message: "Failed to set up region data.",
-            type: "error",
-          });
-        return;
-      }
 
       const initialGovernmentOffices = [];
       const countryElectionTypes =
@@ -225,7 +200,6 @@ export const createCampaignSetupSlice = (set, get) => {
         customPartiesSnapshot: [...allCustomPartiesData],
         generatedPartiesSnapshot: [...setupState.generatedPartiesInCountry],
         startingCity: newCityObject,
-        currentActiveRegion: currentActiveRegionObject,
         currentDate: { year: 2025, month: 1, day: 1 },
         elections: [],
         lastElectionYear: {},
@@ -235,7 +209,7 @@ export const createCampaignSetupSlice = (set, get) => {
         availableCountries: availableCountriesData,
       };
 
-      console.log(newActiveCampaign.currentActiveRegion);
+      console.log(setupState.selectedRegionId);
 
       get().actions.clearAllNews();
       set({ activeCampaign: newActiveCampaign });

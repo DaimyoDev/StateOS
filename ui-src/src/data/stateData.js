@@ -1,4 +1,4 @@
-import { generateId, getRandomElement } from "../utils/generalUtils";
+import { getRandomElement } from "../utils/generalUtils";
 import {
   MOOD_LEVELS,
   ECONOMIC_OUTLOOK_LEVELS,
@@ -6,7 +6,7 @@ import {
 } from "./governmentData";
 
 export const createStateObject = (params = {}) => ({
-  id: params.id || `state_${generateId()}`,
+  id: params.id,
   name: params.name || "New State",
   countryId: params.countryId || null,
   capitalCityId: params.capitalCityId || null,

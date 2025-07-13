@@ -1,9 +1,5 @@
 import { createStateObject } from "../data/stateData";
-import {
-  generateId,
-  getRandomElement,
-  getRandomInt,
-} from "../utils/generalUtils";
+import { getRandomElement } from "../utils/generalUtils";
 
 /**
  * Generates a full state data object from a list of city data objects.
@@ -16,25 +12,7 @@ import {
  * @returns {object} The complete state data object.
  */
 export const generateFullStateData = (params = {}) => {
-  const { name, countryId, cities = [] } = params;
-
-  if (cities.length === 0) {
-    // Return a default state object if there are no cities
-    return createStateObject({
-      id: `state_${generateId()}`,
-      name: name || "Empty State",
-      countryId: countryId,
-    });
-  }
-
-  // --- Aggregate Data from Cities ---
-
-  const totalPopulation = cities.reduce(
-    (sum, city) => sum + city.population,
-    0
-  );
-
-  totalPopulation * getRandomInt(0, 10);
+  const { name, countryId, cities = [], totalPopulation, id } = params;
 
   // Weighted Averages for Demographics
   const weightedDemographics = {
@@ -121,7 +99,7 @@ export const generateFullStateData = (params = {}) => {
 
   // Create the final state object
   const stateData = {
-    id: `state_${generateId()}`,
+    id: id,
     name: name || "Unnamed State",
     countryId: countryId,
     capitalCityId: capitalCity ? capitalCity.id : null,

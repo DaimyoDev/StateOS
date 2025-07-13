@@ -115,15 +115,9 @@ export const createElectionSlice = (set) => ({
       const {
         currentDate,
         countryId,
-        // regionId, // Used by getElectionInstances via activeCampaign
-        // startingCity, // Used by getElectionInstances via activeCampaign
         elections: existingElections = [],
-        lastElectionYear: lastElectionYearsByInstanceIdBase = {}, // Keyed by instanceIdBase
+        lastElectionYear: lastElectionYearsByInstanceIdBase = {},
         governmentOffices = [],
-        // availableCountries, // Already destructured, passed within activeCampaign to utils
-        // --- You might need to pass more specific parts of your game world data if not all in availableCountries ---
-        // For example, if district definitions are separate:
-        // allDistricts: state.allDistricts, (example)
       } = state.activeCampaign;
 
       const countryElectionTypes = ELECTION_TYPES_BY_COUNTRY[countryId];
@@ -304,14 +298,6 @@ export const createElectionSlice = (set) => ({
               newElectionsToAdd.push(newConceptualSeatElection);
             }
           } else {
-            // --- Create ONE election item for this instance ---
-            // (This path is taken for:
-            //    1. True single-winner races like Mayor.
-            //    2. District-based races where getElectionInstances already returned one instance per district.
-            //    3. At-large PR/MMP list contests.
-            //    4. At-large MMDs (SNTV/BlockVote) IF you DON'T want to explode them into conceptual seat items.
-            //    5. NOW: U.S. City Councils using PluralityMMD will also come here.
-            // )
             const partiesInScope =
               state.activeCampaign.generatedPartiesSnapshot.filter((p) => {
                 if (p) {

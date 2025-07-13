@@ -1,4 +1,5 @@
 import { assignNestedPopulations } from "../utils/populationUtils";
+import { generateFullStateData } from "../utils/stateUtils";
 
 const japanPrefectures = [
   { id: "JPN_HOK", name: "Hokkaido" },
@@ -54,10 +55,6 @@ const usaStates = [
   {
     id: "USA_AL",
     name: "Alabama",
-    legislativeDistricts: {
-      state_lower_house_member_usa: [],
-      state_upper_house_member_usa: [],
-    },
   },
   { id: "USA_AK", name: "Alaska" },
   { id: "USA_AZ", name: "Arizona" },
@@ -413,3 +410,17 @@ export const COUNTRIES_DATA = assignNestedPopulations(
   baseCountriesData,
   DEFAULT_COUNTRY_POPULATION_RANGES
 );
+
+Object.keys(COUNTRIES_DATA).forEach((countryId) => {
+  const country = COUNTRIES_DATA[countryId];
+  if (country.regions && Array.isArray(country.regions)) {
+    country.regions = country.regions.map((staticRegion) => {
+      return generateFullStateData({
+        name: staticRegion.name,
+        countryId: countryId,
+        totalPopulation: staticRegion.population,
+        id: staticRegion.id,
+      });
+    });
+  }
+});

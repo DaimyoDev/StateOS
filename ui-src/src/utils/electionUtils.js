@@ -1182,7 +1182,7 @@ export const getElectionInstances = (electionType, activeCampaign) => {
     // If regionId is null/countryId, the sub-function might iterate all relevant sub-regions.
     const stateLegInstances = generateStateLegislativeElectionInstances(
       electionType,
-      activeCampaign, // Pass the whole activeCampaign for context like regionId
+      activeCampaign,
       currentCountryData,
       buildInstanceIdBaseLocal
     );

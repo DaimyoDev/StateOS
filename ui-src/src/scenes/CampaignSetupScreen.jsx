@@ -41,6 +41,7 @@ function CampaignSetupScreen() {
   useEffect(() => {
     if (actions && actions.loadCountries && availableCountries.length === 0) {
       actions.loadCountries(COUNTRIES_DATA);
+      console.log(COUNTRIES_DATA);
     }
   }, [actions, availableCountries.length]);
 
