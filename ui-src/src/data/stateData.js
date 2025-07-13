@@ -10,7 +10,7 @@ export const createStateObject = (params = {}) => ({
   name: params.name || "New State",
   countryId: params.countryId || null,
   capitalCityId: params.capitalCityId || null,
-
+  legislativeDistricts: params.legislativeDistricts || null,
   cities: params.cities || [],
   population: params.population || 0,
 

@@ -12,7 +12,14 @@ import { getRandomElement } from "../utils/generalUtils";
  * @returns {object} The complete state data object.
  */
 export const generateFullStateData = (params = {}) => {
-  const { name, countryId, cities = [], totalPopulation, id } = params;
+  const {
+    name,
+    countryId,
+    cities = [],
+    totalPopulation,
+    id,
+    legislativeDistricts,
+  } = params;
 
   // Weighted Averages for Demographics
   const weightedDemographics = {
@@ -105,6 +112,7 @@ export const generateFullStateData = (params = {}) => {
     capitalCityId: capitalCity ? capitalCity.id : null,
     cities: cities.map((c) => c.id),
     population: totalPopulation,
+    legislativeDistricts: legislativeDistricts,
     demographics: {
       ageDistribution: weightedDemographics.ageDistribution,
       educationLevels: weightedDemographics.educationLevels,

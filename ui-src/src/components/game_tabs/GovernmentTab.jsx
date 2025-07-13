@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import "./TabStyles.css"; // Or your common tab styles
 import CityOverviewTab from "./government_tabs/CityOverviewTab"; // NEW component
 import LegislationSubTab from "./government_tabs/LegislationSubTab";
-// import StateOverviewTab from './government_tabs/StateOverviewTab'; // Future
+import StateOverviewTab from "./government_tabs/StateOverviewTab";
 // import FederalOverviewTab from './government_tabs/FederalOverviewTab'; // Future
 
 const GovernmentTab = ({ campaignData }) => {
@@ -13,10 +13,10 @@ const GovernmentTab = ({ campaignData }) => {
     switch (activeGovSubTab) {
       case "city":
         return <CityOverviewTab campaignData={campaignData} />;
-      case "legislation": // <<<< NEW CASE
+      case "legislation":
         return <LegislationSubTab campaignData={campaignData} />;
-      // case 'state':
-      //   return <StateOverviewTab stateData={...} />; // TODO
+      case "state":
+        return <StateOverviewTab campaignData={campaignData} />;
       // case 'federal':
       //   return <FederalOverviewTab federalData={...} />; // TODO
       default:
@@ -51,7 +51,6 @@ const GovernmentTab = ({ campaignData }) => {
           className={`sub-tab-button ${
             activeGovSubTab === "state" ? "active" : ""
           }`}
-          disabled // TODO: Enable when state level is implemented
         >
           State / Prefecture
         </button>

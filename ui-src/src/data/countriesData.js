@@ -415,11 +415,13 @@ Object.keys(COUNTRIES_DATA).forEach((countryId) => {
   const country = COUNTRIES_DATA[countryId];
   if (country.regions && Array.isArray(country.regions)) {
     country.regions = country.regions.map((staticRegion) => {
+      console.log(staticRegion);
       return generateFullStateData({
         name: staticRegion.name,
         countryId: countryId,
         totalPopulation: staticRegion.population,
         id: staticRegion.id,
+        legislativeDistricts: staticRegion.legislativeDistricts,
       });
     });
   }
