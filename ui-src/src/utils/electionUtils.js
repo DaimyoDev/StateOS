@@ -604,9 +604,6 @@ export function distributeVotesToCandidates(
   // or use a more randomized approach for remainder to avoid always giving to top.
   let remainingVotes = totalVotesToDistribute - assignedVotesCount;
   if (remainingVotes > 0) {
-    console.log(
-      `[VoteSim/${electionIdForLog}] Distributing ${remainingVotes} remaining votes due to flooring.`
-    );
     // Sort by polling descending to give remainder to "stronger" candidates first
     // Could also add a small random factor or distribute based on decimal remainders for more fairness
     tempCandidates.sort((a, b) => {

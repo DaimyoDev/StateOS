@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import useGameStore from "../store";
 import JapanMap from "../maps/JapanMap";
+import PhilippinesMap from "../maps/PhilippinesMap";
 import { COUNTRIES_DATA } from "../data/countriesData";
 import "./CampaignSetupScreen.css";
 import RegionPieChart from "../components/charts/RegionPieChart";
@@ -81,6 +82,12 @@ function CampaignSetupScreen() {
         actions.setSelectedRegion(regionGameId);
       }
     }
+    if (selectedCountryId === "PHL") {
+      setSelectedRegionInfo({ id: regionGameId, name: regionName });
+      if (actions && actions.setSelectedRegion) {
+        actions.setSelectedRegion(regionGameId);
+      }
+    }
   };
 
   // Placeholder for selecting region if not using a map
@@ -148,7 +155,21 @@ function CampaignSetupScreen() {
           </>
         )}
 
-        {selectedCountryId && selectedCountryId !== "JPN" && (
+        {selectedCountryId === "PHL" && (
+          <>
+            <p className="map-instruction-cs">
+              Click on a prefecture to begin your political career there.
+            </p>
+            <div className="map-render-wrapper">
+              <PhilippinesMap
+                onSelectProvince={handleRegionSelectionFromMap}
+                selectedProvinceGameId={selectedRegionId}
+              />
+            </div>
+          </>
+        )}
+
+        {selectedCountryId !== "JPN" && selectedCountryId !== "PHL" && (
           <div className="map-placeholder">
             <p>
               Map for{" "}
