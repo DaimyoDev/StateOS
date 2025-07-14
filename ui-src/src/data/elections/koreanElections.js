@@ -1,6 +1,12 @@
+import {
+  nationalElectionIds,
+  stateElectionIds,
+  localElectionIds,
+} from "./electionData";
+
 export const koreanElections = [
   {
-    id: "president",
+    id: nationalElectionIds.president,
     officeNameTemplate: "President of South Korea",
     level: "national_head_of_state",
     frequencyYears: 5,
@@ -17,7 +23,7 @@ export const koreanElections = [
     mmpListSeatsRatio: null,
   },
   {
-    id: "national_assembly_constituency",
+    id: nationalElectionIds.national_hr,
     officeNameTemplate:
       "Member of National Assembly (Constituency - {districtName})",
     level: "national_lower_house_constituency",
@@ -35,7 +41,7 @@ export const koreanElections = [
     mmpListSeatsRatio: null,
   },
   {
-    id: "national_assembly_pr",
+    id: nationalElectionIds.national_senate,
     officeNameTemplate:
       "Member of National Assembly (Proportional Representation)",
     level: "national_lower_house_pr_national",
@@ -53,11 +59,11 @@ export const koreanElections = [
     mmpListSeatsRatio: null,
   },
   {
-    id: "governor_mayor_province",
+    id: stateElectionIds.governor,
     officeNameTemplate: "Governor/Mayor of {provinceCityName}",
     level: "local_province_metropolitan_city",
     frequencyYears: 4,
-    electionMonth: null, // Often June, but null for general flexibility
+    electionMonth: null,
     generatesOneWinner: true,
     minCouncilSeats: null,
     councilSeatPopulationTiers: null,
@@ -70,7 +76,7 @@ export const koreanElections = [
     mmpListSeatsRatio: null,
   },
   {
-    id: "provincial_metropolitan_assembly",
+    id: stateElectionIds.state_hr,
     officeNameTemplate: "Member of {provinceCityName} Assembly",
     level: "local_province_metropolitan_city",
     frequencyYears: 4,
@@ -93,7 +99,7 @@ export const koreanElections = [
     ],
   },
   {
-    id: "mayor_chief_local",
+    id: localElectionIds.mayor,
     officeNameTemplate: "Mayor/Chief of {cityName}",
     level: "local_city_county_district",
     frequencyYears: 4,
@@ -110,7 +116,7 @@ export const koreanElections = [
     mmpListSeatsRatio: null,
   },
   {
-    id: "local_basic_council",
+    id: localElectionIds.city_council,
     officeNameTemplate: "Member of {cityName} Council",
     level: "local_city_county_district",
     frequencyYears: 4,

@@ -1,6 +1,12 @@
+import {
+  nationalElectionIds,
+  stateElectionIds,
+  localElectionIds,
+} from "./electionData";
+
 export const philippinesElections = [
   {
-    id: "mayor_phl",
+    id: localElectionIds.mayor,
     officeNameTemplate: "Mayor of {cityNameOrMunicipalityName}",
     level: "local_city_or_municipality",
     frequencyYears: 3,
@@ -17,7 +23,7 @@ export const philippinesElections = [
     councilSeatPopulationTiers: null,
   },
   {
-    id: "vice_mayor_phl",
+    id: localElectionIds.vice_mayor,
     officeNameTemplate: "Vice-Mayor of {cityNameOrMunicipalityName}",
     level: "local_city_or_municipality",
     frequencyYears: 3,
@@ -34,7 +40,7 @@ export const philippinesElections = [
     councilSeatPopulationTiers: null,
   },
   {
-    id: "city_municipal_council_phl", // Sangguniang Panlungsod/Bayan
+    id: localElectionIds.city_council, // Sangguniang Panlungsod/Bayan
     officeNameTemplate: "Councilor of {cityNameOrMunicipalityName}",
     level: "local_city_council",
     frequencyYears: 3,
@@ -55,7 +61,7 @@ export const philippinesElections = [
     mmpListSeatsRatio: null,
   },
   {
-    id: "provincial_governor_phl",
+    id: stateElectionIds.governor,
     officeNameTemplate: "Governor of {provinceName}",
     level: "local_province",
     frequencyYears: 3,
@@ -72,7 +78,7 @@ export const philippinesElections = [
     councilSeatPopulationTiers: null,
   },
   {
-    id: "provincial_vice_governor_phl",
+    id: stateElectionIds.vice_governor,
     officeNameTemplate: "Vice-Governor of {provinceName}",
     level: "local_province",
     frequencyYears: 3,
@@ -89,7 +95,7 @@ export const philippinesElections = [
     councilSeatPopulationTiers: null,
   },
   {
-    id: "provincial_board_phl",
+    id: stateElectionIds.state_hr,
     officeNameTemplate:
       "Provincial Board Member - {provinceName} ({districtName})",
     level: "local_province_board",
@@ -107,7 +113,7 @@ export const philippinesElections = [
     mmpListSeatsRatio: null,
   },
   {
-    id: "national_president_phl",
+    id: nationalElectionIds.president,
     officeNameTemplate: "President of the Philippines",
     level: "national_head_of_state_and_government",
     frequencyYears: 6,
@@ -124,7 +130,7 @@ export const philippinesElections = [
     councilSeatPopulationTiers: null,
   },
   {
-    id: "national_vice_president_phl",
+    id: nationalElectionIds.vice_president,
     officeNameTemplate: "Vice-President of the Philippines",
     level: "national_vice_head_of_state_and_government",
     frequencyYears: 6,
@@ -141,7 +147,7 @@ export const philippinesElections = [
     councilSeatPopulationTiers: null,
   },
   {
-    id: "national_hr_district_phl",
+    id: nationalElectionIds.national_hr,
     officeNameTemplate: "Representative - {districtName}",
     level: "national_lower_house_constituency",
     frequencyYears: 3,
@@ -158,7 +164,7 @@ export const philippinesElections = [
     mmpListSeatsRatio: null,
   },
   {
-    id: "national_hr_partylist_phl",
+    id: nationalElectionIds.national_hr,
     officeNameTemplate: "Party-List Representative",
     level: "national_lower_house_partylist",
     frequencyYears: 3,
@@ -175,7 +181,7 @@ export const philippinesElections = [
     mmpListSeatsRatio: null,
   },
   {
-    id: "national_senate_phl",
+    id: nationalElectionIds.national_senate,
     officeNameTemplate: "Senator of the Philippines",
     level: "national_upper_house",
     frequencyYears: 3,

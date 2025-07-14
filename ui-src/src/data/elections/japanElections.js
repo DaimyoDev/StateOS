@@ -1,6 +1,12 @@
+import {
+  nationalElectionIds,
+  stateElectionIds,
+  localElectionIds,
+} from "./electionData";
+
 export const japanElections = [
   {
-    id: "mayor",
+    id: localElectionIds.mayor,
     officeNameTemplate: "Mayor of {cityName}",
     level: "local_city",
     frequencyYears: 4,
@@ -17,7 +23,7 @@ export const japanElections = [
     mmpListSeatsRatio: null,
   },
   {
-    id: "city_council",
+    id: localElectionIds.city_council,
     officeNameTemplate: "City Council Seat - {cityName}",
     level: "local_city",
     frequencyYears: 4,
@@ -44,7 +50,7 @@ export const japanElections = [
     ],
   },
   {
-    id: "prefecture_governor",
+    id: stateElectionIds.governor,
     officeNameTemplate: "Governor of {prefectureName}",
     level: "local_prefecture",
     frequencyYears: 4,
@@ -61,7 +67,7 @@ export const japanElections = [
     mmpListSeatsRatio: null,
   },
   {
-    id: "prefectural_assembly",
+    id: stateElectionIds.state_hr,
     officeNameTemplate: "Prefectural Assembly Member - {prefectureName}",
     level: "local_prefecture",
     frequencyYears: 4,
@@ -84,7 +90,7 @@ export const japanElections = [
     ],
   },
   {
-    id: "national_hr_constituency",
+    id: nationalElectionIds.national_hr,
     officeNameTemplate:
       "Member of House of Representatives (Constituency - {districtName})",
     level: "national_lower_house_constituency",
@@ -102,7 +108,7 @@ export const japanElections = [
     mmpListSeatsRatio: null,
   },
   {
-    id: "national_hr_pr_bloc",
+    id: nationalElectionIds.national_hr,
     officeNameTemplate:
       "Member of House of Representatives (PR Bloc - {blocName})",
     level: "national_lower_house_pr_bloc",
@@ -120,7 +126,7 @@ export const japanElections = [
     mmpListSeatsRatio: null,
   },
   {
-    id: "national_hc_district",
+    id: nationalElectionIds.national_hr,
     officeNameTemplate:
       "Member of House of Councillors (District - {prefectureName})",
     level: "national_upper_house_prefectural_district",
@@ -138,7 +144,7 @@ export const japanElections = [
     mmpListSeatsRatio: null,
   },
   {
-    id: "national_hc_pr",
+    id: nationalElectionIds.national_senate,
     officeNameTemplate: "Member of House of Councillors (Nationwide PR)",
     level: "national_upper_house_pr_national",
     frequencyYears: 3,

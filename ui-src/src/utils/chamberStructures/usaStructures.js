@@ -7,9 +7,9 @@ export const initializeUsaStructures = (usaCountryData, usaTierData) => {
       if (state.population > 0) {
         generateStateLegislativeDistricts(
           state,
-          "state_lower_house_member_usa",
+          "state_hr",
           usaTierData.USA_STATE_LOWER_HOUSE_DISTRICT_TIERS,
-          "state_upper_house_member_usa",
+          "state_senate",
           usaTierData.USA_STATE_UPPER_HOUSE_DISTRICT_TIERS
         );
       }

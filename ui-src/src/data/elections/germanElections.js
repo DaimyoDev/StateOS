@@ -1,6 +1,12 @@
+import {
+  nationalElectionIds,
+  stateElectionIds,
+  localElectionIds,
+} from "./electionData";
+
 export const germanElections = [
   {
-    id: "mayor_deu",
+    id: localElectionIds.mayor,
     officeNameTemplate: "Mayor of {cityName}",
     level: "local_city",
     frequencyYears: 5,
@@ -17,7 +23,7 @@ export const germanElections = [
     councilSeatPopulationTiers: null,
   },
   {
-    id: "city_council_deu",
+    id: localElectionIds.city_council,
     officeNameTemplate: "City Council of {cityName}",
     level: "local_city",
     frequencyYears: 5,
@@ -39,7 +45,7 @@ export const germanElections = [
     mmpListSeatsRatio: null,
   },
   {
-    id: "state_parliament_deu",
+    id: stateElectionIds.state_hr,
     officeNameTemplate: "Member of State Parliament ({stateName})",
     level: "local_state_parliament",
     frequencyYears: 5,
@@ -60,7 +66,7 @@ export const germanElections = [
     ],
   },
   {
-    id: "national_bundestag_deu",
+    id: nationalElectionIds.national_hr,
     officeNameTemplate: "Member of Bundestag",
     level: "national_lower_house",
     frequencyYears: 4,

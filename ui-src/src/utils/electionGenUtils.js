@@ -310,18 +310,14 @@ export const generateStateLegislativeElectionInstances = (
   const { countryId, regionId } = activeCampaign;
   const baseOfficeName = electionType.officeNameTemplate;
 
-  // --- USA State Legislatures (Lower & Upper House - Districted) ---
-  if (
-    countryId === "USA" &&
-    (electionType.level === "local_state_lower_house" ||
-      electionType.level === "local_state_upper_house")
-  ) {
+  if (electionType.id === "state_hr") {
     const currentActiveState = currentCountryData.regions?.find(
       (r) => r.id === regionId
     );
     if (currentActiveState) {
       const districtsForThisChamber =
         currentActiveState.legislativeDistricts?.[electionType.id];
+      console.log(currentActiveState.legislativeDistricts);
       if (districtsForThisChamber && Array.isArray(districtsForThisChamber)) {
         districtsForThisChamber.forEach((district) => {
           if (!district || !district.id || !district.name) {
@@ -345,18 +341,14 @@ export const generateStateLegislativeElectionInstances = (
             resolvedOfficeName: baseOfficeName
               .replace("{stateName}", currentActiveState.name)
               .replace("{districtName}", district.name),
-            _isSingleSeatContest: true, // Each district is a contest for one seat
-            _effectiveElectoralSystem: electionType.electoralSystem, // Typically FPTP for US
-            _effectiveGeneratesOneWinner: true, // From the perspective of this district election
+            _isSingleSeatContest: true,
+            _effectiveElectoralSystem: electionType.electoralSystem,
+            _effectiveGeneratesOneWinner: true,
             ...electionType,
             id: electionType.id,
           });
         });
-      } else {
-        // console.warn(`[electionGenUtils.generateStateLegislative] USA: No legislative districts found for type '${electionType.id}' in state '${currentActiveState.name}'.`);
       }
-    } else if (electionType.level.startsWith("local_state_")) {
-      // console.warn(`[electionGenUtils.generateStateLegislative] USA: State with regionId '${regionId}' not found for legislative district elections.`);
     }
   }
   // --- JPN Prefectural Assembly (At-large for the entire prefecture) ---
@@ -615,96 +607,75 @@ export const generateNationalLegislativeElectionInstances = (
   const { countryId, regionId } = activeCampaign;
   const baseOfficeName = electionType.officeNameTemplate;
 
-  // --- USA National Legislature ---
-  if (countryId === "USA") {
-    // U.S. House of Representatives (Congressional Districts)
+  if (electionType.id === "national_hr") {
+    let districtsToProcess =
+      currentCountryData.nationalLowerHouseDistricts || [];
     if (
-      electionType.id === "national_hr_usa" &&
-      electionType.level === "national_lower_house_constituency"
+      regionId &&
+      currentCountryData.regions?.some(
+        (r) => r.id === regionId && r.id.startsWith("USA_")
+      )
     ) {
-      let districtsToProcess =
-        currentCountryData.nationalLowerHouseDistricts || [];
-      // If regionId is a specific US state, filter districts for that state.
-      if (
-        regionId &&
-        currentCountryData.regions?.some(
-          (r) => r.id === regionId && r.id.startsWith("USA_")
-        )
-      ) {
-        districtsToProcess = districtsToProcess.filter(
-          (d) => d.stateId === regionId
-        );
-      }
-
-      districtsToProcess.forEach((district) => {
-        if (!district || !district.id || !district.name) {
-          console.warn(
-            "[electionGenUtils.generateNationalLegislative] Skipping invalid US HR district:",
-            district
-          );
-          return;
-        }
-        const stateForDistrict = currentCountryData.regions?.find(
-          (s) => s.id === district.stateId
-        );
-        const stateName = stateForDistrict
-          ? stateForDistrict.name
-          : "N/A State";
-        instances.push({
-          instanceIdBase: buildIdBaseFunc(electionType.id, district.id),
-          entityType: "national_hr_constituency",
-          entityData: { ...district, stateName }, // stateName for template resolving
-          resolvedOfficeName: baseOfficeName
-            .replace("{stateName}", stateName)
-            .replace("{districtName}", district.name),
-          _isSingleSeatContest: true,
-          _effectiveElectoralSystem: electionType.electoralSystem || "FPTP",
-          _effectiveGeneratesOneWinner: true,
-          ...electionType,
-          id: electionType.id,
-        });
-      });
+      districtsToProcess = districtsToProcess.filter(
+        (d) => d.stateId === regionId
+      );
     }
-    // U.S. Senate (Each state elects senators; this instance is for *a* senate race in a state)
-    else if (
-      electionType.id === "national_senate_usa" &&
-      electionType.level === "national_upper_house_state_rep"
-    ) {
-      let statesToProcess = [];
-      if (
-        regionId &&
-        currentCountryData.regions?.some(
-          (r) => r.id === regionId && r.id.startsWith("USA_")
-        )
-      ) {
-        const stateObj = currentCountryData.regions.find(
-          (s) => s.id === regionId
-        );
-        if (stateObj) statesToProcess.push(stateObj);
-      } else {
-        // If no specific state context, process for all US states
-        statesToProcess =
-          currentCountryData.regions?.filter((r) => r.id.startsWith("USA_")) ||
-          [];
-      }
 
-      statesToProcess.forEach((stateEntity) => {
-        instances.push({
-          instanceIdBase: buildIdBaseFunc(electionType.id, stateEntity.id), // Could add a "class" suffix if your game tracks staggered terms
-          entityType: "state_as_national_district", // A state acting as an electoral district for a national office
-          entityData: { ...stateEntity },
-          resolvedOfficeName: baseOfficeName.replace(
-            "{stateName}",
-            stateEntity.name
-          ),
-          _isSingleSeatContest: true,
-          _effectiveElectoralSystem: electionType.electoralSystem || "FPTP",
-          _effectiveGeneratesOneWinner: true,
-          ...electionType,
-          id: electionType.id,
-        });
+    districtsToProcess.forEach((district) => {
+      if (!district || !district.id || !district.name) {
+        console.warn(
+          "[electionGenUtils.generateNationalLegislative] Skipping invalid US HR district:",
+          district
+        );
+        return;
+      }
+      const stateForDistrict = currentCountryData.regions?.find(
+        (s) => s.id === district.stateId
+      );
+      const stateName = stateForDistrict ? stateForDistrict.name : "N/A State";
+      instances.push({
+        instanceIdBase: buildIdBaseFunc(electionType.id, district.id),
+        entityType: "national_hr_constituency",
+        entityData: { ...district, stateName }, // stateName for template resolving
+        resolvedOfficeName: baseOfficeName
+          .replace("{stateName}", stateName)
+          .replace("{districtName}", district.name),
+        _isSingleSeatContest: true,
+        _effectiveElectoralSystem: electionType.electoralSystem || "FPTP",
+        _effectiveGeneratesOneWinner: true,
+        ...electionType,
+        id: electionType.id,
       });
+    });
+  }
+  if (electionType.id === "national_senate") {
+    let statesToProcess = [];
+    if (regionId) {
+      const stateObj = currentCountryData.regions.find(
+        (s) => s.id === regionId
+      );
+      if (stateObj) statesToProcess.push(stateObj);
+    } else {
+      // If no specific state context, process for all US states
+      statesToProcess = currentCountryData.regions || [];
     }
+
+    statesToProcess.forEach((stateEntity) => {
+      instances.push({
+        instanceIdBase: buildIdBaseFunc(electionType.id, stateEntity.id),
+        entityType: "state_as_national_district",
+        entityData: { ...stateEntity },
+        resolvedOfficeName: baseOfficeName.replace(
+          "{stateName}",
+          stateEntity.name
+        ),
+        _isSingleSeatContest: true,
+        _effectiveElectoralSystem: electionType.electoralSystem || "FPTP",
+        _effectiveGeneratesOneWinner: true,
+        ...electionType,
+        id: electionType.id,
+      });
+    });
   }
   // --- JPN National Legislature ---
   else if (countryId === "JPN") {

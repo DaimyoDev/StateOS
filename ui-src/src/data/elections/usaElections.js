@@ -1,6 +1,12 @@
+import {
+  nationalElectionIds,
+  stateElectionIds,
+  localElectionIds,
+} from "./electionData";
+
 export const usaElections = [
   {
-    id: "mayor_usa",
+    id: localElectionIds.mayor,
     officeNameTemplate: "Mayor of {cityName}",
     level: "local_city",
     frequencyYears: 4, // Common, but can be 2
@@ -18,19 +24,16 @@ export const usaElections = [
     councilSeatPopulationTiers: null,
   },
   {
-    id: "city_council_usa",
+    id: localElectionIds.city_council,
     officeNameTemplate: "City Council Member - {cityName} (At-Large)", // District or At-Large
     level: "local_city",
-    frequencyYears: 4, // Common, can be 2
-    electionMonth: 11, // Or other months
-    generatesOneWinner: false, // Usually multiple seats, could be per district
-    // Electoral system varies: FPTP by district, BlockVote At-Large, etc.
-    // Using "PluralityMMD" as a general term for districted/at-large multi-seat systems without PR
-    electoralSystem: "PluralityMMD", // Or "BlockVote" for at-large, or FPTP if defining per-district type
+    frequencyYears: 4,
+    electionMonth: 11,
+    generatesOneWinner: false,
+    electoralSystem: "PluralityMMD",
     voteTarget: "candidate",
-    minCouncilSeats: 5, // Example
+    minCouncilSeats: 5,
     councilSeatPopulationTiers: [
-      // Highly illustrative, city charters rule
       { popThreshold: 50000, extraSeatsRange: [0, 2] },
       { popThreshold: 250000, extraSeatsRange: [2, 6] },
       { popThreshold: 1000000, extraSeatsRange: [5, 10] },
@@ -44,7 +47,7 @@ export const usaElections = [
   },
   // --- State Level ---
   {
-    id: "state_governor_usa",
+    id: stateElectionIds.governor,
     officeNameTemplate: "Governor of {stateName}",
     level: "local_state",
     frequencyYears: 4, // Most common
@@ -61,13 +64,13 @@ export const usaElections = [
     councilSeatPopulationTiers: null,
   },
   {
-    id: "state_lower_house_member_usa", // e.g., State House of Representatives, Assembly
+    id: stateElectionIds.state_hr,
     officeNameTemplate: "State Representative - {stateName} ({districtName})",
     level: "local_state_lower_house",
-    frequencyYears: 2, // Most common
+    frequencyYears: 2,
     electionMonth: 11,
-    generatesOneWinner: true, // This defines election for ONE seat/district
-    minCouncilSeats: 1, // Fixed number of districts per state by law
+    generatesOneWinner: true,
+    minCouncilSeats: 1,
     councilSeatPopulationTiers: null,
     electoralSystem: "FPTP",
     voteTarget: "candidate",
@@ -78,13 +81,13 @@ export const usaElections = [
     mmpListSeatsRatio: null,
   },
   {
-    id: "state_upper_house_member_usa", // e.g., State Senate
+    id: stateElectionIds.state_senate,
     officeNameTemplate: "State Senator - {stateName} ({districtName})",
     level: "local_state_upper_house",
-    frequencyYears: 4, // Most common (often staggered terms)
+    frequencyYears: 4,
     electionMonth: 11,
-    generatesOneWinner: true, // This defines election for ONE seat/district
-    minCouncilSeats: 1, // Fixed number of districts per state by law
+    generatesOneWinner: true,
+    minCouncilSeats: 1,
     councilSeatPopulationTiers: null,
     electoralSystem: "FPTP",
     voteTarget: "candidate",
@@ -96,7 +99,7 @@ export const usaElections = [
   },
   // --- National Level ---
   {
-    id: "national_president_usa",
+    id: nationalElectionIds.president,
     officeNameTemplate: "President of the United States",
     level: "national_head_of_state_and_government",
     frequencyYears: 4,
@@ -113,7 +116,24 @@ export const usaElections = [
     councilSeatPopulationTiers: null,
   },
   {
-    id: "national_hr_usa", // House of Representatives
+    id: nationalElectionIds.vice_president,
+    officeNameTemplate: "Vice President of the United States",
+    level: "national_head_of_state_and_government",
+    frequencyYears: 4,
+    electionMonth: 11,
+    generatesOneWinner: true,
+    electoralSystem: "ElectoralCollege",
+    voteTarget: "candidate_via_electors",
+    partyListType: null,
+    prThresholdPercent: null,
+    prAllocationMethod: null,
+    mmpConstituencySeatsRatio: null,
+    mmpListSeatsRatio: null,
+    minCouncilSeats: null,
+    councilSeatPopulationTiers: null,
+  },
+  {
+    id: nationalElectionIds.national_hr, // House of Representatives
     officeNameTemplate: "U.S. Representative - {stateName} ({districtName})",
     level: "national_lower_house_constituency",
     frequencyYears: 2,
@@ -130,13 +150,13 @@ export const usaElections = [
     mmpListSeatsRatio: null,
   },
   {
-    id: "national_senate_usa",
+    id: nationalElectionIds.national_senate,
     officeNameTemplate: "U.S. Senator - {stateName}",
     level: "national_upper_house_state_rep",
-    frequencyYears: 6, // Staggered terms, so 1/3 elected every 2 years. This 'frequency' is for the term.
-    electionMonth: 11, // Elections every 2 years for available seats
-    generatesOneWinner: true, // Defines election for ONE of the two state seats up in a cycle
-    minCouncilSeats: 1, // Each state has 2 senators; usually 1 up for election at a time per state (or 0 or 2 in special cases)
+    frequencyYears: 6,
+    electionMonth: 11,
+    generatesOneWinner: true,
+    minCouncilSeats: 1,
     councilSeatPopulationTiers: null,
     electoralSystem: "FPTP",
     voteTarget: "candidate",

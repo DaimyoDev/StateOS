@@ -1194,55 +1194,37 @@ export const getElectionInstances = (electionType, activeCampaign) => {
       buildInstanceIdBaseLocal
     );
     instances.push(...nationalLegInstances);
-  }
-  // --- National Single-Executive (President, etc.) - These are NOT legislative ---
-  // Keep separate or handle within a specific "Executive" generation function later.
-  // This block ensures they are handled if not caught by isNationalLegislativeElectionType.
-  else if (
-    electionType.level.startsWith("national_") &&
-    electionType.generatesOneWinner &&
-    (electionType.level === "national_head_of_state_and_government" ||
-      electionType.level === "national_vice_head_of_state_and_government")
-  ) {
-    // This typically creates one instance for the whole nation.
-    // Example: USA President, PHL President/VP
-    if (
-      (countryId === "USA" && electionType.id === "national_president_usa") ||
-      (countryId === "PHL" &&
-        (electionType.id === "national_president_phl" ||
-          electionType.id === "national_vice_president_phl"))
-    ) {
-      instances.push({
-        instanceIdBase: buildInstanceIdBaseLocal(electionType.id, countryId),
-        entityType: "nation",
-        entityData: { ...currentCountryData },
-        resolvedOfficeName: baseOfficeName.replace(
-          "{countryName}",
-          currentCountryData.name
-        ), // Assuming {countryName} placeholder
-        _isSingleSeatContest: true,
-        _effectiveElectoralSystem: electionType.electoralSystem,
-        _effectiveGeneratesOneWinner: true,
-        ...electionType,
-        id: electionType.id,
-      });
-    }
-    // Add other countries' presidential/VP elections here if they follow a similar pattern.
-  }
-  // --- STATE/PREFECTURE/PROVINCE GOVERNOR (Single Winner for State/Prefecture/Province) ---
-  // This must come *after* legislative checks to avoid misclassifying.
-  else if (
-    (electionType.level === "local_state" ||
-      electionType.level === "local_prefecture" ||
-      electionType.level === "local_province") &&
-    electionType.generatesOneWinner &&
-    // Check specific IDs or keywords to ensure it's a governor/executive, not a single-seat district of a legislature
-    (electionType.id?.toLowerCase().includes("governor") ||
-      electionType.officeNameTemplate?.toLowerCase().includes("governor") ||
-      (countryId === "PHL" &&
-        (electionType.id === "provincial_governor_phl" ||
-          electionType.id === "provincial_vice_governor_phl")))
-  ) {
+  } else if (electionType.id === "president") {
+    instances.push({
+      instanceIdBase: buildInstanceIdBaseLocal(electionType.id, countryId),
+      entityType: "nation",
+      entityData: { ...currentCountryData },
+      resolvedOfficeName: baseOfficeName.replace(
+        "{countryName}",
+        currentCountryData.name
+      ),
+      _isSingleSeatContest: true,
+      _effectiveElectoralSystem: electionType.electoralSystem,
+      _effectiveGeneratesOneWinner: true,
+      ...electionType,
+      id: electionType.id,
+    });
+  } else if (electionType.id === "vice_president") {
+    instances.push({
+      instanceIdBase: buildInstanceIdBaseLocal(electionType.id, countryId),
+      entityType: "nation",
+      entityData: { ...currentCountryData },
+      resolvedOfficeName: baseOfficeName.replace(
+        "{countryName}",
+        currentCountryData.name
+      ),
+      _isSingleSeatContest: true,
+      _effectiveElectoralSystem: electionType.electoralSystem,
+      _effectiveGeneratesOneWinner: true,
+      ...electionType,
+      id: electionType.id,
+    });
+  } else if (electionType.id === "governor") {
     const stateOrEquivalentEntity =
       currentCountryData.regions?.find((r) => r.id === regionId) ||
       (countryId === "PHL"
@@ -1287,14 +1269,9 @@ export const getElectionInstances = (electionType, activeCampaign) => {
         ...electionType,
         id: electionType.id,
       });
-    } else if (
-      electionType.level.startsWith("local_state") ||
-      electionType.level.startsWith("local_prefecture") ||
-      electionType.level === "local_province"
-    ) {
-      // console.warn(`State/Prefecture/Province Governor type election (${electionType.id}) but no valid regionId ('${regionId}') in context or entity not found.`);
     }
   }
+
   // --- Generic Fallback for unhandled single-instance national/state/province elections ---
   // This is a very broad fallback.
   else if (
