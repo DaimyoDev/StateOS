@@ -52,6 +52,11 @@ export const NAMES_BY_COUNTRY = {
     female: KOREAN_LAST_NAMES,
     last: KOREAN_LAST_NAMES,
   },
+  CAN: {
+    male: ENGLISH_MALE_NAMES,
+    female: ENGLISH_FEMALE_NAMES,
+    last: ENGLISH_LAST_NAMES,
+  },
 };
 
 export const GENERIC_FIRST_NAMES_MALE = ["Alex", "Chris", "Jordan", "Taylor"];

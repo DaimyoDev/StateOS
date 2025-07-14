@@ -8,6 +8,7 @@ import {
   philippinesRegions,
 } from "./states/philippinesRegions";
 import { koreaAdministrativeDivisions } from "./states/koreanDistricts";
+import { canadaProvinces } from "./states/canadaProvinces";
 
 export const DEFAULT_COUNTRY_POPULATION_RANGES = {
   JPN: { min: 100000000, max: 130000000 },
@@ -15,6 +16,7 @@ export const DEFAULT_COUNTRY_POPULATION_RANGES = {
   GER: { min: 75000000, max: 90000000 },
   PHL: { min: 90000000, max: 140000000 },
   KOR: { min: 48000000, max: 55000000 },
+  CAN: { min: 30000000, max: 50000000 },
 };
 
 const baseCountriesData = [
@@ -78,6 +80,15 @@ const baseCountriesData = [
     ],
     politicalSystem: "Presidential Republic",
     regions: koreaAdministrativeDivisions.map((r) => ({ ...r })),
+    nationalLowerHouseDistricts: [],
+  },
+  {
+    id: "CAN",
+    name: "Canada",
+    flag: "🇨🇦",
+    politicalSystem: "Parliamentary Monarchy (Federal)",
+    dominantIdeologies: ["Liberal", "Conservative", "Social Democrat"],
+    regions: canadaProvinces.map((p) => ({ ...p })),
     nationalLowerHouseDistricts: [],
   },
 ];

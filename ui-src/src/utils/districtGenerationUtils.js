@@ -209,6 +209,49 @@ export const generateAllLegislativeDistricts = (countriesData) => {
       });
     }
 
+    if (
+      country.id === "CAN" &&
+      chamberTiers.CAN.CAN_FEDERAL_HR_DISTRICT_TIERS
+    ) {
+      country.regions.forEach((province) => {
+        // Iterate through provinces
+        let numDistricts = 0;
+        const tiers = chamberTiers.CAN.CAN_FEDERAL_HR_DISTRICT_TIERS;
+        for (const tier of tiers) {
+          if (province.population >= tier.popThreshold) {
+            numDistricts = getRandomInt(
+              tier.numDistrictsRange[0],
+              tier.numDistrictsRange[1]
+            );
+            break;
+          }
+        }
+        if (numDistricts === 0 && tiers.length > 0) {
+          numDistricts = getRandomInt(
+            tiers[tiers.length - 1].numDistrictsRange[0],
+            tiers[tiers.length - 1].numDistrictsRange[1]
+          );
+        }
+
+        numDistricts = Math.max(1, numDistricts);
+
+        if (numDistricts > 0) {
+          const districtPopulations = distributePopulationToSeats(
+            province.population,
+            numDistricts
+          );
+          for (let i = 0; i < numDistricts; i++) {
+            country.nationalLowerHouseDistricts.push({
+              id: `${province.id}_FHRD${i + 1}`, // Federal HR District ID
+              name: `${province.name} Federal District ${i + 1}`,
+              population: districtPopulations[i],
+              provinceId: province.id,
+            });
+          }
+        }
+      });
+    }
+
     // --- 2. Generate Sub-National Legislative Districts (State/Provincial/Prefectural) ---
     // Iterate through all regions and provinces, as both can have legislative bodies
     const subnationalEntities = [
@@ -444,6 +487,45 @@ export const generateAllLegislativeDistricts = (countriesData) => {
             name: `${entity.name} Assembly District ${i + 1}`,
             population: districtPopulations[i],
             parentId: entity.id,
+          }));
+        }
+      }
+      if (
+        country.id === "CAN" &&
+        chamberTiers.CAN.CAN_PROVINCIAL_ASSEMBLY_TIERS
+      ) {
+        let numDistricts = 0;
+        const tiers = chamberTiers.CAN.CAN_PROVINCIAL_ASSEMBLY_TIERS;
+        for (const tier of tiers) {
+          if (entity.population >= tier.popThreshold) {
+            numDistricts = getRandomInt(
+              tier.numDistrictsRange[0],
+              tier.numDistrictsRange[1]
+            );
+            break;
+          }
+        }
+        if (numDistricts === 0 && tiers.length > 0) {
+          numDistricts = getRandomInt(
+            tiers[tiers.length - 1].numDistrictsRange[0],
+            tiers[tiers.length - 1].numDistrictsRange[1]
+          );
+        }
+
+        numDistricts = Math.max(1, numDistricts);
+
+        if (numDistricts > 0) {
+          const districtPopulations = distributePopulationToSeats(
+            entity.population,
+            numDistricts
+          );
+          entity.legislativeDistricts[stateElectionIds.state_hr] = Array.from({
+            length: numDistricts,
+          }).map((_, i) => ({
+            id: `${entity.id}_PLA${i + 1}`, // Provincial Legislative Assembly District
+            name: `${entity.name} Provincial District ${i + 1}`,
+            population: districtPopulations[i],
+            provinceId: entity.id,
           }));
         }
       }

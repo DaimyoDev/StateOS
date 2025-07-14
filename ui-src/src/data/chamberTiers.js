@@ -76,4 +76,17 @@ export const chamberTiers = {
       { popThreshold: 0, numDistrictsRange: [2, 4] },
     ],
   },
+  CAN: {
+    CAN_FEDERAL_HR_DISTRICT_TIERS: [
+      { popThreshold: 5000000, numDistrictsRange: [50, 80] },
+      { popThreshold: 1000000, numDistrictsRange: [10, 25] },
+      { popThreshold: 0, numDistrictsRange: [1, 5] },
+    ],
+    CAN_PROVINCIAL_ASSEMBLY_TIERS: [
+      { popThreshold: 10000000, numDistrictsRange: [100, 120] },
+      { popThreshold: 5000000, numDistrictsRange: [60, 90] },
+      { popThreshold: 1000000, numDistrictsRange: [20, 50] },
+      { popThreshold: 0, numDistrictsRange: [10, 20] },
+    ],
+  },
 };
