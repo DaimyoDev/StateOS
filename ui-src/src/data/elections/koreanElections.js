@@ -10,11 +10,11 @@ export const koreanElections = [
     officeNameTemplate: "President of South Korea",
     level: "national_head_of_state",
     frequencyYears: 5,
-    electionMonth: null, // Often March, but null for general flexibility
+    electionMonth: null,
     generatesOneWinner: true,
     minCouncilSeats: null,
     councilSeatPopulationTiers: null,
-    electoralSystem: "FPTP", // Simple plurality
+    electoralSystem: "FPTP",
     voteTarget: "candidate",
     partyListType: null,
     prThresholdPercent: null,
@@ -28,11 +28,11 @@ export const koreanElections = [
       "Member of National Assembly (Constituency - {districtName})",
     level: "national_lower_house_constituency",
     frequencyYears: 4,
-    electionMonth: null, // Often April, but null for general flexibility
+    electionMonth: null,
     generatesOneWinner: true,
-    minCouncilSeats: 1, // Each constituency elects one member
+    minCouncilSeats: 1,
     councilSeatPopulationTiers: null,
-    electoralSystem: "FPTP", // First-past-the-post for constituencies
+    electoralSystem: "FPTP",
     voteTarget: "candidate",
     partyListType: null,
     prThresholdPercent: null,
@@ -46,15 +46,15 @@ export const koreanElections = [
       "Member of National Assembly (Proportional Representation)",
     level: "national_lower_house_pr_national",
     frequencyYears: 4,
-    electionMonth: null, // Same as constituency elections
+    electionMonth: null,
     generatesOneWinner: false,
-    minCouncilSeats: 47, // Number of PR seats
+    minCouncilSeats: 47,
     councilSeatPopulationTiers: null,
     electoralSystem: "PartyListPR",
     voteTarget: "party",
     partyListType: "closed",
-    prThresholdPercent: 3, // 3% of total valid votes or 5 constituency seats
-    prAllocationMethod: "LargestRemainder", // A common PR allocation method
+    prThresholdPercent: 3,
+    prAllocationMethod: "LargestRemainder",
     mmpConstituencySeatsRatio: null,
     mmpListSeatsRatio: null,
   },
@@ -80,10 +80,10 @@ export const koreanElections = [
     officeNameTemplate: "Member of {provinceCityName} Assembly",
     level: "local_province_metropolitan_city",
     frequencyYears: 4,
-    electionMonth: null, // Same as governor elections
+    electionMonth: null,
     generatesOneWinner: false,
-    minCouncilSeats: 10, // Base minimum seats
-    electoralSystem: "SNTV_MMD", // Single Non-Transferable Vote in Multi-Member Districts (common for local assemblies)
+    minCouncilSeats: 10,
+    electoralSystem: "SNTV_MMD",
     voteTarget: "candidate",
     partyListType: null,
     prThresholdPercent: null,
@@ -103,7 +103,7 @@ export const koreanElections = [
     officeNameTemplate: "Mayor/Chief of {cityName}",
     level: "local_city_county_district",
     frequencyYears: 4,
-    electionMonth: null, // Often June, but null for general flexibility
+    electionMonth: null,
     generatesOneWinner: true,
     minCouncilSeats: null,
     councilSeatPopulationTiers: null,
@@ -120,10 +120,10 @@ export const koreanElections = [
     officeNameTemplate: "Member of {cityName} Council",
     level: "local_city_county_district",
     frequencyYears: 4,
-    electionMonth: null, // Same as local mayor elections
+    electionMonth: null,
     generatesOneWinner: false,
-    minCouncilSeats: 5, // Base minimum seats
-    electoralSystem: "SNTV_MMD", // Single Non-Transferable Vote in Multi-Member Districts (common for local assemblies)
+    minCouncilSeats: 5,
+    electoralSystem: "SNTV_MMD",
     voteTarget: "candidate",
     partyListType: null,
     prThresholdPercent: null,

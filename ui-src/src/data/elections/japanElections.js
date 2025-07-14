@@ -68,7 +68,7 @@ export const japanElections = [
   },
   {
     id: stateElectionIds.state_hr,
-    officeNameTemplate: "Prefectural Assembly Member - {prefectureName}",
+    officeNameTemplate: "Prefectural Assembly Member - {districtName}",
     level: "local_prefecture",
     frequencyYears: 4,
     electionMonth: 4,

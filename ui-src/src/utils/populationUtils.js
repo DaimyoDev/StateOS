@@ -1,47 +1,17 @@
+import { generateAllLegislativeDistricts } from "./districtGenerationUtils";
 import { getRandomInt } from "./generalUtils";
-import {
-  JPN_HOC_SEAT_ALLOCATION_TIERS,
-  JPN_HR_DISTRICTS_PER_PREFECTURE_TIERS,
-  USA_STATE_LOWER_HOUSE_DISTRICT_TIERS,
-  USA_STATE_UPPER_HOUSE_DISTRICT_TIERS,
-  USA_CONGRESSIONAL_DISTRICT_TIERS,
-  PHL_PROVINCIAL_BOARD_DISTRICT_TIERS,
-  PHL_SEATS_PER_PROVINCIAL_BOARD_DISTRICT_RANGE,
-  PHL_HR_DISTRICTS_PER_PROVINCE_TIERS,
-  KOR_LOCAL_BASIC_COUNCIL_TIERS,
-  KOR_NATIONAL_ASSEMBLY_CONSTITUENCY_TIERS,
-  KOR_PROVINCIAL_METROPOLITAN_ASSEMBLY_TIERS,
-} from "../data/countriesData";
-import { initializeUsaStructures } from "./chamberStructures/usaStructures";
-import { initializeJapanStructures } from "./chamberStructures/japanStructures";
-import { initializePhilippinesStructures } from "./chamberStructures/philippinesStructures";
-import { initializeKoreanStructures } from "./chamberStructures/koreanStructures";
 
 /**
  * Assigns random populations to countries and their regions.
  * Modifies the input countriesData array directly.
  * @param {Array<object>} countriesData - The COUNTRIES_DATA array.
  * @param {object} countryPopulationRanges - Object with countryId as key and {min, max} population as value.
+ * @returns {Array<object>} The modified countriesData array.
  */
 export const assignNestedPopulations = (
   countriesData, // This array will be modified directly
   countryPopulationRanges
 ) => {
-  // Bundling tier data for easier passing
-  const tierData = {
-    JPN_HOC_SEAT_ALLOCATION_TIERS,
-    JPN_HR_DISTRICTS_PER_PREFECTURE_TIERS,
-    USA_STATE_LOWER_HOUSE_DISTRICT_TIERS,
-    USA_STATE_UPPER_HOUSE_DISTRICT_TIERS,
-    USA_CONGRESSIONAL_DISTRICT_TIERS,
-    PHL_PROVINCIAL_BOARD_DISTRICT_TIERS,
-    PHL_SEATS_PER_PROVINCIAL_BOARD_DISTRICT_RANGE,
-    PHL_HR_DISTRICTS_PER_PROVINCE_TIERS,
-    KOR_LOCAL_BASIC_COUNCIL_TIERS,
-    KOR_NATIONAL_ASSEMBLY_CONSTITUENCY_TIERS,
-    KOR_PROVINCIAL_METROPOLITAN_ASSEMBLY_TIERS,
-  };
-
   countriesData.forEach((country) => {
     // 1. Assign Country Population
     const range = countryPopulationRanges[country.id];
@@ -54,10 +24,9 @@ export const assignNestedPopulations = (
       country.population = getRandomInt(1000000, 50000000); // Default population
     }
 
-    // Initialize arrays if they don't exist to prevent errors in helper functions
-    if (!country.nationalLowerHouseDistricts)
-      country.nationalLowerHouseDistricts = [];
-    if (!country.nationalPrBlocs) country.nationalPrBlocs = [];
+    // Initialize arrays for future district population by generateAllLegislativeDistricts
+    country.nationalLowerHouseDistricts = []; // Ensure it's an empty array to start
+    country.nationalPrBlocs = country.nationalPrBlocs || []; // Keep existing if populated elsewhere, or ensure empty
 
     // 2. Assign Populations to Primary Regions (States/Prefectures/AdminRegions for PHL)
     if (country.regions && country.regions.length > 0) {
@@ -70,69 +39,25 @@ export const assignNestedPopulations = (
       });
     }
 
-    // 3. Country-Specific Structure Initializations
-    // These functions will handle further population distribution (e.g., PHL provinces)
-    // and generation of districts/seats based on these populations.
-    if (country.id === "USA") {
-      initializeUsaStructures(country, tierData);
-    } else if (country.id === "JPN") {
-      initializeJapanStructures(country, tierData);
-    } else if (country.id === "PHL") {
-      initializePhilippinesStructures(country, tierData);
-    } else if (country.id === "KOR") {
-      initializeKoreanStructures;
-    }
-    if (
-      country.nationalLowerHouseDistricts.length > 0 &&
-      country.nationalLowerHouseDistricts.some(
-        (d) => d.population === undefined || d.population === 0
-      ) &&
-      // Avoid re-populating if already done by specific initializers for these countries
-      !["USA", "JPN", "PHL", "KOR"].includes(country.id) // Example condition
-    ) {
-      const unpopulatedDistricts = country.nationalLowerHouseDistricts.filter(
-        (d) => d.population === undefined || d.population === 0
+    // 3. Assign Populations to Secondary Regions (e.g., PHL Provinces)
+    // This is important before district generation for provinces.
+    // Ensure `distributeValueProportionally` works correctly, perhaps
+    // distribute from parent region's population if they are nested.
+    if (country.provinces && country.provinces.length > 0) {
+      // For simplicity, distributing from country population. For greater accuracy,
+      // you might want to distribute from their parent 'region' population for PHL.
+      const provincePopulations = distributeValueProportionally(
+        country.population * 0.9, // Allocate a portion of country population to provinces, adjust as needed
+        country.provinces.length
       );
-      if (unpopulatedDistricts.length > 0) {
-        // Distribute remaining portion of country population or a fixed fraction to these generic districts
-        const approxPopForGenericDistricts = country.population * 0.1; // Example: 10% for generic districts
-        const districtPopulations = distributeValueProportionally(
-          approxPopForGenericDistricts,
-          unpopulatedDistricts.length
-        );
-        unpopulatedDistricts.forEach((district, index) => {
-          district.population = districtPopulations[index] || 0;
-        });
-      }
-    }
-
-    // For nationalPrBlocs (if they exist and need population)
-    if (
-      country.nationalPrBlocs.length > 0 &&
-      country.nationalPrBlocs.some(
-        (b) => b.population === undefined || b.population === 0
-      )
-    ) {
-      const unpopulatedBlocs = country.nationalPrBlocs.filter(
-        (b) => b.population === undefined || b.population === 0
-      );
-      if (unpopulatedBlocs.length > 0) {
-        // Distribute a portion of country population to PR blocs
-        const approxPopForPrBlocs = country.population * 0.2; // Example: 20% of pop is base for PR blocs
-        const blocPopulations = distributeValueProportionally(
-          approxPopForPrBlocs,
-          unpopulatedBlocs.length
-        );
-        unpopulatedBlocs.forEach((bloc, index) => {
-          bloc.population = blocPopulations[index] || 0;
-          // Ensure numberOfSeats is present on PR bloc data if needed by elections
-          // bloc.numberOfSeats = bloc.numberOfSeats || getRandomInt(5,20); // Example, better if defined in initial data
-        });
-      }
+      country.provinces.forEach((province, index) => {
+        province.population = provincePopulations[index] || 0;
+      });
     }
   });
+  generateAllLegislativeDistricts(countriesData);
 
-  return countriesData; // Return the modified countriesData array
+  return countriesData;
 };
 
 /**

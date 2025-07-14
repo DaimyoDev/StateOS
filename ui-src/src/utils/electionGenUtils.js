@@ -1,4 +1,5 @@
 // src/utils/electionGenUtils.js
+import { stateElectionIds } from "../data/elections/electionData";
 
 /**
  * Helper to build a consistent base ID for an election instance.
@@ -278,7 +279,7 @@ export const isStateLegislativeElectionType = (electionType, countryId) => {
     // For JPN, "local_prefecture" is used for Governor (singleWinner) and Assembly (multiWinner)
     return (
       countryId === "JPN" &&
-      electionType.id === "prefectural_assembly" &&
+      electionType.id === stateElectionIds.state_hr &&
       !electionType.generatesOneWinner
     );
   }
@@ -307,250 +308,186 @@ export const generateStateLegislativeElectionInstances = (
   buildIdBaseFunc
 ) => {
   const instances = [];
-  const { countryId, regionId } = activeCampaign;
+  const { regionId, countryId } = activeCampaign; // countryId is still needed for filtering entitiesToProcess if regionId is absent
   const baseOfficeName = electionType.officeNameTemplate;
 
-  if (electionType.id === "state_hr") {
-    const currentActiveState = currentCountryData.regions?.find(
-      (r) => r.id === regionId
+  let entitiesToProcess = [];
+
+  // Determine which sub-national entities (states/prefectures/provinces) to process.
+  // If a specific regionId is provided, process only that entity.
+  // Otherwise, if regionId is null or matches countryId, process ALL sub-national entities for that country.
+  if (regionId && currentCountryData.regions?.find((r) => r.id === regionId)) {
+    entitiesToProcess.push(
+      currentCountryData.regions.find((r) => r.id === regionId)
     );
-    if (currentActiveState) {
+  } else if (
+    regionId &&
+    currentCountryData.provinces?.find((p) => p.id === regionId)
+  ) {
+    entitiesToProcess.push(
+      currentCountryData.provinces.find((p) => p.id === regionId)
+    );
+  } else if (!regionId || regionId === countryId) {
+    // Process all regions and provinces for the current country
+    entitiesToProcess = [
+      ...(currentCountryData.regions || []),
+      ...(currentCountryData.provinces || []),
+    ].filter((e) => e.id.startsWith(countryId)); // Ensure we only get entities for the current country
+  }
+
+  entitiesToProcess.forEach((entity) => {
+    if (!entity || !entity.id || !entity.name || !entity.population) {
+      console.warn(
+        `[electionGenUtils.generateStateLegislative] Skipping invalid entity for election type ${electionType.id}:`,
+        entity
+      );
+      return;
+    }
+
+    // Determine the correct entity name placeholder (e.g., {stateName}, {prefectureName})
+    // This is often country-specific, but can be based on entity ID prefix or assumed from entity type
+    let entityNamePlaceholder = "{stateName}"; // Default for US states
+    if (entity.id.startsWith("JPN_")) {
+      entityNamePlaceholder = "{prefectureName}";
+    } else if (
+      entity.id.startsWith("PHL_PROV_") ||
+      entity.id.startsWith("KOR_")
+    ) {
+      // Assuming KOR regions/provinces are like PHL's for naming
+      entityNamePlaceholder = "{provinceName}"; // Or a generic {subnationalName}
+    }
+    // You might also use `entity.type` if your entity objects have a 'type' property (e.g., 'state', 'prefecture', 'province')
+
+    // Resolve the basic office name template once for this entity
+    let resolvedOfficeNameBase = baseOfficeName.replace(
+      entityNamePlaceholder,
+      entity.name
+    );
+
+    // --- General Logic for Districted Legislative Bodies (FPTP, SNTV_MMD, BlockVote) ---
+    // This covers US state houses/senates, JPN prefectural assembly (SNTV_MMD), PHL provincial boards, KOR provincial assemblies
+    // These elections have districts (even if multi-member) generated and stored on the entity.
+    if (
+      (electionType.electoralSystem === "FPTP" &&
+        electionType.generatesOneWinner) || // Single-winner districts
+      (electionType.electoralSystem === "SNTV_MMD" &&
+        !electionType.generatesOneWinner) || // Multi-member districts (e.g., JPN, KOR, some PHL)
+      (electionType.electoralSystem === "BlockVote" &&
+        !electionType.generatesOneWinner) // Multi-member districts (e.g., other PHL)
+    ) {
+      // Prioritize legislativeDistricts, then boardDistricts (for PHL-specific naming)
       const districtsForThisChamber =
-        currentActiveState.legislativeDistricts?.[electionType.id];
-      console.log(currentActiveState.legislativeDistricts);
+        entity.legislativeDistricts?.[electionType.id] ||
+        (electionType.id === stateElectionIds.state_hr && entity.boardDistricts // Check if it's the specific electionType AND boardDistricts exist
+          ? entity.boardDistricts // If so, use the entire boardDistricts array
+          : null); // Otherwise, fall back to null (or an empty array, depending on desired behavior if no match)
+
       if (districtsForThisChamber && Array.isArray(districtsForThisChamber)) {
         districtsForThisChamber.forEach((district) => {
           if (!district || !district.id || !district.name) {
             console.warn(
-              `[electionGenUtils.generateStateLegislative] Skipping invalid US state district in ${currentActiveState.name}:`,
+              `[electionGenUtils.generateStateLegislative] Skipping invalid district in ${entity.name} for type ${electionType.id}:`,
               district
             );
             return;
           }
+
+          // Resolve office name with district name
+          const finalResolvedOfficeName = resolvedOfficeNameBase.replace(
+            "{districtName}",
+            district.name
+          );
+
           instances.push({
             instanceIdBase: buildIdBaseFunc(
               electionType.id,
-              `${currentActiveState.id}_${district.id}`
+              `${entity.id}_${district.id}`
             ),
-            entityType: "state_legislative_district",
+            entityType:
+              district.entityType || "subnational_legislative_district", // Use a generic entity type
             entityData: {
               ...district,
-              stateId: currentActiveState.id,
-              stateName: currentActiveState.name,
+              parentId: entity.id, // Consistent parent ID link
+              parentName: entity.name,
+              // You might want to add a `countryId` and `countryName` to entityData as well for full context
             },
-            resolvedOfficeName: baseOfficeName
-              .replace("{stateName}", currentActiveState.name)
-              .replace("{districtName}", district.name),
-            _isSingleSeatContest: true,
+            resolvedOfficeName: finalResolvedOfficeName,
+            _isSingleSeatContest: electionType.generatesOneWinner, // True for FPTP, false for SNTV_MMD/BlockVote
             _effectiveElectoralSystem: electionType.electoralSystem,
-            _effectiveGeneratesOneWinner: true,
-            ...electionType,
+            _effectiveGeneratesOneWinner: electionType.generatesOneWinner,
+            // _numberOfSeatsForThisInstance will be set by calculateSeatDetailsForInstance using tiers
+            ...electionType, // Spread to carry over all original electionType properties
             id: electionType.id,
           });
         });
-      }
-    }
-  }
-  // --- JPN Prefectural Assembly (At-large for the entire prefecture) ---
-  else if (
-    countryId === "JPN" &&
-    electionType.id === "prefectural_assembly" &&
-    electionType.level === "local_prefecture" && // Ensures it's not the Governor
-    !electionType.generatesOneWinner
-  ) {
-    let prefecturesToProcess = [];
-    // If regionId is a specific JPN prefecture, process only that one.
-    // Otherwise, if no regionId or it's the countryId, process all JPN prefectures.
-    if (
-      regionId &&
-      currentCountryData.regions?.find(
-        (r) => r.id === regionId && r.id.startsWith("JPN_")
-      )
-    ) {
-      const pref = currentCountryData.regions.find((r) => r.id === regionId);
-      if (pref) prefecturesToProcess.push(pref);
-    } else if (!regionId || regionId === countryId) {
-      // National context or no specific region
-      prefecturesToProcess =
-        currentCountryData.regions?.filter((r) => r.id.startsWith("JPN_")) ||
-        [];
-    }
-
-    prefecturesToProcess.forEach((prefecture) => {
-      instances.push({
-        instanceIdBase: buildIdBaseFunc(electionType.id, prefecture.id),
-        entityType: "prefecture", // The election entity is the whole prefecture
-        entityData: { ...prefecture },
-        resolvedOfficeName: baseOfficeName.replace(
-          "{prefectureName}",
-          prefecture.name
-        ),
-        _isSingleSeatContest: false, // Assembly election is multi-winner
-        _effectiveElectoralSystem: electionType.electoralSystem, // SNTV_MMD
-        _effectiveGeneratesOneWinner: false,
-        // _numberOfSeatsForThisInstance will be set by calculateSeatDetailsForInstance later
-        ...electionType,
-        id: electionType.id,
-      });
-    });
-  }
-  // --- PHL Provincial Boards (Sangguniang Panlalawigan - Districted within a province) ---
-  else if (
-    countryId === "PHL" &&
-    electionType.level === "local_province_board"
-    // This implies !electionType.generatesOneWinner from its nature
-  ) {
-    let provincesToProcess = [];
-    // Determine which province(s) to process based on regionId context
-    if (
-      regionId &&
-      currentCountryData.provinces?.find(
-        (p) => p.id === regionId && p.id.startsWith("PHL_PROV_")
-      )
-    ) {
-      const prov = currentCountryData.provinces.find((p) => p.id === regionId);
-      if (prov) provincesToProcess.push(prov);
-    } else if (
-      regionId &&
-      currentCountryData.regions?.find(
-        (r) => r.id === regionId && r.id.startsWith("PHL_R")
-      )
-    ) {
-      // Admin region context
-      provincesToProcess =
-        currentCountryData.provinces?.filter(
-          (p) => p.adminRegionId === regionId
-        ) || [];
-    } else if (!regionId || regionId === countryId) {
-      // National context or unrecognized regionId
-      provincesToProcess =
-        currentCountryData.provinces?.filter((p) =>
-          p.id.startsWith("PHL_PROV_")
-        ) || [];
-    }
-
-    provincesToProcess.forEach((province) => {
-      if (province.boardDistricts && Array.isArray(province.boardDistricts)) {
-        province.boardDistricts.forEach((boardDistrict) => {
-          if (
-            !boardDistrict ||
-            !boardDistrict.id ||
-            !boardDistrict.name ||
-            boardDistrict.seatsToElect == null
-          ) {
-            console.warn(
-              `[electionGenUtils.generateStateLegislative] Skipping invalid PHL board district in ${province.name}:`,
-              boardDistrict
-            );
-            return;
-          }
-          instances.push({
-            instanceIdBase: buildIdBaseFunc(
-              electionType.id,
-              `${province.id}_${boardDistrict.id}`
-            ),
-            entityType: "provincial_board_district",
-            entityData: {
-              ...boardDistrict,
-              provinceId: province.id,
-              provinceName: province.name,
-            },
-            resolvedOfficeName: baseOfficeName
-              .replace("{provinceName}", province.name)
-              .replace("{districtName}", boardDistrict.name),
-            _isSingleSeatContest: false, // Each board district election is multi-winner for its seats
-            _effectiveElectoralSystem: electionType.electoralSystem, // BlockVote
-            _effectiveGeneratesOneWinner: false,
-            _numberOfSeatsForThisInstance: boardDistrict.seatsToElect, // Seats for this specific board district
-            ...electionType,
-            id: electionType.id,
-          });
-        });
-      } else {
-        // console.warn(`[electionGenUtils.generateStateLegislative] PHL: Province '${province.name}' missing 'boardDistricts' for election type ${electionType.id}.`);
-      }
-    });
-  }
-  // --- GER State Parliaments (Landtage - MMP, one instance for the whole state parliament) ---
-  else if (
-    countryId === "GER" &&
-    electionType.id === "state_parliament_deu" &&
-    electionType.level === "local_state_parliament"
-  ) {
-    let statesToProcess = [];
-    // Determine which German state(s) to process
-    if (
-      regionId &&
-      currentCountryData.regions?.find(
-        (r) => r.id === regionId && r.id.startsWith("DEU_")
-      )
-    ) {
-      const state = currentCountryData.regions.find((r) => r.id === regionId);
-      if (state) statesToProcess.push(state);
-    } else if (!regionId || regionId === countryId) {
-      // National context or no specific region
-      statesToProcess =
-        currentCountryData.regions?.filter((r) => r.id.startsWith("DEU_")) ||
-        [];
-    }
-
-    statesToProcess.forEach((stateEntity) => {
-      if (!stateEntity || !stateEntity.id || !stateEntity.name) return;
-      instances.push({
-        instanceIdBase: buildIdBaseFunc(electionType.id, stateEntity.id),
-        entityType: "state", // Or "land"
-        entityData: { ...stateEntity },
-        resolvedOfficeName: baseOfficeName.replace(
-          "{stateName}",
-          stateEntity.name
-        ),
-        _isSingleSeatContest: false, // Overall MMP election for the parliament is multi-winner
-        _effectiveElectoralSystem: "MMP",
-        _effectiveGeneratesOneWinner: false,
-        _numberOfSeatsForThisInstance: electionType.minCouncilSeats, // Base number of seats for the Landtag
-        // MMP also involves constituency seats; this instance is for the overall proportional allocation.
-        // Constituency instances would need to be generated separately if your model is that detailed for GER states.
-        // However, your ELECTION_TYPES_BY_COUNTRY defines state_parliament_deu as a single MMP election.
-        ...electionType,
-        id: electionType.id,
-      });
-    });
-  }
-  // Add other countries' state/provincial/regional legislative bodies here if they have unique structures.
-  else {
-    // This 'else' implies it was identified as a state legislative type by `isStateLegislativeElectionType`
-    // but didn't match any specific country logic above.
-    // Could be a generic at-large state assembly for a new country.
-    if (
-      electionType.level.startsWith("local_state") ||
-      electionType.level.startsWith("local_province") ||
-      electionType.level.startsWith("local_prefecture")
-    ) {
-      const regionEntity = currentCountryData.regions?.find(
-        (r) => r.id === regionId
-      );
-      if (regionEntity && !electionType.generatesOneWinner) {
-        // Generic at-large assembly
+      } else if (!electionType.generatesOneWinner) {
+        // If it's a multi-winner election, but no districts were generated (e.g., entire entity is one MMD)
         console.warn(
-          `[electionGenUtils.generateStateLegislative] Using generic at-large logic for legislative body: ${electionType.id} in ${regionEntity.name}.`
+          `[electionGenUtils.generateStateLegislative] Multi-winner election type ${electionType.id} in ${entity.name} has no explicit districts. Treating entire entity as one at-large district.`
         );
+        // Create a single instance representing the entire entity as one multi-member district
         instances.push({
-          instanceIdBase: buildIdBaseFunc(electionType.id, regionEntity.id),
-          entityType: "state_or_equivalent",
-          entityData: { ...regionEntity },
-          resolvedOfficeName: baseOfficeName
-            .replace("{stateName}", regionEntity.name)
-            .replace("{provinceName}", regionEntity.name)
-            .replace("{prefectureName}", regionEntity.name),
-          _isSingleSeatContest: false,
+          instanceIdBase: buildIdBaseFunc(electionType.id, entity.id), // Instance ID for the whole entity
+          entityType: entity.entityType || "subnational_legislative_at_large",
+          entityData: { ...entity },
+          resolvedOfficeName: resolvedOfficeNameBase, // Office name without district placeholder
+          _isSingleSeatContest: false, // It's multi-winner
           _effectiveElectoralSystem: electionType.electoralSystem,
           _effectiveGeneratesOneWinner: false,
+          // _numberOfSeatsForThisInstance determined by calculateSeatDetailsForInstance
           ...electionType,
           id: electionType.id,
         });
       }
     }
-  }
+    // --- Specific Logic for MMP Systems (e.g., Germany's Landtage) ---
+    // MMP systems are often treated as a single election for the entire legislative body within the entity.
+    else if (electionType.electoralSystem === "MMP") {
+      // This block applies to any sub-national entity using MMP.
+      // This is for the overall parliamentary election, not individual constituencies (which are handled by national HR typically)
+      // or would need separate MMP constituency generation if modeled in depth.
+      instances.push({
+        instanceIdBase: buildIdBaseFunc(electionType.id, entity.id),
+        entityType: entity.entityType || "subnational_parliament",
+        entityData: { ...entity },
+        resolvedOfficeName: resolvedOfficeNameBase,
+        _isSingleSeatContest: false, // Overall MMP election for the parliament is multi-winner
+        _effectiveElectoralSystem: "MMP",
+        _effectiveGeneratesOneWinner: false,
+        _numberOfSeatsForThisInstance: electionType.minCouncilSeats, // Base number of seats for the Landtag
+        ...electionType,
+        id: electionType.id,
+      });
+    }
+    // --- Fallback/Warning for unhandled state legislative types ---
+    else {
+      // This 'else' implies it was identified as a state legislative type by `isStateLegislativeElectionType`
+      // but didn't match any specific generation pattern above (e.g., districted, MMP).
+      // This might catch generic at-large assemblies.
+      console.warn(
+        `[electionGenUtils.generateStateLegislative] No specific generation logic matched for type '${electionType.id}' (System: ${electionType.electoralSystem}, Generates One: ${electionType.generatesOneWinner}) in entity: ${entity.name}. Falling back to generic at-large if applicable.`
+      );
+      // If it's a generic, non-districted, multi-winner assembly not specifically handled
+      if (!electionType.generatesOneWinner) {
+        instances.push({
+          instanceIdBase: buildIdBaseFunc(electionType.id, entity.id),
+          entityType: entity.entityType || "subnational_at_large_assembly",
+          entityData: { ...entity },
+          resolvedOfficeName: resolvedOfficeNameBase,
+          _isSingleSeatContest: false,
+          _effectiveElectoralSystem: electionType.electoralSystem,
+          _effectiveGeneratesOneWinner: false,
+          _numberOfSeatsForThisInstance: electionType.minCouncilSeats,
+          ...electionType,
+          id: electionType.id,
+        });
+      } else {
+        console.warn(
+          `[electionGenUtils.generateStateLegislative] No instances generated for '${electionType.id}' in ${entity.name} as it requires specific logic.`
+        );
+      }
+    }
+  });
 
   return instances;
 };
