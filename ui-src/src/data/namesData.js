@@ -19,6 +19,11 @@ import {
   GERMAN_FEMALE_NAMES,
   GERMAN_LAST_NAMES,
 } from "./names/germanNames";
+import {
+  KOREAN_MALE_NAMES,
+  KOREAN_FEMALE_NAMES,
+  KOREAN_LAST_NAMES,
+} from "./names/koreanNames";
 
 export const NAMES_BY_COUNTRY = {
   JPN: {
@@ -42,7 +47,11 @@ export const NAMES_BY_COUNTRY = {
     female: FILIPINO_FEMALE_NAMES,
     last: FILIPINO_LAST_NAMES,
   },
-  // Add other countries here
+  KOR: {
+    male: KOREAN_MALE_NAMES,
+    female: KOREAN_LAST_NAMES,
+    last: KOREAN_LAST_NAMES,
+  },
 };
 
 export const GENERIC_FIRST_NAMES_MALE = ["Alex", "Chris", "Jordan", "Taylor"];

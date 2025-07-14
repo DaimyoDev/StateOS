@@ -100,8 +100,8 @@ export const FILIPINO_FEMALE_NAMES = [
   "Gloria",
   "Laura",
   "Luisa",
-  "Mayumi", // Indigenous origin
-  "Mutya", // Indigenous origin
+  "Mayumi",
+  "Mutya",
 ];
 
 export const FILIPINO_LAST_NAMES = [
@@ -113,12 +113,12 @@ export const FILIPINO_LAST_NAMES = [
   "Villanueva",
   "Ramos",
   "Fernandez",
-  "Dela Cruz", // Very common "De la Cruz" or "Dela Cruz"
-  "Gonzales", // Also "Gonzalez"
+  "Dela Cruz",
+  "Gonzales",
   "Bautista",
-  "Lim", // Chinese Filipino origin
-  "Tan", // Chinese Filipino origin
-  "Lee", // Chinese Filipino origin
+  "Lim",
+  "Tan",
+  "Lee",
   "Aquino",
   "Mendoza",
   "Castillo",
@@ -139,16 +139,16 @@ export const FILIPINO_LAST_NAMES = [
   "David",
   "Lopez",
   "Javier",
-  "Chua", // Chinese Filipino origin
-  "Yap", // Chinese Filipino origin
-  "Sy", // Chinese Filipino origin
+  "Chua",
+  "Yap",
+  "Sy",
   "Vargas",
   "Rivera",
   "Marquez",
   "Alvarez",
   "De Leon",
   "Pineda",
-  "Chan", // Chinese Filipino origin
+  "Chan",
   "Guevarra",
   "Navarro",
   "Valencia",

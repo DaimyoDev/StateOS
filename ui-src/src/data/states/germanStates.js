@@ -1,0 +1,18 @@
+export const germanStates = [
+  { id: "DEU_BW", name: "Baden-Württemberg" },
+  { id: "DEU_BY", name: "Bavaria" },
+  { id: "DEU_BE", name: "Berlin" },
+  { id: "DEU_BB", name: "Brandenburg" },
+  { id: "DEU_HB", name: "Bremen" },
+  { id: "DEU_HH", name: "Hamburg" },
+  { id: "DEU_HE", name: "Hesse" },
+  { id: "DEU_MV", name: "Mecklenburg-Vorpommern" },
+  { id: "DEU_NI", name: "Lower Saxony" },
+  { id: "DEU_NW", name: "North Rhine-Westphalia" },
+  { id: "DEU_RP", name: "Rhineland-Palatinate" },
+  { id: "DEU_SL", name: "Saarland" },
+  { id: "DEU_SN", name: "Saxony" },
+  { id: "DEU_ST", name: "Saxony-Anhalt" },
+  { id: "DEU_SH", name: "Schleswig-Holstein" },
+  { id: "DEU_TH", name: "Thuringia" },
+];
