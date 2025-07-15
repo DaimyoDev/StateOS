@@ -6,6 +6,7 @@ import PhilippinesMap from "../maps/PhilippinesMap";
 import UnitedStatesMap from "../maps/UnitedStatesMap";
 import SouthKoreaMap from "../maps/SouthKoreaMap";
 import GermanyMap from "../maps/GermanyMap";
+import CanadaMap from "../maps/CanadaMap";
 import { COUNTRIES_DATA } from "../data/countriesData";
 import "./CampaignSetupScreen.css";
 import RegionPieChart from "../components/charts/RegionPieChart";
@@ -104,6 +105,12 @@ function CampaignSetupScreen() {
       }
     }
     if (selectedCountryId === "GER") {
+      setSelectedRegionInfo({ id: regionGameId, name: regionName });
+      if (actions && actions.setSelectedRegion) {
+        actions.setSelectedRegion(regionGameId);
+      }
+    }
+    if (selectedCountryId === "CAN") {
       setSelectedRegionInfo({ id: regionGameId, name: regionName });
       if (actions && actions.setSelectedRegion) {
         actions.setSelectedRegion(regionGameId);
@@ -232,11 +239,26 @@ function CampaignSetupScreen() {
           </>
         )}
 
+        {selectedCountryId === "CAN" && (
+          <>
+            <p className="map-instruction-cs">
+              Click on a state to begin your political career there.
+            </p>
+            <div className="map-render-wrapper">
+              <CanadaMap
+                onSelectProvince={handleRegionSelectionFromMap}
+                selectedProvinceGameId={selectedRegionId}
+              />
+            </div>
+          </>
+        )}
+
         {selectedCountryId !== "JPN" &&
           selectedCountryId !== "PHL" &&
           selectedCountryId !== "USA" &&
           selectedCountryId != "KOR" &&
-          selectedCountryId != "GER" && (
+          selectedCountryId != "GER" &&
+          selectedCountryId != "CAN" && (
             <div className="map-placeholder">
               <p>
                 Map for{" "}
