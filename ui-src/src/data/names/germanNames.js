@@ -127,23 +127,23 @@ export const GERMAN_LAST_NAMES = [
   "Zimmermann",
   "Braun",
   "Krüger",
-  "Hofmann", // Alternative spelling to Hoffmann
+  "Hofmann",
   "Hartmann",
   "Lange",
-  "Schmitt", // Alternative spelling to Schmidt
+  "Schmitt",
   "Werner",
   "Schmitz",
   "Krause",
-  "Meier", // Alternative spelling to Meyer
+  "Meier",
   "Lehmann",
-  "Schmid", // Alternative spelling to Schmidt
-  "Schulze", // Alternative spelling to Schulz
-  "Maier", // Alternative spelling to Meyer
+  "Schmid",
+  "Schulze",
+  "Maier",
   "Köhler",
   "Herrmann",
   "König",
   "Walter",
-  "Mayer", // Alternative spelling to Meyer
+  "Mayer",
   "Huber",
   "Kaiser",
   "Fuchs",
@@ -151,7 +151,7 @@ export const GERMAN_LAST_NAMES = [
   "Lang",
   "Scholz",
   "Möller",
-  "Weiß", // Also Weiss
+  "Weiß",
   "Jung",
   "Hahn",
   "Vogel",

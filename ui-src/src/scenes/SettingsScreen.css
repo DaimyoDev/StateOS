@@ -2,6 +2,7 @@
   padding: 20px;
   color: var(--primary-text);
   background-color: var(--primary-bg);
+  min-height: min-content;
   height: 100%;
   width: 100%;
   display: flex;
@@ -12,20 +13,56 @@
 .settings-screen-container h1 {
   color: var(--accent-color);
   font-family: var(--font-heading);
-  margin-bottom: 30px;
+  margin-bottom: 20px;
 }
 
-.theme-selection {
-  margin-bottom: 30px;
-  padding: 20px;
+/* Tab Styles */
+.settings-tabs {
+  display: flex;
+  width: 90%;
+  max-width: 500px;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 0;
+}
+
+.tab-button {
+  padding: 10px 20px;
+  cursor: pointer;
+  background-color: transparent;
+  color: var(--primary-text);
+  border: none;
+  border-bottom: 3px solid transparent;
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  position: relative;
+  top: 1px; /* Aligns the bottom border with the container's border */
+}
+
+.tab-button.active {
+  color: var(--accent-color);
+  border-bottom-color: var(--accent-color);
+}
+
+/* Tab Content Container */
+.settings-tab-content {
   background-color: var(--secondary-bg);
   border: 1px solid var(--border-color);
-  border-radius: 5px;
+  border-top: none;
+  border-radius: 0 0 5px 5px;
+  padding: 20px;
   width: 100%;
+  margin-bottom: 30px;
   text-align: center;
 }
 
-.theme-selection h2 {
+/* Updated Theme Selection & New General Section */
+.theme-selection,
+.general-settings {
+  width: 100%;
+}
+
+.theme-selection h2,
+.general-settings h2 {
   margin-bottom: 15px;
   font-family: var(--font-heading);
 }

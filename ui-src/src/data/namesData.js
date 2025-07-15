@@ -37,7 +37,6 @@ export const NAMES_BY_COUNTRY = {
     last: ENGLISH_LAST_NAMES,
   },
   GER: {
-    // Or use "DEU" if that's your consistent ID from countriesData.js
     male: GERMAN_MALE_NAMES,
     female: GERMAN_FEMALE_NAMES,
     last: GERMAN_LAST_NAMES,

@@ -3,6 +3,9 @@ import React, { useState, useEffect } from "react";
 import useGameStore from "../store";
 import JapanMap from "../maps/JapanMap";
 import PhilippinesMap from "../maps/PhilippinesMap";
+import UnitedStatesMap from "../maps/UnitedStatesMap";
+import SouthKoreaMap from "../maps/SouthKoreaMap";
+import GermanyMap from "../maps/GermanyMap";
 import { COUNTRIES_DATA } from "../data/countriesData";
 import "./CampaignSetupScreen.css";
 import RegionPieChart from "../components/charts/RegionPieChart";
@@ -88,6 +91,24 @@ function CampaignSetupScreen() {
         actions.setSelectedRegion(regionGameId);
       }
     }
+    if (selectedCountryId === "USA") {
+      setSelectedRegionInfo({ id: regionGameId, name: regionName });
+      if (actions && actions.setSelectedRegion) {
+        actions.setSelectedRegion(regionGameId);
+      }
+    }
+    if (selectedCountryId === "KOR") {
+      setSelectedRegionInfo({ id: regionGameId, name: regionName });
+      if (actions && actions.setSelectedRegion) {
+        actions.setSelectedRegion(regionGameId);
+      }
+    }
+    if (selectedCountryId === "GER") {
+      setSelectedRegionInfo({ id: regionGameId, name: regionName });
+      if (actions && actions.setSelectedRegion) {
+        actions.setSelectedRegion(regionGameId);
+      }
+    }
   };
 
   // Placeholder for selecting region if not using a map
@@ -158,7 +179,7 @@ function CampaignSetupScreen() {
         {selectedCountryId === "PHL" && (
           <>
             <p className="map-instruction-cs">
-              Click on a prefecture to begin your political career there.
+              Click on a province to begin your political career there.
             </p>
             <div className="map-render-wrapper">
               <PhilippinesMap
@@ -169,58 +190,104 @@ function CampaignSetupScreen() {
           </>
         )}
 
-        {selectedCountryId !== "JPN" && selectedCountryId !== "PHL" && (
-          <div className="map-placeholder">
-            <p>
-              Map for{" "}
-              <strong>
-                {currentSelectedCountryData?.name || "selected country"}
-              </strong>{" "}
-              is not yet available.
+        {selectedCountryId === "USA" && (
+          <>
+            <p className="map-instruction-cs">
+              Click on a state to begin your political career there.
             </p>
-            <p>
-              Region selection for this country will be available through a list
-              once regions are defined.
-            </p>
-            {/* Placeholder for future region dropdown for non-map countries */}
-            {currentSelectedCountryData &&
-            currentSelectedCountryData.regions &&
-            currentSelectedCountryData.regions.length > 0 ? (
-              <section className="setup-section region-selection-list-section">
-                <h4>Select Region:</h4>
-                <select
-                  value={selectedRegionId || ""}
-                  onChange={(e) => {
-                    const region = currentSelectedCountryData.regions.find(
-                      (r) => r.id === e.target.value
-                    );
-                    if (region) {
-                      handleRegionSelectionFromList(region.id, region.name);
-                    }
-                  }}
-                  className="region-selector-dropdown" // Add styling
-                >
-                  <option value="" disabled>
-                    {" "}
-                    -- Select a Region --{" "}
-                  </option>
-                  {currentSelectedCountryData.regions.map((region) => (
-                    <option key={region.id} value={region.id}>
-                      {region.name}
-                    </option>
-                  ))}
-                </select>
-              </section>
-            ) : (
-              selectedCountryId && (
-                <p>
-                  No regions currently defined for{" "}
-                  {currentSelectedCountryData?.name}.
-                </p>
-              )
-            )}
-          </div>
+            <div className="map-render-wrapper">
+              <UnitedStatesMap
+                onSelectState={handleRegionSelectionFromMap}
+                selectedStateGameId={selectedRegionId}
+              />
+            </div>
+          </>
         )}
+
+        {selectedCountryId === "KOR" && (
+          <>
+            <p className="map-instruction-cs">
+              Click on a state to begin your political career there.
+            </p>
+            <div className="map-render-wrapper">
+              <SouthKoreaMap
+                onSelectState={handleRegionSelectionFromMap}
+                selectedStateGameId={selectedRegionId}
+              />
+            </div>
+          </>
+        )}
+
+        {selectedCountryId === "GER" && (
+          <>
+            <p className="map-instruction-cs">
+              Click on a state to begin your political career there.
+            </p>
+            <div className="map-render-wrapper">
+              <GermanyMap
+                onSelectState={handleRegionSelectionFromMap}
+                selectedStateGameId={selectedRegionId}
+              />
+            </div>
+          </>
+        )}
+
+        {selectedCountryId !== "JPN" &&
+          selectedCountryId !== "PHL" &&
+          selectedCountryId !== "USA" &&
+          selectedCountryId != "KOR" &&
+          selectedCountryId != "GER" && (
+            <div className="map-placeholder">
+              <p>
+                Map for{" "}
+                <strong>
+                  {currentSelectedCountryData?.name || "selected country"}
+                </strong>{" "}
+                is not yet available.
+              </p>
+              <p>
+                Region selection for this country will be available through a
+                list once regions are defined.
+              </p>
+              {/* Placeholder for future region dropdown for non-map countries */}
+              {currentSelectedCountryData &&
+              currentSelectedCountryData.regions &&
+              currentSelectedCountryData.regions.length > 0 ? (
+                <section className="setup-section region-selection-list-section">
+                  <h4>Select Region:</h4>
+                  <select
+                    value={selectedRegionId || ""}
+                    onChange={(e) => {
+                      const region = currentSelectedCountryData.regions.find(
+                        (r) => r.id === e.target.value
+                      );
+                      if (region) {
+                        handleRegionSelectionFromList(region.id, region.name);
+                      }
+                    }}
+                    className="region-selector-dropdown" // Add styling
+                  >
+                    <option value="" disabled>
+                      {" "}
+                      -- Select a Region --{" "}
+                    </option>
+                    {currentSelectedCountryData.regions.map((region) => (
+                      <option key={region.id} value={region.id}>
+                        {region.name}
+                      </option>
+                    ))}
+                  </select>
+                </section>
+              ) : (
+                selectedCountryId && (
+                  <p>
+                    No regions currently defined for{" "}
+                    {currentSelectedCountryData?.name}.
+                  </p>
+                )
+              )}
+            </div>
+          )}
         {!selectedCountryId && (
           <p className="map-instruction-cs">
             Please select a country to begin.

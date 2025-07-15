@@ -15,7 +15,7 @@ export const BASE_IDEOLOGIES = [
     id: "religious_conservative",
     name: "Religious Conservative",
     color: "#003366",
-  }, // Deep/Dark Blue
+  },
   { id: "technocratic", name: "Technocratic", color: "#4A5568" }, // Steel Grey or a Cool Blue
   { id: "monarchist", name: "Monarchist", color: "#FFD700" },
 ];
@@ -82,7 +82,7 @@ export const ABSTRACT_NOUNS = [
 ];
 
 export const IDEOLOGY_KEYWORDS = {
-  Default: ["Focus", "Values", "Principles"], // Fallback if ideology not listed
+  Default: ["Focus", "Values", "Principles"],
   Conservative: [
     "Conservative",
     "Traditionalist",
