@@ -1,5 +1,6 @@
 import { assignNestedPopulations } from "../utils/populationUtils";
 import { generateFullStateData } from "../utils/stateUtils";
+import { chamberTiers } from "./chamberTiers";
 import { japanPrefectures } from "./states/japanPrefectures";
 import { usaStates } from "./states/usaStates";
 import { germanStates } from "./states/germanStates";
@@ -39,6 +40,12 @@ const baseCountriesData = [
     regions: japanPrefectures.map((r) => ({ ...r })),
     nationalLowerHouseDistricts: [],
     nationalPrBlocs: [],
+    nationalHrTiers:
+      chamberTiers.JPN.NATIONIAL.JPN_HR_DISTRICTS_PER_PREFECTURE_TIERS,
+    nationalHrName: "House Of Representatives",
+    lowerStateHrTiers:
+      chamberTiers.JPN.NATIONIAL.JPN_HR_DISTRICTS_PER_PREFECTURE_TIERS,
+    lowerStateHrName: "Assembly District",
   },
   {
     id: "USA",
@@ -53,6 +60,14 @@ const baseCountriesData = [
     politicalSystem: "Presidential Republic",
     regions: usaStates.map((r) => ({ ...r })),
     nationalLowerHouseDistricts: [],
+    nationalHrTiers: chamberTiers.USA.NATIONAL.USA_CONGRESSIONAL_DISTRICT_TIERS,
+    nationalHrName: "House Of Representatives",
+    lowerStateHrTiers:
+      chamberTiers.USA.STATE.USA_STATE_LOWER_HOUSE_DISTRICT_TIERS,
+    lowerStateHrName: "State House Of Representatives District",
+    upperStateHrTiers:
+      chamberTiers.USA.STATE.USA_STATE_UPPER_HOUSE_DISTRICT_TIERS,
+    upperStateHrName: "State Senate District",
   },
   {
     id: "GER",
@@ -76,6 +91,9 @@ const baseCountriesData = [
     regions: philippinesRegions.map((r) => ({ ...r })),
     provinces: philippinesProvinces.map((p) => ({ ...p })),
     nationalLowerHouseDistricts: [],
+    nationalHrTiers:
+      chamberTiers.PHL.NATIONAL.PHL_HR_DISTRICTS_PER_PROVINCE_TIERS,
+    nationalHrName: "House Of Representatives",
   },
   {
     id: "KOR",
@@ -91,6 +109,12 @@ const baseCountriesData = [
     politicalSystem: "Presidential Republic",
     regions: koreaAdministrativeDivisions.map((r) => ({ ...r })),
     nationalLowerHouseDistricts: [],
+    nationalHrTiers:
+      chamberTiers.KOR.NATIONAL.KOR_NATIONAL_ASSEMBLY_CONSTITUENCY_TIERS,
+    nationalHrName: "National Assembly",
+    lowerStateHrTiers:
+      chamberTiers.KOR.STATE.KOR_PROVINCIAL_METROPOLITAN_ASSEMBLY_TIERS,
+    lowerStateHrName: "Assembly District",
   },
   {
     id: "CAN",
@@ -100,6 +124,10 @@ const baseCountriesData = [
     dominantIdeologies: ["Liberal", "Conservative", "Social Democrat"],
     regions: canadaProvinces.map((p) => ({ ...p })),
     nationalLowerHouseDistricts: [],
+    nationalHrTiers: chamberTiers.CAN.NATIONAL.CAN_FEDERAL_HR_DISTRICT_TIERS,
+    nationalHrName: "Parliament District",
+    lowerStateHrTiers: chamberTiers.CAN.STATE.CAN_PROVINCIAL_ASSEMBLY_TIERS,
+    lowerStateHrName: "Assembly District",
   },
   {
     id: "AUS",

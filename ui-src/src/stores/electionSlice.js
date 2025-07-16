@@ -138,11 +138,8 @@ export const createElectionSlice = (set) => ({
             return;
           }
 
-          // Now, determine if we are creating "conceptual seat" items for an AT-LARGE MMD
-          // (This is your "Model A" for Japanese councils, etc.)
-          // MODIFIED: Removed the specific condition for "city_council_usa"
           const shouldCreateConceptualSeatItems =
-            (!_isSingleSeatContest && // It's an at-large contest instance from getElectionInstances
+            (!_isSingleSeatContest &&
               !effectiveElectionType.generatesOneWinner &&
               seatDetailsForThisContest.numberOfSeats > 1 &&
               !(effectiveElectionType._modelAsSingleContest === true) &&
@@ -182,20 +179,18 @@ export const createElectionSlice = (set) => ({
               };
 
               const conceptualInstanceContext = {
-                ...instanceContext, // base entity data
+                ...instanceContext,
                 instanceIdBase: conceptualSeatInstanceIdBase,
                 resolvedOfficeName: conceptualSeatOfficeName,
                 entityData: {
-                  // This "seat" conceptually has a portion of the population
-                  ...entityData, // Base city data
-                  id: `${entityData.id}_seat${seatNumber}`, // Unique ID for this conceptual seat entity
+                  ...entityData,
+                  id: `${entityData.id}_seat${seatNumber}`,
                   name: `Seat ${seatNumber} of ${entityData.name}`,
                   population:
                     seatPopulations[i] ||
                     Math.floor(entityData.population / totalSeatsInCouncil),
-                  // Inherit/override stats, landscape, issues for this conceptual seat if desired
                   stats: entityData.stats,
-                  politicalLandscape: entityData.politicalLandscape, // Or seat-specific if you model that
+                  politicalLandscape: entityData.politicalLandscape,
                 },
               };
               const partiesInScope =
@@ -210,7 +205,7 @@ export const createElectionSlice = (set) => ({
                     ...effectiveElectionType,
                     generatesOneWinner: true,
                     electoralSystem: "FPTP",
-                  }, // Treat as FPTP for generation
+                  },
                   instanceContext: conceptualInstanceContext,
                   partiesInScope,
                   incumbentInfo: conceptualSeatIncumbent,
@@ -242,7 +237,7 @@ export const createElectionSlice = (set) => ({
                 }
               });
             const participantsData = generateElectionParticipants({
-              electionType: effectiveElectionType, // Use the effective type for this instance
+              electionType: effectiveElectionType,
               partiesInScope,
               incumbentInfo,
               numberOfSeatsToFill: seatDetailsForThisContest.numberOfSeats,
@@ -260,8 +255,8 @@ export const createElectionSlice = (set) => ({
             });
             newElectionsToAdd.push(newElection);
           }
-        }); // End forEach electionInstance
-      }); // End forEach originalElectionType
+        });
+      });
 
       // --- 7. Update State ---
       if (newElectionsToAdd.length > 0) {
@@ -278,11 +273,11 @@ export const createElectionSlice = (set) => ({
           activeCampaign: {
             ...state.activeCampaign,
             elections: sortedElections,
-            lastElectionYear: updatedLastElectionYears, // Corrected: this is lastElectionYearsByInstanceIdBase
+            lastElectionYear: updatedLastElectionYears,
           },
         };
       }
-      return {}; // No changes
+      return {};
     });
   },
 
@@ -290,7 +285,7 @@ export const createElectionSlice = (set) => ({
     set((state) => {
       if (!state.activeCampaign || !state.activeCampaign.politician) {
         console.warn("declareCandidacy: No active campaign or politician.");
-        return state; // Return current state to prevent errors
+        return state;
       }
 
       const {
@@ -300,10 +295,10 @@ export const createElectionSlice = (set) => ({
         customPartiesSnapshot = [],
         generatedPartiesSnapshot = [],
       } = state.activeCampaign;
-      const allThemes = state.availableThemes || {}; // Assuming these are available
-      const activeThemeName = state.activeThemeName || defaultTheme; // Assuming defaultTheme
+      const allThemes = state.availableThemes || {};
+      const activeThemeName = state.activeThemeName || defaultTheme;
       const activeThemeObject =
-        allThemes[activeThemeName] || themes[defaultTheme]; // Assuming themes
+        allThemes[activeThemeName] || themes[defaultTheme];
 
       let successfullyDeclaredForUpcoming = false;
 
@@ -311,10 +306,9 @@ export const createElectionSlice = (set) => ({
         if (election.id === electionId) {
           if (
             !election.playerIsCandidate &&
-            election.outcome?.status === "upcoming" // STRICTLY check for "upcoming"
+            election.outcome?.status === "upcoming"
           ) {
-            // Filing deadline check (should ideally be in UI too, but good to have in action)
-            const today = createDateObj(state.currentDate); // Assuming state.currentDate exists
+            const today = createDateObj(state.currentDate);
             const deadline = createDateObj(election.filingDeadline);
             if (today && deadline && today.getTime() > deadline.getTime()) {
               console.warn(
@@ -325,7 +319,7 @@ export const createElectionSlice = (set) => ({
                   message: "Filing deadline has passed for this election.",
                   type: "error",
                 });
-              return election; // No change
+              return election;
             }
 
             let determinedPartyId = "player_independent";
@@ -372,20 +366,18 @@ export const createElectionSlice = (set) => ({
               name: `${playerPoliticianObject.firstName} ${playerPoliticianObject.lastName}`,
               partyId: determinedPartyId,
               partyName: determinedPartyName,
-              partyIdeology: determinedPartyIdeology, // This should be player's actual ideology
+              partyIdeology: determinedPartyIdeology,
               partyColor: determinedPartyColor,
-              // baseScore will be calculated next
-              polling: 0, // Initial polling
-              funds: "Player Controlled", // Or link to playerPoliticianObject.campaignFunds
+              polling: 0,
+              funds: "Player Controlled",
               isPlayer: true,
               isIncumbent:
-                election.incumbentInfo?.id === playerPoliticianObject.id, // Check against incumbentInfo
-              // campaignHours fields are on playerPoliticianObject, not per candidate entry in election
+                election.incumbentInfo?.id === playerPoliticianObject.id,
             };
 
             let newCandidateList = (election.candidates || []).filter(
               (c) => c.id !== playerPoliticianObject.id
-            ); // Remove player if somehow already listed as non-player
+            );
             newCandidateList.push(playerAsCandidate);
 
             // Calculate base scores and then normalize polling for the updated list

@@ -181,33 +181,45 @@ export function hslToHex({ h, s, l }) {
 }
 
 /**
- * Generates a random shade or tint of a base HEX color by adjusting lightness.
+ * Generates a random shade or tint of a base HEX color by adjusting lightness, saturation, and optionally hue.
  * @param {string} baseHexColor - The base color in HEX format.
  * @param {number} lightnessVariationPercentage - Max % to vary lightness (0-100). E.g., 20 means +/- 20%.
  * @param {number} saturationVariationPercentage - Max % to vary saturation (0-100). Optional.
+ * @param {number} [hueVariationDegrees=0] - Max degrees to vary hue (+/-). Default 0 for no hue shift.
  * @returns {string} A new HEX color string, or the original if conversion fails.
  */
 export function generateNuancedColor(
   baseHexColor,
   lightnessVariationPercentage = 15,
-  saturationVariationPercentage = 10
+  saturationVariationPercentage = 10,
+  hueVariationDegrees = 0 // New parameter for hue variation
 ) {
-  const hsl = hexToHSL(baseHexColor);
+  const hsl = hexToHSL(baseHexColor); //
   if (!hsl) return baseHexColor; // Fallback to original if conversion fails
 
   // Adjust Lightness
-  const lightVar = (lightnessVariationPercentage / 100) * hsl.l;
-  hsl.l += Math.random() * (lightVar * 2) - lightVar; // Add a value between -lightVar and +lightVar
+  const lightVar = (lightnessVariationPercentage / 100) * hsl.l; //
+  hsl.l += Math.random() * (lightVar * 2) - lightVar; //
   hsl.l = Math.max(0, Math.min(100, hsl.l)); // Clamp lightness between 0 and 100
 
   // Adjust Saturation (optional, makes it more varied)
   if (saturationVariationPercentage > 0) {
-    const satVar = (saturationVariationPercentage / 100) * hsl.s;
-    hsl.s += Math.random() * (satVar * 2) - satVar;
+    //
+    const satVar = (saturationVariationPercentage / 100) * hsl.s; //
+    hsl.s += Math.random() * (satVar * 2) - satVar; //
     hsl.s = Math.max(0, Math.min(100, hsl.s)); // Clamp saturation
   }
 
-  return hslToHex(hsl);
+  // Adjust Hue (new)
+  if (hueVariationDegrees > 0) {
+    const hueShift =
+      Math.random() * (hueVariationDegrees * 2) - hueVariationDegrees;
+    hsl.h += hueShift;
+    // Ensure hue wraps around correctly (0-360 degrees)
+    hsl.h = ((hsl.h % 360) + 360) % 360;
+  }
+
+  return hslToHex(hsl); //
 }
 
 /**

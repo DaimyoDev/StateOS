@@ -261,8 +261,9 @@ const useGameStore = create(
                 const baseColorForIdeology = baseIdeology.color || "#808080"; // Fallback to grey if ideology has no color
                 const partySpecificColor = generateNuancedColor(
                   baseColorForIdeology,
-                  20,
-                  15
+                  getRandomInt(0, 100),
+                  getRandomInt(0, 100),
+                  getRandomInt(0, 300)
                 ); // Vary lightness by +/-20%, saturation by +/-15%
                 generatedParties.push({
                   id: `gen_party_${generateId()}`,
