@@ -119,6 +119,7 @@ export const createCampaignSetupSlice = (set, get) => {
                 initialMembersArray.push({
                   id: member.id,
                   name: member.name,
+                  holder: member,
                   partyId: member.partyId,
                   partyName: member.partyName,
                   partyColor: member.partyColor,

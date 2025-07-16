@@ -1,5 +1,8 @@
 // src/utils/electionGenUtils.js
-import { stateElectionIds } from "../data/elections/electionData";
+import {
+  nationalElectionIds,
+  stateElectionIds,
+} from "../data/elections/electionData";
 
 /**
  * Helper to build a consistent base ID for an election instance.
@@ -519,12 +522,7 @@ export const generateNationalLegislativeElectionInstances = (
   if (electionType.id === "national_hr") {
     let districtsToProcess =
       currentCountryData.nationalLowerHouseDistricts || [];
-    if (
-      regionId &&
-      currentCountryData.regions?.some(
-        (r) => r.id === regionId && r.id.startsWith("USA_")
-      )
-    ) {
+    if (regionId) {
       districtsToProcess = districtsToProcess.filter(
         (d) => d.stateId === regionId
       );
@@ -545,7 +543,7 @@ export const generateNationalLegislativeElectionInstances = (
       instances.push({
         instanceIdBase: buildIdBaseFunc(electionType.id, district.id),
         entityType: "national_hr_constituency",
-        entityData: { ...district, stateName }, // stateName for template resolving
+        entityData: { ...district, stateName },
         resolvedOfficeName: baseOfficeName
           .replace("{stateName}", stateName)
           .replace("{districtName}", district.name),
@@ -565,7 +563,6 @@ export const generateNationalLegislativeElectionInstances = (
       );
       if (stateObj) statesToProcess.push(stateObj);
     } else {
-      // If no specific state context, process for all US states
       statesToProcess = currentCountryData.regions || [];
     }
 
@@ -585,212 +582,25 @@ export const generateNationalLegislativeElectionInstances = (
         id: electionType.id,
       });
     });
-  }
-  // --- JPN National Legislature ---
-  else if (countryId === "JPN") {
-    // JPN House of Councillors (HoC) - District Elections (Prefectures as districts)
+  } else if (electionType.electoralSystem === "MMP") {
     if (
-      electionType.id === "national_hc_district" &&
-      electionType.level === "national_upper_house_prefectural_district"
-    ) {
-      (
-        currentCountryData.regions?.filter((r) => r.id.startsWith("JPN_")) || []
-      ).forEach((prefecture) => {
-        const seatsThisCycle = prefecture.seatsForHoCPerCycle || 1;
-        instances.push({
-          instanceIdBase: buildIdBaseFunc(electionType.id, prefecture.id),
-          entityType: "prefecture_as_national_district",
-          entityData: { ...prefecture }, // Includes seatsForHoCPerCycle
-          resolvedOfficeName: baseOfficeName.replace(
-            "{prefectureName}",
-            prefecture.name
-          ),
-          _isSingleSeatContest: seatsThisCycle === 1,
-          _effectiveElectoralSystem: electionType.electoralSystem, // SNTV_MMD
-          _effectiveGeneratesOneWinner: seatsThisCycle === 1,
-          _numberOfSeatsForThisHoCInstance: seatsThisCycle,
-          ...electionType,
-          id: electionType.id,
-        });
-      });
-    }
-    // JPN House of Councillors (HoC) - Nationwide PR Election
-    else if (
-      electionType.id === "national_hc_pr" &&
-      electionType.level === "national_upper_house_pr_national"
-    ) {
-      instances.push({
-        instanceIdBase: buildIdBaseFunc(electionType.id, countryId), // Nationwide instance
-        entityType: "nation",
-        entityData: { ...currentCountryData },
-        resolvedOfficeName: baseOfficeName, // Template is usually fixed like "Member of House of Councillors (Nationwide PR)"
-        _isSingleSeatContest: false,
-        _effectiveElectoralSystem: "PartyListPR",
-        _effectiveGeneratesOneWinner: false,
-        _numberOfSeatsForThisInstance: electionType.minCouncilSeats, // e.g., 50 for this part of HoC
-        ...electionType,
-        id: electionType.id,
-      });
-    }
-    // JPN House of Representatives (HoR) - Constituency (SMD) Elections
-    else if (
-      electionType.id === "national_hr_constituency" &&
-      electionType.level === "national_lower_house_constituency"
-    ) {
-      (
-        currentCountryData.nationalLowerHouseDistricts?.filter((d) =>
-          d.prefectureId?.startsWith("JPN_")
-        ) || []
-      ).forEach((district) => {
-        if (!district || !district.id || !district.name) return;
-        instances.push({
-          instanceIdBase: buildIdBaseFunc(electionType.id, district.id),
-          entityType: "national_hr_constituency",
-          entityData: { ...district }, // district should have id, name, prefectureId
-          resolvedOfficeName: baseOfficeName.replace(
-            "{districtName}",
-            district.name
-          ),
-          _isSingleSeatContest: true,
-          _effectiveElectoralSystem: "FPTP",
-          _effectiveGeneratesOneWinner: true,
-          ...electionType,
-          id: electionType.id,
-        });
-      });
-    }
-    // JPN House of Representatives (HoR) - PR Bloc Elections
-    else if (
-      electionType.id === "national_hr_pr_bloc" &&
-      electionType.level === "national_lower_house_pr_bloc"
-    ) {
-      (
-        currentCountryData.nationalPrBlocs?.filter((b) =>
-          b.id.startsWith("JPN_PR_")
-        ) || []
-      ).forEach((bloc) => {
-        if (!bloc || !bloc.id || !bloc.name) return;
-        instances.push({
-          instanceIdBase: buildIdBaseFunc(electionType.id, bloc.id),
-          entityType: "national_pr_bloc",
-          entityData: { ...bloc }, // bloc should have id, name, numberOfSeats
-          resolvedOfficeName: baseOfficeName.replace("{blocName}", bloc.name),
-          _isSingleSeatContest: false,
-          _effectiveElectoralSystem: "PartyListPR",
-          _effectiveGeneratesOneWinner: false,
-          _numberOfSeatsForThisInstance:
-            bloc.numberOfSeats || electionType.minCouncilSeats,
-          ...electionType,
-          id: electionType.id,
-        });
-      });
-    }
-  }
-  // --- PHL National Legislature ---
-  else if (countryId === "PHL") {
-    // PHL House of Representatives - District Representatives
-    if (
-      electionType.id === "national_hr_district_phl" &&
-      electionType.level === "national_lower_house_constituency"
-    ) {
-      let districtsToProcess =
-        currentCountryData.nationalLowerHouseDistricts?.filter((d) =>
-          d.id.includes("_HRD")
-        ) || [];
-      // Optional: Filter by province if regionId is a PHL province
-      if (
-        regionId &&
-        currentCountryData.provinces?.some(
-          (p) => p.id === regionId && p.id.startsWith("PHL_PROV_")
-        )
-      ) {
-        districtsToProcess = districtsToProcess.filter(
-          (d) => d.provinceId === regionId
-        );
-      }
-      districtsToProcess.forEach((hrDistrict) => {
-        if (!hrDistrict || !hrDistrict.id || !hrDistrict.name) return;
-        instances.push({
-          instanceIdBase: buildIdBaseFunc(electionType.id, hrDistrict.id),
-          entityType: "national_hr_constituency",
-          entityData: { ...hrDistrict }, // hrDistrict should have name, provinceName, etc.
-          resolvedOfficeName: baseOfficeName.replace(
-            "{districtName}",
-            hrDistrict.name
-          ),
-          _isSingleSeatContest: true,
-          _effectiveElectoralSystem: "FPTP",
-          _effectiveGeneratesOneWinner: true,
-          ...electionType,
-          id: electionType.id,
-        });
-      });
-    }
-    // PHL House of Representatives - Party-List Representatives (Nationwide)
-    else if (
-      electionType.id === "national_hr_partylist_phl" &&
-      electionType.level === "national_lower_house_partylist"
-    ) {
-      instances.push({
-        instanceIdBase: buildIdBaseFunc(electionType.id, countryId), // Nationwide
-        entityType: "nation",
-        entityData: { ...currentCountryData },
-        resolvedOfficeName: baseOfficeName, // Usually "Party-List Representative"
-        _isSingleSeatContest: false,
-        _effectiveElectoralSystem: "PartyListPR",
-        _effectiveGeneratesOneWinner: false,
-        _numberOfSeatsForThisInstance: electionType.minCouncilSeats, // Total PartyList seats
-        ...electionType,
-        id: electionType.id,
-      });
-    }
-    // PHL Senate (Nationwide)
-    else if (
-      electionType.id === "national_senate_phl" &&
-      electionType.level === "national_upper_house"
-    ) {
-      instances.push({
-        instanceIdBase: buildIdBaseFunc(electionType.id, countryId), // Nationwide
-        entityType: "nation",
-        entityData: { ...currentCountryData },
-        resolvedOfficeName: baseOfficeName, // Usually "Senator of the Philippines"
-        _isSingleSeatContest: false, // Elects multiple senators (e.g., 12 at a time)
-        _effectiveElectoralSystem: "BlockVote", // Or "PluralityMMD"
-        _effectiveGeneratesOneWinner: false,
-        _numberOfSeatsForThisInstance: electionType.minCouncilSeats, // e.g., 12 seats per election cycle
-        ...electionType,
-        id: electionType.id,
-      });
-    }
-  }
-  // --- GER National Legislature (Bundestag - MMP) ---
-  else if (countryId === "GER") {
-    if (
-      electionType.id === "national_bundestag_deu" &&
+      electionType.id === nationalElectionIds.national_hr &&
       electionType.level === "national_lower_house"
     ) {
-      // For MMP, instance generation can be complex.
-      // Option 1: This single instance represents the *overall* Bundestag election.
-      //           Constituency results would need to be fed into its results processing.
-      // Option 2: Generate separate instances for each constituency + one for the list component.
-      //           Your ELECTION_TYPES_BY_COUNTRY defines it as one MMP election for the national_lower_house.
-      // So, we'll create one instance representing the overall Bundestag election.
       instances.push({
         instanceIdBase: buildIdBaseFunc(electionType.id, countryId),
         entityType: "nation",
         entityData: { ...currentCountryData },
-        resolvedOfficeName: baseOfficeName, // Usually "Member of Bundestag"
-        _isSingleSeatContest: false, // Overall it's multi-winner
+        resolvedOfficeName: baseOfficeName,
+        _isSingleSeatContest: false,
         _effectiveElectoralSystem: "MMP",
         _effectiveGeneratesOneWinner: false,
-        _numberOfSeatsForThisInstance: electionType.minCouncilSeats, // Base number of Bundestag seats
+        _numberOfSeatsForThisInstance: electionType.minCouncilSeats,
         ...electionType,
         id: electionType.id,
       });
     }
-  }
-  // --- Generic National Legislative Fallback (e.g., for a new country with a simple national PR list) ---
-  else if (
+  } else if (
     electionType.level.startsWith("national_") &&
     !electionType.generatesOneWinner &&
     (electionType.electoralSystem === "PartyListPR" ||

@@ -385,10 +385,70 @@ export const simulateAIPolicyProposals = (campaign, getFromStore) => {
   ];
 
   campaign.governmentOffices.forEach((office) => {
-    if (
+    if (office.members) {
+      office.members.forEach((member) => {
+        if (
+          member.holder &&
+          !member.holder.isPlayer &&
+          (member.id == "city_council" ||
+            member.officeNameTemplateId === "mayor") &&
+          Math.random() < 0.15 // AI decides to attempt a proposal
+        ) {
+          const aiPolitician = member.holder;
+
+          // Pass the *iteratively updated* list of proposed legislation
+          const proposalDetailsFromAI = decideAIPolicyProposal(
+            aiPolitician,
+            availablePolicyDefinitionsFromStore.map((p) => p.id), // Pass only IDs
+            campaign.startingCity.stats,
+            activeLegislationFromStore, // Stable for this simulation pass
+            iterativelyUpdatedProposedLegislation // THIS IS THE KEY CHANGE FOR INPUT
+          );
+
+          if (proposalDetailsFromAI && proposalDetailsFromAI.policyId) {
+            // Find the full policy definition to get details like name, parameterDetails
+            const policyDefinitionForProposal = CITY_POLICIES.find(
+              (p) => p.id === proposalDetailsFromAI.policyId
+            );
+
+            if (!policyDefinitionForProposal) {
+              console.warn(
+                `[SimulateAI] Policy definition not found for ID: ${proposalDetailsFromAI.policyId} proposed by ${aiPolitician.name}`
+              );
+              return;
+            }
+
+            const newProposalObject = {
+              id: `prop_${campaign.currentDate.year}_${
+                campaign.currentDate.month
+              }_${campaign.currentDate.day}_${
+                proposalsToDispatch.length
+              }_${Math.random().toString(16).slice(2)}`,
+              policyId: proposalDetailsFromAI.policyId,
+              proposerId: aiPolitician.id,
+              chosenParameters: proposalDetailsFromAI.chosenParameters,
+
+              // Details from the policy definition, crucial for other AIs to see what's being targeted:
+              isParameterized: policyDefinitionForProposal.isParameterized,
+              parameterDetails: policyDefinitionForProposal.parameterDetails,
+
+              // Other useful info for game state:
+              policyName: policyDefinitionForProposal.name,
+              proposerName:
+                aiPolitician.name || `Council Member ${aiPolitician.id}`,
+              status: "proposed",
+              dateProposed: { ...campaign.currentDate },
+              councilVotesCast: {},
+            };
+            proposalsToDispatch.push(newProposalObject);
+            iterativelyUpdatedProposedLegislation.push(newProposalObject);
+          }
+        }
+      });
+    } else if (
       office.holder &&
       !office.holder.isPlayer &&
-      (office.officeNameTemplateId.includes("council") ||
+      (office.id == "city_council" ||
         office.officeNameTemplateId === "mayor") &&
       Math.random() < 0.15 // AI decides to attempt a proposal
     ) {

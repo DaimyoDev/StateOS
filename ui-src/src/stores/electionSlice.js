@@ -639,6 +639,7 @@ export const createElectionSlice = (set) => ({
           const newMembers = determinedWinnersArray.map((winner) => ({
             id: winner.id,
             name: winner.name,
+            holder: winner.holder,
             partyId: winner.partyId,
             partyName: winner.partyName,
             partyColor: winner.partyColor,

@@ -6,7 +6,6 @@ import {
 } from "../utils/generalUtils";
 import { CITY_POLICIES } from "../data/policyDefinitions";
 import { getRandomInt } from "../utils/generalUtils";
-import { RATING_LEVELS, ECONOMIC_OUTLOOK_LEVELS } from "../data/governmentData";
 
 const getInitialLegislationState = () => ({
   proposedLegislation: [],
@@ -346,16 +345,64 @@ export const createLegislationSlice = (set, get) => ({
 
         const yeaVotes = proposalToFinalize.votes?.yea?.length || 0;
         const councilMembers =
-          activeCampaignContext?.governmentOffices?.filter(
-            (off) =>
-              off.officeNameTemplateId.includes("council") &&
-              off.level === "local_city" &&
-              activeCampaignContext.startingCity?.name &&
-              off.officeName.includes(
-                activeCampaignContext.startingCity.name
-              ) &&
-              off.holder
-          ) || [];
+          activeCampaignContext.governmentOffices?.filter((off) => {
+            // Log each office object as it's being evaluated
+            console.log("Evaluating Office:", off);
+
+            // Log the result of each condition in the filter
+            const isHolderPresent = !!off.holder;
+            const isNotPlayer = off.holder ? !off.holder.isPlayer : false;
+            // The user's specific condition: off.id === "city_council"
+            const isCityCouncilById = off.id === "city_council";
+            // The original code's condition: off.officeNameTemplateId.includes("council")
+            const includesCouncilTemplate =
+              off.officeNameTemplateId?.includes("council");
+
+            const isLocalCity = off.level === "local_city";
+            const hasStartingCityName =
+              !!activeCampaignContext.startingCity?.name;
+            const officeNameIncludesCity = off.officeName?.includes(
+              activeCampaignContext.startingCity?.name
+            );
+
+            console.log(`  - Has Holder: ${isHolderPresent}`);
+            console.log(`  - Not Player: ${isNotPlayer}`);
+            console.log(
+              `  - Is City Council (by ID): ${isCityCouncilById} (off.id: ${off.id})`
+            );
+            console.log(
+              `  - Includes 'council' in Template ID: ${includesCouncilTemplate} (off.officeNameTemplateId: ${off.officeNameTemplateId})`
+            );
+            console.log(`  - Is Local City: ${isLocalCity}`);
+            console.log(
+              `  - Has Starting City Name: ${hasStartingCityName} (Name: ${activeCampaignContext.startingCity?.name})`
+            );
+            console.log(
+              `  - Office Name Includes City: ${officeNameIncludesCity} (Office Name: ${off.officeName})`
+            );
+
+            return (
+              isHolderPresent &&
+              isNotPlayer &&
+              // Use the condition you specified for debugging:
+              isCityCouncilById &&
+              // Or if you meant the original condition in legislationSlice.js:
+              // includesCouncilTemplate &&
+              isLocalCity &&
+              hasStartingCityName &&
+              officeNameIncludesCity
+            );
+          }) || [];
+
+        // Log the final array of council members after filtering
+        console.log("Filtered Council Members:", councilMembers);
+
+        if (councilMembers.length === 0) {
+          console.warn(
+            "No valid council members found for voting after filtering."
+          );
+          return; // Exit if no council members to avoid further errors.
+        }
         const totalCouncilMembers =
           councilMembers.length > 0 ? councilMembers.length : 1;
         const majorityNeeded = Math.floor(totalCouncilMembers / 2) + 1;
@@ -562,20 +609,20 @@ export const createLegislationSlice = (set, get) => ({
     },
     processDailyProposalActivity: (currentDate) => {
       const proposedLegislationList = get().proposedLegislation || [];
-      const activeCampaign = get().activeCampaign; // Get activeCampaign once
-      if (!activeCampaign) return; // Guard if no active campaign
+      const activeCampaign = get().activeCampaign;
+      if (!activeCampaign) return;
 
       const councilMembers =
         activeCampaign.governmentOffices?.filter(
           (off) =>
             off.holder &&
             !off.holder.isPlayer &&
-            off.officeNameTemplateId.includes("council") &&
-            off.level === "local_city" &&
-            activeCampaign.startingCity?.name &&
-            off.officeName.includes(activeCampaign.startingCity.name)
+            off.id === "city_council" &&
+            off.level === "local_city"
         ) || [];
       if (proposedLegislationList.length === 0) return;
+
+      console.log("yeet");
 
       proposedLegislationList.forEach((proposal) => {
         if (
