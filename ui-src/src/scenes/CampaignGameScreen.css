@@ -52,7 +52,7 @@
 .tab-button {
   /* Using menu-button as a base, but can be more specific */
   background-color: transparent; /* Or var(--button-bg) if you want them more button-like */
-  color: var(--secondary-text);
+  color: var(--primary-text);
   border: none;
   /* border-left: 3px solid transparent; /* For active indicator */
   padding: 12px 15px;

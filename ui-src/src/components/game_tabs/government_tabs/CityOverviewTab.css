@@ -31,7 +31,7 @@
   font-family: var(--font-main);
   cursor: pointer;
   background-color: var(--button-bg, #f0f0f0);
-  color: var(--accent-text, #333);
+  color: var(--button-text, #333);
   border: 1px solid var(--border-color, #ccc);
   border-bottom: none; /* Remove bottom border for tab effect */
   border-radius: var(--element-radius, 6px) var(--element-radius, 6px) 0 0; /* Rounded top corners */

@@ -48,7 +48,7 @@
   cursor: pointer;
   border: none;
   background-color: transparent;
-  color: var(--secondary-text);
+  color: var(--primary-text);
   font-family: var(--font-main);
   font-size: 1em;
   border-bottom: 2px solid transparent; /* For active indicator */
