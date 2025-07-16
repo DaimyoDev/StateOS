@@ -388,9 +388,9 @@ export const simulateAIPolicyProposals = (campaign, getFromStore) => {
     if (office.members) {
       office.members.forEach((member) => {
         if (Math.random() < 0.15) {
-          const aiPolitician = member.holder;
+          const aiPolitician = member.name;
 
-          // Pass the *iteratively updated* list of proposed legislation
+          if (office.officeId != "city_council") return;
           const proposalDetailsFromAI = decideAIPolicyProposal(
             aiPolitician,
             availablePolicyDefinitionsFromStore.map((p) => p.id), // Pass only IDs

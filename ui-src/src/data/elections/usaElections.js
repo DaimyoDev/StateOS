@@ -30,7 +30,7 @@ export const usaElections = [
     frequencyYears: 4,
     electionMonth: 11,
     generatesOneWinner: false,
-    electoralSystem: "PluralityMMD",
+    electoralSystem: "SNTV_MMD",
     voteTarget: "candidate",
     minCouncilSeats: 5,
     councilSeatPopulationTiers: [

@@ -350,7 +350,17 @@ export const createLegislationSlice = (set, get) => ({
             policyName: policyDefinition.name,
             description: policyDefinition.description,
             dateEnacted: { ...currentDate },
-            // ... other properties
+            monthsUntilEffective: policyDefinition.durationToImplement || 0,
+            effectsApplied: false,
+            effects: policyDefinition.effects,
+            proposerId: proposalToFinalize.proposerId,
+            isParameterized: proposalToFinalize.isParameterized,
+            parameterDetails: proposalToFinalize.parameterDetails
+              ? { ...proposalToFinalize.parameterDetails }
+              : null,
+            chosenParameters: proposalToFinalize.chosenParameters
+              ? { ...proposalToFinalize.chosenParameters }
+              : null,
           });
 
           // --- 5. Dispatch Follow-up Actions (Toasts, News, etc.) ---
