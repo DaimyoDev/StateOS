@@ -27,7 +27,7 @@ export const canadaElections = [
   // --- Provincial Level ---
   {
     id: stateElectionIds.governor, // Provincial Premier (equivalent to governor for simulation)
-    officeNameTemplate: "Premier of {provinceName}",
+    officeNameTemplate: "Premier of {stateName}",
     level: "local_state", // Or local_province
     frequencyYears: 4, // Varies, but common
     electionMonth: null, // Varies

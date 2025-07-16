@@ -62,7 +62,7 @@ export const philippinesElections = [
   },
   {
     id: stateElectionIds.governor,
-    officeNameTemplate: "Governor of {provinceName}",
+    officeNameTemplate: "Governor of {stateName}",
     level: "local_province",
     frequencyYears: 3,
     electionMonth: 5,
@@ -97,7 +97,7 @@ export const philippinesElections = [
   {
     id: stateElectionIds.state_hr,
     officeNameTemplate:
-      "Provincial Board Member - {provinceName} ({districtName})",
+      "Provincial Board Member - {stateName} ({districtName})",
     level: "local_province_board",
     frequencyYears: 3,
     electionMonth: 5,

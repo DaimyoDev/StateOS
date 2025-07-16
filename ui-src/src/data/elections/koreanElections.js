@@ -60,7 +60,7 @@ export const koreanElections = [
   },
   {
     id: stateElectionIds.governor,
-    officeNameTemplate: "Governor/Mayor of {provinceName}",
+    officeNameTemplate: "Governor/Mayor of {stateName}",
     level: "local_province_metropolitan_city",
     frequencyYears: 4,
     electionMonth: null,
@@ -77,7 +77,7 @@ export const koreanElections = [
   },
   {
     id: stateElectionIds.state_hr,
-    officeNameTemplate: "Member of {provinceName} Assembly",
+    officeNameTemplate: "Member of {stateName} Assembly",
     level: "local_province_metropolitan_city",
     frequencyYears: 4,
     electionMonth: null,

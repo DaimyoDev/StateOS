@@ -128,7 +128,7 @@ export const japanElections = [
   {
     id: nationalElectionIds.national_hr,
     officeNameTemplate:
-      "Member of House of Councillors (District - {prefectureName})",
+      "Member of House of Councillors (District - {stateName})",
     level: "national_upper_house_prefectural_district",
     frequencyYears: 3,
     electionMonth: 7,

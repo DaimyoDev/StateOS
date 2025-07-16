@@ -254,39 +254,23 @@ export const generateCityCouncilElectionInstances = (
  * @param {string} countryId - The ID of the current country.
  * @returns {boolean}
  */
-export const isStateLegislativeElectionType = (electionType, countryId) => {
+export const isStateLegislativeElectionType = (electionType) => {
   if (!electionType || !electionType.level) {
     return false;
   }
 
   const legislativeLevels = [
-    "local_state_lower_house", // e.g., USA State House of Reps districts
-    "local_state_upper_house", // e.g., USA State Senate districts
-    "local_prefecture", // Used by JPN Prefectural Assembly (at-large)
-    "local_province_board", // e.g., PHL Sangguniang Panlalawigan (districted within province)
-    "local_state_parliament", // e.g., GER Landtag (MMP for the whole state)
-    // Potentially "local_state" or "local_province" if !generatesOneWinner for other at-large assemblies
+    "local_state_lower_house",
+    "local_state_upper_house",
+    "local_prefecture",
+    "local_province_board",
+    "local_state_parliament",
   ];
 
   if (!legislativeLevels.includes(electionType.level)) {
     return false;
   }
 
-  // Specific checks to ensure we are targeting the correct legislative bodies
-  // and not, for example, a state-level single executive if "local_state" was too broad.
-
-  if (electionType.level === "local_prefecture") {
-    // For JPN, "local_prefecture" is used for Governor (singleWinner) and Assembly (multiWinner)
-    return (
-      countryId === "JPN" &&
-      electionType.id === stateElectionIds.state_hr &&
-      !electionType.generatesOneWinner
-    );
-  }
-
-  // If it's one of the explicitly legislative levels like *_lower_house, *_upper_house, *_board, *_parliament,
-  // it's highly likely a state legislative election.
-  // The generatesOneWinner flag will distinguish between a single district seat vs. an entire at-large body election.
   return true;
 };
 
@@ -344,19 +328,7 @@ export const generateStateLegislativeElectionInstances = (
       return;
     }
 
-    // Determine the correct entity name placeholder (e.g., {stateName}, {prefectureName})
-    // This is often country-specific, but can be based on entity ID prefix or assumed from entity type
-    let entityNamePlaceholder = "{stateName}"; // Default for US states
-    if (entity.id.startsWith("JPN_")) {
-      entityNamePlaceholder = "{prefectureName}";
-    } else if (
-      entity.id.startsWith("PHL_PROV_") ||
-      entity.id.startsWith("KOR_")
-    ) {
-      // Assuming KOR regions/provinces are like PHL's for naming
-      entityNamePlaceholder = "{provinceName}"; // Or a generic {subnationalName}
-    }
-    // You might also use `entity.type` if your entity objects have a 'type' property (e.g., 'state', 'prefecture', 'province')
+    let entityNamePlaceholder = "{stateName}";
 
     // Resolve the basic office name template once for this entity
     let resolvedOfficeNameBase = baseOfficeName.replace(
