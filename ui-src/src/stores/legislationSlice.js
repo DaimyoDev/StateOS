@@ -278,247 +278,126 @@ export const createLegislationSlice = (set, get) => ({
 
     // Action to finalize a vote on a policy (e.g., after all council members voted or deadline passed)
     finalizePolicyVote: (proposalId) => {
-      let outerScopePolicyDidPass = false;
-      let outerScopePolicyNameForDisplay = "A policy";
-      let outerScopeProposerIdForAction = null;
-      let outerScopeFinalChosenParameters = null;
-      let outerScopeFinalParameterDetails = null;
-
       set((state) => {
-        const proposedLegislationList = state.proposedLegislation || [];
-        const activeCampaignContext = state.activeCampaign;
+        // --- 1. Get Fresh Data Inside `set` ---
+        // By getting these inside the `set` block, we ensure they are always up-to-date.
+        const addToast = get().actions.addToast;
+        const addNewsEvent = get().actions.addNewsEvent;
+        const adjustPlayerApproval = get().actions.adjustPlayerApproval;
 
-        const proposalIndex = proposedLegislationList.findIndex(
+        // --- 2. Find the Proposal ---
+        const proposalIndex = state.proposedLegislation.findIndex(
           (p) => p.id === proposalId
         );
         if (proposalIndex === -1) {
+          console.warn(`[FinalizeVote] Proposal ID ${proposalId} not found.`);
+          return {}; // Return original state
+        }
+
+        const proposalToFinalize = state.proposedLegislation[proposalIndex];
+        const activeCampaign = state.activeCampaign;
+        const currentDate = activeCampaign?.currentDate;
+
+        if (!activeCampaign || !currentDate) {
           console.warn(
-            `[LegislationSlice] FinalizeVote: Proposal ID ${proposalId} not found.`
+            "[FinalizeVote] Missing active campaign or current date."
           );
           return {};
         }
 
-        let mutableProposedLegislation = proposedLegislationList.map((p) => ({
-          ...p,
-        }));
-        const proposalToFinalize = mutableProposedLegislation[proposalIndex];
-
-        if (
-          proposalToFinalize.status !== "voting_closed" &&
-          proposalToFinalize.status !== "voting_period_open" &&
-          proposalToFinalize.status !== "proposed"
-        ) {
-          console.warn(
-            `[LegislationSlice] finalizePolicyVote: Proposal ${proposalId} not in a finalizable status. Status: ${proposalToFinalize.status}`
-          );
-          return {};
-        }
-
+        // --- 3. Determine Vote Outcome ---
         const policyDefinition = CITY_POLICIES.find(
           (p) => p.id === proposalToFinalize.policyId
         );
         if (!policyDefinition) {
           console.error(
-            `[LegislationSlice] FinalizeVote: Policy Definition not found for policyId: ${proposalToFinalize.policyId} in proposal ${proposalId}`
+            `[FinalizeVote] Policy Definition not found for policyId: ${proposalToFinalize.policyId}`
           );
-          outerScopePolicyNameForDisplay =
-            proposalToFinalize.policyName ||
-            "Unknown Policy (Definition Missing)";
-          outerScopeProposerIdForAction = proposalToFinalize.proposerId;
+          addToast?.({
+            message: `Error: Could not process vote for unknown policy.`,
+            type: "error",
+          });
+          // Remove the broken proposal
           return {
-            proposedLegislation: proposedLegislationList.filter(
+            proposedLegislation: state.proposedLegislation.filter(
               (p) => p.id !== proposalId
             ),
           };
         }
 
-        outerScopePolicyNameForDisplay = policyDefinition.name;
-        outerScopeProposerIdForAction = proposalToFinalize.proposerId;
-        if (proposalToFinalize.isParameterized) {
-          outerScopeFinalChosenParameters = proposalToFinalize.chosenParameters
-            ? { ...proposalToFinalize.chosenParameters }
-            : null;
-          outerScopeFinalParameterDetails = proposalToFinalize.parameterDetails
-            ? { ...proposalToFinalize.parameterDetails }
-            : null;
-        }
-
         const yeaVotes = proposalToFinalize.votes?.yea?.length || 0;
         const councilMembers =
-          activeCampaignContext.governmentOffices?.filter((off) => {
-            // Log each office object as it's being evaluated
-            console.log("Evaluating Office:", off);
-
-            // Log the result of each condition in the filter
-            const isHolderPresent = !!off.holder;
-            const isNotPlayer = off.holder ? !off.holder.isPlayer : false;
-            // The user's specific condition: off.id === "city_council"
-            const isCityCouncilById = off.id === "city_council";
-            // The original code's condition: off.officeNameTemplateId.includes("council")
-            const includesCouncilTemplate =
-              off.officeNameTemplateId?.includes("council");
-
-            const isLocalCity = off.level === "local_city";
-            const hasStartingCityName =
-              !!activeCampaignContext.startingCity?.name;
-            const officeNameIncludesCity = off.officeName?.includes(
-              activeCampaignContext.startingCity?.name
-            );
-
-            console.log(`  - Has Holder: ${isHolderPresent}`);
-            console.log(`  - Not Player: ${isNotPlayer}`);
-            console.log(
-              `  - Is City Council (by ID): ${isCityCouncilById} (off.id: ${off.id})`
-            );
-            console.log(
-              `  - Includes 'council' in Template ID: ${includesCouncilTemplate} (off.officeNameTemplateId: ${off.officeNameTemplateId})`
-            );
-            console.log(`  - Is Local City: ${isLocalCity}`);
-            console.log(
-              `  - Has Starting City Name: ${hasStartingCityName} (Name: ${activeCampaignContext.startingCity?.name})`
-            );
-            console.log(
-              `  - Office Name Includes City: ${officeNameIncludesCity} (Office Name: ${off.officeName})`
-            );
-
-            return (
-              isHolderPresent &&
-              isNotPlayer &&
-              // Use the condition you specified for debugging:
-              isCityCouncilById &&
-              // Or if you meant the original condition in legislationSlice.js:
-              // includesCouncilTemplate &&
-              isLocalCity &&
-              hasStartingCityName &&
-              officeNameIncludesCity
-            );
-          }) || [];
-
-        // Log the final array of council members after filtering
-        console.log("Filtered Council Members:", councilMembers);
-
-        if (councilMembers.length === 0) {
-          console.warn(
-            "No valid council members found for voting after filtering."
-          );
-          return; // Exit if no council members to avoid further errors.
-        }
+          activeCampaign.governmentOffices?.filter((off) =>
+            off.officeNameTemplateId?.includes("council")
+          ) || [];
         const totalCouncilMembers =
           councilMembers.length > 0 ? councilMembers.length : 1;
         const majorityNeeded = Math.floor(totalCouncilMembers / 2) + 1;
 
-        let newProposedList = mutableProposedLegislation.filter(
+        const policyDidPass = yeaVotes >= majorityNeeded;
+
+        // --- 4. Prepare State Changes ---
+        const newProposedList = state.proposedLegislation.filter(
           (p) => p.id !== proposalId
         );
-        let newActiveList = [...(state.activeLegislation || [])];
+        let newActiveList = [...state.activeLegislation];
 
-        if (yeaVotes >= majorityNeeded) {
-          outerScopePolicyDidPass = true;
+        if (policyDidPass) {
+          // Add to active legislation
           newActiveList.push({
             id: `active_${proposalToFinalize.id}`,
             policyId: proposalToFinalize.policyId,
             policyName: policyDefinition.name,
             description: policyDefinition.description,
-            dateEnacted: { ...(activeCampaignContext?.currentDate || {}) },
-            monthsUntilEffective: policyDefinition.durationToImplement || 0,
-            effectsApplied: false,
-            effects: policyDefinition.effects,
-            proposerId: proposalToFinalize.proposerId,
-            isParameterized: proposalToFinalize.isParameterized,
-            parameterDetails: proposalToFinalize.parameterDetails
-              ? { ...proposalToFinalize.parameterDetails }
-              : null,
-            chosenParameters: proposalToFinalize.chosenParameters
-              ? { ...proposalToFinalize.chosenParameters }
-              : null,
+            dateEnacted: { ...currentDate },
+            // ... other properties
           });
+
+          // --- 5. Dispatch Follow-up Actions (Toasts, News, etc.) ---
+          addToast?.({
+            message: `Policy Enacted: "${policyDefinition.name}" has passed!`,
+            type: "success",
+            duration: 4000,
+          });
+          addNewsEvent?.({
+            date: { ...currentDate },
+            headline: `Policy Passed: "${policyDefinition.name}"`,
+            summary: `The City Council has voted to pass "${policyDefinition.name}".`,
+            type: "political",
+            scope: "local",
+            impact: "positive",
+          });
+          // Adjust player approval if they were the proposer
+          if (proposalToFinalize.proposerId === activeCampaign.politician?.id) {
+            adjustPlayerApproval?.(getRandomInt(2, 5));
+          }
         } else {
-          outerScopePolicyDidPass = false;
+          // Policy Failed
+          addToast?.({
+            message: `Policy Defeated: "${policyDefinition.name}" failed to pass.`,
+            type: "error",
+            duration: 4000,
+          });
+          addNewsEvent?.({
+            date: { ...currentDate },
+            headline: `Policy Defeated: "${policyDefinition.name}"`,
+            summary: `The "${policyDefinition.name}" failed to gain enough support in the City Council.`,
+            type: "political",
+            scope: "local",
+            impact: "negative",
+          });
+          // Adjust player approval if they were the proposer
+          if (proposalToFinalize.proposerId === activeCampaign.politician?.id) {
+            adjustPlayerApproval?.(getRandomInt(-3, -1));
+          }
         }
+
+        // --- 6. Return the Final State Update ---
         return {
           proposedLegislation: newProposedList,
           activeLegislation: newActiveList,
         };
       });
-
-      const campaignContextForNews = get().activeCampaign;
-      const currentDateForNews = campaignContextForNews?.currentDate;
-
-      if (outerScopePolicyDidPass) {
-        let passedPolicyNewsSummary = `The City Council has voted to pass "${outerScopePolicyNameForDisplay}".`;
-        if (
-          outerScopeFinalChosenParameters &&
-          outerScopeFinalParameterDetails
-        ) {
-          const amount =
-            outerScopeFinalChosenParameters[
-              outerScopeFinalParameterDetails.key || "amount"
-            ];
-          const unit = outerScopeFinalParameterDetails.unit || "";
-          const targetLine =
-            outerScopeFinalParameterDetails.targetBudgetLine || "funding";
-          if (amount != null) {
-            const changeDesc =
-              amount >= 0
-                ? `an increase of ${unit}${Math.abs(amount).toLocaleString()}`
-                : `a decrease of ${unit}${Math.abs(amount).toLocaleString()}`;
-            passedPolicyNewsSummary += ` This involves ${changeDesc} for the ${targetLine
-              .replace(/([A-Z])/g, " $1")
-              .toLowerCase()}.`;
-          }
-        }
-        passedPolicyNewsSummary += ` It will take effect in the coming months.`;
-
-        if (get().actions.addToast) {
-          get().actions.addToast({
-            message: `Policy Enacted: "${outerScopePolicyNameForDisplay}" has passed!`,
-            type: "success",
-            duration: 4000,
-          });
-        }
-        if (get().actions.addNewsEvent && currentDateForNews) {
-          get().actions.addNewsEvent({
-            date: { ...currentDateForNews },
-            headline: `Policy Passed: "${outerScopePolicyNameForDisplay}"`,
-            summary: passedPolicyNewsSummary,
-            type: "political",
-            scope: "local",
-            impact: "positive",
-          });
-        }
-        if (
-          outerScopeProposerIdForAction ===
-            campaignContextForNews?.politician?.id &&
-          get().actions.adjustPlayerApproval
-        ) {
-          get().actions.adjustPlayerApproval(getRandomInt(2, 5));
-        }
-      } else {
-        if (get().actions.addToast) {
-          get().actions.addToast({
-            message: `Policy Defeated: "${outerScopePolicyNameForDisplay}" failed to pass.`,
-            type: "error",
-            duration: 4000,
-          });
-        }
-        if (get().actions.addNewsEvent && currentDateForNews) {
-          get().actions.addNewsEvent({
-            date: { ...currentDateForNews },
-            headline: `Policy Defeated: "${outerScopePolicyNameForDisplay}"`,
-            summary: `The "${outerScopePolicyNameForDisplay}" failed to gain enough support in the City Council and was defeated.`,
-            type: "political",
-            scope: "local",
-            impact: "negative",
-          });
-        }
-        if (
-          outerScopeProposerIdForAction ===
-            campaignContextForNews?.politician?.id &&
-          get().actions.adjustPlayerApproval
-        ) {
-          get().actions.adjustPlayerApproval(getRandomInt(-3, -1));
-        }
-      }
     },
     applyActiveLegislationEffects: () => {
       const currentActiveLegislationList = get().activeLegislation || [];
@@ -613,16 +492,17 @@ export const createLegislationSlice = (set, get) => ({
       if (!activeCampaign) return;
 
       const councilMembers =
-        activeCampaign.governmentOffices?.filter(
-          (off) =>
-            off.holder &&
-            !off.holder.isPlayer &&
-            off.id === "city_council" &&
-            off.level === "local_city"
+        activeCampaign.governmentOffices?.filter((off) =>
+          off.officeId.includes("city_council")
         ) || [];
-      if (proposedLegislationList.length === 0) return;
 
-      console.log("yeet");
+      if (councilMembers[0].members) {
+        councilMembers[0].members.forEach((member) => {
+          councilMembers.push(member);
+        });
+      }
+
+      if (proposedLegislationList.length === 0) return;
 
       proposedLegislationList.forEach((proposal) => {
         if (

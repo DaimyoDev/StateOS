@@ -1,8 +1,9 @@
 // ui-src/src/stores/politicianSlice.js
 import { IDEOLOGY_DEFINITIONS } from "../data/ideologiesData.js";
-import { POLICY_QUESTIONS } from "../data/policyData.js"; // Adjust path
-import { generateId } from "../utils/generalUtils.js"; // Adjust path
+import { POLICY_QUESTIONS } from "../data/policyData.js";
+import { generateId } from "../utils/generalUtils.js";
 
+// --- Helper Function (Stays outside the slice) ---
 const getInitialCreatingPoliticianState = () => ({
   id: "",
   firstName: "",
@@ -40,10 +41,11 @@ const getInitialCreatingPoliticianState = () => ({
   },
 });
 
+// --- Helper Function (Stays outside the slice) ---
 export function calculateIdeologyFromStances(
   stances,
-  policyQuestionsData, // Pass PROCESSED_POLICY_QUESTIONS here
-  IDEOLOGY_DEFINITIONS
+  policyQuestionsData,
+  ideologyData
 ) {
   const AXES = [
     "economic",
@@ -59,133 +61,65 @@ export function calculateIdeologyFromStances(
     "rural_priority",
     "governance_approach",
   ];
-  const NUM_AXES = AXES.length;
-
   const currentScores = {};
-  AXES.forEach((axis) => (currentScores[axis] = 0));
-
-  // New: Counter for questions with non-zero effects for EACH axis
   const questionsWithNonZeroEffectOnAxis = {};
-  AXES.forEach((axis) => (questionsWithNonZeroEffectOnAxis[axis] = 0));
-
-  let totalQuestionsWithAnyEffectAnswered = 0; // Global counter for overall engagement
-
-  const useOptionsMap =
-    policyQuestionsData.length > 0 &&
-    policyQuestionsData[0].optionsMap instanceof Map;
+  AXES.forEach((axis) => {
+    currentScores[axis] = 0;
+    questionsWithNonZeroEffectOnAxis[axis] = 0;
+  });
+  let totalQuestionsWithAnyEffectAnswered = 0;
 
   policyQuestionsData.forEach((pq) => {
-    if (!pq || !pq.id) {
-      // Basic check for valid question structure
-      // console.warn("Skipping malformed policy question object:", pq);
-      return;
-    }
     const selectedOptionValue = stances[pq.id];
     if (selectedOptionValue) {
-      let effects = null;
-      if (useOptionsMap) {
-        const optionData = pq.optionsMap.get(selectedOptionValue);
-        if (optionData && optionData.axis_effects) {
-          // Assuming key is axis_effects
-          effects = optionData.axis_effects;
-        } else if (optionData && optionData.ideologyEffect) {
-          // Fallback if old key name is still in map
-          effects = optionData.ideologyEffect;
-        }
-      } else {
-        const selectedOptionData = (pq.options || []).find(
-          // Ensure pq.options is an array
-          (opt) => opt && opt.value === selectedOptionValue
-        );
-        if (selectedOptionData) {
-          effects =
-            selectedOptionData.axis_effects ||
-            selectedOptionData.ideologyEffect; // Check both keys
-        }
-      }
-
+      const selectedOptionData = (pq.options || []).find(
+        (opt) => opt && opt.value === selectedOptionValue
+      );
+      const effects =
+        selectedOptionData?.axis_effects || selectedOptionData?.ideologyEffect;
       if (effects && typeof effects === "object") {
-        let questionContributedToGlobalCountThisIteration = false;
+        let questionContributed = false;
         AXES.forEach((axis) => {
           const effectValue = effects[axis];
           if (typeof effectValue === "number") {
-            currentScores[axis] += effectValue; // Add effect, even if 0
+            currentScores[axis] += effectValue;
             if (effectValue !== 0) {
-              questionsWithNonZeroEffectOnAxis[axis]++; // Increment per-axis counter ONLY for non-zero effects
-              questionContributedToGlobalCountThisIteration = true;
+              questionsWithNonZeroEffectOnAxis[axis]++;
+              questionContributed = true;
             }
           }
         });
-        if (questionContributedToGlobalCountThisIteration) {
+        if (questionContributed) {
           totalQuestionsWithAnyEffectAnswered++;
         }
       }
     }
   });
 
-  const rawScores = { ...currentScores };
-
-  // If no questions had any effect on any axis, return Centrist.
   if (totalQuestionsWithAnyEffectAnswered === 0) {
     const zeroScores = {};
     AXES.forEach((axis) => (zeroScores[axis] = 0));
-    return {
-      ideologyName: "Centrist",
-      scores: { ...zeroScores },
-      rawScores: { ...zeroScores },
-      questionsAnswered: 0, // Reflects questions with non-zero impact
-      allDistances: {},
-    };
+    return { ideologyName: "Centrist", scores: zeroScores };
   }
 
   const normalizedScores = {};
   AXES.forEach((axis) => {
-    if (questionsWithNonZeroEffectOnAxis[axis] > 0) {
-      normalizedScores[axis] =
-        currentScores[axis] / questionsWithNonZeroEffectOnAxis[axis];
-    } else {
-      // If no questions had a non-zero effect on this specific axis,
-      // the normalized score for this axis is 0 (as currentScores[axis] would also be 0).
-      normalizedScores[axis] = 0;
-    }
+    normalizedScores[axis] =
+      questionsWithNonZeroEffectOnAxis[axis] > 0
+        ? currentScores[axis] / questionsWithNonZeroEffectOnAxis[axis]
+        : 0;
   });
 
   let determinedIdeologyName = "Centrist";
   let minDistanceSquared = Infinity;
-  const distances = {};
-
-  if (!IDEOLOGY_DEFINITIONS || Object.keys(IDEOLOGY_DEFINITIONS).length === 0) {
-    console.error(
-      "IDEOLOGY_DEFINITIONS is missing or empty! Cannot calculate ideology."
-    );
-    return {
-      ideologyName: "Centrist",
-      scores: normalizedScores,
-      rawScores: rawScores,
-      questionsAnswered: totalQuestionsWithAnyEffectAnswered,
-      allDistances: {},
-    };
-  }
-
-  const ideologyDefsArray = Object.values(IDEOLOGY_DEFINITIONS);
-
-  for (const ideologyDef of ideologyDefsArray) {
-    if (!ideologyDef.idealPoint) {
-      console.warn(
-        `Ideology ${ideologyDef.name} is missing an idealPoint definition.`
-      );
-      continue;
-    }
+  for (const ideologyDef of Object.values(ideologyData)) {
+    if (!ideologyDef.idealPoint) continue;
     let distanceSquared = 0;
     AXES.forEach((axis) => {
       const idealAxisScore = ideologyDef.idealPoint[axis] || 0;
-      const normalizedScoreForAxis = normalizedScores[axis] || 0;
-      const diff = normalizedScoreForAxis - idealAxisScore;
+      const diff = (normalizedScores[axis] || 0) - idealAxisScore;
       distanceSquared += diff * diff;
     });
-
-    distances[ideologyDef.name] = Math.sqrt(distanceSquared);
-
     if (distanceSquared < minDistanceSquared) {
       minDistanceSquared = distanceSquared;
       determinedIdeologyName = ideologyDef.name;
@@ -194,170 +128,167 @@ export function calculateIdeologyFromStances(
 
   const averageAbsoluteScore =
     AXES.reduce((sum, axis) => sum + Math.abs(normalizedScores[axis] || 0), 0) /
-    NUM_AXES;
-
-  const trueCentristAvgAbsThreshold = 0.25; // This threshold may still need tuning
-
-  if (averageAbsoluteScore < trueCentristAvgAbsThreshold) {
+    AXES.length;
+  if (averageAbsoluteScore < 0.25) {
     determinedIdeologyName = "Centrist";
   }
 
-  return {
-    ideologyName: determinedIdeologyName,
-    scores: normalizedScores,
-    rawScores: rawScores,
-    questionsAnswered: totalQuestionsWithAnyEffectAnswered, // Total questions that had *some* effect
-    allDistances: distances,
-  };
+  return { ideologyName: determinedIdeologyName, scores: normalizedScores };
 }
 
+// --- Main Slice Creator ---
 export const createPoliticianSlice = (set, get) => ({
-  // State owned by this slice
+  // --- State ---
   creatingPolitician: getInitialCreatingPoliticianState(),
   politicianToEditId: null,
-  savedPoliticians: [], // Array to store finalized politician objects
+  savedPoliticians: [],
 
-  // Actions
-  resetCreatingPolitician: () => {
-    set({
-      creatingPolitician: getInitialCreatingPoliticianState(),
-      politicianToEditId: null, // Also clear editing ID
-    });
-  },
-
-  updateCreatingPoliticianField: (field, value) =>
-    set((state) => ({
-      creatingPolitician: { ...state.creatingPolitician, [field]: value },
-    })),
-
-  updateCreatingPoliticianPolicyStance: (policyQuestionId, answerValue) => {
-    set((state) => ({
-      creatingPolitician: {
-        ...state.creatingPolitician,
-        policyStances: {
-          ...state.creatingPolitician.policyStances,
-          [policyQuestionId]: answerValue,
-        },
-      },
-    }));
-  },
-
-  updateCreatingPoliticianAttribute: (attributeName, value) =>
-    set((state) => ({
-      creatingPolitician: {
-        ...state.creatingPolitician,
-        attributes: {
-          ...state.creatingPolitician.attributes,
-          [attributeName]: value,
-        },
-      },
-    })),
-
-  updateCreatingPoliticianBackground: (field, value) =>
-    set((state) => ({
-      creatingPolitician: {
-        ...state.creatingPolitician,
-        background: {
-          ...state.creatingPolitician.background,
-          [field]: value,
-        },
-      },
-    })),
-
-  recalculateIdeology: () => {
-    const stances = get().creatingPolitician.policyStances;
-    const { ideologyName, scores } = calculateIdeologyFromStances(
-      stances,
-      POLICY_QUESTIONS,
-      IDEOLOGY_DEFINITIONS
-    );
-
-    console.log(ideologyName, scores);
-
-    set((state) => ({
-      creatingPolitician: {
-        ...state.creatingPolitician,
-        calculatedIdeology: ideologyName,
-        ideologyScores: scores,
-      },
-    }));
-  },
-
-  finalizeNewPolitician: () => {
-    const currentCreatingPolitician = get().creatingPolitician;
-    const politicianIdToEdit = get().politicianToEditId;
-
-    // Ensure ID is generated for new politicians
-    const newPolitician = {
-      ...currentCreatingPolitician,
-      id: politicianIdToEdit || currentCreatingPolitician.id || generateId(),
-    };
-
-    if (politicianIdToEdit) {
-      // This is an UPDATE to an existing politician
-      set((state) => ({
-        savedPoliticians: state.savedPoliticians.map((p) =>
-          p.id === politicianIdToEdit ? newPolitician : p
-        ),
+  // --- Actions ---
+  actions: {
+    /**
+     * Resets the politician creation form to its initial state.
+     */
+    resetCreatingPolitician: () => {
+      set({
         creatingPolitician: getInitialCreatingPoliticianState(),
         politicianToEditId: null,
+      });
+    },
+
+    /**
+     * Updates a single field in the `creatingPolitician` object.
+     * @param {string} field - The name of the field to update.
+     * @param {*} value - The new value for the field.
+     */
+    updateCreatingPoliticianField: (field, value) =>
+      set((state) => ({
+        creatingPolitician: { ...state.creatingPolitician, [field]: value },
+      })),
+
+    /**
+     * Updates a policy stance for the politician being created.
+     * @param {string} policyQuestionId - The ID of the policy question.
+     * @param {string} answerValue - The selected answer value.
+     */
+    updateCreatingPoliticianPolicyStance: (policyQuestionId, answerValue) => {
+      set((state) => ({
+        creatingPolitician: {
+          ...state.creatingPolitician,
+          policyStances: {
+            ...state.creatingPolitician.policyStances,
+            [policyQuestionId]: answerValue,
+          },
+        },
       }));
-      console.log("Politician Updated:", newPolitician);
-      if (get().actions.navigateTo) {
-        // Check if navigateTo exists
+    },
+
+    /**
+     * Updates a single attribute (like charisma, integrity) for the politician.
+     * @param {string} attributeName - The name of the attribute.
+     * @param {number} value - The new value for the attribute.
+     */
+    updateCreatingPoliticianAttribute: (attributeName, value) =>
+      set((state) => ({
+        creatingPolitician: {
+          ...state.creatingPolitician,
+          attributes: {
+            ...state.creatingPolitician.attributes,
+            [attributeName]: value,
+          },
+        },
+      })),
+
+    /**
+     * Updates a field in the politician's background.
+     * @param {string} field - The background field to update (e.g., 'education').
+     * @param {string} value - The new value.
+     */
+    updateCreatingPoliticianBackground: (field, value) =>
+      set((state) => ({
+        creatingPolitician: {
+          ...state.creatingPolitician,
+          background: {
+            ...state.creatingPolitician.background,
+            [field]: value,
+          },
+        },
+      })),
+
+    /**
+     * Recalculates the politician's ideology based on their current policy stances.
+     */
+    recalculateIdeology: () => {
+      const stances = get().creatingPolitician.policyStances;
+      const { ideologyName, scores } = calculateIdeologyFromStances(
+        stances,
+        POLICY_QUESTIONS,
+        IDEOLOGY_DEFINITIONS
+      );
+      set((state) => ({
+        creatingPolitician: {
+          ...state.creatingPolitician,
+          calculatedIdeology: ideologyName,
+          ideologyScores: scores,
+        },
+      }));
+    },
+
+    /**
+     * Finalizes the creation or update of a politician and saves them.
+     */
+    finalizeNewPolitician: () => {
+      const { creatingPolitician, politicianToEditId } = get();
+      const newPolitician = {
+        ...creatingPolitician,
+        id:
+          politicianToEditId || creatingPolitician.id || `pol_${generateId()}`,
+      };
+
+      if (politicianToEditId) {
+        // Update existing politician
+        set((state) => ({
+          savedPoliticians: state.savedPoliticians.map((p) =>
+            p.id === politicianToEditId ? newPolitician : p
+          ),
+        }));
         get().actions.navigateTo("ManagePoliticiansScreen");
       } else {
-        console.error("finalizeNewPolitician: navigateTo action not found!");
-      }
-    } else {
-      // This is a brand NEW politician
-      set((state) => ({
-        savedPoliticians: [...state.savedPoliticians, newPolitician],
-        creatingPolitician: getInitialCreatingPoliticianState(),
-      }));
-      console.log("New Politician Finalized & Saved:", newPolitician);
-
-      if (get().actions.initializeNewCampaignSetup) {
-        console.log(
-          `Calling initializeNewCampaignSetup with ID: ${newPolitician.id}`
-        );
+        // Add a new politician
+        set((state) => ({
+          savedPoliticians: [...state.savedPoliticians, newPolitician],
+        }));
         get().actions.initializeNewCampaignSetup(newPolitician.id);
-      } else {
-        console.error(
-          "finalizeNewPolitician: initializeNewCampaignSetup action not found! Cannot proceed to campaign setup with new politician."
-        );
-        if (get().actions.navigateTo)
-          get().actions.navigateTo("CampaignSetupScreen");
       }
-    }
-  },
+      get().actions.resetCreatingPolitician(); // Reset form after saving
+    },
 
-  loadPoliticianForEditing: (politicianId) => {
-    const politicianToEdit = get().savedPoliticians.find(
-      (p) => p.id === politicianId
-    );
-    if (politicianToEdit) {
-      set({
-        creatingPolitician: { ...politicianToEdit },
-        politicianToEditId: politicianId,
-      });
-      get().actions.navigateTo("PoliticianCreator"); // Call UI slice action
-    } else {
-      console.warn(
-        "loadPoliticianForEditing: Politician ID not found:",
-        politicianId
+    /**
+     * Loads an existing politician's data into the creator form for editing.
+     * @param {string} politicianId - The ID of the politician to edit.
+     */
+    loadPoliticianForEditing: (politicianId) => {
+      const politicianToEdit = get().savedPoliticians.find(
+        (p) => p.id === politicianId
       );
-    }
-  },
+      if (politicianToEdit) {
+        set({
+          creatingPolitician: { ...politicianToEdit },
+          politicianToEditId: politicianId,
+        });
+        get().actions.navigateTo("PoliticianCreator");
+      }
+    },
 
-  // updateEditedPolitician: Merged into finalizeNewPolitician logic now.
-
-  deleteSavedPolitician: (politicianId) => {
-    set((state) => ({
-      savedPoliticians: state.savedPoliticians.filter(
-        (p) => p.id !== politicianId
-      ),
-    }));
-    console.log("Deleted Politician with ID:", politicianId);
+    /**
+     * Deletes a politician from the list of saved politicians.
+     * @param {string} politicianId - The ID of the politician to delete.
+     */
+    deleteSavedPolitician: (politicianId) => {
+      set((state) => ({
+        savedPoliticians: state.savedPoliticians.filter(
+          (p) => p.id !== politicianId
+        ),
+      }));
+    },
   },
 });

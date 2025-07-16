@@ -52,6 +52,8 @@ const useGameStore = create(
       const campaignStaffSlice = createCampaignStaffSlice(set, get);
 
       return {
+        creatingPolitian: politicianSliceData.creatingPolitician,
+        savedPoliticians: politicianSliceData.savedPoliticians,
         activeCampaign: campaignSlice.activeCampaign,
         proposedLegislation: legislationSlice.proposedLegislation,
         activeLegislation: legislationSlice.activeLegislation,
@@ -68,12 +70,12 @@ const useGameStore = create(
 
         actions: {
           ...electionSliceActions,
-          ...campaignSlice,
+          ...campaignSlice.actions,
           ...legislationSlice.actions,
-          ...uiSliceData,
-          ...politicianSliceData,
-          ...campaignActionsSlice,
-          ...campaignSetupSlice,
+          ...uiSliceData.actions,
+          ...politicianSliceData.actions,
+          ...campaignActionsSlice.actions,
+          ...campaignSetupSlice.actions,
           ...policySlice,
           ...timeSlice.actions,
           ...newsSlice.actions,

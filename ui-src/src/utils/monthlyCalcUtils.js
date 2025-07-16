@@ -387,13 +387,7 @@ export const simulateAIPolicyProposals = (campaign, getFromStore) => {
   campaign.governmentOffices.forEach((office) => {
     if (office.members) {
       office.members.forEach((member) => {
-        if (
-          member.holder &&
-          !member.holder.isPlayer &&
-          (member.id == "city_council" ||
-            member.officeNameTemplateId === "mayor") &&
-          Math.random() < 0.15 // AI decides to attempt a proposal
-        ) {
+        if (Math.random() < 0.15) {
           const aiPolitician = member.holder;
 
           // Pass the *iteratively updated* list of proposed legislation
@@ -448,7 +442,7 @@ export const simulateAIPolicyProposals = (campaign, getFromStore) => {
     } else if (
       office.holder &&
       !office.holder.isPlayer &&
-      (office.id == "city_council" ||
+      (office.officeId.includes("city_council") ||
         office.officeNameTemplateId === "mayor") &&
       Math.random() < 0.15 // AI decides to attempt a proposal
     ) {

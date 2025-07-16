@@ -92,7 +92,7 @@ function PoliticianCreator() {
   const creatingPolitician = useGameStore((state) => state.creatingPolitician);
   const politicianToEditId = useGameStore((state) => state.politicianToEditId);
   const actions = useGameStore((state) => state.actions);
-
+  console.log(creatingPolitician);
   const isEditMode = !!politicianToEditId;
 
   const { categories, sortedCategoryNames } = useMemo(() => {
@@ -181,7 +181,7 @@ function PoliticianCreator() {
         actions.recalculateIdeology(`Preset: ${ideologyName}`);
       }
     },
-    [actions, creatingPolitician.policyStances]
+    [actions, creatingPolitician]
   );
 
   const handleRandomize = useCallback(() => {
