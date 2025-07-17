@@ -126,7 +126,7 @@ export const japanElections = [
     mmpListSeatsRatio: null,
   },
   {
-    id: nationalElectionIds.national_hr,
+    id: nationalElectionIds.national_senate,
     officeNameTemplate:
       "Member of House of Councillors (District - {stateName})",
     level: "national_upper_house_prefectural_district",

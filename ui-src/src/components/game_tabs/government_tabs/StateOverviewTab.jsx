@@ -150,8 +150,6 @@ const StateOverviewTab = ({ campaignData }) => {
   const allStateLegislativeOffices = useMemo(() => {
     if (!activeState || !allGovernmentOffices.length) return [];
 
-    console.log(allGovernmentOffices);
-
     return allGovernmentOffices.filter(
       (office) =>
         ((office.stateId?.includes(activeState.id) ||
@@ -163,14 +161,16 @@ const StateOverviewTab = ({ campaignData }) => {
             office.level?.includes("city_district")
           ) &&
           !office.officeId?.includes("governor") &&
-          office.officeId.includes("state") &&
-          office.holder) ||
-        (office.members && office.members.length > 0)
+          office.officeId.includes("state")) ||
+        (office.officeId.includes("State") &&
+          office.members &&
+          office.members.length > 0)
     );
   }, [activeState, allGovernmentOffices]);
 
   // Separate memo for legislative bodies (e.g., "House of Representatives")
   const legislativeBodies = useMemo(() => {
+    console.log(allStateLegislativeOffices);
     return allStateLegislativeOffices
       .filter(
         (office) => office.members && office.members.length > 0 // Only offices with a 'members' array
@@ -727,12 +727,17 @@ const StateOverviewTab = ({ campaignData }) => {
           </>
         );
       case "government": {
-        const upperHouseBodies = legislativeBodies.filter(
-          (office) => office.officeId === "state_senate"
+        legislativeBodies.forEach((body) => {
+          console.log(body.officeId);
+        });
+        const upperHouseBodies = legislativeBodies.filter((office) =>
+          office.officeId.includes("state_senate")
         );
-        const lowerHouseBodies = legislativeBodies.filter(
-          (office) => office.officeId === "state_hr"
+        const lowerHouseBodies = legislativeBodies.filter((office) =>
+          office.officeId.includes("state_hr")
         );
+
+        console.log(upperHouseBodies, lowerHouseBodies);
 
         const upperHouseIndividualSeats = individualLegislativeSeats.filter(
           (seat) => seat.officeId && seat.officeId.includes("state_senate")
@@ -838,10 +843,10 @@ const StateOverviewTab = ({ campaignData }) => {
                           key={chamber.officeId}
                           className="legislative-chamber-block"
                         >
-                          <h6>
+                          <h5>
                             {formatOfficeTitleForDisplay(chamber, stateName)} (
                             {chamber.members.length} Members)
-                          </h6>
+                          </h5>
                           <ul className="officials-list">
                             {chamber.members.map((member) => (
                               <li key={member.id} className="official-entry">
@@ -929,10 +934,10 @@ const StateOverviewTab = ({ campaignData }) => {
                           key={chamber.officeId}
                           className="legislative-chamber-block"
                         >
-                          <h6>
+                          <h5>
                             {formatOfficeTitleForDisplay(chamber, stateName)} (
                             {chamber.members.length} Members)
-                          </h6>
+                          </h5>
                           <ul className="officials-list">
                             {chamber.members.map((member) => (
                               <li key={member.id} className="official-entry">

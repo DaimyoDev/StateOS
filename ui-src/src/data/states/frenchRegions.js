@@ -1,0 +1,15 @@
+export const frenchRegions = [
+  { id: "FRA_20R", name: "Corse" },
+  { id: "FRA_ARA", name: "Auvergne Rhône Alpes" },
+  { id: "FRA_BFC", name: "Bourgogne Franche Comté" },
+  { id: "FRA_BRE", name: "Bretagne" },
+  { id: "FRA_CVL", name: "Centre Val de Loire" },
+  { id: "FRA_GES", name: "Grand Est" },
+  { id: "FRA_HDF", name: "Hauts de France" },
+  { id: "FRA_IDF", name: "Île de France" },
+  { id: "FRA_NAQ", name: "Nouvelle Aquitaine" },
+  { id: "FRA_NOR", name: "Normandie" },
+  { id: "FRA_OCC", name: "Occitanie" },
+  { id: "FRA_PAC", name: "Provence Alpes Côte d'Azu" },
+  { id: "FRA_PDL", name: "Pays de la Loire" },
+];

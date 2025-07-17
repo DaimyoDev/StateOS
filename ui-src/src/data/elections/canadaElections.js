@@ -18,35 +18,27 @@ export const canadaElections = [
     minCouncilSeats: 1,
     electoralSystem: "FPTP",
     voteTarget: "candidate",
-    // ... other nulls
   },
-  // Note: Canada has an appointed Senate, so no 'national_senate' election.
-  // There is also no directly elected President or Prime Minister.
-  // The Prime Minister is the leader of the party that wins the most seats in the House of Commons.
-
-  // --- Provincial Level ---
   {
-    id: stateElectionIds.governor, // Provincial Premier (equivalent to governor for simulation)
+    id: stateElectionIds.governor,
     officeNameTemplate: "Premier of {stateName}",
-    level: "local_state", // Or local_province
-    frequencyYears: 4, // Varies, but common
-    electionMonth: null, // Varies
+    level: "local_state",
+    frequencyYears: 4,
+    electionMonth: null,
     generatesOneWinner: true,
-    electoralSystem: "FPTP", // Premier is leader of winning party in provincial legislature
+    electoralSystem: "FPTP",
     voteTarget: "candidate",
-    // ... other nulls
   },
   {
-    id: stateElectionIds.state_hr, // Provincial Legislative Assembly (or House of Assembly)
-    officeNameTemplate: "Member of Provincial Parliament - ({districtName})", // Ontario example
-    level: "local_state_lower_house", // Or local_province_legislature
+    id: stateElectionIds.state_hr,
+    officeNameTemplate: "Member of Provincial Parliament - ({districtName})",
+    level: "local_state_lower_house",
     frequencyYears: 4,
-    electionMonth: null, // Varies
+    electionMonth: null,
     generatesOneWinner: true,
     minCouncilSeats: 1,
     electoralSystem: "FPTP",
     voteTarget: "candidate",
-    // ... other nulls
   },
 
   // --- Local Level (Municipal) ---

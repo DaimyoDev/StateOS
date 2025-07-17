@@ -1,0 +1,18 @@
+export const polishVoivodeships = [
+  { id: "POL_02", name: "Lower Silesian" },
+  { id: "POL_04", name: "Kuyavian-Pomeranian" },
+  { id: "POL_06", name: "Lublin" },
+  { id: "POL_08", name: "Lubusz" },
+  { id: "POL_10", name: "Łódź" },
+  { id: "POL_12", name: "Lesser Poland" },
+  { id: "POL_14", name: "Masovian" },
+  { id: "POL_16", name: "Opole" },
+  { id: "POL_18", name: "Subcarpathian" },
+  { id: "POL_20", name: "Podlachian" },
+  { id: "POL_22", name: "Pomeranian" },
+  { id: "POL_24", name: "Silesian" },
+  { id: "POL_26", name: "Świętokrzyskie" },
+  { id: "POL_28", name: "Warmian-Masurian" },
+  { id: "POL_30", name: "Greater Poland" },
+  { id: "POL_32", name: "West Pomeranian" },
+];

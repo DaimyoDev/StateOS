@@ -24,6 +24,11 @@ import {
   KOREAN_FEMALE_NAMES,
   KOREAN_LAST_NAMES,
 } from "./names/koreanNames";
+import {
+  FRENCH_MALE_NAMES,
+  FRENCH_FEMALE_NAMES,
+  FRENCH_LAST_NAMES,
+} from "./names/frenchNames";
 
 export const NAMES_BY_COUNTRY = {
   JPN: {
@@ -48,13 +53,23 @@ export const NAMES_BY_COUNTRY = {
   },
   KOR: {
     male: KOREAN_MALE_NAMES,
-    female: KOREAN_LAST_NAMES,
+    female: KOREAN_FEMALE_NAMES,
     last: KOREAN_LAST_NAMES,
   },
   CAN: {
     male: ENGLISH_MALE_NAMES,
     female: ENGLISH_FEMALE_NAMES,
     last: ENGLISH_LAST_NAMES,
+  },
+  AUS: {
+    male: ENGLISH_MALE_NAMES,
+    female: ENGLISH_FEMALE_NAMES,
+    last: ENGLISH_LAST_NAMES,
+  },
+  FRA: {
+    male: FRENCH_MALE_NAMES,
+    female: FRENCH_FEMALE_NAMES,
+    last: FRENCH_LAST_NAMES,
   },
 };
 
