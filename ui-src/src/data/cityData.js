@@ -68,8 +68,8 @@ export const createCityObject = (params = {}) => ({
       params.stats?.unemploymentRate ||
       parseFloat(getRandomInt(30, 100) / 10).toFixed(1),
 
-    healthcareQuality:
-      params.stats?.healthcareQuality || getRandomElement(RATING_LEVELS),
+    healthcareCoverage: params.stats?.healthcareCoverage,
+    healthcareCostPerPerson: params.stats?.healthcareCostPerPerson,
     environmentRating:
       params.stats?.environmentRating || getRandomElement(RATING_LEVELS),
     cultureArtsRating:

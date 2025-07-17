@@ -11,6 +11,7 @@ import { normalizePartyPopularities } from "./electionUtils";
 import { calculateDetailedIncomeSources } from "./governmentUtils";
 import { STAT_LEVEL_ARRAYS } from "../stores/policySlice";
 import { CITY_POLICIES } from "../data/policyDefinitions";
+import { calculateHealthcareMetrics } from "./statCalculationCore";
 
 const determineKeyStatForIdeology = (ideologyName) => {
   switch (ideologyName) {
@@ -281,11 +282,60 @@ export const simulateMonthlyCityStatChanges = (campaign) => {
     }
   }
 
+  const currentBudgetAllocationForHealthcare =
+    cityStats.budget?.expenseAllocations?.publicHealthServices || 0;
+  const oldHealthcareCoverage = cityStats.healthcareCoverage || 0;
+  const oldHealthcareCostPerPerson = cityStats.healthcareCostPerPerson || 0;
+
+  if (currentBudgetAllocationForHealthcare > 0 || oldHealthcareCoverage > 0) {
+    const {
+      healthcareCoverage: newHealthcareCoverage,
+      healthcareCostPerPerson: newHealthcareCostPerPerson,
+    } = calculateHealthcareMetrics({
+      population: campaign.startingCity?.population,
+      currentBudgetAllocationForHealthcare:
+        currentBudgetAllocationForHealthcare,
+      demographics: campaign.startingCity?.demographics,
+      economicProfile: campaign.startingCity?.economicProfile,
+      // Pass governmentEfficiency here if you implement it for departments
+    });
+
+    if (newHealthcareCoverage !== oldHealthcareCoverage) {
+      statUpdates.healthcareCoverage = newHealthcareCoverage;
+
+      // Add news item for significant changes in healthcare coverage
+      const coverageChange = newHealthcareCoverage - oldHealthcareCoverage;
+      if (Math.abs(coverageChange) >= 2.0) {
+        // Report if coverage changes by 2 percentage points or more
+        newsItems.push({
+          headline: `Healthcare Coverage ${
+            coverageChange > 0 ? "Improved" : "Declined"
+          } in ${campaign.startingCity?.name}`,
+          summary: `The city's healthcare coverage is now estimated at ${newHealthcareCoverage.toFixed(
+            1
+          )}%. This is a ${
+            coverageChange > 0 ? "positive" : "negative"
+          } development.`,
+          type: "city_stat_change",
+          scope: "local",
+          impact: coverageChange > 0 ? "positive" : "negative",
+          stat: "healthcareCoverage",
+          oldValue: oldHealthcareCoverage,
+          newValue: newHealthcareCoverage,
+        });
+      }
+    }
+    // Update healthcareCostPerPerson always if it's calculated and changed
+    if (newHealthcareCostPerPerson !== oldHealthcareCostPerPerson) {
+      statUpdates.healthcareCostPerPerson = newHealthcareCostPerPerson;
+      // Consider if you want a news item for cost per person change, or if it's too frequent
+    }
+  }
+
   // Education Quality, Infrastructure State, etc.
   const otherStatsToUpdate = [
     { key: "educationQuality", focus: "Education Quality" },
     { key: "infrastructureState", focus: "Infrastructure Development" },
-    { key: "healthcareQuality", focus: "Healthcare Access" }, // Assuming focus string
     { key: "environmentRating", focus: "Environment & Sustainability" },
     { key: "cultureArtsRating", focus: "Culture & Recreation" },
   ];
@@ -570,6 +620,17 @@ export const updateMonthlyPartyPopularity = (campaign, getFromStore) => {
       if (cityStats.unemploymentRate > 8.0) totalShift -= 0.35;
       else if (cityStats.unemploymentRate < 4.5) totalShift += 0.25;
 
+      // NEW: Impact from Healthcare Coverage (for Incumbent)
+      if (cityStats.healthcareCoverage != null) {
+        if (cityStats.healthcareCoverage < 50)
+          totalShift -= 0.4; // Significant negative for very low coverage
+        else if (cityStats.healthcareCoverage < 75)
+          totalShift -= 0.15; // Minor negative
+        else if (cityStats.healthcareCoverage > 90)
+          totalShift += 0.2; // Positive for high coverage
+        else if (cityStats.healthcareCoverage > 80) totalShift += 0.05; // Small positive
+      }
+
       if (mayorPartyIdeology) {
         const keyStatForIncumbent =
           determineKeyStatForIdeology(mayorPartyIdeology);
@@ -598,6 +659,14 @@ export const updateMonthlyPartyPopularity = (campaign, getFromStore) => {
       if (econOutlookIdx <= 1) totalShift += getRandomInt(10, 25) / 100; // Stagnant or Recession
       if (cityStats.unemploymentRate > 7.0)
         totalShift += getRandomInt(5, 20) / 100;
+
+      if (cityStats.healthcareCoverage != null) {
+        if (cityStats.healthcareCoverage < 50)
+          totalShift += getRandomInt(20, 50) / 100;
+        // Opposition gains significantly from low coverage
+        else if (cityStats.healthcareCoverage > 85)
+          totalShift -= getRandomInt(5, 15) / 100; // Opposition loses minorly from high coverage
+      }
 
       if (mayorPartyIdeology) {
         const incumbentKeyStat =

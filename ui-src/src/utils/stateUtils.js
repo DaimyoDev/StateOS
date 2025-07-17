@@ -27,6 +27,8 @@ export const generateFullStateData = (params = {}) => {
     type = "Prefecture";
   } else if (countryId === "PHL") {
     type = "Region";
+  } else if (countryId === "CAN" || countryId === "KOR") {
+    type = "Province";
   } else {
     type = "State";
   }

@@ -136,7 +136,7 @@ export const generateAllLegislativeDistricts = (countriesData) => {
           entity.legislativeDistricts[stateElectionIds.state_senate] =
             Array.from({ length: numDistricts }).map((_, i) => ({
               id: `${entity.id}_SLSND${i + 1}`, // State Legislative Senate District
-              name: `${entity.name} ${country.lowerStateHrName + " "} ${i + 1}`,
+              name: `${entity.name} ${country.upperStateHrName + " "} ${i + 1}`,
               population: districtPopulations[i],
               stateId: entity.id,
             }));

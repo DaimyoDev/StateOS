@@ -11,6 +11,7 @@ import {
   MOOD_LEVELS,
 } from "../data/governmentData";
 import { createCityObject } from "../data/cityData";
+import { calculateHealthcareMetrics } from "./statCalculationCore";
 
 const generateCityName = () => {
   // Simple example, you'd have lists of prefixes/suffixes per country
@@ -441,6 +442,26 @@ export const generateInitialCityStats = (
     business: parseFloat((getRandomInt(200, 600) / 10000).toFixed(4)), // 2% to 6%
   };
 
+  const budget = generateInitialBudget(
+    population,
+    economicProfile.gdpPerCapita,
+    initialTaxRates,
+    wealth,
+    economicProfile.dominantIndustries,
+    mainIssues,
+    cityType
+  );
+
+  const { healthcareCoverage, healthcareCostPerPerson } =
+    calculateHealthcareMetrics({
+      population,
+      currentBudgetAllocationForHealthcare:
+        budget.expenseAllocations.publicHealthServices,
+      demographics,
+      economicProfile,
+      // You can add 'governmentEfficiency' here if you introduce it later
+    });
+
   return {
     type: cityType,
     wealth: wealth,
@@ -450,23 +471,16 @@ export const generateInitialCityStats = (
     educationQuality: getRandomElement(RATING_LEVELS),
     infrastructureState: getRandomElement(RATING_LEVELS),
     overallCitizenMood: getRandomElement(MOOD_LEVELS),
+    healthcareCoverage: healthcareCoverage,
+    healthcareCostPerPerson: healthcareCostPerPerson,
     unemploymentRate: parseFloat(getRandomInt(30, 120) / 10).toFixed(1), // 3.0 to 12.0 %
-    healthcareQuality: getRandomElement(RATING_LEVELS),
     environmentRating: getRandomElement(RATING_LEVELS),
     cultureArtsRating: getRandomElement(RATING_LEVELS),
     electoratePolicyProfile: generateInitialElectoratePolicyProfile(
       demographics,
       economicProfile
     ),
-    budget: generateInitialBudget(
-      population,
-      economicProfile.gdpPerCapita,
-      initialTaxRates,
-      wealth,
-      economicProfile.dominantIndustries,
-      mainIssues,
-      cityType
-    ),
+    budget: budget,
   };
 };
 

@@ -213,7 +213,7 @@ function CampaignSetupScreen() {
         {selectedCountryId === "KOR" && (
           <>
             <p className="map-instruction-cs">
-              Click on a state to begin your political career there.
+              Click on a province to begin your political career there.
             </p>
             <div className="map-render-wrapper">
               <SouthKoreaMap
@@ -241,7 +241,7 @@ function CampaignSetupScreen() {
         {selectedCountryId === "CAN" && (
           <>
             <p className="map-instruction-cs">
-              Click on a state to begin your political career there.
+              Click on a province to begin your political career there.
             </p>
             <div className="map-render-wrapper">
               <CanadaMap

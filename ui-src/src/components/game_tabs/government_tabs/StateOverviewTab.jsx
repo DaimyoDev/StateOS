@@ -154,23 +154,18 @@ const StateOverviewTab = ({ campaignData }) => {
 
     return allGovernmentOffices.filter(
       (office) =>
-        (office.stateId?.includes(activeState.id) ||
+        ((office.stateId?.includes(activeState.id) ||
           office.prefectureId === activeState.id ||
           office.provinceId === activeState.id) &&
-        !office.officeNameTemplateId?.includes("mayor") && // Exclude city mayors
-        !(
-          office.level?.includes("local_city") ||
-          office.level?.includes("city_district")
-        ) && // Exclude other city-level
-        (office.level?.includes("state") ||
-          office.level?.includes("prefecture") ||
-          office.level?.includes("province") || // It's state/pref/prov level
-          office.level?.includes("house") ||
-          office.level?.includes("senate") ||
-          office.level?.includes("assembly") ||
-          office.level?.includes("parliament") ||
-          office.level?.includes("board")) && // Include specific legislative keywords
-        (office.holder || (office.members && office.members.length > 0)) // Must have a holder (for a seat) or members (for a body)
+          !office.officeNameTemplateId?.includes("mayor") && // Exclude city mayors
+          !(
+            office.level?.includes("local_city") ||
+            office.level?.includes("city_district")
+          ) &&
+          !office.officeId?.includes("governor") &&
+          office.officeId.includes("state") &&
+          office.holder) ||
+        (office.members && office.members.length > 0)
     );
   }, [activeState, allGovernmentOffices]);
 
@@ -373,7 +368,15 @@ const StateOverviewTab = ({ campaignData }) => {
               <div className="city-stats-grid three-col">
                 <div className="stat-item">
                   <strong>Type:</strong>{" "}
-                  <span>{regionType === "state" ? "State" : "Prefecture"}</span>
+                  <span>
+                    {regionType?.toLowerCase() === "state"
+                      ? "State"
+                      : regionType?.toLowerCase() === "prefecture"
+                      ? "Prefecture"
+                      : regionType?.toLowerCase() === "province"
+                      ? "Province"
+                      : "N/A"}
+                  </span>
                 </div>
                 <div className="stat-item">
                   <strong>Population:</strong>{" "}
@@ -723,7 +726,78 @@ const StateOverviewTab = ({ campaignData }) => {
             )}
           </>
         );
-      case "government":
+      case "government": {
+        const upperHouseBodies = legislativeBodies.filter(
+          (office) => office.officeId === "state_senate"
+        );
+        const lowerHouseBodies = legislativeBodies.filter(
+          (office) => office.officeId === "state_hr"
+        );
+
+        const upperHouseIndividualSeats = individualLegislativeSeats.filter(
+          (seat) => seat.officeId && seat.officeId.includes("state_senate")
+        );
+        const lowerHouseIndividualSeats = individualLegislativeSeats.filter(
+          (seat) => seat.officeId && seat.officeId.includes("state_hr")
+        );
+
+        // Helper function to calculate party composition for a given set of members
+        const getPartyCompositionForChamber = (members) => {
+          const partyData = {};
+          members.forEach((member) => {
+            const partyName = member.partyName || "Independent/Other";
+            const partyKey = member.partyId || partyName;
+            if (!partyData[partyKey]) {
+              partyData[partyKey] = {
+                count: 0,
+                color: member.partyColor || "#CCCCCC",
+                id: member.partyId || partyKey,
+                name: partyName,
+              };
+            }
+            partyData[partyKey].count++;
+          });
+          return Object.values(partyData).map((data) => ({
+            id: data.id,
+            name: data.name,
+            popularity: data.count,
+            color: data.color,
+          }));
+        };
+
+        // NEW: Helper function to calculate party composition for a given set of individual seats
+        const getPartyCompositionForIndividualSeats = (seats) => {
+          const partyData = {};
+          seats.forEach((seat) => {
+            const holder = seat.holder;
+            if (holder) {
+              const partyName = holder.partyName || "Independent/Other";
+              const partyKey = holder.partyId || partyName;
+              if (!partyData[partyKey]) {
+                partyData[partyKey] = {
+                  count: 0,
+                  color: holder.partyColor || "#CCCCCC",
+                  id: holder.partyId || partyKey,
+                  name: partyName,
+                };
+              }
+              partyData[partyKey].count++;
+            }
+          });
+          return Object.values(partyData).map((data) => ({
+            id: data.id,
+            name: data.name,
+            popularity: data.count,
+            color: data.color,
+          }));
+        };
+
+        // NEW: Calculate compositions for individual seats
+        const upperHouseIndividualSeatsComposition =
+          getPartyCompositionForIndividualSeats(upperHouseIndividualSeats);
+        const lowerHouseIndividualSeatsComposition =
+          getPartyCompositionForIndividualSeats(lowerHouseIndividualSeats);
+
         return (
           <section className="city-officials-section city-section">
             <h4>{regionType} Government & Legislature</h4>
@@ -750,67 +824,192 @@ const StateOverviewTab = ({ campaignData }) => {
                   <p>Executive leader information not available or vacant.</p>
                 )}
 
-                {/* Display aggregated legislative bodies */}
-                {legislativeBodies.length > 0 && (
+                {/* Upper House Section */}
+                {(upperHouseBodies.length > 0 ||
+                  upperHouseIndividualSeats.length > 0) && (
                   <>
-                    <h5>Legislative Chambers:</h5>
-                    {legislativeBodies.map((chamber) => (
-                      <div
-                        key={chamber.officeId}
-                        className="legislative-chamber-block"
-                      >
-                        <h6>
-                          {formatOfficeTitleForDisplay(chamber, stateName)} (
-                          {chamber.members.length} Members)
-                        </h6>
+                    <h5>Upper House</h5>
+                    {upperHouseBodies.map((chamber) => {
+                      const chamberComposition = getPartyCompositionForChamber(
+                        chamber.members
+                      );
+                      return (
+                        <div
+                          key={chamber.officeId}
+                          className="legislative-chamber-block"
+                        >
+                          <h6>
+                            {formatOfficeTitleForDisplay(chamber, stateName)} (
+                            {chamber.members.length} Members)
+                          </h6>
+                          <ul className="officials-list">
+                            {chamber.members.map((member) => (
+                              <li key={member.id} className="official-entry">
+                                <strong>{member.role || "Member"}: </strong>
+                                <span
+                                  className="politician-name-link"
+                                  onClick={() => handlePoliticianClick(member)}
+                                  title={`View profile of ${member.name}`}
+                                >
+                                  {member.name}
+                                </span>
+                                {member.partyName && ` (${member.partyName})`}
+                              </li>
+                            ))}
+                          </ul>
+                          {chamberComposition.length > 0 && (
+                            <div className="council-pie-chart-container small-chart">
+                              <h5>Party Breakdown</h5>
+                              <div className="pie-chart-wrapper-council">
+                                <CouncilCompositionPieChart
+                                  councilCompositionData={chamberComposition}
+                                  themeColors={currentTheme?.colors}
+                                  themeFonts={currentTheme?.fonts}
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+
+                    {upperHouseIndividualSeats.length > 0 && (
+                      <div className="individual-legislative-seats-block">
                         <ul className="officials-list">
-                          {chamber.members.map((member) => (
-                            <li key={member.id} className="official-entry">
-                              <strong>{member.role || "Member"}: </strong>
+                          {upperHouseIndividualSeats.map((seat) => (
+                            <li key={seat.officeId} className="official-entry">
+                              <strong>
+                                {formatOfficeTitleForDisplay(seat, stateName)}:{" "}
+                              </strong>
                               <span
                                 className="politician-name-link"
-                                onClick={() => handlePoliticianClick(member)}
-                                title={`View profile of ${member.name}`}
+                                onClick={() =>
+                                  handlePoliticianClick(seat.holder)
+                                }
+                                title={`View profile of ${seat.holder.name}`}
                               >
-                                {member.name}
+                                {seat.holder.name}
                               </span>
-                              {member.partyName && ` (${member.partyName})`}
+                              {seat.holder.partyName &&
+                                ` (${seat.holder.partyName})`}
                             </li>
                           ))}
                         </ul>
+                        {/* NEW: Chart for individual upper house seats */}
+                        {upperHouseIndividualSeatsComposition.length > 0 && (
+                          <div className="council-pie-chart-container small-chart">
+                            <h5>Individual Seats Party Breakdown</h5>
+                            <div className="pie-chart-wrapper-council">
+                              <CouncilCompositionPieChart
+                                councilCompositionData={
+                                  upperHouseIndividualSeatsComposition
+                                }
+                                themeColors={currentTheme?.colors}
+                                themeFonts={currentTheme?.fonts}
+                              />
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    ))}
+                    )}
                   </>
                 )}
 
-                {/* Display individual legislative seats */}
-                {individualLegislativeSeats.length > 0 && (
-                  <div className="individual-legislative-seats-block">
-                    <h5>Individual Legislative Seats:</h5>
-                    <ul className="officials-list">
-                      {individualLegislativeSeats.map((seat) => (
-                        <li key={seat.officeId} className="official-entry">
-                          <strong>
-                            {formatOfficeTitleForDisplay(seat, stateName)}:{" "}
-                          </strong>
-                          <span
-                            className="politician-name-link"
-                            onClick={() => handlePoliticianClick(seat.holder)}
-                            title={`View profile of ${seat.holder.name}`}
-                          >
-                            {seat.holder.name}
-                          </span>
-                          {seat.holder.partyName &&
-                            ` (${seat.holder.partyName})`}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+                {/* Lower House Section */}
+                {(lowerHouseBodies.length > 0 ||
+                  lowerHouseIndividualSeats.length > 0) && (
+                  <>
+                    <h5>Lower House:</h5>
+                    {lowerHouseBodies.map((chamber) => {
+                      const chamberComposition = getPartyCompositionForChamber(
+                        chamber.members
+                      );
+                      return (
+                        <div
+                          key={chamber.officeId}
+                          className="legislative-chamber-block"
+                        >
+                          <h6>
+                            {formatOfficeTitleForDisplay(chamber, stateName)} (
+                            {chamber.members.length} Members)
+                          </h6>
+                          <ul className="officials-list">
+                            {chamber.members.map((member) => (
+                              <li key={member.id} className="official-entry">
+                                <strong>{member.role || "Member"}: </strong>
+                                <span
+                                  className="politician-name-link"
+                                  onClick={() => handlePoliticianClick(member)}
+                                  title={`View profile of ${member.name}`}
+                                >
+                                  {member.name}
+                                </span>
+                                {member.partyName && ` (${member.partyName})`}
+                              </li>
+                            ))}
+                          </ul>
+                          {chamberComposition.length > 0 && (
+                            <div className="council-pie-chart-container small-chart">
+                              <h5>Party Breakdown</h5>
+                              <div className="pie-chart-wrapper-council">
+                                <CouncilCompositionPieChart
+                                  councilCompositionData={chamberComposition}
+                                  themeColors={currentTheme?.colors}
+                                  themeFonts={currentTheme?.fonts}
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+
+                    {lowerHouseIndividualSeats.length > 0 && (
+                      <div className="individual-legislative-seats-block">
+                        <ul className="officials-list">
+                          {lowerHouseIndividualSeats.map((seat) => (
+                            <li key={seat.officeId} className="official-entry">
+                              <strong>
+                                {formatOfficeTitleForDisplay(seat, stateName)}:{" "}
+                              </strong>
+                              <span
+                                className="politician-name-link"
+                                onClick={() =>
+                                  handlePoliticianClick(seat.holder)
+                                }
+                                title={`View profile of ${seat.holder.name}`}
+                              >
+                                {seat.holder.name}
+                              </span>
+                              {seat.holder.partyName &&
+                                ` (${seat.holder.partyName})`}
+                            </li>
+                          ))}
+                        </ul>
+                        {lowerHouseIndividualSeatsComposition.length > 0 && (
+                          <div className="council-pie-chart-container small-chart">
+                            <h5>Individual Seats Party Breakdown</h5>
+                            <div className="pie-chart-wrapper-council">
+                              <CouncilCompositionPieChart
+                                councilCompositionData={
+                                  lowerHouseIndividualSeatsComposition
+                                }
+                                themeColors={currentTheme?.colors}
+                                themeFonts={currentTheme?.fonts}
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </>
                 )}
 
-                {/* Message if no legislative info at all */}
-                {legislativeBodies.length === 0 &&
-                  individualLegislativeSeats.length === 0 && (
+                {/* Message if no legislative info at all - updated condition */}
+                {upperHouseBodies.length === 0 &&
+                  lowerHouseBodies.length === 0 &&
+                  upperHouseIndividualSeats.length === 0 &&
+                  lowerHouseIndividualSeats.length === 0 && (
                     <p>
                       No legislative body information available or no seats
                       filled/defined.
@@ -818,10 +1017,10 @@ const StateOverviewTab = ({ campaignData }) => {
                   )}
               </div>
 
-              {/* Party Breakdown Chart (now combines all legislative members) */}
+              {/* Overall Legislature Party Breakdown Chart */}
               {legislativeCompositionByParty.length > 0 && (
                 <div className="council-pie-chart-container">
-                  <h5>Legislature Party Breakdown</h5>
+                  <h5>Overall Legislature Party Breakdown</h5>
                   <div className="pie-chart-wrapper-council">
                     <CouncilCompositionPieChart
                       councilCompositionData={legislativeCompositionByParty}
@@ -834,6 +1033,7 @@ const StateOverviewTab = ({ campaignData }) => {
             </div>
           </section>
         );
+      }
       case "laws":
         return (
           <section className="city-section city-laws-section">

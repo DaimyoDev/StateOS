@@ -239,5 +239,4 @@ Object.keys(COUNTRIES_DATA).forEach((countryId) => {
       });
     });
   }
-  console.log(country);
 });

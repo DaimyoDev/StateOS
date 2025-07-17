@@ -100,7 +100,6 @@ const CityOverviewTab = () => {
     overallCitizenMood,
     unemploymentRate,
     budget,
-    healthcareQuality,
     environmentRating,
     cultureArtsRating,
   } = stats || {};
@@ -628,15 +627,17 @@ const CityOverviewTab = () => {
                 </span>
               </div>
               <div className="stat-item">
-                <strong>Healthcare Quality:</strong>{" "}
-                <span
-                  className={`stat-descriptor rating-${(
-                    healthcareQuality || "average"
-                  )
-                    .toLowerCase()
-                    .replace(/\s+/g, "-")}`}
-                >
-                  {getRatingDescriptor(healthcareQuality)}
+                <strong>Healthcare Coverage:</strong>{" "}
+                <span className="stat-descriptor">
+                  {formatPercentage(stats.healthcareCoverage, 1)}
+                </span>
+              </div>
+              <div className="stat-item">
+                {" "}
+                {/* Optional: Add a display for cost per person */}
+                <strong>Cost Per Person (Healthcare):</strong>{" "}
+                <span className="stat-descriptor">
+                  ${stats.healthcareCostPerPerson?.toFixed(2) || "N/A"}
                 </span>
               </div>
               <div className="stat-item">
