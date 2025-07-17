@@ -6,6 +6,7 @@ import { koreanElections } from "./elections/koreanElections";
 import { canadaElections } from "./elections/canadaElections";
 import { australianElections } from "./elections/AustralianElections";
 import { frenchElections } from "./elections/frenchElections";
+import { greatBritainElections } from "./elections/greatBritianElections";
 
 export const ELECTION_TYPES_BY_COUNTRY = {
   JPN: japanElections,
@@ -16,4 +17,5 @@ export const ELECTION_TYPES_BY_COUNTRY = {
   CAN: canadaElections,
   AUS: australianElections,
   FRA: frenchElections,
+  GBR: greatBritainElections,
 };
