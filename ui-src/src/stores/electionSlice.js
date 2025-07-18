@@ -20,41 +20,6 @@ import {
 } from "../utils/electionUtils.js";
 import { calculateElectionOutcome } from "../utils/electionResultsUtils.js";
 
-const getFullPoliticianById = (
-  politicianId,
-  campaignData,
-  electionPoliticians = []
-) => {
-  if (!campaignData) return null;
-
-  // 1. Check current campaign's player politician
-  if (campaignData.politician && campaignData.politician.id === politicianId) {
-    return campaignData.politician;
-  }
-
-  // 2. Search through all existing government office holders and members
-  for (const office of campaignData.governmentOffices || []) {
-    if (office.holder && office.holder.id === politicianId) {
-      return office.holder;
-    }
-    if (office.members) {
-      const member = office.members.find((m) => m.id === politicianId);
-      if (member) return member;
-    }
-  }
-
-  // 3. NEW: Check the pool of politicians generated for THIS specific election
-  // This pool is expected to contain the full politician objects for all candidates (newly generated and incumbents)
-  const electionSpecificPolitician = electionPoliticians.find(
-    (p) => p.id === politicianId
-  );
-  if (electionSpecificPolitician) {
-    return electionSpecificPolitician;
-  }
-
-  return null; // Politician not found with full details
-};
-
 const INCUMBENT_RUNS_CHANCE = 0.8;
 const POSSIBLE_POLICY_FOCUSES_FOR_ELECTION_SLICE = [
   "Economic Growth",
@@ -666,12 +631,11 @@ export const createElectionSlice = (set) => ({
             electionDefinition?.memberRoleName ||
             `Member, ${electionToEnd.officeName}`;
           const newMembers = determinedWinnersArray.map((winner) => ({
-            id: winner.id,
-            name: winner.name,
-            holder: getFullPoliticianById(winner.id, state.campaignData),
-            partyId: winner.partyId,
-            partyName: winner.partyName,
-            partyColor: winner.partyColor,
+            ...winner,
+            votes: undefined,
+            polling: undefined,
+            baseScore: undefined,
+            isWinner: undefined,
             role: memberRole,
             termEnds: termEndDate,
           }));

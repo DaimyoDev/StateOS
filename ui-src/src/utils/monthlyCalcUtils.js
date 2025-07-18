@@ -440,7 +440,7 @@ export const simulateAIPolicyProposals = (campaign, getFromStore) => {
         if (Math.random() < 0.15) {
           const aiPolitician = member.name;
 
-          if (office.officeId != "city_council") return;
+          if (!office.officeNameTemplateId.includes("city_council")) return;
           const proposalDetailsFromAI = decideAIPolicyProposal(
             aiPolitician,
             availablePolicyDefinitionsFromStore.map((p) => p.id), // Pass only IDs

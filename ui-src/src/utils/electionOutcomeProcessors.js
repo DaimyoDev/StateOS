@@ -113,8 +113,8 @@ export const allocateSeatsProportionally = (
       }
       break;
 
-    default: // Fallback to simple proportional allocation (similar to old placeholder but without the console.warn)
-    {
+    default: {
+      // Fallback to simple proportional allocation (similar to old placeholder but without the console.warn)
       let allocatedCountDefault = 0;
       eligibleParties.forEach((p) => {
         seats[p.id] = Math.floor(
@@ -373,46 +373,59 @@ export const processPartyListPRResults = ({
 
 /**
  * Processes election results for Mixed-Member Proportional (MMP) systems.
+ * Implements German-style overhang and leveling seats for realistic proportionality.
  * @param {object} params.electionToEnd - The election object.
  * @param {Array} params.allPartiesInGame - List of all parties.
  * @param {Array} params.candidatesWithFinalVotes - Candidates with their final vote counts (constituency candidates or party entities for simulation).
- * @param {number} params.seatsToFill - Total seats to fill.
+ * @param {number} params.seatsToFill - Initial total seats for the body. This will be updated to reflect leveling.
  * @param {number} params.totalVotesActuallyCast - Total votes cast in the election.
- * @returns {{determinedWinnersArray: Array, partyVoteSummary: Array, partySeatSummary: object, allRelevantIndividuals: Array}}
+ * @returns {{determinedWinnersArray: Array, partyVoteSummary: Array, partySeatSummary: object, allRelevantIndividuals: Array, seatsToFill: number}}
  */
 export const processMMPResults = ({
   electionToEnd,
   allPartiesInGame,
-  candidatesWithFinalVotes, // Primarily constituency candidates, or simulated party vote entities
-  seatsToFill,
+  candidatesWithFinalVotes,
+  seatsToFill, // Now representing initial total seats, will be updated to final size
   totalVotesActuallyCast,
 }) => {
-  let determinedWinnersArray = [];
-  let partyVoteSummary = [];
-  let partySeatSummary = {};
-  let allRelevantIndividuals = []; // Will be combined at the end
+  let determinedWinnersArray = []; // Final list of winners
+  let partyVoteSummary = []; // Summary of party votes and percentages (overall vote)
+  let partySeatSummary = {}; // Final seat count per party
+  let allRelevantIndividuals = []; // All individuals involved in the election
 
-  const numConstituencySeats =
+  // Determine constituency winners first (This part remains the same)
+  // constituencyWinnersFound will be used to track direct mandates
+  const numConstituencySeatsInElection =
     electionToEnd.mmpData?.numConstituencySeats ||
     (electionToEnd.voteTarget === "dual_candidate_and_party"
       ? Math.floor(seatsToFill / 2)
       : seatsToFill);
-  const numListSeats = seatsToFill - numConstituencySeats;
 
-  // 1. Determine constituency winners
-  if (candidatesWithFinalVotes.length > 0) {
-    const constituencyWinnersFound = [...candidatesWithFinalVotes]
-      .sort((a, b) => (b.votes || 0) - (a.votes || 0))
-      .slice(0, numConstituencySeats);
-    determinedWinnersArray.push(...constituencyWinnersFound);
-    constituencyWinnersFound.forEach((winner) => {
-      if (winner.partyId)
-        partySeatSummary[winner.partyId] =
-          (partySeatSummary[winner.partyId] || 0) + 1;
-    });
-  }
+  const constituencyWinnersFound = [...candidatesWithFinalVotes]
+    .sort((a, b) => (b.votes || 0) - (a.votes || 0))
+    .slice(0, numConstituencySeatsInElection);
 
-  // 2. Determine Party Votes for List Seats
+  determinedWinnersArray = []; // Reset to ensure only final winners are added
+  partySeatSummary = {}; // Ensure this is clean for party seats only
+
+  // Add all constituency winners to determinedWinnersArray.
+  // For partySeatSummary, only count seats for actual parties, not independents.
+  constituencyWinnersFound.forEach((winner) => {
+    determinedWinnersArray.push(winner); // Independent winners will be here with 1 seat
+    // Assume partyIds starting with "independent_" or "ai_pol_" are independents
+    if (
+      winner.partyId &&
+      !winner.partyId.startsWith("independent_") &&
+      !winner.partyId.startsWith("ai_pol_")
+    ) {
+      partySeatSummary[winner.partyId] =
+        (partySeatSummary[winner.partyId] || 0) + 1;
+    }
+  });
+
+  // Determine Party Votes for List Seats (Overall Party Vote - Second Vote)
+  // This section calculates mmpPartyVoteTotals and populates partyVoteSummary.
+  // This logic is largely as before, ensuring overall party vote percentages are accurate.
   let mmpPartyVoteTotals = {};
   const firstMmpSimEntity = candidatesWithFinalVotes?.[0];
   if (
@@ -420,7 +433,6 @@ export const processMMPResults = ({
     firstMmpSimEntity.isPartyEntity === true &&
     firstMmpSimEntity.mmpPartyVote === true
   ) {
-    // If candidatesWithFinalVotes itself contains party entities with votes for list part
     candidatesWithFinalVotes.forEach((partyEntity) => {
       if (partyEntity?.id && typeof partyEntity.votes === "number") {
         mmpPartyVoteTotals[partyEntity.id] =
@@ -431,9 +443,15 @@ export const processMMPResults = ({
     candidatesWithFinalVotes.length > 0 &&
     !firstMmpSimEntity?.isPartyEntity
   ) {
-    // If candidatesWithFinalVotes are constituency candidates, sum their votes by party for list vote
+    // MODIFICATION START: Filter out independents when summing votes for mmpPartyVoteTotals
     candidatesWithFinalVotes.forEach((cand) => {
-      if (cand.partyId && typeof cand.votes === "number") {
+      // Only count votes if the candidate belongs to an actual party (not an independent)
+      if (
+        cand.partyId &&
+        !cand.partyId.startsWith("independent_") && // Explicitly exclude independent IDs
+        !cand.partyId.startsWith("ai_pol_") && // Explicitly exclude general AI politician IDs used for independents
+        typeof cand.votes === "number"
+      ) {
         mmpPartyVoteTotals[cand.partyId] =
           (mmpPartyVoteTotals[cand.partyId] || 0) + cand.votes;
       }
@@ -443,7 +461,6 @@ export const processMMPResults = ({
     Object.keys(electionToEnd.partyLists).length > 0 &&
     totalVotesActuallyCast > 0
   ) {
-    // Fallback: If no direct simulated party votes, derive from party strengths based on totalVotesActuallyCast
     const partyVotePortion = totalVotesActuallyCast;
     const partiesInvolved = Object.keys(electionToEnd.partyLists);
     let totalBaseStrength = 0;
@@ -494,52 +511,215 @@ export const processMMPResults = ({
   });
   partyVoteSummary.sort((a, b) => (b.votes || 0) - (a.votes || 0));
 
-  // 3. Allocate List Seats for MMP
-  if (
-    numListSeats > 0 &&
-    partyVoteSummary.length > 0 &&
-    electionToEnd.partyLists
+  // --- NEW: Implement German-style MMP Allocation (Overhang and Leveling Seats) ---
+
+  let currentTotalSeats = seatsToFill; // Start with the nominal size (e.g., 598 for Bundestag)
+  let finalCalculatedPartySeats = {}; // To store the final seat count for each party
+  let seatsCalculatedSuccessfully = false;
+  let iterationLimit = 0;
+  const MAX_ITERATIONS_FOR_LEVELING = 50; // Cap to prevent infinite loops
+  const MAX_POSSIBLE_SEATS_MULTIPLIER = 1.5; // E.g., 1.5x nominal size (598 * 1.5 = ~897)
+
+  // Loop to find the correct, potentially expanded, parliament size that accommodates all direct mandates proportionally
+  while (
+    !seatsCalculatedSuccessfully &&
+    iterationLimit < MAX_ITERATIONS_FOR_LEVELING
   ) {
-    const allocatedListSeatsByIndexMMP = allocateSeatsProportionally(
-      partyVoteSummary,
-      numListSeats,
+    iterationLimit++;
+
+    // Calculate proportional entitlement based on the current `currentTotalSeats` candidate
+    const currentProportionalEntitlement = allocateSeatsProportionally(
+      partyVoteSummary, // This is based on overall party votes (second vote)
+      currentTotalSeats,
       electionToEnd.prThresholdPercent || 0,
       electionToEnd.prAllocationMethod || "dHondt"
     );
-    if (
-      typeof allocatedListSeatsByIndexMMP === "object" &&
-      allocatedListSeatsByIndexMMP !== null
-    ) {
-      Object.keys(allocatedListSeatsByIndexMMP).forEach((partyId) => {
-        const numPartyListSeats = allocatedListSeatsByIndexMMP[partyId] || 0;
-        partySeatSummary[partyId] =
-          (partySeatSummary[partyId] || 0) + numPartyListSeats;
 
-        const listCands = electionToEnd.partyLists?.[partyId] || [];
-        const listWinners = listCands
-          .filter(
-            (lc) =>
-              lc &&
-              lc.id &&
-              !determinedWinnersArray.some((cw) => cw.id === lc.id)
-          )
-          .slice(0, numPartyListSeats);
-        listWinners.forEach((indivCand) => {
-          if (indivCand.name) {
-            const partyData = allPartiesInGame.find((p) => p.id === partyId);
-            determinedWinnersArray.push({
-              ...indivCand,
-              partyId: partyId,
-              partyName: partyData?.name || indivCand.partyName,
-              partyColor: partyData?.color || indivCand.partyColor,
-            });
+    let nextTotalSeatsCandidate = currentTotalSeats;
+    let overhangsFoundInIteration = false;
+
+    // Check if all direct mandates are covered by proportional entitlement at currentTotalSeats
+    partyVoteSummary.forEach((partyData) => {
+      const partyId = partyData.id;
+      const directWins = constituencyWinnersFound.filter(
+        (w) => w.partyId === partyId
+      ).length;
+      const entitledSeats = currentProportionalEntitlement[partyId] || 0;
+
+      if (directWins > entitledSeats) {
+        const partyVotePercentage = partyData.percentage || 0.001;
+        const requiredTotalForThisParty = Math.ceil(
+          (directWins * 100) / partyVotePercentage
+        );
+        nextTotalSeatsCandidate = Math.max(
+          nextTotalSeatsCandidate,
+          requiredTotalForThisParty
+        );
+        overhangsFoundInIteration = true;
+      }
+    });
+
+    if (
+      overhangsFoundInIteration &&
+      nextTotalSeatsCandidate > currentTotalSeats
+    ) {
+      currentTotalSeats = Math.min(
+        nextTotalSeatsCandidate,
+        seatsToFill * MAX_POSSIBLE_SEATS_MULTIPLIER
+      );
+      // If we hit the max multiplier, force break to prevent infinite loops, though it might impact proportionality
+      if (currentTotalSeats === seatsToFill * MAX_POSSIBLE_SEATS_MULTIPLIER) {
+        seatsCalculatedSuccessfully = true;
+        console.warn(
+          `[MMP Leveling] Parliament size reached max multiplier (${MAX_POSSIBLE_SEATS_MULTIPLIER}x nominal). Leveling might be slightly imperfect.`
+        );
+      }
+    } else {
+      // Parliament size has stabilized or no new overhangs, so this is the final allocation.
+      seatsCalculatedSuccessfully = true;
+      // Recalculate one last time with the *final* determined parliament size for precise entitlement.
+      const finalProportionalEntitlement = allocateSeatsProportionally(
+        partyVoteSummary,
+        currentTotalSeats,
+        electionToEnd.prThresholdPercent || 0,
+        electionToEnd.prAllocationMethod || "dHondt"
+      );
+      finalCalculatedPartySeats = finalProportionalEntitlement;
+
+      while (
+        !seatsCalculatedSuccessfully &&
+        iterationLimit < MAX_ITERATIONS_FOR_LEVELING
+      ) {
+        iterationLimit++;
+
+        const currentProportionalEntitlement = allocateSeatsProportionally(
+          partyVoteSummary,
+          currentTotalSeats,
+          electionToEnd.prThresholdPercent || 0,
+          electionToEnd.prAllocationMethod || "dHondt"
+        );
+
+        let nextTotalSeatsCandidate = currentTotalSeats;
+
+        partyVoteSummary.forEach((partyData) => {
+          const partyId = partyData.id;
+          const directWins = constituencyWinnersFound.filter(
+            (w) =>
+              w.partyId === partyId &&
+              !w.partyId.startsWith("independent_") &&
+              !w.partyId.startsWith("ai_pol_")
+          ).length;
+
+          const entitledSeats = currentProportionalEntitlement[partyId] || 0;
+
+          if (directWins > entitledSeats) {
+            const partyVotePercentage = partyData.percentage || 0.001;
+            const requiredTotalForThisParty = Math.ceil(
+              (directWins * 100) / partyVotePercentage
+            );
+            nextTotalSeatsCandidate = Math.max(
+              nextTotalSeatsCandidate,
+              requiredTotalForThisParty
+            );
+            overhangsFoundInIteration = true;
           }
         });
+      }
+
+      // Ensure no party has fewer seats than their direct wins, even after final proportional calculation
+      partyVoteSummary.forEach((partyData) => {
+        const partyId = partyData.id;
+        // MODIFICATION 2: Ensure directWins here also only count for actual party members.
+        const directWins = constituencyWinnersFound.filter(
+          (w) =>
+            w.partyId === partyId &&
+            !w.partyId.startsWith("independent_") &&
+            !w.partyId.startsWith("ai_pol_")
+        ).length;
+        finalCalculatedPartySeats[partyId] = Math.max(
+          finalCalculatedPartySeats[partyId] || 0,
+          directWins
+        );
       });
     }
   }
 
-  // Combine all relevant individuals from constituency and lists for final reporting
+  // Ensure total seats match currentTotalSeats after iterations (due to rounding/etc.)
+  let actualTotalAllocatedSeats = Object.values(
+    finalCalculatedPartySeats
+  ).reduce((sum, s) => sum + s, 0);
+  let difference = currentTotalSeats - actualTotalAllocatedSeats;
+
+  // Distribute any remaining difference to fill the parliament to its final size
+  if (difference !== 0) {
+    const sortedPartiesByVote = [...partyVoteSummary].sort(
+      (a, b) => b.votes - a.votes
+    );
+    for (let i = 0; i < Math.abs(difference); i++) {
+      const partyToAdjustId =
+        sortedPartiesByVote[i % sortedPartiesByVote.length]?.id;
+      if (partyToAdjustId) {
+        if (difference > 0) {
+          // Add seats if under-allocated
+          finalCalculatedPartySeats[partyToAdjustId] =
+            (finalCalculatedPartySeats[partyToAdjustId] || 0) + 1;
+        } else {
+          // Remove seats if over-allocated (and greater than 0)
+          finalCalculatedPartySeats[partyToAdjustId] = Math.max(
+            0,
+            (finalCalculatedPartySeats[partyToAdjustId] || 0) - 1
+          );
+        }
+      }
+    }
+  }
+
+  // Update partySeatSummary with the final, leveled seat counts
+  partySeatSummary = { ...finalCalculatedPartySeats };
+
+  // Rebuild determinedWinnersArray with final constituency winners + list winners (leveling)
+  determinedWinnersArray = []; // Reset winners list
+  // Add constituency winners first
+  constituencyWinnersFound.forEach((winner) => {
+    determinedWinnersArray.push(winner);
+  });
+
+  // Add list winners (leveling seats)
+  Object.keys(partySeatSummary).forEach((partyId) => {
+    const totalSeatsForParty = partySeatSummary[partyId] || 0;
+    const constituencySeatsForParty = determinedWinnersArray.filter(
+      (w) =>
+        w.partyId === partyId &&
+        !w.partyId.startsWith("independent_") &&
+        !w.partyId.startsWith("ai_pol_")
+    ).length;
+    const listSeatsToAward = Math.max(
+      0,
+      totalSeatsForParty - constituencySeatsForParty
+    );
+
+    if (listSeatsToAward > 0) {
+      const listCands = electionToEnd.partyLists?.[partyId] || [];
+      const listWinners = listCands
+        .filter(
+          (lc) =>
+            lc && lc.id && !determinedWinnersArray.some((cw) => cw.id === lc.id) // Avoid duplicates
+        )
+        .slice(0, listSeatsToAward); // Take the top candidates from the list
+
+      listWinners.forEach((indivCand) => {
+        const partyData = allPartiesInGame.find((p) => p.id === partyId);
+        determinedWinnersArray.push({
+          ...indivCand,
+          partyId: partyId,
+          partyName: partyData?.name || indivCand.partyName,
+          partyColor: partyData?.color || indivCand.partyColor,
+        });
+      });
+    }
+  });
+
+  // Finalize allRelevantIndividuals (existing logic)
   const individualsFromLists = Object.values(electionToEnd.partyLists || {})
     .flat()
     .filter((c) => c && c.id);
@@ -569,24 +749,25 @@ export const processMMPResults = ({
     new Map(combinedIndividuals.map((c) => [c.id, c])).values()
   ); // Deduplicate
 
-  // Finalize allRelevantIndividuals for reporting - add votes and party info if missing
   allRelevantIndividuals = allRelevantIndividuals.map((indiv) => {
     const votedData = candidatesWithFinalVotes.find(
       (votedCand) => votedCand.id === indiv.id
-    ); // Find their vote data from constituency results
+    );
     const partyDetails = allPartiesInGame.find((p) => p.id === indiv.partyId);
     return {
       ...indiv,
-      votes: votedData?.votes ?? null, // Use constituency votes if available
+      votes: votedData?.votes ?? null,
       partyName: partyDetails?.name || indiv.partyName,
       partyColor: partyDetails?.color || indiv.partyColor,
     };
   });
 
+  // Return final calculated data, including the dynamically determined final total seats
   return {
     determinedWinnersArray,
     partyVoteSummary,
     partySeatSummary,
     allRelevantIndividuals,
+    seatsToFill: currentTotalSeats,
   };
 };
