@@ -24,6 +24,12 @@ import {
   isNationalLegislativeElectionType,
   generateNationalLegislativeElectionInstances,
 } from "./electionGenUtils";
+import {
+  handleFPTPParticipants,
+  handlePartyListPRParticipants,
+  handleMMPParticipants,
+  handleMMDParticipants,
+} from "./electionSystems.js"; // Adjust path if needed
 
 /**
  * Calculates the number of seats for a given election type and city population.
@@ -149,34 +155,22 @@ export function normalizePolling(candidatesList = [], adultPopulation = 0) {
   if (!candidatesList || candidatesList.length === 0) {
     return [];
   }
-
-  // Ensure adultPopulation is a positive number to avoid division by zero or skewed fractions.
-  // If no adult population data, we can't realistically factor in name recognition this way.
-  // In such a fallback, you might revert to a simpler baseScore-only normalization,
-  // or assume everyone is "known" by a fraction of the total voters if only candidate count is known.
-  // For this overhaul, we'll assume adultPopulation is provided and meaningful.
-  const safeAdultPopulation = Math.max(1, adultPopulation); // Prevent division by zero
+  const safeAdultPopulation = Math.max(1, adultPopulation);
 
   const candidatesWithEffectiveWeights = candidatesList.map((c) => {
-    // Use existing logic for baseScore: defaults to 1 if invalid or < 0
     const baseScore = Number(c.baseScore) >= 0 ? Number(c.baseScore) : 1;
 
-    // Calculate recognition fraction (0 to 1)
-    // Ensure nameRecognition does not exceed adultPopulation (actions should cap this, but safety here)
     const recognizedCount = Math.min(
       c.nameRecognition || 0,
       safeAdultPopulation
     );
     const recognitionFraction = recognizedCount / safeAdultPopulation;
-
-    // Effective weight for polling is baseScore scaled by name recognition
-    // If nameRecognition is 0, effectiveWeight will be 0.
     const effectiveWeight = baseScore * recognitionFraction;
 
     return {
       ...c,
-      processedBaseScore: baseScore, // Keep the processed baseScore for reference/tie-breaking
-      recognitionFraction: recognitionFraction, // For potential debugging or further use
+      processedBaseScore: baseScore,
+      recognitionFraction: recognitionFraction,
       effectiveWeight: effectiveWeight,
     };
   });
@@ -189,13 +183,8 @@ export function normalizePolling(candidatesList = [], adultPopulation = 0) {
   let normalizedCandidates;
 
   if (totalEffectiveWeight === 0) {
-    // This happens if all candidates have 0 effective weight (e.g., all unknown, or all known with 0 baseScore if baseScore logic was different)
-    // In this scenario, it implies no one has a basis for support.
-    // Option 1: All get 0% (if you have an "Undecided" category elsewhere)
-    // Option 2: Distribute 100% equally among them (as a basic polling start if all are equally unknown/unappealing)
-    // console.warn("normalizePolling: Total effective weight is 0. Assigning equal polling shares.");
     const numCandidates = candidatesWithEffectiveWeights.length;
-    if (numCandidates === 0) return []; // Should have been caught by the initial check
+    if (numCandidates === 0) return [];
 
     const equalShare = Math.floor(100 / numCandidates);
     let remainderPoints = 100 % numCandidates;
@@ -206,14 +195,12 @@ export function normalizePolling(candidatesList = [], adultPopulation = 0) {
         return {
           ...candidate,
           polling: pollingValue,
-          // For LRM consistency later if we skipped it
           rawPolling: pollingValue,
           remainder: 0,
         };
       }
     );
   } else {
-    // Calculate raw polling percentages based on effective weights
     const candidatesWithRawPolling = candidatesWithEffectiveWeights.map(
       (candidate) => {
         const rawPolling =
@@ -221,23 +208,17 @@ export function normalizePolling(candidatesList = [], adultPopulation = 0) {
         return { ...candidate, rawPolling };
       }
     );
-
-    // Apply Largest Remainder Method to assign integer polling values summing to 100
-    // 1. Assign floored percentages and calculate remainders
     candidatesWithRawPolling.forEach((candidate) => {
       candidate.polling = Math.floor(candidate.rawPolling);
       candidate.remainder = candidate.rawPolling - candidate.polling;
     });
 
-    // 2. Calculate sum of floored percentages and the deficit from 100
     let sumOfFlooredPolling = candidatesWithRawPolling.reduce(
       (sum, candidate) => sum + candidate.polling,
       0
     );
     let deficit = 100 - sumOfFlooredPolling;
 
-    // 3. Sort candidates by remainder in descending order to distribute deficit
-    // Tie-break with effectiveWeight, then processedBaseScore for determinism
     candidatesWithRawPolling.sort((a, b) => {
       if (b.remainder !== a.remainder) {
         return b.remainder - a.remainder;
@@ -245,12 +226,10 @@ export function normalizePolling(candidatesList = [], adultPopulation = 0) {
       if (b.effectiveWeight !== a.effectiveWeight) {
         return b.effectiveWeight - a.effectiveWeight;
       }
-      return b.processedBaseScore - a.processedBaseScore; // Higher base score gets earlier tie-break
+      return b.processedBaseScore - a.processedBaseScore;
     });
 
-    // 4. Distribute deficit points
     for (let i = 0; i < deficit; i++) {
-      // Ensure we don't try to access an index out of bounds if deficit is > numCandidates (highly unlikely with percentages)
       const candidateToAdjust =
         candidatesWithRawPolling[i % candidatesWithRawPolling.length];
       if (candidateToAdjust) {
@@ -259,8 +238,6 @@ export function normalizePolling(candidatesList = [], adultPopulation = 0) {
     }
     normalizedCandidates = candidatesWithRawPolling;
   }
-
-  // Final sort by the newly calculated polling numbers for display
   return normalizedCandidates.sort(
     (a, b) => (b.polling || 0) - (a.polling || 0)
   );
@@ -1407,6 +1384,8 @@ export const calculateSeatDetailsForInstance = (
   let numberOfSeats = 0;
   let seatDistributionMethod = "single_winner";
 
+  console.log(entityPopulation);
+
   if (electionType.generatesOneWinner) {
     numberOfSeats = 1; // Always 1 for single-winner offices
   } else {
@@ -1468,394 +1447,49 @@ export const generateElectionParticipants = ({
   incumbentInfo,
   numberOfSeatsToFill,
   countryId,
+  activeCampaign, // <--- NEW PARAMETER
+  electionPropertiesForScoring, // <--- NEW PARAMETER
+  entityPopulation, // <--- NEW PARAMETER
 }) => {
   const system = electionType.electoralSystem;
 
-  const generateName = () => {
-    const first = ["Alex", "Jamie", "Chris", "Jordan", "Taylor", "Morgan"];
-    const last = ["Smith", "Jones", "Williams", "Brown", "Davis", "Miller"];
-    return `${getRandomElement(first)} ${getRandomElement(last)}`;
+  // Consolidate parameters for the system-specific handlers
+  const handlerParams = {
+    electionType,
+    partiesInScope,
+    incumbentInfo,
+    numberOfSeatsToFill,
+    countryId,
+    activeCampaign,
+    electionPropertiesForScoring,
+    entityPopulation,
   };
 
-  if (system === "MMP") {
-    const partyListsOutput = {};
-    const partiesSubmittingLists = partiesInScope.filter(
-      (p) => !p.isIndependent
-    );
-
-    partiesSubmittingLists.forEach((party) => {
-      const listSeatTarget = Math.ceil(
-        numberOfSeatsToFill * (electionType.mmpListSeatsRatio || 0.5)
+  switch (system) {
+    case "FPTP":
+    case "TwoRoundSystem":
+    case "ElectoralCollege":
+      return handleFPTPParticipants(handlerParams);
+    case "PartyListPR":
+      return handlePartyListPRParticipants(handlerParams);
+    case "MMP":
+      return handleMMPParticipants(handlerParams);
+    case "SNTV_MMD":
+    case "BlockVote":
+    case "PluralityMMD": // Assuming PluralityMMD also uses the MMD handler
+      return handleMMDParticipants(handlerParams);
+    default:
+      console.warn(
+        `[generateElectionParticipants] Unknown electoral system: ${system}. Defaulting to FPTP participant generation logic as a fallback.`
       );
-      const listSize = Math.max(
-        Math.floor(listSeatTarget * (electionType.listSizeFactor || 0.6)) + 1,
-        getRandomInt(
-          Math.max(3, listSeatTarget - (electionType.listSizeVarianceLow || 5)),
-          listSeatTarget + (electionType.listSizeVarianceHigh || 10)
-        )
-      );
-
-      partyListsOutput[party.id] = [];
-      for (let i = 0; i < listSize; i++) {
-        const newCand = generateFullAIPolitician(party, false, countryId);
-        partyListsOutput[party.id].push({
-          ...newCand,
-          name: `${newCand.name} (${party.shortName || party.name} List #${
-            i + 1
-          })`,
-          listPosition: i + 1,
-          partyAffiliationReadOnly: {
-            partyId: party.id,
-            partyName: party.name,
-            partyColor: party.color,
-          },
-        });
-      }
-    });
-
-    // 2. Generate Constituency Candidates
-    // For each party submitting a list, they will also field candidates in constituencies.
-    // We generate a set of distinct constituency candidates for each party.
-    // These are *not* tied to specific numbered constituencies at this stage, but represent the pool
-    // of candidates a party uses for its constituency races.
-    // `initializeElectionObject` and `processElectionResults` for MMP will handle the specifics
-    // of how many constituencies there are and how these candidates perform.
-
-    const constituencyCandidatesByParty = {};
-    const approxConstituencySeats = Math.floor(
-      numberOfSeatsToFill * (electionType.mmpConstituencySeatsRatio || 0.5)
-    );
-
-    partiesSubmittingLists.forEach((party) => {
-      constituencyCandidatesByParty[party.id] = [];
-      // Number of constituency candidates a party fields can be related to number of constituencies or party strategy
-      // Let's assume they field enough for a good portion of constituencies, up to the number of constituencies.
-      const numConstituencyCandsForParty = Math.max(
-        1,
-        Math.min(
-          approxConstituencySeats,
-          getRandomInt(
-            Math.floor(approxConstituencySeats * 0.7),
-            approxConstituencySeats + 5
-          )
-        )
-      );
-
-      // Ensure these are distinct from list candidates if desired (can be complex)
-      // For simplicity, we generate new politicians. Dual candidacy (list members also running in constituencies)
-      // is common but adds complexity here. Let's assume distinct for now or that generateFullAIPolitician is robust.
-      for (let i = 0; i < numConstituencyCandsForParty; i++) {
-        // Check if this politician is already on the list (by ID)
-        let newConstituencyCand;
-        let attempts = 0;
-        do {
-          newConstituencyCand = generateFullAIPolitician(
-            party,
-            false,
-            countryId
-          );
-          attempts++;
-        } while (
-          partyListsOutput[party.id]?.some(
-            (listCand) => listCand.id === newConstituencyCand.id
-          ) &&
-          attempts < 10
-        ); // Avoid infinite loop
-
-        constituencyCandidatesByParty[party.id].push({
-          ...newConstituencyCand,
-          // Note: incumbentInfo passed to the function refers to the *overall office* if it's unified.
-          // Specific constituency incumbency is harder to track at this generic stage.
-          isIncumbent:
-            incumbentInfo?.partyId === party.id &&
-            incumbentInfo?.isConstituencyWinner, // Highly simplified incumbency
-        });
-      }
-    });
-
-    // Also consider independent constituency candidates if your MMP system allows
-    // This part is more complex as they don't have party lists.
-    // For now, focusing on party-fielded candidates.
-    // You could add a small number of generic independent constituency candidates.
-    let independentConstituencyCandidates = [];
-    const numIndependentConstituencyCands = getRandomInt(
-      0,
-      Math.floor(approxConstituencySeats * 0.05)
-    ); // Small % of independents
-    for (let i = 0; i < numIndependentConstituencyCands; i++) {
-      const indParty = {
-        id: `independent_ai_const_mmp_${generateId()}`,
-        name: "Independent",
-        ideology: getRandomElement(BASE_IDEOLOGIES)?.name || "Centrist",
-        color: "#888888",
-      };
-      independentConstituencyCandidates.push(
-        generateFullAIPolitician(indParty, false, countryId)
-      );
-    }
-
-    return {
-      type: "mmp_participants",
-      data: {
-        partyLists: partyListsOutput,
-        constituencyCandidatesByParty: constituencyCandidatesByParty, // PartyID -> [CandObj]
-        independentConstituencyCandidates: independentConstituencyCandidates, // [CandObj]
-        // Incumbents running for constituency seats (if this electionType is for a specific constituency)
-        // If the overall electionType included incumbent info for specific constituency seats, it'd be here.
-        // The `incumbentInfo` passed to the function would be for the overall body, which is tricky for MMP.
-        // For now, constituency incumbency is simplified above.
-        // runningConstituencyIncumbents: runningIncumbents.filter(inc => inc.ranInConstituency),
-      },
-    };
+      // Fallback to FPTP handler for any unhandled system, which typically returns individual candidates.
+      return handleFPTPParticipants(handlerParams);
   }
-
-  // --- Existing Logic for other systems (FPTP, PartyListPR, SNTV, BlockVote etc.) ---
-  // This part remains largely the same as your provided code.
-  // Ensure `generateFullAIPolitician` and `generateName` have access to `countryId` if needed.
-
-  let candidates = []; // This will hold the final list of candidate objects for non-MMP, non-PartyListPR systems
-
-  // --- 1. Handle Incumbents (for non-MMP systems primarily, or constituency part if MMP was broken down) ---
-  const runningIncumbents = [];
-  if (incumbentInfo) {
-    const incumbentsArray = Array.isArray(incumbentInfo)
-      ? incumbentInfo
-      : [incumbentInfo];
-    incumbentsArray.forEach((inc) => {
-      if (inc && inc.isActuallyRunning) {
-        runningIncumbents.push({
-          ...inc,
-          isIncumbent: true,
-          name: inc.name || generateName(),
-        });
-      }
-    });
-    candidates.push(...runningIncumbents); // Add to general candidates list
-  }
-
-  // --- 2. Determine Target Number of Candidates (for non-MMP, non-PartyListPR) ---
-  let targetTotalCandidates;
-
-  if (
-    system === "FPTP" ||
-    system === "TwoRoundSystem" ||
-    system ===
-      "ElectoralCollege" /*|| (system === "MMP" && electionType.level.includes("constituency")) REMOVED - Handled by MMP block */
-  ) {
-    let minTotal =
-      runningIncumbents.length > 0
-        ? 2
-        : partiesInScope.length > 0
-        ? Math.min(2, partiesInScope.length)
-        : 2;
-    minTotal = Math.max(1, minTotal); // Ensure at least 1 candidate if no parties/incumbents
-    let maxTotal =
-      runningIncumbents.length > 0
-        ? Math.max(
-            minTotal,
-            Math.min(5, partiesInScope.length + runningIncumbents.length)
-          )
-        : Math.max(minTotal, Math.min(6, partiesInScope.length + 2));
-    targetTotalCandidates = getRandomInt(minTotal, maxTotal);
-  } else if (
-    system === "SNTV_MMD" ||
-    system === "BlockVote" ||
-    (system === "PluralityMMD" &&
-      !electionType.generatesOneWinner &&
-      numberOfSeatsToFill > 1)
-  ) {
-    let minFactor = 1.8;
-    let maxFactor = 3.0;
-    if (partiesInScope.length < 3) maxFactor = 2.5;
-    if (numberOfSeatsToFill < 5) {
-      minFactor = 2.0;
-      maxFactor = 3.5;
-    }
-
-    let minCandidates = Math.max(
-      numberOfSeatsToFill + 1,
-      Math.floor(numberOfSeatsToFill * minFactor),
-      runningIncumbents.length + 1
-    );
-    if (partiesInScope.length > 0) {
-      minCandidates = Math.max(
-        minCandidates,
-        runningIncumbents.length + partiesInScope.length
-      );
-    }
-
-    let maxCandidates = Math.max(
-      minCandidates + Math.floor(numberOfSeatsToFill * 0.5),
-      Math.floor(numberOfSeatsToFill * maxFactor)
-    );
-    maxCandidates = Math.min(maxCandidates, numberOfSeatsToFill + 30, 70);
-    minCandidates = Math.min(minCandidates, maxCandidates); // Ensure min is not greater than max
-
-    targetTotalCandidates = getRandomInt(minCandidates, maxCandidates);
-    targetTotalCandidates = Math.max(
-      targetTotalCandidates,
-      numberOfSeatsToFill + 1,
-      runningIncumbents.length + (partiesInScope.length > 0 ? 1 : 0)
-    );
-    targetTotalCandidates = Math.max(1, targetTotalCandidates);
-  } else if (
-    system ===
-    "PartyListPR" /* || (system === "MMP" && electionType.level.includes("pr_bloc")) REMOVED - Handled by MMP block */
-  ) {
-    let partyListsOutput = {};
-    partiesInScope.forEach((party) => {
-      const blocSeats = electionType.minCouncilSeats || numberOfSeatsToFill;
-      const listSize = Math.max(
-        Math.floor(blocSeats * 0.5) + 1,
-        Math.min(
-          blocSeats + 10,
-          getRandomInt(Math.max(3, blocSeats - 5), blocSeats + 15)
-        )
-      );
-      partyListsOutput[party.id] = [];
-      for (let i = 0; i < listSize; i++) {
-        const newCand = generateFullAIPolitician(party, false, countryId);
-        partyListsOutput[party.id].push({
-          ...newCand,
-          name: `${newCand.name} (${party.shortName || party.name} List #${
-            i + 1
-          })`,
-          listPosition: i + 1,
-          partyAffiliationReadOnly: {
-            partyId: party.id,
-            partyName: party.name,
-            partyColor: party.color,
-          },
-        });
-      }
-    });
-    return { type: "party_lists", data: partyListsOutput };
-  } else {
-    // Fallback for unknown systems or if MMP was not caught by specific conditions above
-    console.warn(
-      `generateElectionParticipants: Target candidate number strategy not defined for system ${system} (election ID: ${electionType.id}). Defaulting.`
-    );
-    targetTotalCandidates = runningIncumbents.length + getRandomInt(1, 3);
-    targetTotalCandidates = Math.max(1, targetTotalCandidates);
-  }
-
-  // --- 3. Generate Challengers (for non-MMP, non-PartyListPR systems) ---
-  const numberOfChallengersToGenerate = Math.max(
-    0,
-    targetTotalCandidates - candidates.length
-  ); // Use candidates.length which includes incumbents
-  let availablePartiesForChallengers = [...(partiesInScope || [])];
-  let partyCycleIndex = 0;
-
-  for (let i = 0; i < numberOfChallengersToGenerate; i++) {
-    let assignedPartyForChallenger = null;
-    if (availablePartiesForChallengers.length > 0) {
-      if (
-        system === "SNTV_MMD" ||
-        system === "BlockVote" ||
-        (system === "PluralityMMD" && !electionType.generatesOneWinner)
-      ) {
-        assignedPartyForChallenger = {
-          ...availablePartiesForChallengers[
-            partyCycleIndex % availablePartiesForChallengers.length
-          ],
-        };
-        partyCycleIndex++;
-      } else {
-        // Single-winner logic (FPTP, TwoRoundSystem)
-        let partyIndexToTry = getRandomInt(
-          0,
-          availablePartiesForChallengers.length - 1
-        );
-        let potentialParty = availablePartiesForChallengers[partyIndexToTry];
-        if (
-          runningIncumbents.length > 0 &&
-          potentialParty.id === runningIncumbents[0].partyId &&
-          availablePartiesForChallengers.length > 1
-        ) {
-          const nonIncumbentParties = availablePartiesForChallengers.filter(
-            (p) => p.id !== runningIncumbents[0].partyId
-          );
-          if (nonIncumbentParties.length > 0) {
-            assignedPartyForChallenger = getRandomElement(nonIncumbentParties);
-            // Remove to ensure variety for next challenger if many challengers and few parties
-            if (
-              numberOfChallengersToGenerate > 1 &&
-              availablePartiesForChallengers.length > 1
-            ) {
-              availablePartiesForChallengers =
-                availablePartiesForChallengers.filter(
-                  (p) => p.id !== assignedPartyForChallenger.id
-                );
-            }
-          } else {
-            // Only incumbent's party left
-            assignedPartyForChallenger = potentialParty;
-          }
-        } else {
-          assignedPartyForChallenger = potentialParty;
-          if (
-            numberOfChallengersToGenerate > 1 &&
-            availablePartiesForChallengers.length > 1
-          ) {
-            availablePartiesForChallengers =
-              availablePartiesForChallengers.filter(
-                (p) => p.id !== assignedPartyForChallenger.id
-              );
-          }
-        }
-        if (assignedPartyForChallenger)
-          assignedPartyForChallenger = { ...assignedPartyForChallenger }; // Clone
-      }
-    }
-
-    if (!assignedPartyForChallenger) {
-      // Fallback to independent if no parties available or logic dictates
-      if (
-        partiesInScope.length > 0 &&
-        Math.random() < 0.2 &&
-        numberOfChallengersToGenerate > partiesInScope.length
-      ) {
-        // Small chance for another candidate from an existing party
-        assignedPartyForChallenger = getRandomElement(partiesInScope);
-      } else {
-        assignedPartyForChallenger = {
-          id: `independent_ai_challenger_${generateId()}`,
-          name: "Independent",
-          ideology: getRandomElement(BASE_IDEOLOGIES)?.name || "Centrist",
-          color: "#888888",
-        };
-      }
-    }
-
-    const newChallenger = generateFullAIPolitician(
-      assignedPartyForChallenger,
-      false,
-      countryId
-    );
-    if (!candidates.find((c) => c.id === newChallenger.id)) {
-      candidates.push(newChallenger);
-    } else {
-      i--; // Ensure we generate the target number
-    }
-  }
-
-  candidates = candidates.map((cand) => ({
-    ...cand,
-    name: cand.name || generateName(),
-  }));
-
-  return { type: "individual_candidates", data: candidates };
 };
 
 /**
  * Initializes the final election object for the store.
  */
-
-/**
- * Initializes the final election object for the store.
- */
-
 export const initializeElectionObject = ({
   electionType, // The effective election type for this specific instance (merged base + instance specifics)
   instanceContext, // { instanceIdBase, entityType, entityData, resolvedOfficeName, ... }
@@ -1904,65 +1538,18 @@ export const initializeElectionObject = ({
         Math.max(1, (activeCampaign.generatedPartiesSnapshot || []).length),
     }));
 
-  // --- Context for calculateBaseCandidateScore (as before) ---
-  const electionPropertiesForScoring = {
-    ...electionType,
-    officeName: resolvedOfficeName,
-    electorateIssues,
-    electorateLeaning,
-  };
-  const campaignDataContextForScoring = {
-    ...activeCampaign,
-    startingCity: {
-      // Contextualized to the election's entity
-      ...entityData,
-      stats: entityData.stats || {
-        mainIssues: electorateIssues,
-        overallCitizenMood: "Content",
-      },
-      politicalLandscape: entityPoliticalLandscape,
-    },
-  };
-
   // --- Process Participants: Calculate Base Scores and Initial Polling ---
-  let finalIndividualCandidates = []; // For FPTP, BlockVote, SNTV, etc.
-  let finalPartyLists = {}; // For PartyListPR, and list component of MMP
-  let finalMmpData = null; // For MMP specific constituency candidate pools
-
-  const eligibleVotersForPollingNorm = Math.floor(
-    (entityData.population || 0) * (0.65 + Math.random() * 0.1)
-  );
+  let finalIndividualCandidates = [];
+  let finalPartyLists = {};
+  let finalMmpData = null;
 
   if (participantsData.type === "individual_candidates") {
-    const candidatesWithScores = participantsData.data.map((cand) => ({
-      ...cand,
-      baseScore: calculateBaseCandidateScore(
-        cand,
-        electionPropertiesForScoring,
-        campaignDataContextForScoring
-      ),
-    }));
-    finalIndividualCandidates = normalizePolling(
-      candidatesWithScores,
-      eligibleVotersForPollingNorm
-    );
+    finalIndividualCandidates = participantsData.data;
   } else if (
     participantsData.type === "party_lists" ||
     participantsData.type === "party_lists_for_mmp"
   ) {
-    // Handles pure PartyListPR and the list component if MMP generated it separately
-    Object.keys(participantsData.data).forEach((partyId) => {
-      finalPartyLists[partyId] = participantsData.data[partyId].map((cand) => ({
-        ...cand,
-        baseScore: calculateBaseCandidateScore(
-          cand,
-          electionPropertiesForScoring,
-          campaignDataContextForScoring
-        ),
-        polling: 0, // Individual polling usually not primary for list candidates here
-      }));
-    });
-    // TODO: Calculate initial "Party Polling" for PR elections if needed.
+    finalPartyLists = participantsData.data;
   } else if (participantsData.type === "mmp_participants") {
     const mmpSourceData = participantsData.data;
     finalMmpData = {
@@ -1972,55 +1559,20 @@ export const initializeElectionObject = ({
 
     // 1. Process Party Lists for MMP
     if (mmpSourceData.partyLists) {
-      Object.keys(mmpSourceData.partyLists).forEach((partyId) => {
-        finalPartyLists[partyId] = mmpSourceData.partyLists[partyId].map(
-          (cand) => ({
-            ...cand,
-            baseScore: calculateBaseCandidateScore(
-              cand,
-              electionPropertiesForScoring,
-              campaignDataContextForScoring
-            ),
-            polling: 0, // List candidate polling might be party-based
-          })
-        );
-      });
+      finalPartyLists = mmpSourceData.partyLists;
     }
 
     // 2. Process Constituency Candidate Pools for MMP
     if (mmpSourceData.constituencyCandidatesByParty) {
-      Object.keys(mmpSourceData.constituencyCandidatesByParty).forEach(
-        (partyId) => {
-          finalMmpData.constituencyCandidatesByParty[partyId] =
-            mmpSourceData.constituencyCandidatesByParty[partyId].map(
-              (cand) => ({
-                ...cand,
-                baseScore: calculateBaseCandidateScore(
-                  cand,
-                  electionPropertiesForScoring,
-                  campaignDataContextForScoring
-                ),
-                // Constituency candidate polling is highly localized; not set globally here.
-              })
-            );
-        }
-      );
+      finalMmpData.constituencyCandidatesByParty =
+        mmpSourceData.constituencyCandidatesByParty;
     }
     if (mmpSourceData.independentConstituencyCandidates) {
       finalMmpData.independentConstituencyCandidates =
-        mmpSourceData.independentConstituencyCandidates.map((cand) => ({
-          ...cand,
-          baseScore: calculateBaseCandidateScore(
-            cand,
-            electionPropertiesForScoring,
-            campaignDataContextForScoring
-          ),
-        }));
+        mmpSourceData.independentConstituencyCandidates;
     }
-    // `finalIndividualCandidates` remains empty for MMP, as candidates are structured differently.
   }
 
-  // --- Initial Voter Turnout Expectation (as before) ---
   let expectedTurnout = 55;
   if (electionType.level?.startsWith("national_"))
     expectedTurnout = getRandomInt(50, 75);
@@ -2028,7 +1580,6 @@ export const initializeElectionObject = ({
     expectedTurnout = getRandomInt(40, 65);
   else expectedTurnout = getRandomInt(35, 60);
 
-  // --- Construct Final Election Object ---
   const electionObject = {
     id: `election_${instanceIdBase}_${electionYear}_${generateId()}`,
     instanceIdBase: instanceIdBase,

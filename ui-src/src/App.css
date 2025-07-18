@@ -14,11 +14,10 @@ html,
 body,
 #root,
 .App {
-  height: 100%;
+  height: min-content;
   width: 100%;
   margin: 0;
   padding: 0;
-  box-sizing: border-box; /* Apply to all elements for consistency */
 }
 
 body {
@@ -103,7 +102,6 @@ h6 {
   transition: background-color var(--transition-speed),
     transform var(--transition-speed), box-shadow var(--transition-speed);
   outline: none;
-  margin: 5px;
 }
 
 .action-button:hover,

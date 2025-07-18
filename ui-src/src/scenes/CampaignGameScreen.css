@@ -88,6 +88,7 @@
   border-top: 1px solid var(--border-color);
   flex-shrink: 0;
   background-color: var(--secondary-bg);
+  align-items: stretch;
 }
 .sidebar-footer-actions .menu-button {
   /* Make Main Menu button full width */
@@ -98,6 +99,11 @@
 }
 .sidebar-footer-actions .menu-button:hover {
   background-color: var(--button-hover-bg);
+}
+
+.sidebar-footer-actions .menu-button,
+.sidebar-footer-actions .action-button {
+  flex: 1; /* Fixes width */
 }
 
 .game-content-area {
@@ -120,6 +126,19 @@
   padding: 15px 10px; /* Make it a prominent button */
   font-size: 1.1em;
   font-weight: 600; /* Inter or Montserrat weight */
+}
+
+.next-election-button {
+  margin: 10px;
+}
+
+.start-campaign {
+  margin: 10px;
+  min-width: 50%;
+}
+
+.next-year-button {
+  margin: 10px;
 }
 
 .election-day-modal-content {

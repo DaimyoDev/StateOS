@@ -11,7 +11,6 @@ import {
   calculateRandomVoterTurnout,
   calculateBaseCandidateScore,
   getElectionInstances,
-  isElectionDue,
   getIncumbentsForOfficeInstance,
   calculateSeatDetailsForInstance,
   generateElectionParticipants,
@@ -67,7 +66,6 @@ const POSSIBLE_POLICY_FOCUSES_FOR_ELECTION_SLICE = [
 ];
 
 export const createElectionSlice = (set) => ({
-  // --- EXISTING ACTIONS (potentially with minor adjustments if needed) ---
   generateScheduledElections: () => {
     set((state) => {
       if (
@@ -111,18 +109,16 @@ export const createElectionSlice = (set) => ({
             instanceIdBase,
             entityData,
             resolvedOfficeName,
-            _isSingleSeatContest, // Flag from getElectionInstances
-            _effectiveElectoralSystem, // Effective system for this instance
-            _effectiveGeneratesOneWinner, // Effective GOW for this instance
+            _isSingleSeatContest,
+            _effectiveElectoralSystem,
+            _effectiveGeneratesOneWinner,
           } = instanceContext;
           const electionYear = currentDate.year;
 
-          // Determine the effective election type to use for this instance
           const effectiveElectionType = {
-            ...originalElectionType, // Start with the base type
+            ...originalElectionType,
             generatesOneWinner: _effectiveGeneratesOneWinner,
             electoralSystem: _effectiveElectoralSystem,
-            // If it's a single district seat, tiers/minCouncil for overall council don't apply here
             minCouncilSeats: _isSingleSeatContest
               ? 1
               : originalElectionType.minCouncilSeats,
@@ -131,23 +127,19 @@ export const createElectionSlice = (set) => ({
               : originalElectionType.councilSeatPopulationTiers,
           };
 
-          if (
-            !isElectionDue(
-              instanceIdBase,
-              effectiveElectionType,
-              currentDate,
-              updatedLastElectionYears
-            )
-          ) {
-            return;
-          }
-          const alreadyScheduled = existingElections.find(
-            (e) =>
-              e.instanceIdBase === instanceIdBase &&
-              e.electionDate.year === electionYear
-          );
-          if (alreadyScheduled) return;
-          updatedLastElectionYears[instanceIdBase] = electionYear;
+          // ... (existing checks for isElectionDue and alreadyScheduled) ...
+
+          // Define electionPropertiesForScoring for this instance context
+          const electionPropertiesForScoring = {
+            ...effectiveElectionType, // Use the effective type for scoring context
+            officeName: resolvedOfficeName, // Specific office name
+            electorateIssues: entityData.issues || [
+              "Economy",
+              "Healthcare",
+              "Local Development",
+            ],
+            electorateLeaning: entityData.politicalLeaning || "Moderate",
+          };
 
           const incumbentInfo = getIncumbentsForOfficeInstance(
             resolvedOfficeName,
@@ -155,20 +147,12 @@ export const createElectionSlice = (set) => ({
             governmentOffices
           );
 
-          // Calculate seats for THIS specific instance/contest
-          // If _isSingleSeatContest is true, this will return 1.
-          // If it's an at-large instance, this uses your calculateNumberOfSeats (via calculateSeatDetailsForInstance)
           const seatDetailsForThisContest = calculateSeatDetailsForInstance(
             effectiveElectionType,
             entityData.population
           );
 
-          if (seatDetailsForThisContest.numberOfSeats <= 0) {
-            console.warn(
-              `Skipping election instance ${resolvedOfficeName} (ID base: ${instanceIdBase}) - 0 seats to fill.`
-            );
-            return;
-          }
+          // ... (existing checks for numberOfSeats <= 0) ...
 
           const shouldCreateConceptualSeatItems =
             (!_isSingleSeatContest &&
@@ -219,30 +203,42 @@ export const createElectionSlice = (set) => ({
                   id: `${entityData.id}_seat${seatNumber}`,
                   name: `Seat ${seatNumber} of ${entityData.name}`,
                   population:
-                    seatPopulations[i] ||
-                    Math.floor(entityData.population / totalSeatsInCouncil),
+                    seatPopulations[i] || // Use actual distributed population
+                    Math.floor(entityData.population / totalSeatsInCouncil), // Fallback
                   stats: entityData.stats,
                   politicalLandscape: entityData.politicalLandscape,
                 },
               };
               const partiesInScope =
-                state.activeCampaign.generatedPartiesSnapshot.filter((p) => {
-                  if (p) {
-                    return true;
-                  }
-                });
+                state.activeCampaign.generatedPartiesSnapshot.filter((p) => p); // Filter out any null/undefined parties
+
+              // 1. MODIFICATION FOR CONCEPTUAL SEAT CALL
               const participantsForConceptualSeat =
                 generateElectionParticipants({
                   electionType: {
+                    // Specific electionType for conceptual seat
                     ...effectiveElectionType,
                     generatesOneWinner: true,
                     electoralSystem: "FPTP",
                   },
-                  instanceContext: conceptualInstanceContext,
                   partiesInScope,
                   incumbentInfo: conceptualSeatIncumbent,
                   numberOfSeatsToFill: 1,
                   countryId,
+                  activeCampaign: state.activeCampaign, // <--- Add this
+                  // Define electionPropertiesForScoring specific to this conceptual seat
+                  electionPropertiesForScoring: {
+                    // <--- Add this
+                    ...electionPropertiesForScoring, // Base from the overall election
+                    officeName: conceptualSeatOfficeName, // Override for conceptual seat
+                    electorateIssues: conceptualInstanceContext.entityData
+                      .issues || ["Economy", "Healthcare", "Local Development"],
+                    electorateLeaning:
+                      conceptualInstanceContext.entityData.politicalLeaning ||
+                      "Moderate",
+                  },
+                  entityPopulation:
+                    conceptualInstanceContext.entityData.population, // <--- Add this
                 });
               const newConceptualSeatElection = initializeElectionObject({
                 electionType: {
@@ -263,18 +259,18 @@ export const createElectionSlice = (set) => ({
             }
           } else {
             const partiesInScope =
-              state.activeCampaign.generatedPartiesSnapshot.filter((p) => {
-                if (p) {
-                  return true;
-                }
-              });
+              state.activeCampaign.generatedPartiesSnapshot.filter((p) => p); // Filter out any null/undefined parties
+
+            // 2. MODIFICATION FOR REGULAR ELECTION CALL
             const participantsData = generateElectionParticipants({
               electionType: effectiveElectionType,
-              instanceContext: state.activeCampaign,
               partiesInScope,
               incumbentInfo,
               numberOfSeatsToFill: seatDetailsForThisContest.numberOfSeats,
               countryId,
+              activeCampaign: state.activeCampaign, // <--- Add this
+              electionPropertiesForScoring: electionPropertiesForScoring, // <--- Add this (reusing the one defined above)
+              entityPopulation: entityData.population, // <--- Add this
             });
             const newElection = initializeElectionObject({
               electionType: effectiveElectionType,

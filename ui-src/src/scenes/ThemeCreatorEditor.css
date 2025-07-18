@@ -5,7 +5,7 @@
   flex-direction: column;
   align-items: center;
   padding: 20px;
-  max-width: 900px;
+  width: 95%; /* Increased max-width to accommodate editor + preview */
   margin: 20px auto;
   background-color: var(--primary-bg);
   color: var(--primary-text);
@@ -14,13 +14,26 @@
 }
 
 .theme-editor-container h1,
-.theme-editor-container h2 {
+.theme-editor-container h2,
+.theme-editor-container h3,
+.theme-editor-container h4 {
   color: var(--primary-text);
   margin-bottom: 15px;
+  font-family: var(--font-heading);
+}
+
+/* Wrapper for editor controls and preview pane */
+.editor-and-preview-wrapper {
+  display: flex;
+  flex-wrap: wrap; /* Allow wrapping on smaller screens */
+  gap: 20px;
+  width: 100%; /* Take full width of parent */
+  justify-content: center; /* Center content when wrapped */
 }
 
 .editor-controls {
-  width: 100%;
+  flex: 1; /* Make the editor controls panel smaller (e.g., 1/3 of available width) */
+  min-width: 350px; /* Adjusted minimum width to ensure readability */
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -28,10 +41,11 @@
   background-color: var(--secondary-bg);
   border-radius: var(--element-radius);
   box-shadow: var(--panel-shadow);
-  margin-bottom: 20px;
+  overflow-y: auto; /* ADDED: Enable vertical scrolling */
+  max-height: 700px; /* ADDED: Set a max height for scrolling */
 }
 
-.editor-controls label {
+.editor-controls > label {
   display: block;
   margin-bottom: 8px;
   font-weight: bold;
@@ -39,8 +53,11 @@
 }
 
 .editor-controls input[type="text"],
-.editor-controls input[type="color"] {
-  width: calc(100% - 20px);
+.editor-controls .text-input,
+.editor-controls .select-input {
+  /* Added .select-input for consistent styling */
+  width: 100%;
+  box-sizing: border-box;
   padding: 10px;
   margin-top: 5px;
   border: var(--border-width) solid var(--border-color);
@@ -53,31 +70,43 @@
 }
 
 .editor-controls input[type="text"]:focus,
-.editor-controls input[type="color"]:focus {
+.editor-controls .text-input:focus,
+.editor-controls input[type="color"]:focus,
+.editor-controls .select-input:focus {
+  /* Added .select-input focus */
   outline: none;
   border-color: var(--focus-ring-color);
   box-shadow: 0 0 0 3px var(--input-focus-shadow-color);
 }
 
-.color-inputs,
-.font-inputs,
-.style-inputs {
+.property-inputs {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 15px;
+  margin-top: 10px;
 }
 
-.color-input-group {
+.input-group {
   display: flex;
   flex-direction: column;
 }
 
-.color-input-group input[type="color"] {
-  height: 40px; /* Make color picker larger */
+.input-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+  color: var(--primary-text);
+  font-size: 0.9em;
+}
+
+.input-group input[type="color"] {
+  height: 40px;
   padding: 0;
   border: var(--border-width) solid var(--border-color);
   border-radius: var(--element-radius);
   cursor: pointer;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .editor-actions {
@@ -110,4 +139,148 @@
 .action-button:active {
   background-color: var(--button-action-active-bg);
   transform: translateY(0);
+}
+
+/* Theme Preview Pane Styles */
+.theme-preview-pane {
+  flex: 2; /* Make the preview panel larger (e.g., 2/3 of available width) */
+  min-width: 450px; /* Adjusted minimum width for the preview */
+  padding: 20px;
+  background-color: var(--ui-panel-bg);
+  border-radius: var(--element-radius);
+  box-shadow: var(--panel-shadow);
+  overflow-y: auto;
+  max-height: 700px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  border: var(--border-width) solid var(--border-color);
+}
+
+.preview-panel {
+  background-color: var(--secondary-bg);
+  padding: 15px;
+  border-radius: var(--element-radius);
+  box-shadow: var(--panel-shadow);
+  border: var(--border-width) solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.preview-primary-text {
+  color: var(--primary-text);
+  font-family: var(--font-main);
+  font-size: 1em;
+}
+
+.preview-secondary-text {
+  color: var(--secondary-text);
+  font-family: var(--font-main);
+  font-size: 0.9em;
+}
+
+.preview-button-group {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.preview-button {
+  padding: 8px 15px;
+  border: var(--border-width) solid var(--border-color);
+  border-radius: var(--element-radius);
+  background-color: var(--button-bg);
+  color: var(--button-text);
+  cursor: pointer;
+  font-family: var(--font-main);
+  transition: all var(--transition-speed);
+  box-shadow: var(--button-shadow);
+}
+
+.preview-button:hover {
+  background-color: var(--button-hover-bg);
+  transform: translateY(-1px);
+}
+
+.preview-button.preview-action-button {
+  background-color: var(--button-action-bg);
+  color: var(--button-action-text);
+}
+.preview-button.preview-action-button:hover {
+  background-color: var(--button-action-hover-bg);
+}
+
+.preview-button.preview-delete-button {
+  background-color: var(--button-delete-bg);
+  color: var(--button-delete-text);
+}
+.preview-button.preview-delete-button:hover {
+  background-color: var(--button-delete-hover-bg);
+}
+
+.preview-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.preview-input {
+  width: 100%;
+  padding: 8px 10px;
+  border: var(--border-width) solid var(--border-color);
+  border-radius: var(--element-radius);
+  background-color: var(--input-bg);
+  color: var(--input-text);
+  font-family: var(--font-main);
+  box-sizing: border-box;
+}
+
+.preview-input::placeholder {
+  color: var(--input-placeholder-text);
+}
+
+.preview-input.preview-input-focused {
+  border-color: var(--focus-ring-color);
+  box-shadow: 0 0 0 3px var(--input-focus-shadow-color);
+}
+
+.preview-border-example {
+  padding: 10px;
+  border: var(--border-width) solid var(--border-color);
+  border-radius: var(--element-radius);
+  background-color: var(--ui-panel-bg);
+  color: var(--primary-text);
+  text-align: center;
+}
+
+.preview-highlight-example {
+  padding: 10px;
+  background-color: var(--highlight-bg);
+  border-radius: var(--element-radius);
+  color: var(--primary-text);
+  text-align: center;
+  border: var(--border-width) solid var(--accent-border-color);
+}
+
+.preview-small-text {
+  font-size: 0.8em;
+  color: var(--secondary-text);
+  font-family: var(--font-main);
+}
+
+/* Responsive adjustments */
+@media (max-width: 950px) {
+  .editor-and-preview-wrapper {
+    flex-direction: column;
+    align-items: center;
+  }
+  .editor-controls,
+  .theme-preview-pane {
+    width: 100%;
+    min-width: unset;
+  }
+  .theme-preview-pane {
+    max-height: 500px;
+  }
 }

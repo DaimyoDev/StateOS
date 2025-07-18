@@ -144,6 +144,10 @@ const baseCountriesData = [
     politicalSystem: "Parliamentary Monarchy (Constitutional)",
     regions: australianStates.map((p) => ({ ...p })),
     nationalLowerHouseDistricts: [],
+    nationalHrTiers: chamberTiers.AUS.NATIONAL.AUS_FEDERAL_HR_DISTRICT_TIERS,
+    nationalHrName: "Parliament District",
+    lowerStateHrTiers: chamberTiers.AUS.STATE.AUS_PROVINCIAL_ASSEMBLY_TIERS,
+    lowerStateHrName: "Assembly District",
   },
   {
     id: "FRA",

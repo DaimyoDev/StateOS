@@ -1,72 +1,187 @@
+/* ui-src/src/scenes/SettingsScreen.css */
+
 .settings-screen-container {
-  padding: 20px;
-  color: var(--primary-text);
-  background-color: var(--primary-bg);
-  min-height: min-content;
-  height: 100%;
-  width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
+  padding: 20px;
+  width: 95%;
+  min-height: min-content;
+  margin: 20px auto;
+  background-color: var(--primary-bg);
+  color: var(--primary-text);
+  border-radius: var(--element-radius);
+  box-shadow: var(--panel-shadow);
 }
 
-.settings-screen-container h1 {
-  color: var(--accent-color);
-  font-family: var(--font-heading);
+.back-to-main-menu-button {
+  margin-bottom: 50px; /* Add some space below it */
+}
+
+.important-heading {
+  color: var(--primary-text);
   margin-bottom: 20px;
 }
 
-/* Tab Styles */
 .settings-tabs {
   display: flex;
-  width: 90%;
-  max-width: 500px;
-  border-bottom: 1px solid var(--border-color);
-  margin-bottom: 0;
+  margin-bottom: 20px;
+  border-bottom: var(--border-width) solid var(--border-color);
+  width: 100%;
+  justify-content: center;
 }
 
 .tab-button {
+  background: none;
+  border: none;
   padding: 10px 20px;
   cursor: pointer;
-  background-color: transparent;
-  color: var(--primary-text);
-  border: none;
-  border-bottom: 3px solid transparent;
+  color: var(--secondary-text);
   font-family: var(--font-heading);
-  font-size: 1rem;
-  position: relative;
-  top: 1px; /* Aligns the bottom border with the container's border */
+  font-size: 1.1em;
+  transition: color var(--transition-speed),
+    border-bottom var(--transition-speed);
+  border-bottom: 3px solid transparent; /* For active indicator */
 }
 
 .tab-button.active {
   color: var(--accent-color);
   border-bottom-color: var(--accent-color);
+  font-weight: bold;
 }
 
-/* Tab Content Container */
 .settings-tab-content {
+  width: 100%;
+  padding: 20px 0;
+}
+
+.general-settings,
+.theme-selection {
   background-color: var(--secondary-bg);
-  border: 1px solid var(--border-color);
-  border-top: none;
-  border-radius: 0 0 5px 5px;
   padding: 20px;
-  width: 100%;
-  margin-bottom: 30px;
-  text-align: center;
+  border-radius: var(--element-radius);
+  box-shadow: var(--panel-shadow);
 }
 
-/* Updated Theme Selection & New General Section */
-.theme-selection,
-.general-settings {
-  width: 100%;
-}
-
-.theme-selection h2,
-.general-settings h2 {
+.theme-selection h2 {
+  color: var(--primary-text);
   margin-bottom: 15px;
-  font-family: var(--font-heading);
+}
+
+/* --- THEME BUTTONS GRID LAYOUT --- */
+.theme-buttons {
+  display: grid;
+  /* Adjust grid-template-columns for desired number of columns and responsiveness */
+  grid-template-columns: repeat(auto-fill, minmax(235px, 1fr));
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.theme-button-group {
+  display: flex;
+  flex-direction: column; /* Stack button and edit button vertically */
+  align-items: center;
+  gap: 5px; /* Space between theme button and edit button */
 }
 
 .menu-button {
-  margin: 5px;
+  padding: 12px 15px;
+  font-size: 1rem;
+  cursor: pointer;
+  border: var(--border-width) solid var(--border-color);
+  border-radius: var(--element-radius);
+  background-color: var(--button-bg);
+  color: var(--button-text);
+  transition: background-color var(--transition-speed),
+    transform var(--transition-speed), box-shadow var(--transition-speed);
+  font-family: var(--font-main);
+  box-shadow: var(--button-shadow);
+}
+
+.menu-button:hover {
+  background-color: var(--button-hover-bg);
+  transform: translateY(-2px);
+}
+
+.menu-button:active {
+  background-color: var(--button-active-bg);
+  transform: translateY(0);
+}
+
+.menu-button.active {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px var(--focus-ring-color); /* Stronger active indicator */
+  font-weight: bold;
+}
+
+.edit-theme-button {
+  background-color: var(--secondary-bg); /* Use a more neutral background */
+  color: var(--secondary-text);
+  border: var(--border-width) solid var(--border-color);
+  padding: 5px 10px;
+  border-radius: var(--element-radius);
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: background-color var(--transition-speed),
+    color var(--transition-speed);
+}
+
+.edit-theme-button:hover {
+  background-color: var(--highlight-bg); /* Use highlight color on hover */
+  color: var(--primary-text);
+  border-color: var(--accent-color);
+}
+
+.action-button {
+  padding: 12px 25px;
+  font-size: 1rem;
+  cursor: pointer;
+  border: none;
+  border-radius: var(--element-radius);
+  background-color: var(--button-action-bg);
+  color: var(--button-action-text);
+  transition: background-color var(--transition-speed),
+    transform var(--transition-speed), box-shadow var(--transition-speed);
+  font-family: var(--font-heading);
+  font-weight: bold;
+  box-shadow: var(--button-shadow);
+}
+
+.action-button:hover {
+  background-color: var(--button-action-hover-bg);
+  transform: translateY(-2px);
+}
+
+.action-button:active {
+  background-color: var(--button-action-active-bg);
+  transform: translateY(0);
+}
+
+.create-new-theme-button {
+  margin-top: 20px;
+  background-color: var(--accent-color); /* Make it stand out */
+  color: var(--accent-text);
+}
+
+.create-new-theme-button:hover {
+  background-color: var(
+    --button-action-hover-bg
+  ); /* Use action hover for consistency */
+}
+
+/* Back to Main Menu Button specific styling if different from .action-button */
+.settings-screen-container > .action-button {
+  margin-top: 30px; /* Space it from content */
+}
+
+.delete-theme-button {
+  background-color: var(--danger-color); /* Use a danger color for delete */
+  color: var(--primary-text);
+  border: var(--border-width) solid var(--danger-color);
+  padding: 5px 10px;
+  border-radius: var(--element-radius);
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: background-color var(--transition-speed),
+    color var(--transition-speed);
 }

@@ -9,11 +9,7 @@ import ManagePoliticiansScreen from "./scenes/ManagePoliticiansScreen";
 import LocalAreaSetupScreen from "./scenes/LocalAreaSetupScreen";
 import CampaignGameScreen from "./scenes/CampaignGameScreen";
 import ElectionNightScreen from "./scenes/ElectionNightScreen";
-// Import other scenes as you create them:
-// import CreatorHub from './scenes/CreatorHub';
-// import ElectionSimScreen from './scenes/ElectionSimScreen';
-// import CampaignGameScreen from './scenes/CampaignGameScreen';
-// import LoadGameScreen from './scenes/LoadGameScreen'; // If you have this
+import ThemeCreatorEditor from "./scenes/ThemeCreatorEditor";
 import "./App.css";
 import ToastContainer from "./components/toasts/ToastContainer";
 
@@ -55,6 +51,8 @@ function App() {
         return <CampaignGameScreen />;
       case "ElectionNightScreen":
         return <ElectionNightScreen />;
+      case "ThemeCreatorEditor": // New case for the theme editor
+        return <ThemeCreatorEditor />; //
       default:
         console.warn(`Unknown scene: ${currentScene}, defaulting to MainMenu.`);
         return <MainMenu />; // Default to main menu

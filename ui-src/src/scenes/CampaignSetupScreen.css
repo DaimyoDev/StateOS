@@ -3,29 +3,31 @@
   display: flex;
   flex-direction: row;
   width: 100vw;
-  height: 100%;
+  height: 100vh; /* Ensure the container takes full viewport height */
   background-color: var(--primary-bg);
   color: var(--primary-text);
   font-family: var(--font-main);
-  overflow: hidden;
+  overflow: hidden; /* Prevent overall scrollbar if internal scrollbars handle content */
 }
 
 .map-area-column {
   flex: 2.5; /* Or your chosen ratio */
   padding: 20px;
   display: flex;
-  flex-direction: column;
+  flex-direction: column; /* Ensure vertical arrangement within the column */
   align-items: center;
-  overflow-y: auto;
+  overflow-y: auto; /* Allows scrolling for content if it overflows */
+  height: 100%; /* Important: Make column take full height from parent */
+  box-sizing: border-box; /* Include padding in height calculation */
 }
 
 .column-title {
-  /* For titles within columns like "Select Your Starting Prefecture" */
   font-family: var(--font-heading);
-  color: var(--accent-color); /* Or --primary-text */
+  color: var(--accent-color);
   font-size: 1.8em;
   margin-bottom: 10px;
   text-align: center;
+  flex-shrink: 0; /* Prevent title from shrinking */
 }
 
 .map-instruction-cs {
@@ -33,18 +35,20 @@
   color: var(--secondary-text);
   font-size: 0.9em;
   text-align: center;
+  flex-shrink: 0; /* Prevent instruction from shrinking */
 }
 
 .map-render-wrapper {
   width: 100%;
-  max-width: 100%; /* Max width related to viewport height to keep aspect for map */
-  /* Or a fixed max-width like 800px, 900px etc. */
-  /* This wrapper helps center and constrain the SVG if needed */
+  max-width: 100%;
   display: flex;
   justify-content: center;
   align-items: center;
   flex-grow: 1; /* Allow it to take available vertical space */
-  height: 100%;
+  /* Remove fixed height if not desired to let content define it up to container's height */
+  /* height: 100%; */ /* This might cause stretching if map SVG doesn't fit */
+  /* Instead, rely on flex-grow and max-height */
+  max-height: calc(100% - 100px); /* Adjust based on title/instruction height */
 }
 
 .info-actions-column {
@@ -53,24 +57,26 @@
   box-shadow: var(--panel-shadow);
   display: flex;
   flex-direction: column; /* This is key for vertical arrangement inside */
-  overflow: hidden; /* The column itself doesn't scroll */
+  /* Removed overflow: hidden from here, let info-actions-content handle it */
   border-left: 1px solid var(--border-color);
-  min-width: 380px; /* Or your preferred min/max */
+  min-width: 380px;
   max-width: 450px;
+  height: 100%; /* Important: Make column take full height from parent */
+  box-sizing: border-box; /* Include padding in height calculation */
 }
 
 .info-actions-content {
-  /* This part will scroll */
-  flex-grow: 1; /* <<<< THIS IS CRITICAL */
+  flex-grow: 1;
   overflow-y: auto; /* Allows vertical scroll if content exceeds space */
   padding: 25px;
-  display: flex; /* Optional: if you want to use flex for children of this too */
-  flex-direction: column; /* Optional: if you want to use flex for children of this too */
+  display: flex;
+  flex-direction: column;
   gap: 20px;
+  box-sizing: border-box;
 }
 
 .sidebar-footer-actions {
-  flex-shrink: 0; /* Prevent this footer from shrinking */
+  flex-shrink: 0;
   padding: 20px 25px;
   border-top: 1px solid var(--border-color);
   background-color: var(--ui-panel-bg);
@@ -80,19 +86,19 @@
 }
 
 .main-screen-title {
-  /* "Campaign Setup" title in the sidebar */
   font-family: var(--font-heading);
   color: var(--accent-color);
   text-align: center;
   font-size: 2.2em;
   margin-bottom: 25px;
+  flex-shrink: 0; /* Prevent title from shrinking */
 }
 
 .setup-section {
-  /* General styling for sections in the sidebar */
   margin-bottom: 25px;
   padding-bottom: 15px;
   border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0; /* Prevent sections from shrinking */
 }
 .setup-section:last-of-type {
   border-bottom: none;
@@ -119,6 +125,7 @@
   color: var(--secondary-text);
   background-color: var(--secondary-bg);
   border-radius: var(--element-radius);
+  flex-shrink: 0;
 }
 
 .selected-region-info-cs p {
@@ -134,14 +141,18 @@
   flex-direction: column;
   gap: 10px;
   margin-bottom: 15px;
+  /* Added to prevent stretching of individual buttons */
+  align-items: flex-start; /* Align items to start, preventing horizontal stretch if no width */
 }
 
 .party-choice-button {
-  /* Inherit from .menu-button or style specifically */
   width: 100%;
+  min-width: 150px;
   text-align: left;
   padding: 10px 15px;
-  /* Make sure it uses theme variables from .menu-button or your global button styles */
+  box-sizing: border-box;
+  flex-shrink: 0;
+  flex-grow: 0;
 }
 .party-choice-button.active {
   background-color: var(--accent-color);
@@ -150,22 +161,12 @@
 }
 
 .setup-actions-cs {
-  margin-top: auto; /* Push action buttons to the bottom of the sidebar */
+  /* Removed margin-top: auto; - rely on sidebar-footer-actions for position */
   padding-top: 20px;
   border-top: 1px solid var(--border-color);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background-color: var(--ui-panel-bg); /* Ensure it matches sidebar bg */
-}
-
-.sidebar-footer-actions {
-  /* New class for the fixed action buttons at the bottom */
-  flex-shrink: 0; /* Prevent this footer from shrinking */
-  padding: 20px 25px; /* Match .info-actions-content padding */
-  border-top: 1px solid var(--border-color);
-  background-color: var(--ui-panel-bg); /* Ensure it has a background */
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  background-color: var(--ui-panel-bg);
+  flex-shrink: 0; /* Prevent this section from shrinking */
 }

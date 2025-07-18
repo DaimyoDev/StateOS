@@ -2,7 +2,6 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { BASE_IDEOLOGIES } from "./data/ideologiesData.js";
 import { generateNewPartyName } from "./utils/electionUtils.js";
-import { themes } from "./themes.js";
 // Util imports
 import {
   generateId,
@@ -63,7 +62,8 @@ const useGameStore = create(
         availableCountries: [],
         allCustomParties: [],
         toasts: [],
-        availableThemes: themes,
+        availableThemes: uiSliceData.availableThemes, // Themes now managed by uiSlice
+        activeThemeName: uiSliceData.activeThemeName, //
         newsItems: newsSlice.newsItems,
 
         currentCampaignSetup: getInitialCampaignSetupState(),

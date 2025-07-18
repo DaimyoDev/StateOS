@@ -1,44 +1,107 @@
+// ui-src/src/scenes/ThemeCreatorEditor.jsx
 import React, { useState, useEffect } from "react";
 import useGameStore from "../store";
-import "./ThemeCreatorEditor.css"; // We'll create this CSS file next
-import Modal from "../components/modals/Modal"; // Assuming you have a Modal component
+import "./ThemeCreatorEditor.css";
+import Modal from "../components/modals/Modal";
+
+// Define available font options for dropdowns
+const FONT_OPTIONS = [
+  { name: "Inter", value: "'Inter', sans-serif" },
+  { name: "Montserrat", value: "'Montserrat', sans-serif" },
+  { name: "Merriweather", value: "Merriweather, sans-serif" },
+  { name: "Roboto Mono", value: "'Roboto Mono', monospace" },
+];
 
 function ThemeCreatorEditor() {
   const actions = useGameStore((state) => state.actions);
+  const themeToEdit = useGameStore((state) => state.themeToEdit);
+  const availableThemes = useGameStore((state) => state.availableThemes);
 
-  // State to hold the currently edited theme's data
   const [currentTheme, setCurrentTheme] = useState(null);
   const [isNewTheme, setIsNewTheme] = useState(false);
   const [showSaveModal, setShowSaveModal] = useState(false);
-  const [newThemeName, setNewThemeName] = useState("");
+  const [themeKeyInput, setThemeKeyInput] = useState("");
 
   useEffect(() => {
-    // Initialize with a default theme or a new empty theme when the component mounts
-    if (!currentTheme) {
-      // You could load a specific theme to edit by default, or start fresh
-      // For now, let's start with a fresh, empty theme for creation
+    if (themeToEdit) {
+      setCurrentTheme(JSON.parse(JSON.stringify(themeToEdit))); // Deep copy
+      setIsNewTheme(false);
+      const key = Object.keys(availableThemes).find(
+        (k) => availableThemes[k] === themeToEdit
+      );
+      setThemeKeyInput(key || "");
+    } else {
+      // Creating a new theme with default values
       setCurrentTheme({
         name: "New Custom Theme",
         colors: {
-          "--primary-bg": "#FFFFFF",
-          "--secondary-bg": "#F0F0F0",
-          "--accent-color": "#007BFF",
-          // ... add all other default colors from themes.js
+          "--primary-bg": "#F0F0F0",
+          "--secondary-bg": "#E0E0E0",
+          "--ui-panel-bg": "#FFFFFF",
+          "--button-bg": "#007BFF",
+          "--button-hover-bg": "#0056B3",
+          "--button-active-bg": "#004080",
+          "--button-text": "#FFFFFF",
+          "--primary-text": "#333333",
+          "--secondary-text": "#666666",
+          "--accent-color": "#FFC107",
+          "--accent-text": "#FFFFFF",
+          "--rgb-accent-color": "255, 193, 7",
+          "--highlight-bg": "rgba(255, 193, 7, 0.15)",
+          "--border-color": "#CCCCCC",
+          "--accent-border-color": "#FFC107",
+          "--error-text": "#DC3545",
+          "--success-text": "#28A745",
+          "--disabled-bg": "#E9ECEF",
+          "--disabled-text": "#6C757D",
+          "--button-action-bg": "#28A745",
+          "--button-action-hover-bg": "#218838",
+          "--button-action-text": "#FFFFFF",
+          "--button-delete-bg": "#DC3545",
+          "--button-delete-hover-bg": "#C82333",
+          "--button-delete-text": "#FFFFFF",
+          "--input-bg": "#FFFFFF",
+          "--input-text": "#333333",
+          "--input-placeholder-text": "#A0A0A0",
+          "--progress-track-bg": "#E9ECEF",
+          "--map-background-color": "#F8F8F8",
+          "--map-region-default-fill": "#B0C4DE",
+          "--map-region-border": "#FFFFFF",
+          "--map-region-hover-fill": "rgba(255, 193, 7, 0.4)",
         },
         fonts: {
-          "--font-main": "'Inter', sans-serif",
-          "--font-heading": "'Montserrat', sans-serif",
-          // ... add other default fonts
+          "--font-main": FONT_OPTIONS[0].value,
+          "--font-heading": FONT_OPTIONS[1].value,
         },
         styles: {
           "--panel-shadow": "0 2px 8px rgba(0,0,0,0.1)",
+          "--button-shadow": "0 1px 2px rgba(0,0,0,0.05)",
           "--element-radius": "5px",
-          // ... add all other default styles
+          "--border-width": "1px",
+          "--focus-ring-color": "#007BFF",
+          "--progress-value-color": "#007BFF",
+          "--checkbox-accent-color": "#007BFF",
+          "--input-focus-shadow-color": "rgba(0, 123, 255, 0.25)",
+          "--transition-speed": "0.15s ease-in-out",
         },
       });
       setIsNewTheme(true);
+      setThemeKeyInput("");
     }
-  }, [currentTheme]);
+  }, [themeToEdit, availableThemes]);
+
+  useEffect(() => {
+    if (currentTheme) {
+      for (const scope of ["colors", "fonts", "styles"]) {
+        for (const [key, value] of Object.entries(currentTheme[scope])) {
+          document.documentElement.style.setProperty(key, value);
+        }
+      }
+    }
+    return () => {
+      actions.setActiveTheme(useGameStore.getState().activeThemeName);
+    };
+  }, [currentTheme, actions]);
 
   const handleColorChange = (cssVar, value) => {
     setCurrentTheme((prev) => ({
@@ -71,129 +134,231 @@ function ThemeCreatorEditor() {
   };
 
   const handleThemeNameChange = (e) => {
+    const newName = e.target.value;
     setCurrentTheme((prev) => ({
       ...prev,
-      name: e.target.value,
+      name: newName,
     }));
-    setNewThemeName(e.target.value);
+    if (isNewTheme) {
+      setThemeKeyInput(newName.toLowerCase().replace(/\s/g, "_"));
+    }
   };
 
   const handleSaveTheme = () => {
     if (!currentTheme || !currentTheme.name) {
-      alert("Theme name cannot be empty!");
+      actions.addToast({
+        message: "Theme name cannot be empty!",
+        type: "error",
+      });
       return;
     }
-    // In a real application, you'd send this to a backend or save to local storage
-    // For now, we'll simulate saving by adding it to the available themes (temporarily)
-    // and setting it as the active theme.
-    actions.addOrUpdateTheme(currentTheme.name, currentTheme); // This action needs to be defined in your store
-    actions.setActiveTheme(currentTheme.name);
-    setShowSaveModal(false);
-    actions.showToast({
+
+    let finalThemeKey = themeKeyInput;
+    if (isNewTheme) {
+      if (!finalThemeKey) {
+        finalThemeKey = currentTheme.name.toLowerCase().replace(/\s/g, "_");
+      }
+      if (availableThemes[finalThemeKey]) {
+        actions.addToast({
+          message: `Theme key "${finalThemeKey}" already exists. Please choose a different name.`,
+          type: "error",
+        });
+        return;
+      }
+    } else {
+      finalThemeKey = Object.keys(availableThemes).find(
+        (k) => availableThemes[k] === themeToEdit
+      );
+    }
+
+    actions.addOrUpdateTheme(finalThemeKey, currentTheme);
+    actions.clearThemeToEdit();
+    setShowSaveModal(false); // Close the modal
+    actions.addToast({
       message: `${currentTheme.name} saved!`,
       type: "success",
     });
+    actions.navigateTo("SettingsScreen");
   };
 
   if (!currentTheme) {
     return <div>Loading theme editor...</div>;
   }
 
+  const renderPropertyInputs = (category, handler) => {
+    return Object.entries(currentTheme[category]).map(([cssVar, value]) => {
+      const isFontInput =
+        cssVar === "--font-main" || cssVar === "--font-heading";
+      const inputElement = isFontInput ? (
+        <select
+          value={value}
+          onChange={(e) => handler(cssVar, e.target.value)}
+          className="select-input"
+        >
+          {FONT_OPTIONS.map((font) => (
+            <option key={font.value} value={font.value}>
+              {font.name}
+            </option>
+          ))}
+        </select>
+      ) : category === "colors" ? (
+        <>
+          <input
+            type="color"
+            value={value.length === 7 ? value : "#000000"}
+            onChange={(e) => handler(cssVar, e.target.value)}
+          />
+          <input
+            type="text"
+            value={value}
+            onChange={(e) => handler(cssVar, e.target.value)}
+            placeholder="#RRGGBB"
+            className="text-input"
+          />
+        </>
+      ) : (
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => handler(cssVar, e.target.value)}
+          className="text-input"
+        />
+      );
+
+      return (
+        <div key={cssVar} className="input-group">
+          <label>{cssVar.replace(/--/g, "").replace(/-/g, " ")}:</label>
+          {inputElement}
+        </div>
+      );
+    });
+  };
+
   return (
     <div className="theme-editor-container">
       <h1 className="important-heading">Theme Editor</h1>
 
-      <div className="editor-controls">
-        <label>
-          Theme Name:
-          <input
-            type="text"
-            value={currentTheme.name}
-            onChange={handleThemeNameChange}
-            placeholder="Enter theme name"
-          />
-        </label>
-
-        <h2>Colors</h2>
-        <div className="color-inputs">
-          {Object.entries(currentTheme.colors).map(([cssVar, value]) => (
-            <div key={cssVar} className="color-input-group">
-              <label>{cssVar}:</label>
+      <div className="editor-and-preview-wrapper">
+        <div className="editor-controls">
+          <label>
+            Theme Name:
+            <input
+              type="text"
+              value={currentTheme.name}
+              onChange={handleThemeNameChange}
+              placeholder="Enter theme name"
+            />
+          </label>
+          {isNewTheme && (
+            <label>
+              Theme Key (auto-generated, can be overridden):
               <input
-                type="color"
-                value={value.length === 7 ? value : "#000000"} // Ensure valid hex for color input
-                onChange={(e) => handleColorChange(cssVar, e.target.value)}
+                type="text"
+                value={themeKeyInput}
+                onChange={(e) => setThemeKeyInput(e.target.value)}
+                placeholder="unique_theme_key"
+                className="text-input"
+              />
+            </label>
+          )}
+
+          <h2>Colors</h2>
+          <div className="property-inputs color-inputs">
+            {renderPropertyInputs("colors", handleColorChange)}
+          </div>
+
+          <h2>Fonts</h2>
+          <div className="property-inputs font-inputs">
+            {renderPropertyInputs("fonts", handleFontChange)}
+          </div>
+
+          <h2>Styles</h2>
+          <div className="property-inputs style-inputs">
+            {renderPropertyInputs("styles", handleStyleChange)}
+          </div>
+        </div>
+
+        {/* Theme Preview Pane */}
+        <div className="theme-preview-pane">
+          <h3>Theme Preview</h3>
+          <div className="preview-panel">
+            <p className="preview-primary-text">Primary Text Example</p>
+            <p className="preview-secondary-text">
+              Secondary text for descriptions.
+            </p>
+            <p style={{ color: "var(--accent-color)" }}>Accent Color Example</p>
+
+            <div className="preview-button-group">
+              <button className="preview-button">Default Button</button>
+              <button className="preview-button preview-action-button">
+                Action Button
+              </button>
+              <button className="preview-button preview-delete-button">
+                Delete Button
+              </button>
+            </div>
+
+            <div className="preview-input-group">
+              <input
+                type="text"
+                placeholder="Input Field Example"
+                className="preview-input"
               />
               <input
                 type="text"
-                value={value}
-                onChange={(e) => handleColorChange(cssVar, e.target.value)}
-                placeholder="#RRGGBB"
+                placeholder="Focus State"
+                className="preview-input preview-input-focused"
               />
             </div>
-          ))}
-        </div>
 
-        {/* You'll need to expand this for fonts and styles */}
-        <h2>Fonts</h2>
-        <div className="font-inputs">
-          <label>
-            Main Font:
-            <input
-              type="text"
-              value={currentTheme.fonts["--font-main"]}
-              onChange={(e) => handleFontChange("--font-main", e.target.value)}
-              placeholder="'Inter', sans-serif"
-            />
-          </label>
-          {/* Add more font inputs */}
+            <div className="preview-border-example">Border Example</div>
+            <div className="preview-highlight-example">
+              Highlight Background Example
+            </div>
+          </div>
+          <p className="preview-small-text">
+            Font Main:{" "}
+            <span style={{ fontFamily: "var(--font-main)" }}>AaBbCc</span>
+          </p>
+          <h4 className="preview-heading">
+            Font Heading:{" "}
+            <span style={{ fontFamily: "var(--font-heading)" }}>AaBbCc</span>
+          </h4>
         </div>
+      </div>
 
-        <h2>Styles</h2>
-        <div className="style-inputs">
-          <label>
-            Panel Shadow:
-            <input
-              type="text"
-              value={currentTheme.styles["--panel-shadow"]}
-              onChange={(e) =>
-                handleStyleChange("--panel-shadow", e.target.value)
-              }
-              placeholder="0 2px 8px rgba(0,0,0,0.1)"
-            />
-          </label>
-          {/* Add more style inputs */}
-        </div>
-
-        <div className="editor-actions">
-          <button
-            className="action-button"
-            onClick={() => setShowSaveModal(true)}
-          >
-            Save Theme
-          </button>
-          <button
-            className="action-button"
-            onClick={() => actions.navigateTo("SettingsScreen")}
-          >
-            Back to Settings
-          </button>
-        </div>
+      <div className="editor-actions">
+        <button
+          className="action-button"
+          onClick={() => setShowSaveModal(true)}
+        >
+          Save Theme
+        </button>
+        <button
+          className="action-button"
+          onClick={() => {
+            actions.clearThemeToEdit();
+            actions.navigateTo("SettingsScreen");
+          }}
+        >
+          Back to Settings
+        </button>
       </div>
 
       {showSaveModal && (
         <Modal
+          isOpen={showSaveModal}
           title="Save Theme"
-          onClose={() => setShowSaveModal(false)}
-          onConfirm={handleSaveTheme}
-          confirmText="Save"
-          cancelText="Cancel"
+          onPrimaryAction={handleSaveTheme} // Renamed from onConfirm
+          primaryActionText="Save" // Renamed from confirmText
+          onSecondaryAction={() => setShowSaveModal(false)} // Added secondary action
+          secondaryActionText="Cancel" // Added secondary action text
         >
           <p>Are you sure you want to save this theme?</p>
           {isNewTheme && (
             <p>
-              It will be added as a new theme:{" "}
-              <strong>{newThemeName || "Unnamed Theme"}</strong>.
+              It will be added as a new theme with key:{" "}
+              <strong>{themeKeyInput || "auto-generated"}</strong>.
             </p>
           )}
         </Modal>

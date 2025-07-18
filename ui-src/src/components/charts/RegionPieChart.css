@@ -58,13 +58,12 @@
 
 .legend-text {
   color: var(--primary-text, "#333333");
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  flex-grow: 1; /* Allows it to take available space */
-  min-width: 0; /* CRITICAL for flex items with ellipsis to work correctly */
-  /* This tells the flex item it's okay to shrink below its content size */
-  margin-right: 2px; /* Add a little space if item padding is 0 */
+  /* Allow text to wrap */
+  white-space: normal;
+  word-break: break-word; /* Helps break long words */
+  flex-grow: 1;
+  min-width: 0;
+  margin-right: 2px;
 }
 
 .chart-no-data-message {

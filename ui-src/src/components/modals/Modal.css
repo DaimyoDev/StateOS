@@ -67,4 +67,6 @@
   /* For general styling of buttons within modals */
   min-width: 100px; /* Give modal buttons a decent default size */
   padding: 10px 20px;
+  max-height: min-content;
+  margin: 10px;
 }

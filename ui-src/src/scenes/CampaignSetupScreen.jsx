@@ -487,7 +487,7 @@ function CampaignSetupScreen() {
             Back
           </button>
           <button
-            className="action-button"
+            className="action-button start-campaign"
             onClick={() => {
               if (canStartCampaign) actions.startCampaign();
             }}
