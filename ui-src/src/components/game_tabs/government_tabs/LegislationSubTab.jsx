@@ -46,6 +46,17 @@ const LegislationSubTab = ({ campaignData }) => {
             }`.trim()
           );
         }
+
+        if (office.members) {
+          for (const member of office.members) {
+            if (member.id === politicianId) {
+              return (
+                member.name ||
+                `${member.firstName || ""} ${member.lastName || ""}`.trim()
+              );
+            }
+          }
+        }
       }
     }
     return `Politician ID ${politicianId}`;
@@ -186,8 +197,6 @@ const LegislationSubTab = ({ campaignData }) => {
                   return [];
                 }
               );
-
-              console.log(proposal);
 
               const totalCouncilVotesPossible = councilMembers.length;
               const yeaVotes = proposal.votes?.yea?.length || 0;

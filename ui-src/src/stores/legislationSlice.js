@@ -574,6 +574,7 @@ export const createLegislationSlice = (set, get) => ({
             const cityStats = activeCampaign.startingCity?.stats;
 
             councilMembers.forEach((councilMemberOffice) => {
+              console.log(councilMemberOffice);
               const councilMember = councilMemberOffice;
               if (
                 councilMember &&
