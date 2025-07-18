@@ -510,6 +510,7 @@ export const createLegislationSlice = (set, get) => ({
         councilMembers[0].members.forEach((member) => {
           councilMembers.push(member);
         });
+        councilMembers[0] = null;
       }
 
       if (proposedLegislationList.length === 0) return;
@@ -574,7 +575,6 @@ export const createLegislationSlice = (set, get) => ({
             const cityStats = activeCampaign.startingCity?.stats;
 
             councilMembers.forEach((councilMemberOffice) => {
-              console.log(councilMemberOffice);
               const councilMember = councilMemberOffice;
               if (
                 councilMember &&
@@ -592,7 +592,7 @@ export const createLegislationSlice = (set, get) => ({
                     // 1. Ideological Factor
                     const ideologicalFactor =
                       policyDefinition.baseSupport?.[
-                        councilMember.calculatedIdeology
+                        councilMember.holder.calculatedIdeology
                       ] || 0;
                     combinedScore += ideologicalFactor * 1.1; // User's preferred weight
 
@@ -605,12 +605,14 @@ export const createLegislationSlice = (set, get) => ({
                     let personalStanceFactor = 0;
                     if (
                       policyDefinition.relevantPolicyQuestions &&
-                      councilMember.policyStances
+                      councilMember.holder.policyStances
                     ) {
                       policyDefinition.relevantPolicyQuestions.forEach(
                         (pqLink) => {
                           const aiStance =
-                            councilMember.policyStances[pqLink.questionId];
+                            councilMember.holder.policyStances[
+                              pqLink.questionId
+                            ];
                           if (aiStance) {
                             if (
                               pqLink.alignsWithOptionValues?.includes(aiStance)
@@ -820,7 +822,6 @@ export const createLegislationSlice = (set, get) => ({
                     } else if (combinedScore < nayThreshold) {
                       voteChoice = "nay";
                     } else {
-                      // Abstain or lean based on fiscal pressure
                       voteChoice = "abstain"; // Default
                       if (
                         council_hasDireFinances ||
@@ -845,7 +846,7 @@ export const createLegislationSlice = (set, get) => ({
                   } // end if (policyDefinition)
                   get().actions.recordCouncilVote(
                     proposal.id,
-                    councilMember.id,
+                    councilMember.holder.id,
                     voteChoice
                   );
                 }

@@ -186,7 +186,6 @@ export const createCampaignActionsSlice = (set, get) => {
       },
 
       // --- Player/AI-Driven Campaign Actions (Generalized) ---
-
       personalFundraisingActivity: (hoursToSpend = 2, politicianId = null) => {
         if (!get().actions.spendCampaignHours(hoursToSpend, politicianId)) {
           return; // Not enough hours or other issue from spendCampaignHours
@@ -212,58 +211,70 @@ export const createCampaignActionsSlice = (set, get) => {
             return state; // Return original state if target not found
           }
 
-          const city = campaign.startingCity; // Needed for adultPopulation
+          const city = campaign.startingCity; // Needed for adultPopulation (still useful for media buzz calculation later if needed, but not for fundraising multiplier)
 
-          // --- Calculate Name Recognition Factor ---
-          let nameRecFundraisingMultiplier = 0.25; // Base effectiveness if unknown (e.g., 25%)
-          if (
-            city &&
-            city.population &&
-            city.demographics?.ageDistribution &&
-            targetPoliticianInitial.nameRecognition != null
-          ) {
-            const adultPopulation =
-              calculateAdultPopulation(
-                city.population,
-                city.demographics.ageDistribution
-              ) || 1; // Ensure adultPopulation is at least 1 to avoid division by zero
+          // MODIFIED: Fundraising calculation now based on absolute Name Recognition
+          const currentNameRecognition =
+            targetPoliticianInitial.nameRecognition || 0;
 
-            const currentNameRecognition =
-              targetPoliticianInitial.nameRecognition || 0;
-            // Ensure fraction is between 0 and 1
-            const nameRecognitionFraction = Math.min(
-              1,
-              Math.max(0, currentNameRecognition / adultPopulation)
-            );
+          // Base multiplier starts at 0.5, and adds 1.0 for every 200,000 people who know you.
+          // This allows fundraising to scale significantly with absolute name recognition.
+          const BASE_FUNDRAISING_MULTIPLIER = 0.5; // Minimum effectiveness even with low name rec
+          const NAME_REC_PER_ADDITIONAL_MULTIPLIER_UNIT = 200000; // E.g., 200k known people adds 1.0 to the multiplier
 
-            // Scale fundraising effectiveness: e.g., 25% at 0 name rec, up to 100% at full name rec.
-            // You can adjust the 0.25 (base when unknown) and 0.75 (scaling part) for balance.
-            nameRecFundraisingMultiplier =
-              0.25 + 0.75 * nameRecognitionFraction;
-          }
-          // --- End Name Recognition Factor ---
+          const absoluteNameRecMultiplier =
+            BASE_FUNDRAISING_MULTIPLIER +
+            currentNameRecognition / NAME_REC_PER_ADDITIONAL_MULTIPLIER_UNIT;
 
-          const baseFundsPerAttempt = getRandomInt(250, 750); // Funds per "unit" of effort
+          // Ensure the multiplier doesn't go below the base, if currentNameRecognition is very low
+          // (Though with BASE_FUNDRAISING_MULTIPLIER = 0.5, it won't if currentNameRecognition >= 0)
+          const finalNameRecMultiplier = Math.max(
+            BASE_FUNDRAISING_MULTIPLIER,
+            absoluteNameRecMultiplier
+          );
+
+          const baseFundsPerAttempt = getRandomInt(500, 1500); // Funds per "unit" of effort, increased for more impact
           const attemptsPerHours = hoursToSpend * 2; // e.g., 2 fundraising "attempts" per hour
           const fundraisingSkillFactor =
             (targetPoliticianInitial.attributes?.fundraising || 5) / 4; // Adjusted factor (ranges e.g. 0.75 to 2.5 for attributes 3-10)
 
           const fundsRaisedBeforeNameRec =
             baseFundsPerAttempt * attemptsPerHours * fundraisingSkillFactor;
+
           const fundsRaised = Math.round(
-            fundsRaisedBeforeNameRec * nameRecFundraisingMultiplier
+            fundsRaisedBeforeNameRec * finalNameRecMultiplier
           );
+          // END MODIFICATION
 
           const newCampaignFunds =
             (targetPoliticianInitial.campaignFunds || 0) + fundsRaised;
 
           let newMediaBuzz = targetPoliticianInitial.mediaBuzz || 0;
           // Media buzz gain also influenced by name recognition (more buzz if somewhat known) and hours
+          // The old nameRecFundraisingMultiplier for media buzz was 0.25 + 0.75 * fraction.
+          // This part still needs the fraction based on adult population. Let's keep that part.
+          let mediaBuzzNameRecFraction = 0;
+          if (
+            city &&
+            city.population &&
+            city.demographics?.ageDistribution &&
+            currentNameRecognition != null // Renamed targetPoliticianInitial.nameRecognition to currentNameRecognition for consistency
+          ) {
+            const adultPopulation =
+              calculateAdultPopulation(
+                city.population,
+                city.demographics.ageDistribution
+              ) || 1;
+            mediaBuzzNameRecFraction = Math.min(
+              1,
+              Math.max(0, currentNameRecognition / adultPopulation)
+            );
+          }
+          const mediaBuzzScalingFactor = 0.25 + 0.75 * mediaBuzzNameRecFraction;
+
           if (
             Math.random() <
-            0.1 +
-              hoursToSpend * 0.05 +
-              (nameRecFundraisingMultiplier - 0.25) * 0.1
+            0.1 + hoursToSpend * 0.05 + (mediaBuzzScalingFactor - 0.25) * 0.1 // Use the specific media buzz factor here
           ) {
             newMediaBuzz = Math.min(
               100,
@@ -274,7 +285,7 @@ export const createCampaignActionsSlice = (set, get) => {
                     hoursToSpend,
                     hoursToSpend *
                       2 *
-                      parseFloat(nameRecFundraisingMultiplier.toFixed(2))
+                      parseFloat(mediaBuzzScalingFactor.toFixed(2)) // Use the specific media buzz factor here
                   )
                 ) // More buzz if more known
             );
@@ -283,9 +294,9 @@ export const createCampaignActionsSlice = (set, get) => {
           if (!politicianId) {
             // Only toast for player
             get().actions.addToast?.({
-              message: `Spent ${hoursToSpend}hr(s) on fundraising. Raised $${fundsRaised.toLocaleString()}! (Name Rec Factor: ${nameRecFundraisingMultiplier.toFixed(
+              message: `Spent ${hoursToSpend}hr(s) on fundraising. Raised $${fundsRaised.toLocaleString()}! (Name Rec Multiplier: ${finalNameRecMultiplier.toFixed(
                 2
-              )})`,
+              )})`, // Changed toast message for clarity
               type: "success",
             });
           }
@@ -489,17 +500,36 @@ export const createCampaignActionsSlice = (set, get) => {
               city.population,
               city.demographics?.ageDistribution
             ) || 1;
-          const volunteersEffective = Math.min(
-            targetPoliticianInitial.volunteerCount || 0,
-            hoursToSpend * 10
-          );
+
+          // MODIFIED: Introduce random percentage for effective volunteers in door knocking
+          const availableVolunteers =
+            targetPoliticianInitial.volunteerCount || 0;
+          let peopleReachedByVolunteers = 0;
+
+          if (availableVolunteers > 0) {
+            // Generate a random percentage for how many volunteers are "truly active" for the entire activity.
+            // For example, between 50% and 100% of available volunteers participate effectively.
+            const randomActivityPercentage = getRandomInt(50, 100) / 100; // 0.5 to 1.0
+            const effectiveVolunteersForCalculation = Math.round(
+              availableVolunteers * randomActivityPercentage
+            );
+
+            // Each effectively active volunteer contributes their reach per hour for all hours spent
+            const reachPerVolunteerAssist = 3; // Defined in the original code, moved here for clarity
+            peopleReachedByVolunteers =
+              effectiveVolunteersForCalculation *
+              reachPerVolunteerAssist *
+              hoursToSpend;
+          }
+
           const reachPerPlayerHour =
             10 + ((targetPoliticianInitial.attributes?.charisma || 5) - 5) * 2;
-          const reachPerVolunteerAssist = 3;
+
           const totalPeopleReached = Math.round(
-            reachPerPlayerHour * hoursToSpend +
-              volunteersEffective * reachPerVolunteerAssist
+            reachPerPlayerHour * hoursToSpend + peopleReachedByVolunteers
           );
+          // END MODIFICATION
+
           const potentialNewReach = Math.max(
             0,
             adultPopulation - (targetPoliticianInitial.nameRecognition || 0)
@@ -513,6 +543,7 @@ export const createCampaignActionsSlice = (set, get) => {
             (targetPoliticianInitial.nameRecognition || 0) +
               actualNewPeopleRecognized
           );
+
           let approvalGain = 0;
           if (
             actualNewPeopleRecognized > 20 &&
@@ -559,7 +590,10 @@ export const createCampaignActionsSlice = (set, get) => {
             )?.holder
           : campaignPreCheck.politician;
 
-        if (!politicianPreCheck || (politicianPreCheck.treasury || 0) < cost) {
+        if (
+          !politicianPreCheck ||
+          (politicianPreCheck.campaignFunds || 0) < cost
+        ) {
           if (!politicianId)
             get().actions.addToast?.({
               message: `Not enough personal treasury (Need $${cost}).`,
@@ -637,7 +671,7 @@ export const createCampaignActionsSlice = (set, get) => {
           }
 
           const politicianUpdates = {
-            treasury: (currentPolitician.treasury || 0) - cost,
+            treasury: (currentPolitician.campaignFunds || 0) - cost,
             approvalRating: newApprovalRating,
             nameRecognition: newNameRec,
             mediaBuzz: newMediaBuzz,

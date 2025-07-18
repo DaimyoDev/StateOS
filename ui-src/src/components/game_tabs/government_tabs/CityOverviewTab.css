@@ -290,3 +290,103 @@
   font-weight: bold;
   text-align: right; /* If using flex justify-content: space-between */
 }
+
+.government-filter-buttons {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+  gap: 10px; /* Space between buttons */
+}
+
+.government-filter-buttons button {
+  background-color: var(--button-background); /* Use your theme variables */
+  color: var(--button-text-color);
+  border: 1px solid var(--button-border-color);
+  padding: 8px 15px;
+  border-radius: var(--border-radius-small);
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+}
+
+.government-filter-buttons button:hover {
+  background-color: var(--button-hover-background);
+  color: var(--button-hover-text-color);
+}
+
+.government-filter-buttons button.active {
+  background-color: var(--button-active-background);
+  color: var(--button-active-text-color);
+  border-color: var(--button-active-border-color);
+  font-weight: bold;
+}
+
+/* Officials Cards Grid */
+.officials-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(200px, 1fr)
+  ); /* Responsive grid */
+  gap: 20px; /* Space between cards */
+  padding: 10px 0;
+}
+
+/* Politician Card Styles */
+.politician-card {
+  background-color: var(
+    --card-background
+  ); /* Assuming a card background variable */
+  border: 1px solid var(--card-border-color);
+  border-radius: var(--border-radius-medium);
+  padding: 15px;
+  text-align: center;
+  box-shadow: var(--shadow-small);
+  cursor: pointer;
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between; /* Pushes content apart if heights vary */
+  height: 100%; /* Ensures cards in a row have consistent height */
+}
+
+.politician-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-medium);
+}
+
+.politician-card .card-title {
+  font-size: 1.1em;
+  color: var(--text-color-heading);
+  margin-bottom: 10px;
+}
+
+.politician-card .politician-name {
+  font-size: 1em;
+  color: var(--text-color-primary);
+  margin: 5px 0;
+}
+
+.politician-card .politician-party {
+  font-size: 0.9em;
+  color: var(--text-color-secondary);
+  margin: 0;
+}
+
+/* Specific styling for the existing .official-entry if it's still used somewhere or needs to be consistent */
+/* (You might deprecate .official-entry if all officials are cards) */
+.official-entry.mayor-entry {
+  background-color: var(
+    --card-background-highlight
+  ); /* Example for distinguishing mayor */
+  padding: 15px;
+  border-radius: var(--border-radius-medium);
+  margin-bottom: 20px;
+  box-shadow: var(--shadow-small);
+}
+
+.no-officials-message {
+  grid-column: 1 / -1; /* Make message span across all columns */
+  text-align: center;
+  color: var(--text-color-secondary);
+  padding: 20px;
+}

@@ -367,12 +367,15 @@ export const createElectionSlice = (set) => ({
               isPlayer: true,
               isIncumbent:
                 election.incumbentInfo?.id === playerPoliticianObject.id,
+              nameRecognition: playerPoliticianObject.nameRecognition || 0,
             };
 
             let newCandidateList = (election.candidates || []).filter(
               (c) => c.id !== playerPoliticianObject.id
             );
             newCandidateList.push(playerAsCandidate);
+
+            console.log(newCandidateList);
 
             // Calculate base scores and then normalize polling for the updated list
             const candidatesWithBaseScores = newCandidateList.map((cand) => ({
@@ -390,10 +393,16 @@ export const createElectionSlice = (set) => ({
             // To normalize polling, you need the election's entity population
             const electionEntityPop =
               election.entityDataSnapshot?.population || 0;
-            // And demographics if your calculateAdultPopulation uses it for accuracy
-            // const electionEntityDemographics = election.entityDataSnapshot?.demographics;
-            // const adultPopForNorm = calculateAdultPopulation(electionEntityPop, electionEntityDemographics);
-            const adultPopForNorm = calculateAdultPopulation(electionEntityPop); // Assuming simpler version for now
+
+            const electionEntityDemographics =
+              election.entityDataSnapshot?.demographics;
+
+            const adultPopForNorm = calculateAdultPopulation(
+              electionEntityPop,
+              electionEntityDemographics
+            );
+
+            console.log(adultPopForNorm);
 
             const finalCandidateListWithPolling = normalizePolling(
               candidatesWithBaseScores,
@@ -632,6 +641,7 @@ export const createElectionSlice = (set) => ({
             `Member, ${electionToEnd.officeName}`;
           const newMembers = determinedWinnersArray.map((winner) => ({
             ...winner,
+            holder: winner,
             votes: undefined,
             polling: undefined,
             baseScore: undefined,

@@ -4,10 +4,7 @@ import useGameStore from "../store"; // Adjust path if needed
 import "./MainMenu.css";
 
 function MainMenu() {
-  // Correctly get the actions object from the store
   const actions = useGameStore((state) => state.actions);
-  // Or, if you only need navigateTo from actions:
-  // const navigateTo = useGameStore((state) => state.actions.navigateTo);
 
   return (
     <div className="main-menu-container">
@@ -60,7 +57,7 @@ function MainMenu() {
         </button>
       </nav>
       <footer className="menu-footer">
-        <p>Version 0.0.1 Alpha</p>
+        <p>Version 0.0.2 Alpha</p>
       </footer>
     </div>
   );

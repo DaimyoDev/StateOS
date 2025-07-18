@@ -221,7 +221,6 @@ const FieldOpsSubTab = ({ campaignData, actions }) => {
   const startingCity = campaignData.startingCity || {};
   const campaignHoursRemainingToday =
     politician.campaignHoursRemainingToday || 0;
-  const campaignHoursPerDay = politician.campaignHoursPerDay || 10;
 
   const [rallyHours, setRallyHours] = useState(4);
   const [doorKnockingHours, setDoorKnockingHours] = useState(2);
@@ -264,7 +263,7 @@ const FieldOpsSubTab = ({ campaignData, actions }) => {
           <h4>Go Door Knocking</h4>
           <div className="action-controls">
             <label htmlFor="doorKnockHours">
-              Hours (1-{Math.min(6, campaignHoursPerDay)}):
+              Hours (1-{campaignHoursRemainingToday}):
             </label>
             <input
               type="number"
@@ -275,14 +274,14 @@ const FieldOpsSubTab = ({ campaignData, actions }) => {
                   Math.max(
                     1,
                     Math.min(
-                      Math.min(6, campaignHoursPerDay),
+                      campaignHoursRemainingToday,
                       parseInt(e.target.value, 10) || 1
                     )
                   )
                 )
               }
               min="1"
-              max={Math.min(6, campaignHoursPerDay)}
+              max={campaignHoursRemainingToday}
             />
             <button
               className="action-button"
@@ -305,7 +304,7 @@ const FieldOpsSubTab = ({ campaignData, actions }) => {
           <h4>Hold Rally</h4>
           <div className="action-controls">
             <label htmlFor="rallyHours">
-              Event Duration (2-{Math.min(8, campaignHoursPerDay)}hrs):
+              Event Duration (2-{campaignHoursRemainingToday}hrs):
             </label>
             <input
               type="number"
@@ -316,14 +315,14 @@ const FieldOpsSubTab = ({ campaignData, actions }) => {
                   Math.max(
                     2,
                     Math.min(
-                      Math.min(8, campaignHoursPerDay),
+                      campaignHoursRemainingToday,
                       parseInt(e.target.value, 10) || 2
                     )
                   )
                 )
               }
               min="2"
-              max={Math.min(8, campaignHoursPerDay)}
+              max={campaignHoursRemainingToday}
             />
             <button
               className="action-button"
@@ -352,7 +351,7 @@ const FieldOpsSubTab = ({ campaignData, actions }) => {
           <h4>Recruit Volunteers</h4>
           <div className="action-controls">
             <label htmlFor="recruitHours">
-              Effort (1-{Math.min(4, campaignHoursPerDay)}hrs):
+              Effort (1-{campaignHoursRemainingToday}hrs):
             </label>
             <input
               type="number"
@@ -363,14 +362,14 @@ const FieldOpsSubTab = ({ campaignData, actions }) => {
                   Math.max(
                     1,
                     Math.min(
-                      Math.min(4, campaignHoursPerDay),
+                      campaignHoursRemainingToday,
                       parseInt(e.target.value, 10) || 1
                     )
                   )
                 )
               }
               min="1"
-              max={Math.min(4, campaignHoursPerDay)}
+              max={campaignHoursRemainingToday}
             />
             <button
               className="action-button"
@@ -400,7 +399,6 @@ const CommsAdsSubTab = ({ campaignData, actions, cityKeyIssues }) => {
   const politician = campaignData.politician || {};
   const campaignHoursRemainingToday =
     politician.campaignHoursRemainingToday || 0;
-  const campaignHoursPerDay = politician.campaignHoursPerDay || 8;
   const playerActiveElection = campaignData.elections?.find(
     (e) => e.playerIsCandidate && e.outcome?.status === "upcoming"
   );
@@ -650,7 +648,7 @@ const CommsAdsSubTab = ({ campaignData, actions, cityKeyIssues }) => {
                 id="monthlyTargetOpponent"
                 value={monthlyAdTargetId}
                 onChange={(e) => setMonthlyAdTargetId(e.target.value)}
-                disabled={!politician.isInCampaign}
+                disabled={opponents.length === 0 || !politician.isInCampaign}
               >
                 <option value="">-- Select Opponent --</option>
                 {opponents.map((opp) => (
@@ -668,7 +666,9 @@ const CommsAdsSubTab = ({ campaignData, actions, cityKeyIssues }) => {
                 id="monthlyTargetIssue"
                 value={monthlyAdTargetId}
                 onChange={(e) => setMonthlyAdTargetId(e.target.value)}
-                disabled={!politician.isInCampaign}
+                disabled={
+                  cityKeyIssues.length === 0 || !politician.isInCampaign
+                }
               >
                 <option value="">-- Select Key Issue --</option>
                 {cityKeyIssues.map((issue) => (
@@ -731,7 +731,7 @@ const CommsAdsSubTab = ({ campaignData, actions, cityKeyIssues }) => {
           <h4>Setup Blitz</h4>
           <div className="action-controls">
             <label htmlFor="manualAdHours">
-              Hours (2-{Math.min(6, campaignHoursPerDay || 8)}):
+              Hours (2-{campaignHoursRemainingToday}):
             </label>
             <input
               type="number"
@@ -742,7 +742,7 @@ const CommsAdsSubTab = ({ campaignData, actions, cityKeyIssues }) => {
                   Math.max(
                     2,
                     Math.min(
-                      Math.min(6, campaignHoursPerDay || 8),
+                      campaignHoursRemainingToday,
                       parseInt(e.target.value, 10) || 2
                     )
                   )
@@ -750,7 +750,7 @@ const CommsAdsSubTab = ({ campaignData, actions, cityKeyIssues }) => {
               }
               disabled={!politician.isInCampaign}
               min="2"
-              max={Math.min(6, campaignHoursPerDay || 8)}
+              max={campaignHoursRemainingToday}
             />
           </div>
           <div className="action-controls" style={{ marginTop: "10px" }}>
@@ -855,7 +855,7 @@ const CommsAdsSubTab = ({ campaignData, actions, cityKeyIssues }) => {
               }
               disabled={
                 campaignHoursRemainingToday < mediaAppearanceHours ||
-                (politician.treasury || 0) < mediaAppearanceCost ||
+                (politician.campaignFunds || 0) < mediaAppearanceCost || // Corrected from politician.treasury to campaignFunds based on campaignActionsSlice.js
                 !politician.isInCampaign
               }
               title={mediaAppearanceTitle()}
@@ -874,7 +874,6 @@ const FundraisingSubTab = ({ campaignData, actions }) => {
   const politician = campaignData.politician || {};
   const campaignHoursRemainingToday =
     politician.campaignHoursRemainingToday || 0;
-  const campaignHoursPerDay = politician.campaignHoursPerDay || 10;
   const [fundraisingHours, setFundraisingHours] = useState(2);
 
   return (
@@ -889,7 +888,7 @@ const FundraisingSubTab = ({ campaignData, actions }) => {
           <h4>Personal Fundraising Drive</h4>
           <div className="action-controls">
             <label htmlFor="fundraisingHours">
-              Hours to Dedicate (1-{Math.min(8, campaignHoursPerDay)}):
+              Hours to Dedicate (1-{campaignHoursRemainingToday}):
             </label>
             <input
               type="number"
@@ -900,14 +899,14 @@ const FundraisingSubTab = ({ campaignData, actions }) => {
                   Math.max(
                     1,
                     Math.min(
-                      Math.min(8, campaignHoursPerDay),
+                      campaignHoursRemainingToday,
                       parseInt(e.target.value) || 1
                     )
                   )
                 )
               }
               min="1"
-              max={Math.min(8, campaignHoursPerDay)}
+              max={campaignHoursRemainingToday}
             />
             <button
               className="action-button"

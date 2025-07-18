@@ -54,7 +54,6 @@ export const createCampaignSetupSlice = (set, get) => {
         const initialGovernmentOffices = [];
         const countryElectionTypes =
           ELECTION_TYPES_BY_COUNTRY[setupState.selectedCountryId] || [];
-        console.log(countryElectionTypes);
         countryElectionTypes.forEach((electionType) => {
           if (
             electionType.level.startsWith("local_") ||
@@ -145,8 +144,8 @@ export const createCampaignSetupSlice = (set, get) => {
                 officeNameTemplateId: electionType.id,
                 officeName: officeName,
                 level: electionType.level,
-                holder: holderForOffice, // Will be null for legislative bodies, populated for single winner
-                members: initialMembersArray, // Populated for legislative bodies, undefined for single winner
+                holder: holderForOffice,
+                members: initialMembersArray,
                 termEnds: {
                   year: 2025 + termLength - 1,
                   month: electionType.electionMonth,
@@ -197,6 +196,8 @@ export const createCampaignSetupSlice = (set, get) => {
           }
         });
 
+        playerPoliticianData.campaignFunds = 10000;
+
         const newActiveCampaign = {
           politician: { ...playerPoliticianData },
           countryId: setupState.selectedCountryId,
@@ -213,8 +214,6 @@ export const createCampaignSetupSlice = (set, get) => {
           newsAndEvents: [],
           availableCountries: availableCountriesData,
         };
-
-        console.log(setupState.selectedRegionId);
 
         get().actions.clearAllNews();
         set({ activeCampaign: newActiveCampaign });

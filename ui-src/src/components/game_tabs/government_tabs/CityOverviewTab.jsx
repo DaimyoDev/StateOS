@@ -1,10 +1,11 @@
 import React, { useState, useMemo, useCallback } from "react";
-import useGameStore from "../../../store"; // Adjust path to your store
-import CouncilCompositionPieChart from "../../charts/CouncilCompositionPieChart"; // Ensure this path is correct
-import "./GovernmentSubTabStyles.css"; // General styles for these government sub-tabs
-import "./CityOverviewTab.css"; // Specific styles for CityOverviewTab
+import useGameStore from "../../../store";
+import CouncilCompositionPieChart from "../../charts/CouncilCompositionPieChart";
+import PoliticianCard from "../../PoliticianCard"; // NEW: Import PoliticianCard
+import "./GovernmentSubTabStyles.css";
+import "./CityOverviewTab.css";
 
-// Helper functions
+// Helper functions (keeping these as they are)
 const getRatingDescriptor = (ratingString) => ratingString || "N/A";
 const getUnemploymentDescriptor = (rate) => {
   if (rate == null) return "N/A";
@@ -41,21 +42,17 @@ const formatPercentage = (value, precision = 1) => {
   return `${value.toFixed(precision)}%`;
 };
 const formatBudgetKey = (key) => {
-  // Renamed to be more generic for keys
   if (typeof key !== "string") return "Invalid Key";
   return key
     .replace(/([A-Z])/g, " $1")
     .replace(/^./, (str) => str.toUpperCase());
 };
-
-// Helper to format law values for display
 const formatLawValue = (key, value) => {
   if (value === null || value === undefined) return "N/A";
   if (key === "minimumWage") {
     return `$${Number(value).toFixed(2)} / hour`;
   }
   if (typeof value === "object") {
-    // For things like alcoholSalesHours
     return Object.entries(value)
       .map(
         ([dayType, hours]) =>
@@ -71,6 +68,7 @@ const formatLawValue = (key, value) => {
 
 const CityOverviewTab = () => {
   const [activeSubTab, setActiveSubTab] = useState("summary");
+  const [governmentFilter, setGovernmentFilter] = useState("all");
 
   const activeCampaign = useGameStore((state) => state.activeCampaign);
   const { openViewPoliticianModal } = useGameStore((state) => state.actions);
@@ -86,7 +84,7 @@ const CityOverviewTab = () => {
     demographics,
     economicProfile,
     stats,
-    cityLaws, // Destructure cityLaws
+    cityLaws,
   } = startingCity || {};
 
   const {
@@ -116,11 +114,24 @@ const CityOverviewTab = () => {
     if (!governmentOffices || !cityId) return null;
     return governmentOffices.find(
       (office) =>
-        (office.level === "local_city" || office.level === "city") && // Be explicit with levels
+        office.level.includes("local_city") &&
         office.officeNameTemplateId &&
         office.officeNameTemplateId.includes("mayor") &&
-        office.holder && // A mayor office should have a direct holder
-        office.cityId === cityId // Ensure it's for this specific city
+        !office.officeNameTemplateId.includes("vice_mayor") &&
+        office.holder &&
+        office.cityId === cityId
+    );
+  }, [governmentOffices, cityId]);
+
+  const viceMayorOffice = useMemo(() => {
+    if (!governmentOffices || !cityId) return null;
+    return governmentOffices.find(
+      (office) =>
+        office.level.includes("local_city") &&
+        office.officeNameTemplateId &&
+        office.officeNameTemplateId.includes("vice_mayor") &&
+        office.holder &&
+        office.cityId === cityId
     );
   }, [governmentOffices, cityId]);
 
@@ -130,33 +141,28 @@ const CityOverviewTab = () => {
     let allCouncilMembersForDisplay = [];
 
     governmentOffices.forEach((office) => {
-      // Check if it's a city/local level council office (either a body or an individual seat)
       const isLocalCouncilOffice =
         (office.level === "local_city" ||
           office.level === "city_district" ||
           office.level.includes("council")) &&
         (office.officeNameTemplateId?.includes("city_council") ||
           office.officeNameTemplateId?.includes("city_municipal_council")) &&
-        office.cityId === cityId; // Ensure it's for the current city
+        office.cityId === cityId;
 
       if (isLocalCouncilOffice) {
         if (office.members && office.members.length > 0) {
-          // This is a legislative body with a 'members' array (e.g., At-Large MMD council)
           office.members.forEach((member, index) => {
-            // Create a pseudo-office object for each member for consistent display
             allCouncilMembersForDisplay.push({
-              ...office, // Inherit base office properties like level, officeNameTemplateId
-              officeId: `${office.officeId}_member_${member.id}`, // Unique ID for this member's 'seat'
-              officeName: member.role || `${office.officeName} Member`, // Use member's role or a default
-              holder: member, // The member is the 'holder' for this conceptual seat
-              // Add a conceptual seat number if the original office was an MMD
+              ...office,
+              officeId: `${office.officeId}_member_${member.id}`,
+              officeName: member.role || `${office.officeName} Member`,
+              holder: member,
               _conceptualSeatNumber: index + 1,
             });
           });
         } else if (office.holder && office.numberOfSeatsToFill === 1) {
-          // This is an individual conceptual seat that was created as a single-winner election
           allCouncilMembersForDisplay.push({
-            ...office, // Use the office as is
+            ...office,
             holder: office.holder,
             _conceptualSeatNumber: office.officeName.match(
               /\(Seat (\d+)\)/
@@ -168,12 +174,10 @@ const CityOverviewTab = () => {
       }
     });
 
-    // Now sort these conceptual council offices/members
     return allCouncilMembersForDisplay.sort((a, b) => {
       const officeNameA = a.officeName || "";
       const officeNameB = b.officeName || "";
 
-      // Prefer using _conceptualSeatNumber if available
       const seatNumA =
         a._conceptualSeatNumber ||
         (officeNameA.match(/\(Seat (\d+)\)/)?.[1]
@@ -198,35 +202,31 @@ const CityOverviewTab = () => {
         return officeNameA.localeCompare(officeNameB);
       }
     });
-  }, [governmentOffices, cityId]); // Depends on the global list and the current city's ID
+  }, [governmentOffices, cityId]);
 
-  // councilPartyComposition should now work correctly as it depends on the refined councilOffices
   const councilPartyComposition = useMemo(() => {
-    // ... (existing logic is likely fine if councilOffices is correct)
     if (!councilOffices || councilOffices.length === 0) return [];
     const partyData = {};
     councilOffices.forEach((office) => {
       const holder = office.holder;
       if (holder) {
         const partyName = holder.partyName || "Independent/Other";
-        // Ensure partyKey is robust, using partyId if available
-        const partyKey = holder.partyId || partyName; // Prioritize partyId for uniqueness
+        const partyKey = holder.partyId || partyName;
         if (!partyData[partyKey]) {
           partyData[partyKey] = {
             count: 0,
             color: holder.partyColor || "#CCCCCC",
-            id: holder.partyId || partyKey, // Store the ID used as key
-            name: partyName, // Store the display name
+            id: holder.partyId || partyKey,
+            name: partyName,
           };
         }
         partyData[partyKey].count++;
       }
     });
-    // Transform for pie chart: Use the stored name for display, not the partyKey if it was an ID
     return Object.values(partyData).map((data) => ({
       id: data.id,
-      name: data.name, // Use the stored display name
-      popularity: data.count, // 'popularity' here means seat count
+      name: data.name,
+      popularity: data.count,
       color: data.color,
     }));
   }, [councilOffices]);
@@ -243,51 +243,44 @@ const CityOverviewTab = () => {
 
   const formatOfficeTitleForDisplay = useCallback(
     (office, currentCityNameForDisplay) => {
-      if (!office || !office.officeName) return "Office"; // Default fallback
+      // Renamed param to currentLocationName for generic PoliticianCard
+      if (!office || !office.officeName) return "Office";
 
       let processedOfficeName = office.officeName;
 
-      // --- Step 1: Replace placeholders ---
       if (currentCityNameForDisplay) {
-        // Replace specific placeholder for Philippines
         if (processedOfficeName.includes("{cityNameOrMunicipalityName}")) {
           processedOfficeName = processedOfficeName.replace(
-            /{cityNameOrMunicipalityName}/g, // Global replace
+            /{cityNameOrMunicipalityName}/g,
             currentCityNameForDisplay
           );
         }
-        // Replace a more generic placeholder as well, if present
         if (processedOfficeName.includes("{cityName}")) {
           processedOfficeName = processedOfficeName.replace(
-            /{cityName}/g, // Global replace
+            /{cityName}/g,
             currentCityNameForDisplay
           );
         }
       }
-      // Now 'processedOfficeName' has the actual city/municipality name
 
       const officeNameLower = processedOfficeName.toLowerCase();
 
-      // --- Step 2: Handle Mayor ---
       if (office.officeNameTemplateId === "mayor") {
-        // After placeholder replacement, name might be "Mayor of ActualCity"
-        // You can decide if you want to keep "Mayor of ActualCity" or just "Mayor"
-        // For consistency with current code, returning just "Mayor"
         return `Mayor`;
       }
+      if (office.officeNameTemplateId === "vice_mayor") {
+        return `Vice Mayor`;
+      }
 
-      // --- Step 3: Handle City Council (or equivalent) ---
       if (
         office.officeNameTemplateId &&
         office.officeNameTemplateId.includes("city_council")
       ) {
-        // Pattern A: Explicitly numbered seats like "(Seat N)"
         const seatMatchNumeric = processedOfficeName.match(/\(Seat (\d+)\)/i);
         if (seatMatchNumeric && seatMatchNumeric[1]) {
           return `Council Seat ${seatMatchNumeric[1]}`;
         }
 
-        // Pattern B: "At-Large" variations (primarily for US, but kept for generality)
         if (
           officeNameLower.includes("at-large") ||
           officeNameLower.includes("at large")
@@ -321,13 +314,10 @@ const CityOverviewTab = () => {
           return "Council Member At-Large";
         }
 
-        // Pattern C: Named or numbered districts (e.g., "District A", "District 7", "Ward 3")
-        // Added "Distrito" for Philippines context
         const districtWordMatch = processedOfficeName.match(
           /(District|Distrito|Ward|Precinct|Area|Zone)\s+([A-Za-z0-9]+(?:-[A-Za-z0-9]+)?)/i
         );
         if (districtWordMatch && districtWordMatch[1] && districtWordMatch[2]) {
-          // Check if it's explicitly a council/sangguniang position
           if (
             officeNameLower.includes("council") ||
             officeNameLower.includes("sangguniang") ||
@@ -335,11 +325,9 @@ const CityOverviewTab = () => {
           ) {
             return `Council ${districtWordMatch[1]} ${districtWordMatch[2]}`;
           }
-          // If templateId implies council, and we found a district, format it as such
           return `Council ${districtWordMatch[1]} ${districtWordMatch[2]}`;
         }
 
-        // Pattern D: Simple seat number without "(Seat N)" (e.g. "Council Seat 1", "Konsehal 1")
         const simpleSeatMatch = processedOfficeName.match(
           /(?:Council\s*Seat|Seat|Councilmember|Konsehal)\s*(\d+)/i
         );
@@ -347,28 +335,21 @@ const CityOverviewTab = () => {
           return `Council Seat ${simpleSeatMatch[1]}`;
         }
 
-        // Pattern E: Philippines specific titles like "Sangguniang Panlungsod Member"
-        // After placeholder replacement, this might be "Sangguniang Panlungsod Member of Manila"
-        // We want to simplify it.
         if (officeNameLower.includes("sangguniang panlungsod member")) {
-          return "Sangguniang Panlungsod Member"; // Or "City Councilor"
+          return "Sangguniang Panlungsod Member";
         }
         if (officeNameLower.includes("sangguniang bayan member")) {
-          return "Sangguniang Bayan Member"; // Or "Municipal Councilor"
+          return "Sangguniang Bayan Member";
         }
         if (
           officeNameLower.startsWith("konsehal") &&
           officeNameLower.length <= 10
         ) {
-          // "Konsehal" (Councilor) might be standalone
-          return "Councilor"; // Or more specific like "City Councilor" based on context if available
+          return "Councilor";
         }
 
-        // Fallback: General cleanup - try to remove the (now substituted) city name if it's redundant
-        // and generic prefixes.
         let cleanedName = processedOfficeName;
         if (currentCityNameForDisplay) {
-          // More careful removal: only if it's clearly a prefix and part of a common structure
           const patternsToRemoveCity = [
             new RegExp(
               `^${currentCityNameForDisplay.replace(
@@ -400,7 +381,6 @@ const CityOverviewTab = () => {
           }
         }
 
-        // Remove common prefixes more generally
         cleanedName = cleanedName
           .replace(/^(City\s*Council|Council)\s*(Member|Seat)?\s*(-)?\s*/i, "")
           .trim();
@@ -411,12 +391,11 @@ const CityOverviewTab = () => {
           )
           .trim();
         cleanedName = cleanedName.replace(/^Konsehal\s*(-)?\s*/i, "").trim();
-        cleanedName = cleanedName.replace(/^-\s*/, "").trim(); // Leading hyphen
+        cleanedName = cleanedName.replace(/^-\s*/, "").trim();
 
         if (cleanedName.length > 0 && !cleanedName.match(/^\(Seat \d+\)$/i)) {
           const finalCleanedName =
             cleanedName.charAt(0).toUpperCase() + cleanedName.slice(1);
-          // Avoid prepending "Council" if it already implies a specific role like "District 1" or is generic enough
           if (
             !finalCleanedName.toLowerCase().startsWith("council") &&
             !finalCleanedName.toLowerCase().startsWith("district") &&
@@ -431,21 +410,59 @@ const CityOverviewTab = () => {
           return finalCleanedName;
         }
 
-        // Last resort generic titles if cleaning results in an empty string
         if (office.countryContext === "PH") {
-          // Hypothetical: if you add country context to office
           return officeNameLower.includes("bayan")
             ? "Municipal Councilor"
             : "City Councilor";
         }
-        return "City Council Member"; // Generic default
+        return "City Council Member";
       }
 
-      // Default for any other office types not caught above
-      return processedOfficeName; // Return the name after placeholder replacement
+      return processedOfficeName;
     },
     []
   );
+
+  const allCityOfficials = useMemo(() => {
+    const officials = [];
+    if (mayorOffice && mayorOffice.holder) {
+      officials.push({
+        ...mayorOffice,
+        holder: mayorOffice.holder,
+        type: "mayor",
+      });
+    }
+    if (viceMayorOffice && viceMayorOffice.holder) {
+      officials.push({
+        ...viceMayorOffice,
+        holder: viceMayorOffice.holder,
+        type: "vice_mayor",
+      });
+    }
+    councilOffices.forEach((office) => {
+      if (office.holder) {
+        officials.push({
+          ...office,
+          holder: office.holder,
+          type: "council",
+        });
+      }
+    });
+    return officials;
+  }, [mayorOffice, viceMayorOffice, councilOffices]);
+
+  const filteredOfficials = useMemo(() => {
+    if (governmentFilter === "all") {
+      return allCityOfficials;
+    } else if (governmentFilter === "mayor") {
+      return allCityOfficials.filter(
+        (o) => o.type === "mayor" || o.type === "vice_mayor"
+      );
+    } else if (governmentFilter === "council") {
+      return allCityOfficials.filter((o) => o.type === "council");
+    }
+    return [];
+  }, [allCityOfficials, governmentFilter]);
 
   const renderSubTabContent = () => {
     switch (activeSubTab) {
@@ -634,7 +651,6 @@ const CityOverviewTab = () => {
               </div>
               <div className="stat-item">
                 {" "}
-                {/* Optional: Add a display for cost per person */}
                 <strong>Cost Per Person (Healthcare):</strong>{" "}
                 <span className="stat-descriptor">
                   ${stats.healthcareCostPerPerson?.toFixed(2) || "N/A"}
@@ -675,11 +691,11 @@ const CityOverviewTab = () => {
                 <h4>City Budget & Taxes (Annual Estimate)</h4>
                 <div className="city-stats-grid two-col budget-summary-grid">
                   <div className="stat-item">
-                    <strong>Total Income:</strong> $
+                    <strong>Total Income:</strong> ${" "}
                     {budget.totalAnnualIncome?.toLocaleString() || "N/A"}
                   </div>
                   <div className="stat-item">
-                    <strong>Total Expenses:</strong> $
+                    <strong>Total Expenses:</strong> ${" "}
                     {budget.totalAnnualExpenses?.toLocaleString() || "N/A"}
                   </div>
                   <div className="stat-item">
@@ -799,75 +815,66 @@ const CityOverviewTab = () => {
       case "government":
         return (
           <section className="city-officials-section city-section">
-            <h4>City Government & Council</h4>
-            <div className="officials-layout">
-              <div className="officials-list-container">
-                {mayorOffice && mayorOffice.holder ? (
-                  <div className="official-entry mayor-entry">
-                    <strong>
-                      {formatOfficeTitleForDisplay(mayorOffice, cityName)}:{" "}
-                    </strong>
-                    <span
-                      className="politician-name-link"
-                      onClick={() => handlePoliticianClick(mayorOffice.holder)}
-                      title={`View profile of ${mayorOffice.holder.name}`}
-                    >
-                      {mayorOffice.holder.name}
-                    </span>
-                    {mayorOffice.holder.partyName &&
-                      ` (${mayorOffice.holder.partyName})`}
-                  </div>
-                ) : (
-                  <p>Mayor's office information not available or vacant.</p>
-                )}
+            <h4>City Government Officials</h4>
+            <div className="government-filter-buttons">
+              <button
+                onClick={() => setGovernmentFilter("all")}
+                className={governmentFilter === "all" ? "active" : ""}
+              >
+                All Officials
+              </button>
+              <button
+                onClick={() => setGovernmentFilter("mayor")}
+                className={governmentFilter === "mayor" ? "active" : ""}
+              >
+                Mayoral Offices
+              </button>
+              <button
+                onClick={() => setGovernmentFilter("council")}
+                className={governmentFilter === "council" ? "active" : ""}
+              >
+                City Council
+              </button>
+            </div>
 
-                {councilOffices.length > 0 ? (
-                  <div className="council-entries">
-                    <h5>City Council Members:</h5>
-                    <ul className="officials-list">
-                      {councilOffices.map((office) => (
-                        <li key={office.officeId} className="official-entry">
-                          <strong>
-                            {formatOfficeTitleForDisplay(office, cityName)}:{" "}
-                          </strong>
-                          <span
-                            className="politician-name-link"
-                            onClick={() => handlePoliticianClick(office.holder)}
-                            title={`View profile of ${office.holder.name}`}
-                          >
-                            {office.holder.name}
-                          </span>
-                          {office.holder.partyName &&
-                            ` (${office.holder.partyName})`}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : (
-                  (mayorOffice || governmentOffices.length > 0) && ( // Check for any government offices if mayor is also missing
-                    <p>
-                      City council member information not available or no seats
-                      filled/defined.
-                    </p>
-                  )
-                )}
-              </div>
-              {councilPartyComposition.length > 0 && (
-                <div className="council-pie-chart-container">
-                  <h5>Council Party Breakdown</h5>
-                  <div className="pie-chart-wrapper-council">
-                    <CouncilCompositionPieChart
-                      councilCompositionData={councilPartyComposition}
-                      themeColors={currentTheme?.colors}
-                      themeFonts={currentTheme?.fonts}
-                    />
-                  </div>
-                </div>
+            <div className="officials-cards-grid">
+              {filteredOfficials.length > 0 ? (
+                filteredOfficials.map((office) => (
+                  <PoliticianCard
+                    key={office.officeId}
+                    office={office}
+                    politician={office.holder}
+                    currentLocationName={cityName} // Pass cityName here
+                    formatOfficeTitle={formatOfficeTitleForDisplay}
+                    onClick={handlePoliticianClick}
+                  />
+                ))
+              ) : (
+                <p className="no-officials-message">
+                  No officials to display for this filter.
+                </p>
               )}
             </div>
+
+            {governmentFilter !== "mayor" && (
+              <>
+                {councilPartyComposition.length > 0 && (
+                  <div className="council-pie-chart-container">
+                    <h5>Council Party Breakdown</h5>
+                    <div className="pie-chart-wrapper-council">
+                      <CouncilCompositionPieChart
+                        councilCompositionData={councilPartyComposition}
+                        themeColors={currentTheme?.colors}
+                        themeFonts={currentTheme?.fonts}
+                      />
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
           </section>
         );
-      case "laws": // NEW SUB-TAB FOR CITY LAWS
+      case "laws":
         return (
           <section className="city-section city-laws-section">
             <h4>Current City Ordinances & Laws</h4>
@@ -878,7 +885,6 @@ const CityOverviewTab = () => {
                 {Object.entries(cityLaws).map(([key, value]) => (
                   <li key={`law-${key}`} className="law-item">
                     <span className="law-name">{formatBudgetKey(key)}:</span>{" "}
-                    {/* Re-using formatBudgetKey for consistency */}
                     <span className="law-value">
                       {formatLawValue(key, value)}
                     </span>
@@ -940,7 +946,6 @@ const CityOverviewTab = () => {
         >
           City Laws
         </button>{" "}
-        {/* NEW BUTTON */}
       </div>
 
       <div className="sub-tab-content-area">{renderSubTabContent()}</div>

@@ -1,0 +1,59 @@
+/* Politician Card Styles */
+.politician-card {
+  background-color: var(
+    --card-background
+  ); /* Assuming a card background variable */
+  border: 1px solid var(--card-border-color);
+  border-radius: var(--border-radius-medium);
+  padding: 15px;
+  text-align: center;
+  box-shadow: var(--shadow-small);
+  cursor: pointer;
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between; /* Pushes content apart if heights vary */
+  height: 100%; /* Ensures cards in a row have consistent height */
+  color: var(--text-color-primary); /* Ensure text color is set */
+}
+
+.politician-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-medium);
+}
+
+.politician-card .card-title {
+  font-size: 1.1em;
+  color: var(--text-color-heading);
+  margin-bottom: 10px;
+}
+
+.politician-card .politician-name {
+  font-size: 1em;
+  color: var(--text-color-primary);
+  margin: 5px 0;
+}
+
+.politician-card .politician-party {
+  font-size: 0.9em;
+  color: var(--text-color-secondary);
+  margin: 0;
+}
+
+/* Common grid for displaying cards */
+.officials-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(200px, 1fr)
+  ); /* Responsive grid */
+  gap: 20px; /* Space between cards */
+  padding: 10px 0;
+}
+
+.no-officials-message {
+  grid-column: 1 / -1; /* Make message span across all columns in a grid */
+  text-align: center;
+  color: var(--text-color-secondary);
+  padding: 20px;
+}

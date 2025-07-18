@@ -24,19 +24,46 @@ const PolicyVoteDetailsModal = ({ isOpen, onClose, proposalData }) => {
     }
 
     const getCouncilMemberDetails = (memberId) => {
-      const office = governmentOffices.find(
-        (off) =>
-          off.holder?.id === memberId &&
-          off.officeNameTemplateId.includes("council") && // Ensure they are a council member
-          off.officeName.includes(startingCityName)
-      );
-      return office?.holder
-        ? {
-            name: office.holder.name,
-            partyName: office.holder.partyName,
-            partyColor: office.holder.partyColor,
+      // Iterate through all government offices to find the specific memberId
+      for (const office of governmentOffices) {
+        // Case 1: The memberId is the holder of this specific office
+        if (office.holder?.id === memberId) {
+          // Ensure it's a council-related office if that's a necessary filter
+          // (Your original `find` had these checks, so we maintain that intent)
+          if (
+            office.officeNameTemplateId.includes("council") &&
+            office.officeName.includes(startingCityName)
+          ) {
+            return {
+              name: office.holder.name,
+              partyName: office.holder.partyName,
+              partyColor: office.holder.partyColor,
+            };
           }
-        : { name: `ID: ${memberId}`, partyName: "Unknown" };
+        }
+
+        // Case 2: The office has a list of members, and memberId is one of them
+        if (office.members && office.members.length > 0) {
+          // Find the specific member within this office's members array
+          const foundMember = office.members.find(
+            (member) => member.holder?.id === memberId
+          );
+
+          if (foundMember && foundMember.holder) {
+            // Ensure it's a council-related office if that's a necessary filter
+            if (office.officeNameTemplateId.includes("council")) {
+              return {
+                name: foundMember.holder.name,
+                partyName: foundMember.holder.partyName,
+                partyColor: foundMember.holder.partyColor,
+              };
+            }
+          }
+        }
+      }
+
+      // If no matching member/holder is found after checking all offices
+      return { name: `ID: ${memberId}`, partyName: "Unknown" };
     };
 
     const yeaVoters = (proposalData.votes.yea || []).map(

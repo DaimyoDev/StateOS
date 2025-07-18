@@ -167,6 +167,8 @@ export function normalizePolling(candidatesList = [], adultPopulation = 0) {
     const recognitionFraction = recognizedCount / safeAdultPopulation;
     const effectiveWeight = baseScore * recognitionFraction;
 
+    console.log(`  - nameRecognition: ${c.name} ${c.nameRecognition}`); //
+
     return {
       ...c,
       processedBaseScore: baseScore,
@@ -238,6 +240,7 @@ export function normalizePolling(candidatesList = [], adultPopulation = 0) {
     }
     normalizedCandidates = candidatesWithRawPolling;
   }
+
   return normalizedCandidates.sort(
     (a, b) => (b.polling || 0) - (a.polling || 0)
   );
@@ -1384,8 +1387,6 @@ export const calculateSeatDetailsForInstance = (
   let numberOfSeats = 0;
   let seatDistributionMethod = "single_winner";
 
-  console.log(entityPopulation);
-
   if (electionType.generatesOneWinner) {
     numberOfSeats = 1; // Always 1 for single-winner offices
   } else {
@@ -1615,6 +1616,7 @@ export const initializeElectionObject = ({
       politicalLeaning: electorateLeaning,
       stats: entityData.stats || {},
       politicalLandscape: entityPoliticalLandscape,
+      demographics: activeCampaign.startingCity.demographics.ageDemographics,
     },
 
     playerIsCandidate: false,

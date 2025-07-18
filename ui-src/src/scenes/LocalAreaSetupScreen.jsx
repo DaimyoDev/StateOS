@@ -121,7 +121,6 @@ function LocalAreaSetupScreen() {
         );
         return;
       }
-      console.log(availableCountries);
       // Call with all required arguments
       actions.finalizeLocalAreaAndStart(
         cityName.trim(),

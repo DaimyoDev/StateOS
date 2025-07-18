@@ -11,8 +11,6 @@ function DashboardTab({ campaignData }) {
     currentDate,
     startingCity,
     playerApproval,
-    campaignFunds, // Player's campaign-specific funds
-    treasury, // Player's personal/general funds
     currentOffice,
     elections = [],
   } = campaignData || {};
@@ -117,11 +115,11 @@ function DashboardTab({ campaignData }) {
           </p>
           <p>
             <strong>Campaign Funds:</strong> $
-            {campaignFunds?.toLocaleString() || 0}
+            {playerPolitician.campaignFunds?.toLocaleString() || 0}
           </p>
           <p>
             <strong>Personal Treasury:</strong> $
-            {treasury?.toLocaleString() || 0}
+            {playerPolitician.treasury?.toLocaleString() || 0}
           </p>
           {/* Could add ideology or a key attribute here */}
           <p>

@@ -1,8 +1,14 @@
 // ui-src/src/stores/campaignSlice.js
 import {
+  calculateBaseCandidateScore,
+  normalizePolling,
+} from "../utils/electionUtils.js";
+import {
   getRandomInt,
   calculateAdultPopulation,
+  createDateObj,
 } from "../utils/generalUtils.js";
+normalizePolling;
 
 export const createCampaignSlice = (set, get) => ({
   // --- State ---
@@ -52,6 +58,8 @@ export const createCampaignSlice = (set, get) => ({
         return;
       }
 
+      console.log(campaignSettings);
+
       const partyInfo =
         partyChoice.type === "independent"
           ? { type: "independent", name: "Independent", id: "independent" }
@@ -75,7 +83,7 @@ export const createCampaignSlice = (set, get) => ({
           staff: [],
           localIssues: [],
           politicalCapital: 10,
-          playerCampaignActionToday: false, // Tracks if a major action was taken
+          playerCampaignActionToday: false,
         },
         activeMainGameTab: "Dashboard",
         currentScene: "MainGame",
@@ -369,5 +377,78 @@ export const createCampaignSlice = (set, get) => ({
           ? { ...state.activeCampaign, viewingElectionNightForDate: null }
           : null,
       })),
+    processDailyCampaignEffects: () => {
+      set((state) => {
+        if (!state.activeCampaign) return {};
+
+        const currentCampaign = state.activeCampaign;
+        let playerPolitician = { ...currentCampaign.politician }; // Ensure we're working on a copy
+
+        // 1. Process active elections for polling updates
+        const updatedElections = currentCampaign.elections.map((election) => {
+          if (election.outcome?.status === "upcoming") {
+            // Recalculate polling for all candidates in upcoming elections
+            const electionAdultPop =
+              election.entityDataSnapshot?.population || 0;
+            const electionDemographics =
+              election.entityDataSnapshot?.demographics;
+            const adultPopForPolling = calculateAdultPopulation(
+              electionAdultPop,
+              electionDemographics?.ageDistribution
+            );
+
+            const candidatesWithUpdatedBaseScores = election.candidates.map(
+              (candidate) => {
+                return {
+                  ...candidate,
+                  baseScore:
+                    candidate.baseScore ||
+                    calculateBaseCandidateScore(
+                      candidate,
+                      election,
+                      currentCampaign
+                    ),
+                };
+              }
+            );
+
+            const normalizedCandidates = normalizePolling(
+              candidatesWithUpdatedBaseScores,
+              adultPopForPolling
+            );
+
+            // Check if election day is today
+            // Note: createDateObj is from generalUtils.js and must be imported or aliased from get().actions if in a different slice
+
+            const today = createDateObj(state.currentDate); // Using createDateObj imported directly
+            const electionDate = createDateObj(election.electionDate); // Using createDateObj imported directly
+
+            if (today === electionDate) {
+              // It's election day! Trigger results processing.
+              // This relies on processElectionResults being an action on the root `actions` object, usually from electionSlice.
+              get().actions.processElectionResults(election.id); // Assuming processElectionResults is exposed via get().actions
+              return {
+                ...election,
+                outcome: { ...election.outcome, status: "concluded" },
+              };
+            }
+
+            return { ...election, candidates: normalizedCandidates }; // Update candidates with new polling
+          }
+          return election;
+        });
+
+        // 2. Reset playerCampaignActionToday for the new day
+        playerPolitician.playerCampaignActionToday = false; // Reset for a new day
+
+        return {
+          activeCampaign: {
+            ...currentCampaign,
+            elections: updatedElections,
+            politician: playerPolitician, // Ensure the updated politician object is saved
+          },
+        };
+      });
+    },
   },
 });

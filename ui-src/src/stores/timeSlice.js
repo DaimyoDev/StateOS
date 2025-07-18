@@ -294,6 +294,8 @@ export const createTimeSlice = (set, get) => {
           return { activeCampaign: updatedCampaign }; // Return the fully updated campaign
         });
 
+        get().actions.processDailyCampaignEffects();
+
         // --- PHASE 3: Post-date-advancement operations (using the NEW date) ---
         // Get the campaign state AFTER the date advancement. This is crucial for monthly updates and AI.
         const campaignAfterDateAdvance = get().activeCampaign;
