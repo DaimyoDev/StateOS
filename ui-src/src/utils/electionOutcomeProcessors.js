@@ -82,7 +82,7 @@ export const allocateSeatsProportionally = (
       break;
     }
 
-    case "sainteLague":
+    case "SainteLague":
       {
         const sainteLagueQuotients = [];
         eligibleParties.forEach((party) => {

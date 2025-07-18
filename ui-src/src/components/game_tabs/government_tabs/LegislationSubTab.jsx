@@ -164,15 +164,31 @@ const LegislationSubTab = ({ campaignData }) => {
         {sortedProposedLegislation.length > 0 ? (
           <ul className="legislation-list">
             {sortedProposedLegislation.map((proposal) => {
-              const councilMembers =
+              const relevantCouncilOffices =
                 campaignData?.governmentOffices?.filter(
                   (off) =>
                     off.officeNameTemplateId.includes("council") &&
                     off.level === "local_city" &&
                     campaignData.startingCity?.name &&
                     off.officeName.includes(campaignData.startingCity.name) &&
-                    off.holder
+                    (off.holder || (off.members && off.members.length > 0))
                 ) || [];
+
+              // Flatten the list of members from all relevant council offices
+              const councilMembers = relevantCouncilOffices.flatMap(
+                (office) => {
+                  if (office.holder) {
+                    return [office.holder];
+                  }
+                  if (office.members) {
+                    return office.members;
+                  }
+                  return [];
+                }
+              );
+
+              console.log(proposal);
+
               const totalCouncilVotesPossible = councilMembers.length;
               const yeaVotes = proposal.votes?.yea?.length || 0;
               const nayVotes = proposal.votes?.nay?.length || 0;
