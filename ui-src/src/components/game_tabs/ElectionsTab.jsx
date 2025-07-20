@@ -64,7 +64,6 @@ const ConcludedPartyResultItem = React.memo(
       color: "#888",
       name: partyResult.name || partyResult.id,
     };
-    console.log(partyResult);
     return (
       <li className="party-item">
         <span

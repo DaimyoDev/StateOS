@@ -155,6 +155,7 @@ export function normalizePolling(candidatesList = [], adultPopulation = 0) {
   if (!candidatesList || candidatesList.length === 0) {
     return [];
   }
+
   const safeAdultPopulation = Math.max(1, adultPopulation);
 
   const candidatesWithEffectiveWeights = candidatesList.map((c) => {
@@ -166,8 +167,6 @@ export function normalizePolling(candidatesList = [], adultPopulation = 0) {
     );
     const recognitionFraction = recognizedCount / safeAdultPopulation;
     const effectiveWeight = baseScore * recognitionFraction;
-
-    console.log(`  - nameRecognition: ${c.name} ${c.nameRecognition}`); //
 
     return {
       ...c,

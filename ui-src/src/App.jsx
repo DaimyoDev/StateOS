@@ -10,6 +10,7 @@ import LocalAreaSetupScreen from "./scenes/LocalAreaSetupScreen";
 import CampaignGameScreen from "./scenes/CampaignGameScreen";
 import ElectionNightScreen from "./scenes/ElectionNightScreen";
 import ThemeCreatorEditor from "./scenes/ThemeCreatorEditor";
+import ElectionSimulatorScreen from "./scenes/ElectionSimulatorScreen";
 import "./App.css";
 import ToastContainer from "./components/toasts/ToastContainer";
 
@@ -53,6 +54,8 @@ function App() {
         return <ElectionNightScreen />;
       case "ThemeCreatorEditor": // New case for the theme editor
         return <ThemeCreatorEditor />; //
+      case "ElectionSimulatorScreen":
+        return <ElectionSimulatorScreen />;
       default:
         console.warn(`Unknown scene: ${currentScene}, defaulting to MainMenu.`);
         return <MainMenu />; // Default to main menu

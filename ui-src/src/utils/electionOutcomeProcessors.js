@@ -350,8 +350,14 @@ export const processPartyListPRResults = ({
         partyWinners.forEach((indivCand) => {
           if (indivCand?.id && indivCand.name) {
             const partyData = allPartiesInGame.find((p) => p.id === partyId);
+            const cleanedName = indivCand.name.replace(
+              /\s+\(.*List\s+#\d+\)/,
+              ""
+            ); // Remove "(Party Name List #X)"
+            console.log(cleanedName);
             determinedWinnersArray.push({
               ...indivCand,
+              name: cleanedName, // Use the cleaned name
               partyId: partyId,
               partyName: partyData?.name || indivCand.partyName,
               partyColor: partyData?.color || indivCand.partyColor,
@@ -709,8 +715,10 @@ export const processMMPResults = ({
 
       listWinners.forEach((indivCand) => {
         const partyData = allPartiesInGame.find((p) => p.id === partyId);
+        const cleanedName = indivCand.name.replace(/\s+\(.*List\s+#\d+\)/, ""); // Remove "(Party Name List #X)"
         determinedWinnersArray.push({
           ...indivCand,
+          name: cleanedName, // Use the cleaned name
           partyId: partyId,
           partyName: partyData?.name || indivCand.partyName,
           partyColor: partyData?.color || indivCand.partyColor,

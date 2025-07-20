@@ -16,69 +16,65 @@ const updateTargetPolitician = (state, politicianId, updateFn) => {
   let campaignWasModified = false;
   let newActiveCampaign = { ...state.activeCampaign };
 
-  if (!politicianId || politicianId === state.activeCampaign.politician?.id) {
-    // Target is the player
-    if (state.activeCampaign.politician) {
-      const updatedPlayerPolitician = updateFn(state.activeCampaign.politician);
-      if (updatedPlayerPolitician !== state.activeCampaign.politician) {
-        // Check if updateFn actually changed something
-        newActiveCampaign.politician = updatedPlayerPolitician;
-        campaignWasModified = true;
-      }
-    }
-  } else {
-    // Target is an AI politician; search in elections and offices
-    let foundAndUpdatedInElections = false;
-    if (newActiveCampaign.elections) {
-      newActiveCampaign.elections = newActiveCampaign.elections.map(
-        (election) => {
-          if (election.candidates) {
-            let specificCandidateUpdated = false;
-            const newCandidates = election.candidates.map((candidate) => {
-              if (candidate.id === politicianId) {
-                const updatedAICandidate = updateFn(candidate);
-                if (updatedAICandidate !== candidate) {
-                  specificCandidateUpdated = true;
-                  foundAndUpdatedInElections = true; // Mark that we found and potentially updated
-                  return updatedAICandidate;
-                }
-              }
-              return candidate;
-            });
-            if (specificCandidateUpdated) {
-              return { ...election, candidates: newCandidates };
-            }
-          }
-          return election;
-        }
-      );
-    }
+  // Determine the actual politician ID to target (player's ID or passed ID)
+  // This ensures we have a concrete ID to search for across arrays
+  const actualPoliticianId =
+    politicianId || state.activeCampaign.politician?.id;
 
-    // Also check/update in governmentOffices if they are stored there with all stats
-    // This assumes that the AI politician object in elections and offices might be the same reference
-    // or that we need to update both if they are separate but represent the same AI.
-    // For simplicity, if found in elections, we might assume that's the primary campaign-relevant object.
-    // If not found in elections, check offices.
-    if (!foundAndUpdatedInElections && newActiveCampaign.governmentOffices) {
-      newActiveCampaign.governmentOffices =
-        newActiveCampaign.governmentOffices.map((office) => {
-          if (office.holder?.id === politicianId) {
-            const updatedAIHolder = updateFn(office.holder);
-            if (updatedAIHolder !== office.holder) {
-              // console.log(`Updating AI ${politicianId} in office ${office.officeName}`);
-              return { ...office, holder: updatedAIHolder };
-            }
-          }
-          return office;
-        });
+  // 1. Handle player politician first (main object in activeCampaign.politician)
+  // This block only runs if the target is the player (politicianId is null or player's ID)
+  if (!politicianId && newActiveCampaign.politician) {
+    const updatedPlayerPolitician = updateFn(newActiveCampaign.politician);
+    if (updatedPlayerPolitician !== newActiveCampaign.politician) {
+      newActiveCampaign.politician = updatedPlayerPolitician;
+      campaignWasModified = true;
     }
-    campaignWasModified =
-      foundAndUpdatedInElections ||
-      newActiveCampaign.governmentOffices !==
-        state.activeCampaign.governmentOffices;
   }
 
-  return campaignWasModified ? newActiveCampaign : state.activeCampaign; // Return original state.activeCampaign if no changes
+  // 2. Handle updates in elections array for both player AND AI
+  if (newActiveCampaign.elections) {
+    newActiveCampaign.elections = newActiveCampaign.elections.map(
+      (election) => {
+        if (election.candidates) {
+          let specificCandidateUpdatedInElection = false;
+          const newCandidates = election.candidates.map((candidate) => {
+            // If this candidate matches the target politician (player or AI)
+            if (candidate.id === actualPoliticianId) {
+              const updatedCandidate = updateFn(candidate); // Apply updateFn to the candidate object
+              if (updatedCandidate !== candidate) {
+                specificCandidateUpdatedInElection = true;
+                campaignWasModified = true; // Mark overall campaign as modified
+                return updatedCandidate;
+              }
+            }
+            return candidate;
+          });
+          if (specificCandidateUpdatedInElection) {
+            // Only return a new election object if its candidates array was modified
+            return { ...election, candidates: newCandidates };
+          }
+        }
+        return election; // Return original election if no candidates or no update
+      }
+    );
+  }
+
+  // 3. Handle updates in governmentOffices (primarily for AI, but robust for player if they hold office)
+  if (newActiveCampaign.governmentOffices) {
+    newActiveCampaign.governmentOffices =
+      newActiveCampaign.governmentOffices.map((office) => {
+        if (office.holder?.id === actualPoliticianId) {
+          const updatedHolder = updateFn(office.holder);
+          if (updatedHolder !== office.holder) {
+            campaignWasModified = true; // Mark overall campaign as modified
+            return { ...office, holder: updatedHolder };
+          }
+        }
+        return office; // Return original office if no holder or no update
+      });
+  }
+
+  return campaignWasModified ? newActiveCampaign : state.activeCampaign;
 };
 
 export const createCampaignActionsSlice = (set, get) => {

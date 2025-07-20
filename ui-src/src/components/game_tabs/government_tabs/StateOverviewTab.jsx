@@ -180,8 +180,6 @@ const StateOverviewTab = ({ campaignData }) => {
         (office.officeId.includes("state_hr") ||
           office.officeId.includes("state_senate"));
 
-      console.log(office);
-
       if (isStateLegislativeOffice) {
         console.log(isStateLegislativeOffice);
         if (office.members && office.members.length > 0) {

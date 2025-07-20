@@ -26,7 +26,7 @@ function MainMenu() {
         </button>
         <button
           className="menu-button"
-          onClick={() => actions.navigateTo("ElectionSimScreen")}
+          onClick={() => actions.navigateTo("ElectionSimulatorScreen")}
         >
           Election Simulator
         </button>
