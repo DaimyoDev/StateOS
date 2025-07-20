@@ -10,6 +10,7 @@ import {
   GENERIC_ADJECTIVES,
   GENERIC_NOUNS,
   ABSTRACT_NOUNS,
+  IDEOLOGY_DEFINITIONS,
 } from "../data/ideologiesData.js";
 import { generateId, getRandomElement, getRandomInt } from "./generalUtils.js";
 import { POLICY_QUESTIONS } from "../data/policyData.js";
@@ -29,7 +30,9 @@ import {
   handlePartyListPRParticipants,
   handleMMPParticipants,
   handleMMDParticipants,
-} from "./electionSystems.js"; // Adjust path if needed
+} from "./electionSystems.js";
+import { calculateIdeologyFromStances } from "../stores/politicianSlice.js";
+import { calculateInitialPolling } from "../General Scripts/PollingFunctions.js";
 
 /**
  * Calculates the number of seats for a given election type and city population.
@@ -144,107 +147,6 @@ export const generateAICandidateNameForElection = (countryId) => {
 };
 
 /**
- * Normalizes candidate base scores into polling percentages (0-100).
- * Expects each candidate in candidatesList to have a 'baseScore' property.
- * Adds/updates a 'polling' property on each candidate.
- *
- * @param {Array<object>} candidatesList - List of candidate objects, each with a 'baseScore'.
- * @returns {Array<object>} Candidates list with 'polling' percentages, sorted by polling descending.
- */
-export function normalizePolling(candidatesList = [], adultPopulation = 0) {
-  if (!candidatesList || candidatesList.length === 0) {
-    return [];
-  }
-
-  const safeAdultPopulation = Math.max(1, adultPopulation);
-
-  const candidatesWithEffectiveWeights = candidatesList.map((c) => {
-    const baseScore = Number(c.baseScore) >= 0 ? Number(c.baseScore) : 1;
-
-    const recognizedCount = Math.min(
-      c.nameRecognition || 0,
-      safeAdultPopulation
-    );
-    const recognitionFraction = recognizedCount / safeAdultPopulation;
-    const effectiveWeight = baseScore * recognitionFraction;
-
-    return {
-      ...c,
-      processedBaseScore: baseScore,
-      recognitionFraction: recognitionFraction,
-      effectiveWeight: effectiveWeight,
-    };
-  });
-
-  const totalEffectiveWeight = candidatesWithEffectiveWeights.reduce(
-    (sum, candidate) => sum + candidate.effectiveWeight,
-    0
-  );
-
-  let normalizedCandidates;
-
-  if (totalEffectiveWeight === 0) {
-    const numCandidates = candidatesWithEffectiveWeights.length;
-    if (numCandidates === 0) return [];
-
-    const equalShare = Math.floor(100 / numCandidates);
-    let remainderPoints = 100 % numCandidates;
-    normalizedCandidates = candidatesWithEffectiveWeights.map(
-      (candidate, idx) => {
-        const pollingValue = equalShare + (idx < remainderPoints ? 1 : 0);
-        remainderPoints -= idx < remainderPoints ? 1 : 0;
-        return {
-          ...candidate,
-          polling: pollingValue,
-          rawPolling: pollingValue,
-          remainder: 0,
-        };
-      }
-    );
-  } else {
-    const candidatesWithRawPolling = candidatesWithEffectiveWeights.map(
-      (candidate) => {
-        const rawPolling =
-          (candidate.effectiveWeight / totalEffectiveWeight) * 100;
-        return { ...candidate, rawPolling };
-      }
-    );
-    candidatesWithRawPolling.forEach((candidate) => {
-      candidate.polling = Math.floor(candidate.rawPolling);
-      candidate.remainder = candidate.rawPolling - candidate.polling;
-    });
-
-    let sumOfFlooredPolling = candidatesWithRawPolling.reduce(
-      (sum, candidate) => sum + candidate.polling,
-      0
-    );
-    let deficit = 100 - sumOfFlooredPolling;
-
-    candidatesWithRawPolling.sort((a, b) => {
-      if (b.remainder !== a.remainder) {
-        return b.remainder - a.remainder;
-      }
-      if (b.effectiveWeight !== a.effectiveWeight) {
-        return b.effectiveWeight - a.effectiveWeight;
-      }
-      return b.processedBaseScore - a.processedBaseScore;
-    });
-
-    for (let i = 0; i < deficit; i++) {
-      const candidateToAdjust =
-        candidatesWithRawPolling[i % candidatesWithRawPolling.length];
-      if (candidateToAdjust) {
-        candidateToAdjust.polling++;
-      }
-    }
-    normalizedCandidates = candidatesWithRawPolling;
-  }
-
-  return normalizedCandidates.sort(
-    (a, b) => (b.polling || 0) - (a.polling || 0)
-  );
-}
-/**
  * Generates AI candidates for an election.
  * @param {number} minChallengers - Minimum number of AI challengers.
  * @param {number} maxChallengers - Maximum number of AI challengers.
@@ -281,10 +183,9 @@ export function generateAICandidates(
   ) {
     const incumbentFundsStr = getRandomElement(["Moderate", "High", "High"]); // Incumbents tend to have more
     candidates.push({
-      ...incumbentFullDetails, // Spread the full politician details
-      // baseScore will be calculated later by the caller (generateScheduledElections)
-      polling: 0, // Initial polling, will be set by normalizePolling based on baseScore
-      campaignFunds: getNumericalCampaignFunds(incumbentFundsStr), // Assign numerical funds
+      ...incumbentFullDetails,
+      polling: 0,
+      campaignFunds: getNumericalCampaignFunds(incumbentFundsStr),
       isIncumbent: true,
       isPlayer: false,
     });
@@ -338,9 +239,17 @@ export function generateAICandidates(
     }
 
     const newChallengerPolitician = generateFullAIPolitician(
-      assignedPartyForChallenger,
+      countryId,
+      countryParties,
+      POLICY_QUESTIONS,
+      IDEOLOGY_DEFINITIONS,
+      assignedPartyForChallenger.id,
+      null,
+      null,
       false,
-      countryId
+      null,
+      null,
+      null
     );
 
     if (candidates.some((c) => c.name === newChallengerPolitician.name)) {
@@ -611,71 +520,65 @@ export function distributeVotesToCandidates(
   return tempCandidates;
 }
 
-const calculateAIPoliticianIdeology = (stances, basePartyIdeology = null) => {
-  if (basePartyIdeology && Math.random() < 0.7) {
-    // 70% chance to align with party if provided
-    return basePartyIdeology;
-  }
-  // Simplified: pick a random base ideology or derive from a few key stances
-  // For now, let's just use a random base ideology if not strongly tied to party
-  let socialScore = 0;
-  let economicScore = 0;
-  let N = 0;
-  POLICY_QUESTIONS.forEach((pq) => {
-    const selectedOptionValue = stances[pq.id];
-    if (selectedOptionValue) {
-      N++;
-      const selectedOptionData = pq.options.find(
-        (opt) => opt.value === selectedOptionValue
-      );
-      if (selectedOptionData && selectedOptionData.ideologyEffect) {
-        socialScore += selectedOptionData.ideologyEffect.social || 0;
-        economicScore += selectedOptionData.ideologyEffect.economic || 0;
-      }
-    }
-  });
-
-  if (N === 0 && basePartyIdeology) return basePartyIdeology;
-  if (N === 0) return getRandomElement(BASE_IDEOLOGIES)?.name || "Centrist";
-
-  // Simplified logic (can be expanded like your player's recalculateIdeology)
-  if (socialScore > N * 0.2 && economicScore < -N * 0.2) return "Progressive";
-  if (socialScore < -N * 0.2 && economicScore > N * 0.2) return "Conservative";
-  if (Math.abs(socialScore) < N * 0.1 && Math.abs(economicScore) < N * 0.1)
-    return "Centrist";
-  // Add more conditions or fall back to a random base ideology
-  return getRandomElement(BASE_IDEOLOGIES)?.name || "Centrist";
-};
-
 export function generateFullAIPolitician(
-  assignedPartyInfo = null,
+  countryId,
+  allPartiesInScope,
+  policyQuestionsData = POLICY_QUESTIONS, //
+  ideologyData = IDEOLOGY_DEFINITIONS, //
+  forcePartyId = null,
+  forceFirstName = null,
+  forceLastName = null,
   isIncumbent = false,
-  countryId
+  // NEW: Electorate data for polling calculation
+  electorateIdeologyCenter = null,
+  electorateIdeologySpread = null,
+  electorateIssueStances = null
 ) {
-  const fullName = generateAICandidateNameForElection(countryId);
+  // Party Assignment
+  const chosenParty = forcePartyId
+    ? allPartiesInScope.find((p) => p.id === forcePartyId)
+    : getRandomElement(allPartiesInScope); //
+
+  const partyId = chosenParty?.id || "independent";
+  const partyName = chosenParty?.name || "Independent";
+  const partyColor = chosenParty?.color || "#888888";
+
+  // Name Generation
+  const fullName = generateAICandidateNameForElection(countryId); //
   const nameParts = fullName.split(" ");
   const firstName =
-    nameParts[0] === "AI" && nameParts[1] === "Candidate" ? "AI" : nameParts[0]; // Handle fallback case
+    forceFirstName ||
+    (nameParts[0] === "AI" && nameParts[1] === "Candidate"
+      ? "AI"
+      : nameParts[0]);
   const lastName =
-    nameParts[0] === "AI" && nameParts[1] === "Candidate"
+    forceLastName ||
+    (nameParts[0] === "AI" && nameParts[1] === "Candidate"
       ? "Candidate"
-      : nameParts.slice(1).join(" ") || `LastName_${generateId()}`;
+      : nameParts.slice(1).join(" ") || `LastName_${generateId()}`); //
 
+  // Policy Stances (randomly generated for AI)
   const policyStances = {};
-  POLICY_QUESTIONS.forEach((question) => {
+  // FIX: Ensure policyQuestionsData is not null before forEach
+  (policyQuestionsData || []).forEach((question) => {
+    //
     if (question.options && question.options.length > 0) {
-      policyStances[question.id] = getRandomElement(question.options).value;
+      policyStances[question.id] = getRandomElement(question.options).value; //
     }
   });
 
-  const partyIdeology = assignedPartyInfo?.ideology;
-  const calculatedIdeology = calculateAIPoliticianIdeology(
-    policyStances,
-    partyIdeology
-  );
+  // Ideology Calculation: Use global calculateIdeologyFromStances
+  const { ideologyName: calculatedIdeology, scores: ideologyScores } =
+    calculateIdeologyFromStances(
+      policyStances,
+      policyQuestionsData,
+      ideologyData,
+      chosenParty?.ideologyScores
+    );
 
+  // Attributes (randomly generated)
   const attributes = {
-    charisma: getRandomInt(3, 8),
+    charisma: getRandomInt(3, 8), //
     integrity: getRandomInt(2, 7),
     intelligence: getRandomInt(4, 9),
     negotiation: getRandomInt(3, 8),
@@ -683,6 +586,7 @@ export function generateFullAIPolitician(
     fundraising: getRandomInt(2, 7),
   };
 
+  // Background (randomly generated)
   const educationLevels = [
     "High School Diploma",
     "Bachelor's Degree",
@@ -697,79 +601,88 @@ export function generateFullAIPolitician(
     "Local Bureaucrat",
     "Academic",
   ];
-  const actualEducation = getRandomElement(educationLevels);
-  const actualCareer = getRandomElement(careerPaths);
-
+  const actualEducation = getRandomElement(educationLevels); //
+  const actualCareer = getRandomElement(careerPaths); //
   const background = {
     education: actualEducation,
     career: actualCareer,
     narrative: `A dedicated public servant with a focus on community values and pragmatic solutions. Hopes to bring positive change through collaboration and hard work. Started their political journey after a career as a ${actualCareer.toLowerCase()}, building on a foundation from their ${actualEducation.toLowerCase()}.`,
   };
 
+  // Name Recognition (based on incumbency and party affiliation)
   let initialNameRecognition = 0;
   if (isIncumbent) {
-    initialNameRecognition = getRandomInt(15000, 75000);
+    initialNameRecognition = getRandomInt(15000, 75000); //
   } else {
-    if (assignedPartyInfo && assignedPartyInfo.name !== "Independent") {
+    if (chosenParty && chosenParty.name !== "Independent") {
       initialNameRecognition = getRandomInt(2000, 15000);
     } else {
       initialNameRecognition = getRandomInt(500, 5000);
     }
   }
-  // If adultPopulationForContext were available:
-  // initialNameRecognition = Math.floor(adultPopulationForContext * (isIncumbent ? getRandomInt(10,30)/100 : getRandomInt(1,5)/100));
 
-  const campaignHoursPerDayForAI = getRandomInt(6, 10); // AIs might have different daily hours
+  // AI Campaign Hours
+  const campaignHoursPerDayForAI = getRandomInt(6, 10); //
 
-  return {
-    id: `ai_pol_${generateId()}`,
+  const newPolitician = {
+    id: `ai_pol_${generateId()}`, //
     firstName: firstName,
     lastName: lastName,
     name: fullName,
-    age: getRandomInt(35, 70),
+    age: getRandomInt(35, 70), //
     attributes: attributes,
     policyStances: policyStances,
     background: background,
-    calculatedIdeology: calculatedIdeology,
+    calculatedIdeology,
+    ideologyScores, // Store the detailed scores
 
-    partyId: assignedPartyInfo?.id || `independent_ai_${generateId()}`,
-    partyName: assignedPartyInfo?.name || "Independent",
-    partyColor: assignedPartyInfo?.color || "#888888",
+    partyId: partyId, // Assigned from chosenParty or Independent fallback
+    partyName: partyName, // Assigned from chosenParty or Independent fallback
+    partyColor: partyColor, // Assigned from chosenParty or Independent fallback
 
-    isIncumbent: isIncumbent, // Contextual flag for generation
+    isIncumbent: isIncumbent,
     isPlayer: false,
 
-    // Initializing stats based on getInitialCreatingPoliticianState structure
-    politicalCapital: getRandomInt(5, 30), // AIs start with some
+    politicalCapital: getRandomInt(5, 30), //
     nameRecognition: initialNameRecognition,
-    treasury: getRandomInt(5000, 50000), // Personal funds
+    treasury: getRandomInt(5000, 50000),
     campaignFunds: isIncumbent
       ? getRandomInt(10000, 75000)
-      : getRandomInt(500, 10000), // Seed money
-    approvalRating: getRandomInt(35, 60), // Baseline approval
-    mediaBuzz: getRandomInt(0, 20), // Start with low to moderate buzz
+      : getRandomInt(500, 10000), //
+    approvalRating: getRandomInt(35, 60), //
+    mediaBuzz: getRandomInt(0, 20), //
     partySupport:
-      assignedPartyInfo && assignedPartyInfo.name !== "Independent"
-        ? getRandomInt(30, 75)
+      chosenParty && chosenParty.name !== "Independent"
+        ? getRandomInt(30, 75) //
         : 0,
-    currentOffice: null, // This is typically set when they win an election and take office
+    currentOffice: null,
 
-    // Hour-based campaign system fields
     campaignHoursPerDay: campaignHoursPerDayForAI,
-    campaignHoursRemainingToday: campaignHoursPerDayForAI, // Start with full hours
+    campaignHoursRemainingToday: campaignHoursPerDayForAI,
 
-    // Other campaign-related fields from your recent getInitialCreatingPoliticianState
     hiredStaff: [],
-    volunteerCount: isIncumbent ? getRandomInt(10, 50) : getRandomInt(0, 15),
+    volunteerCount: isIncumbent ? getRandomInt(10, 50) : getRandomInt(0, 15), //
     advertisingBudgetMonthly: 0,
-    currentAdStrategy: {
-      focus: "none",
-      targetId: null,
-      intensity: 0, // AIs will determine their strategy
-    },
-    isInCampaign: false, // Your added field, defaulting to false
-    // campaignActionToday: false, // This is replaced by the hour system
+    currentAdStrategy: { focus: "none", targetId: null, intensity: 0 },
+    isInCampaign: false,
   };
+
+  // Calculate initial polling for the new politician object using calculateInitialPolling
+  // Pass electorate data here
+  const calculatedPolling = calculateInitialPolling(
+    newPolitician,
+    countryId,
+    allPartiesInScope,
+    policyQuestionsData,
+    ideologyData,
+    electorateIdeologyCenter, // Pass new parameters
+    electorateIdeologySpread, // Pass new parameters
+    electorateIssueStances // Pass new parameters
+  );
+
+  newPolitician.polling = calculatedPolling.totalScore;
+
+  return newPolitician;
 }
 
 export function calculateBaseCandidateScore(candidate, election, campaignData) {
@@ -1046,7 +959,20 @@ export const generateRandomOfficeHolder = (
       color: "#888888",
     };
   }
-  const officeHolder = generateFullAIPolitician(partyInfo, false, countryId);
+  const officeHolder = generateFullAIPolitician(
+    countryId,
+    countryParties,
+    POLICY_QUESTIONS,
+    IDEOLOGY_DEFINITIONS,
+    partyInfo.id,
+    null,
+    null,
+    false,
+    null,
+    null,
+    null
+  );
+
   let policyFocus = null;
   // Assign a policy focus, especially if it's a significant role like Mayor
   if (officeTitle.toLowerCase().includes("mayor")) {
@@ -1447,13 +1373,36 @@ export const generateElectionParticipants = ({
   incumbentInfo,
   numberOfSeatsToFill,
   countryId,
-  activeCampaign, // <--- NEW PARAMETER
-  electionPropertiesForScoring, // <--- NEW PARAMETER
-  entityPopulation, // <--- NEW PARAMETER
+  activeCampaign, // This object holds the campaign's current state, including startingCity/electorate data
+  electionPropertiesForScoring,
+  entityPopulation,
 }) => {
   const system = electionType.electoralSystem;
 
-  // Consolidate parameters for the system-specific handlers
+  // Derive electorate context for this election instance from activeCampaign or sensible defaults
+  // In campaign mode, electorate data would typically come from the startingCity/region data snapshot.
+  // We'll use currentCampaignSetup's electorate settings first if available, otherwise city/entity stats, then neutral defaults.
+  const electorateIdeologyCenter =
+    activeCampaign?.currentCampaignSetup?.electorateIdeologyCenter || // From explicit setup
+    activeCampaign?.startingCity?.stats?.electorateIdeologyCenter || // From starting city/entity
+    Object.keys(IDEOLOGY_DEFINITIONS.centrist.idealPoint).reduce(
+      (acc, axis) => ({ ...acc, [axis]: 0 }),
+      {}
+    ); // Default neutral
+
+  const electorateIdeologySpread =
+    activeCampaign?.currentCampaignSetup?.electorateIdeologySpread || // From explicit setup
+    activeCampaign?.startingCity?.stats?.electorateIdeologySpread || // From starting city/entity
+    Object.keys(IDEOLOGY_DEFINITIONS.centrist.idealPoint).reduce(
+      (acc, axis) => ({ ...acc, [axis]: 1 }),
+      {}
+    ); // Default neutral spread
+
+  const electorateIssueStances =
+    activeCampaign?.currentCampaignSetup?.electorateIssueStances || // From explicit setup
+    activeCampaign?.startingCity?.stats?.electoratePolicyProfile || // From starting city/entity
+    POLICY_QUESTIONS.reduce((acc, q) => ({ ...acc, [q.id]: 0 }), {}); // Default to all zeros
+
   const handlerParams = {
     electionType,
     partiesInScope,
@@ -1463,6 +1412,9 @@ export const generateElectionParticipants = ({
     activeCampaign,
     electionPropertiesForScoring,
     entityPopulation,
+    electorateIdeologyCenter,
+    electorateIdeologySpread,
+    electorateIssueStances,
   };
 
   switch (system) {
@@ -1476,13 +1428,12 @@ export const generateElectionParticipants = ({
       return handleMMPParticipants(handlerParams);
     case "SNTV_MMD":
     case "BlockVote":
-    case "PluralityMMD": // Assuming PluralityMMD also uses the MMD handler
+    case "PluralityMMD":
       return handleMMDParticipants(handlerParams);
     default:
       console.warn(
         `[generateElectionParticipants] Unknown electoral system: ${system}. Defaulting to FPTP participant generation logic as a fallback.`
       );
-      // Fallback to FPTP handler for any unhandled system, which typically returns individual candidates.
       return handleFPTPParticipants(handlerParams);
   }
 };

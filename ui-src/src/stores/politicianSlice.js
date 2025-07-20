@@ -43,9 +43,10 @@ const getInitialCreatingPoliticianState = () => ({
 
 // --- Helper Function (Stays outside the slice) ---
 export function calculateIdeologyFromStances(
-  stances,
+  stances, // This parameter is now optional for external calls if initialScores are provided
   policyQuestionsData,
-  ideologyData
+  ideologyData,
+  initialScores = null // NEW: Optional parameter to pass pre-calculated scores
 ) {
   const AXES = [
     "economic",
@@ -61,54 +62,62 @@ export function calculateIdeologyFromStances(
     "rural_priority",
     "governance_approach",
   ];
-  const currentScores = {};
-  const questionsWithNonZeroEffectOnAxis = {};
-  AXES.forEach((axis) => {
-    currentScores[axis] = 0;
-    questionsWithNonZeroEffectOnAxis[axis] = 0;
-  });
-  let totalQuestionsWithAnyEffectAnswered = 0;
 
-  policyQuestionsData.forEach((pq) => {
-    const selectedOptionValue = stances[pq.id];
-    if (selectedOptionValue) {
-      const selectedOptionData = (pq.options || []).find(
-        (opt) => opt && opt.value === selectedOptionValue
-      );
-      const effects =
-        selectedOptionData?.axis_effects || selectedOptionData?.ideologyEffect;
-      if (effects && typeof effects === "object") {
-        let questionContributed = false;
-        AXES.forEach((axis) => {
-          const effectValue = effects[axis];
-          if (typeof effectValue === "number") {
-            currentScores[axis] += effectValue;
-            if (effectValue !== 0) {
-              questionsWithNonZeroEffectOnAxis[axis]++;
-              questionContributed = true;
+  let normalizedScores = {};
+
+  if (initialScores) {
+    // If initialScores are provided, use them directly
+    normalizedScores = { ...initialScores };
+  } else {
+    // Original logic: calculate scores from stances
+    stances = stances || {}; // Ensure stances is an object, not null
+    const currentScores = {};
+    const questionsWithNonZeroEffectOnAxis = {};
+    AXES.forEach((axis) => {
+      currentScores[axis] = 0;
+      questionsWithNonZeroEffectOnAxis[axis] = 0;
+    });
+    let totalQuestionsWithAnyEffectAnswered = 0;
+
+    policyQuestionsData.forEach((pq) => {
+      const selectedOptionValue = stances[pq.id];
+      if (selectedOptionValue) {
+        const selectedOptionData = (pq.options || []).find(
+          (opt) => opt && opt.value === selectedOptionValue
+        );
+        const effects =
+          selectedOptionData?.axis_effects ||
+          selectedOptionData?.ideologyEffect;
+        if (effects && typeof effects === "object") {
+          let questionContributed = false;
+          AXES.forEach((axis) => {
+            const effectValue = effects[axis];
+            if (typeof effectValue === "number") {
+              currentScores[axis] += effectValue;
+              if (effectValue !== 0) {
+                questionsWithNonZeroEffectOnAxis[axis]++;
+                questionContributed = true;
+              }
             }
+          });
+          if (questionContributed) {
+            totalQuestionsWithAnyEffectAnswered++;
           }
-        });
-        if (questionContributed) {
-          totalQuestionsWithAnyEffectAnswered++;
         }
       }
+    });
+
+    if (totalQuestionsWithAnyEffectAnswered === 0) {
+      AXES.forEach((axis) => (normalizedScores[axis] = 0));
+    } else {
+      AXES.forEach((axis) => {
+        normalizedScores[axis] =
+          questionsWithNonZeroEffectOnAxis[axis] > 0
+            ? currentScores[axis] / questionsWithNonZeroEffectOnAxis[axis]
+            : 0;
+      });
     }
-  });
-
-  if (totalQuestionsWithAnyEffectAnswered === 0) {
-    const zeroScores = {};
-    AXES.forEach((axis) => (zeroScores[axis] = 0));
-    return { ideologyName: "Centrist", scores: zeroScores };
   }
-
-  const normalizedScores = {};
-  AXES.forEach((axis) => {
-    normalizedScores[axis] =
-      questionsWithNonZeroEffectOnAxis[axis] > 0
-        ? currentScores[axis] / questionsWithNonZeroEffectOnAxis[axis]
-        : 0;
-  });
 
   let determinedIdeologyName = "Centrist";
   let minDistanceSquared = Infinity;

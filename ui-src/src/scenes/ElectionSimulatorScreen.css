@@ -1,5 +1,6 @@
 /* ui-src/src/scenes/ElectionSimulatorScreen.css */
 
+/* --- Main Container & Layout --- */
 .election-simulator-screen-container {
   display: flex;
   flex-direction: column;
@@ -8,7 +9,7 @@
   background-color: var(--primary-bg, #f4f4f4);
   color: var(--primary-text);
   font-family: var(--font-main);
-  min-height: 100vh; /* Ensure it takes full height */
+  min-height: 100vh;
 }
 
 .tab-title {
@@ -22,34 +23,100 @@
 .simulator-layout {
   display: flex;
   gap: 20px;
-  flex-grow: 1; /* Allow content area to grow */
+  flex-grow: 1;
+  overflow: hidden; /* Prevent content overflow from expanding layout */
 }
 
-.simulation-setup-panel,
+.simulation-setup-panel {
+  flex: 2; /* Setup panel takes more space */
+  min-width: 450px;
+  background-color: var(--ui-panel-bg, #ffffff);
+  border: 1px solid var(--border-color);
+  border-radius: var(--element-radius);
+  padding: 20px; /* Padding for the entire panel, tabs content will have their own */
+  box-shadow: var(--panel-shadow);
+  display: flex; /* Enable flexbox for internal layout (tabs header, content, buttons) */
+  flex-direction: column; /* Stack children vertically */
+  overflow: hidden; /* Hide overflow for tab content transition/scrolling */
+}
+
 .simulation-results-panel {
+  flex: 1; /* Results panel takes less space */
   background-color: var(--ui-panel-bg, #ffffff);
   border: 1px solid var(--border-color);
   border-radius: var(--element-radius);
   padding: 20px;
   box-shadow: var(--panel-shadow);
-  flex: 1; /* Both panels take equal space initially */
-  overflow-y: auto; /* Allow scrolling within panels */
+  overflow-y: auto; /* Allow scrolling for results if they get long */
 }
 
-.simulation-setup-panel {
-  flex: 2; /* Setup panel takes more space */
-  min-width: 450px; /* Ensure it's not too narrow */
-}
-
-.simulation-setup-panel h3 {
+.simulation-results-panel h3 {
   font-size: 1.4em;
   color: var(--secondary-accent-color);
-  margin-top: 15px;
+  margin-top: 0;
   margin-bottom: 15px;
   border-bottom: 1px dashed var(--border-color-light);
   padding-bottom: 5px;
 }
 
+/* --- Tab Styles --- */
+.setup-tabs-header {
+  display: flex;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 15px;
+  flex-shrink: 0; /* Prevent header from shrinking */
+}
+
+.setup-tabs-header .tab-button {
+  background-color: var(--secondary-bg, #e0e0e0);
+  border: 1px solid var(--border-color);
+  border-bottom: none; /* Remove bottom border to align with content border */
+  padding: 10px 15px;
+  cursor: pointer;
+  font-weight: bold;
+  color: var(--secondary-text);
+  border-radius: var(--element-radius) var(--element-radius) 0 0; /* Rounded top corners */
+  transition: background-color 0.2s, color 0.2s;
+  margin-right: 5px; /* Space between tabs */
+  flex-grow: 1; /* Distribute tabs evenly */
+  text-align: center;
+}
+
+.setup-tabs-header .tab-button:hover {
+  background-color: var(--highlight-bg);
+}
+
+.setup-tabs-header .tab-button.active {
+  background-color: var(
+    --ui-panel-bg
+  ); /* Active tab matches content background */
+  color: var(--accent-color);
+  border-color: var(--accent-color); /* Highlight border */
+  border-bottom: 1px solid var(--ui-panel-bg); /* "Cut out" the bottom border to blend with content */
+  z-index: 1; /* Bring active tab slightly forward */
+}
+
+.setup-tabs-content {
+  flex-grow: 1; /* Tab content takes all remaining vertical space */
+  overflow-y: auto; /* Make tab content itself scrollable */
+  padding-right: 10px; /* Space for scrollbar */
+}
+
+.tab-pane {
+  /* Styles applied to each tab's content */
+  padding-bottom: 10px; /* Space at bottom of tab content */
+}
+
+.tab-pane h3 {
+  font-size: 1.4em;
+  color: var(--secondary-accent-color);
+  margin-top: 0; /* Remove default top margin */
+  margin-bottom: 15px;
+  border-bottom: 1px dashed var(--border-color-light);
+  padding-bottom: 5px;
+}
+
+/* --- General Configuration Group Styling --- */
 .config-group {
   margin-bottom: 15px;
 }
@@ -73,8 +140,9 @@
   color: var(--input-text);
 }
 
+/* Range slider thumb and track styling */
 .config-group input[type="range"] {
-  -webkit-appearance: none; /* Override default look */
+  -webkit-appearance: none;
   appearance: none;
   height: 8px;
   background: var(--progress-track-bg, #e0e0e0);
@@ -112,18 +180,30 @@
   color: var(--primary-text);
 }
 
-/* Party Management */
+/* Ideology sliders specific alignment */
+.ideology-slider-group .slider-with-values {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px; /* Space between center and spread sliders */
+}
+.ideology-slider-group .slider-with-values span {
+  min-width: 60px; /* Ensure space for labels like "Center:" and values */
+}
+
+/* --- Party Management Styling (within 'parties-tab') --- */
 .party-management {
-  margin-top: 20px;
-  border: 1px dashed var(--border-color-light);
-  padding: 15px;
-  border-radius: var(--element-radius);
+  /* No border needed here as it's within a tab-pane already */
+  padding: 0; /* Remove previous padding if it had one */
 }
 
 .party-management h4 {
   margin-top: 0;
   font-size: 1.2em;
   color: var(--primary-text);
+  border-bottom: 1px dotted var(--border-color-light);
+  padding-bottom: 5px;
+  margin-bottom: 10px;
 }
 
 .party-list {
@@ -150,19 +230,42 @@
   border-radius: 4px;
   margin-right: 10px;
   border: 1px solid var(--border-color-dark);
+  flex-shrink: 0; /* Prevent it from shrinking */
+}
+
+.party-list-item > span {
+  /* For party name and popularity */
+  flex-grow: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.party-ideology {
+  font-style: italic;
+  color: var(--secondary-text);
+  margin-left: 5px;
+  flex-shrink: 0;
 }
 
 .party-actions {
   display: flex;
   gap: 5px;
+  flex-shrink: 0; /* Prevent buttons from shrinking */
+  margin-left: 10px; /* Space from name/ideology */
 }
 
-/* Electorate Composition */
-.electorate-composition {
+.party-controls {
   margin-top: 20px;
-  border: 1px dashed var(--border-color-light);
-  padding: 15px;
-  border-radius: var(--element-radius);
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end; /* Align buttons to the right */
+}
+
+/* --- Electorate Composition Styling (within 'electorate-tab') --- */
+.electorate-composition {
+  /* No border needed here */
+  padding: 0; /* Remove previous padding */
 }
 
 .electorate-composition h4,
@@ -170,6 +273,9 @@
   margin-top: 0;
   font-size: 1.2em;
   color: var(--primary-text);
+  border-bottom: 1px dotted var(--border-color-light);
+  padding-bottom: 5px;
+  margin-bottom: 10px;
 }
 
 .electorate-composition h5 {
@@ -177,14 +283,36 @@
   margin-top: 15px;
 }
 
-.ideology-slider-group .slider-with-values {
+/* --- Action Buttons (Run/Reset) --- */
+.setup-action-buttons {
   display: flex;
-  align-items: center;
+  justify-content: flex-end; /* Align buttons to the right */
   gap: 10px;
+  margin-top: 20px;
+  padding-top: 15px;
+  border-top: 1px solid var(--border-color-light);
+  flex-shrink: 0; /* Prevent buttons area from shrinking */
 }
 
-.ideology-slider-group .slider-with-values input[type="range"] {
+/* --- Modal Specific Styles (re-confirm from previous step) --- */
+.party-editor-modal-custom {
+  width: 90%;
+  max-width: 800px;
+  height: 80%;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.party-editor-modal-custom .modal-body {
   flex-grow: 1;
+  overflow-y: auto;
+  padding-right: 15px;
+  box-sizing: border-box;
+}
+
+.party-editor-modal-content .form-group {
+  margin-bottom: 15px;
 }
 
 .modal-actions-override {

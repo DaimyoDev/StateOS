@@ -1,6 +1,6 @@
+import { normalizePolling } from "../General Scripts/PollingFunctions";
 import { getPlayerActiveElectionDetailsForCampaignActions } from "../utils/electionUtils";
 import { getRandomInt, calculateAdultPopulation } from "../utils/generalUtils";
-import { normalizePolling } from "../utils/electionUtils";
 
 /**
  * Helper function to find and update a specific politician (player or AI) within the activeCampaign state.

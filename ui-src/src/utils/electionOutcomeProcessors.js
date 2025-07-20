@@ -268,11 +268,13 @@ export const processPartyListPRResults = ({
   ) {
     const partiesInvolved = Object.keys(electionToEnd.partyLists);
     let totalBaseStrength = 0;
+
+    // Use the politicalLandscape from electionToEnd for popularity
+    const politicalLandscape = electionToEnd.politicalLandscape || [];
+
     const partyStrengths = partiesInvolved.map((pId) => {
-      const pData = allPartiesInGame.find((p) => p.id === pId);
-      const strength =
-        pData?.popularity ||
-        (partiesInvolved.length > 0 ? 100 / partiesInvolved.length : 1);
+      const landscapeParty = politicalLandscape.find((p) => p.id === pId);
+      const strength = landscapeParty?.popularity || 0; // Use 0 or a very small default if not found
       totalBaseStrength += strength;
       return { partyId: pId, strength };
     });
@@ -285,6 +287,7 @@ export const processPartyListPRResults = ({
           ))
       );
     } else if (partiesInvolved.length > 0) {
+      // Fallback if no political landscape popularity or totalBaseStrength is 0
       const equalShare = Math.floor(
         totalVotesActuallyCast / partiesInvolved.length
       );
@@ -470,28 +473,35 @@ export const processMMPResults = ({
     const partyVotePortion = totalVotesActuallyCast;
     const partiesInvolved = Object.keys(electionToEnd.partyLists);
     let totalBaseStrength = 0;
+
+    // Use the politicalLandscape from electionToEnd for popularity
+    const politicalLandscape = electionToEnd.politicalLandscape || [];
+
+    console.log(politicalLandscape);
+
     const partyStrengths = partiesInvolved.map((pId) => {
-      const pData = allPartiesInGame.find((p) => p.id === pId);
-      const strength =
-        pData?.popularity ||
-        (partiesInvolved.length > 0 ? 100 / partiesInvolved.length : 1);
+      const landscapeParty = politicalLandscape.find((p) => p.id === pId);
+      const strength = landscapeParty?.popularity || 0; // Use 0 or a very small default if not found
       totalBaseStrength += strength;
       return { partyId: pId, strength };
     });
-    if (totalBaseStrength > 0)
+
+    if (totalBaseStrength > 0) {
       partyStrengths.forEach(
         (ps) =>
           (mmpPartyVoteTotals[ps.partyId] = Math.round(
             (ps.strength / totalBaseStrength) * partyVotePortion
           ))
       );
-    else if (partiesInvolved.length > 0)
+    } else if (partiesInvolved.length > 0) {
+      // Fallback if no political landscape popularity or totalBaseStrength is 0
       partiesInvolved.forEach(
         (pId) =>
           (mmpPartyVoteTotals[pId] = Math.floor(
             partyVotePortion / partiesInvolved.length
           ))
       );
+    }
   }
 
   const totalEffectiveMMPPartyVotes = Object.values(mmpPartyVoteTotals).reduce(
@@ -524,7 +534,7 @@ export const processMMPResults = ({
   let seatsCalculatedSuccessfully = false;
   let iterationLimit = 0;
   const MAX_ITERATIONS_FOR_LEVELING = 50; // Cap to prevent infinite loops
-  const MAX_POSSIBLE_SEATS_MULTIPLIER = 1.5; // E.g., 1.5x nominal size (598 * 1.5 = ~897)
+  const MAX_POSSIBLE_SEATS_MULTIPLIER = 30; // E.g., 1.5x nominal size (598 * 1.5 = ~897)
 
   // Loop to find the correct, potentially expanded, parliament size that accommodates all direct mandates proportionally
   while (

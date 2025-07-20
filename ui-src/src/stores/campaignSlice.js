@@ -1,14 +1,11 @@
 // ui-src/src/stores/campaignSlice.js
-import {
-  calculateBaseCandidateScore,
-  normalizePolling,
-} from "../utils/electionUtils.js";
+import { normalizePolling } from "../General Scripts/PollingFunctions.js";
+import { calculateBaseCandidateScore } from "../utils/electionUtils.js";
 import {
   getRandomInt,
   calculateAdultPopulation,
   createDateObj,
 } from "../utils/generalUtils.js";
-normalizePolling;
 
 export const createCampaignSlice = (set, get) => ({
   // --- State ---

@@ -1,12 +1,16 @@
 // ui-src/src/utils/electionSystems.js
-import { BASE_IDEOLOGIES } from "../data/ideologiesData.js"; //
+import {
+  BASE_IDEOLOGIES,
+  IDEOLOGY_DEFINITIONS,
+} from "../data/ideologiesData.js"; //
 import { generateId, getRandomElement, getRandomInt } from "./generalUtils.js"; //
 import {
   generateAICandidateNameForElection,
   generateFullAIPolitician,
   calculateBaseCandidateScore,
-  normalizePolling,
 } from "./electionUtils.js";
+import { normalizePolling } from "../General Scripts/PollingFunctions.js";
+import { POLICY_QUESTIONS } from "../data/policyData.js";
 
 /**
  * Handles participant generation and initial setup for First-Past-The-Post (FPTP) elections,
@@ -27,6 +31,9 @@ export function handleFPTPParticipants({
   activeCampaign,
   electionPropertiesForScoring,
   entityPopulation,
+  electorateIdeologyCenter, // NEW
+  electorateIdeologySpread, // NEW
+  electorateIssueStances, // NEW
 }) {
   let candidates = [];
   const runningIncumbents = [];
@@ -129,9 +136,17 @@ export function handleFPTPParticipants({
     }
 
     const newChallenger = generateFullAIPolitician(
-      assignedPartyForChallenger,
+      countryId,
+      [],
+      POLICY_QUESTIONS,
+      IDEOLOGY_DEFINITIONS,
+      assignedPartyForChallenger.id,
+      null,
+      null,
       false,
-      countryId
+      electorateIdeologyCenter,
+      electorateIdeologySpread,
+      electorateIssueStances
     );
     if (!candidates.find((c) => c.id === newChallenger.id)) {
       candidates.push(newChallenger);
@@ -183,6 +198,9 @@ export function handlePartyListPRParticipants({
   countryId,
   activeCampaign,
   electionPropertiesForScoring,
+  electorateIdeologyCenter,
+  electorateIdeologySpread,
+  electorateIssueStances,
 }) {
   const partyListsOutput = {};
   partiesInScope.forEach((party) => {
@@ -196,7 +214,19 @@ export function handlePartyListPRParticipants({
     );
     partyListsOutput[party.id] = [];
     for (let i = 0; i < listSize; i++) {
-      const newCand = generateFullAIPolitician(party, false, countryId);
+      const newCand = generateFullAIPolitician(
+        countryId,
+        [],
+        POLICY_QUESTIONS,
+        IDEOLOGY_DEFINITIONS,
+        party,
+        null,
+        null,
+        false,
+        electorateIdeologyCenter,
+        electorateIdeologySpread,
+        electorateIssueStances
+      );
       partyListsOutput[party.id].push({
         ...newCand,
         name: `${newCand.name} (${party.shortName || party.name} List #${
@@ -239,6 +269,9 @@ export function handleMMPParticipants({
   countryId,
   activeCampaign,
   electionPropertiesForScoring,
+  electorateIdeologyCenter,
+  electorateIdeologySpread,
+  electorateIssueStances,
 }) {
   const partyListsOutput = {};
   const partiesSubmittingLists = partiesInScope.filter((p) => !p.isIndependent);
@@ -258,7 +291,19 @@ export function handleMMPParticipants({
 
     partyListsOutput[party.id] = [];
     for (let i = 0; i < listSize; i++) {
-      const newCand = generateFullAIPolitician(party, false, countryId);
+      const newCand = generateFullAIPolitician(
+        countryId,
+        [],
+        POLICY_QUESTIONS,
+        IDEOLOGY_DEFINITIONS,
+        party,
+        null,
+        null,
+        false,
+        electorateIdeologyCenter,
+        electorateIdeologySpread,
+        electorateIssueStances
+      );
       partyListsOutput[party.id].push({
         ...newCand,
         name: `${newCand.name} (${party.shortName || party.name} List #${
@@ -303,7 +348,19 @@ export function handleMMPParticipants({
       let newConstituencyCand;
       let attempts = 0;
       do {
-        newConstituencyCand = generateFullAIPolitician(party, false, countryId);
+        newConstituencyCand = generateFullAIPolitician(
+          countryId,
+          [],
+          POLICY_QUESTIONS,
+          IDEOLOGY_DEFINITIONS,
+          party,
+          null,
+          null,
+          false,
+          electorateIdeologyCenter,
+          electorateIdeologySpread,
+          electorateIssueStances
+        );
         attempts++;
       } while (
         partyListsOutput[party.id]?.some(
@@ -339,7 +396,19 @@ export function handleMMPParticipants({
       color: "#888888",
     };
     independentConstituencyCandidates.push(
-      generateFullAIPolitician(indParty, false, countryId)
+      generateFullAIPolitician(
+        countryId,
+        [],
+        POLICY_QUESTIONS,
+        IDEOLOGY_DEFINITIONS,
+        indParty,
+        null,
+        null,
+        false,
+        electorateIdeologyCenter,
+        electorateIdeologySpread,
+        electorateIssueStances
+      )
     );
   }
 
@@ -383,6 +452,9 @@ export function handleMMDParticipants({
   activeCampaign,
   electionPropertiesForScoring,
   entityPopulation,
+  electorateIdeologyCenter,
+  electorateIdeologySpread,
+  electorateIssueStances,
 }) {
   let candidates = [];
   const runningIncumbents = [];
@@ -474,9 +546,17 @@ export function handleMMDParticipants({
     }
 
     const newChallenger = generateFullAIPolitician(
-      assignedPartyForChallenger,
+      countryId,
+      [],
+      POLICY_QUESTIONS,
+      IDEOLOGY_DEFINITIONS,
+      assignedPartyForChallenger.id,
+      null,
+      null,
       false,
-      countryId
+      electorateIdeologyCenter,
+      electorateIdeologySpread,
+      electorateIssueStances
     );
     if (!candidates.find((c) => c.id === newChallenger.id)) {
       candidates.push(newChallenger);
