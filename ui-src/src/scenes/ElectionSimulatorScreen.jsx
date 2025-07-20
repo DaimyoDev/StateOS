@@ -148,9 +148,9 @@ const ElectionSimulatorScreen = () => {
       const newPartyName = generateNewPartyName(randomBaseIdeology.name);
       const partyColor = generateNuancedColor(
         randomBaseIdeology.color,
-        20, // lightnessVariationPercentage
-        20, // saturationVariationPercentage
-        10 // hueVariationDegrees
+        getRandomInt(0, 100),
+        getRandomInt(0, 100),
+        getRandomInt(0, 100)
       );
 
       const initialPartyIdeologyScores = {
