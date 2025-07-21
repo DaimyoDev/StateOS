@@ -4,7 +4,7 @@
 
 // NOTE: Import paths are updated to reflect the new refactored structure.
 import { ELECTION_TYPES_BY_COUNTRY } from "../data/electionsData.js";
-import { createDateObj, getRandomInt, generateId } from "../utils/core.js";
+import { createDateObj, getRandomInt, generateId } from "../utils/core.js"; // Added adjustStatLevel
 import { calculateElectionOutcome } from "../elections/electionResults.js";
 import { normalizePolling } from "../General Scripts/PollingFunctions.js";
 import {
@@ -12,6 +12,10 @@ import {
   generateElectionParticipants,
   getElectionInstances,
 } from "../utils/electionUtils.js";
+import {
+  MOOD_LEVELS,
+  ECONOMIC_OUTLOOK_LEVELS,
+} from "../data/governmentData.js";
 
 // --- Local Helper Functions (To be moved to electionManager.js later) ---
 
@@ -313,7 +317,7 @@ export const createElectionSlice = (set, get) => ({
                 : { ...winner, ...get().activeCampaign.politician };
               return {
                 ...fullWinnerData,
-                holder: fullWinnerData,
+                holder: fullWinnerData, // This is potentially still a nested holder. Check source.
                 role: `Member, ${updatedElection.officeName}`,
               };
             });
@@ -494,6 +498,49 @@ export const createElectionSlice = (set, get) => ({
             },
           },
         };
+      });
+    },
+
+    // New action to update polling for all active elections daily
+
+    updateDailyPolling: () => {
+      set((state) => {
+        if (!state.activeCampaign?.elections) return state;
+
+        let pollingChanged = false;
+
+        const updatedElections = state.activeCampaign.elections.map(
+          (election) => {
+            if (
+              election.outcome?.status === "upcoming" ||
+              election.outcome?.status === "campaigning"
+            ) {
+              const normalizedCandidates = normalizePolling(
+                election.candidates,
+                100
+              ); //
+
+              if (
+                JSON.stringify(normalizedCandidates) !==
+                JSON.stringify(election.candidates)
+              ) {
+                pollingChanged = true;
+              }
+              return { ...election, candidates: normalizedCandidates };
+            }
+            return election;
+          }
+        );
+
+        if (pollingChanged) {
+          return {
+            activeCampaign: {
+              ...state.activeCampaign,
+              elections: updatedElections,
+            },
+          };
+        }
+        return state;
       });
     },
   },

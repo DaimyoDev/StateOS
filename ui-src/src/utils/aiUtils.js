@@ -1031,6 +1031,8 @@ export const simulateAICampaignDayForPolitician = (
   const MAX_AI_ACTIONS_PER_DAY = getRandomInt(1, 3);
   let actionsPerformedThisDay = 0;
 
+  console.log(hoursLeftForThisAI);
+
   while (
     hoursLeftForThisAI > 0 &&
     actionsPerformedThisDay < MAX_AI_ACTIONS_PER_DAY

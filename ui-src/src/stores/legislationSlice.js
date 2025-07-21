@@ -6,6 +6,7 @@ import { generateId } from "../utils/core.js";
 import { isDateSameOrBefore } from "../utils/generalUtils.js";
 import { CITY_POLICIES } from "../data/policyDefinitions";
 import { decideAIVote } from "../simulation/aiVoting.js";
+import { applyPolicyEffect } from "../simulation/applyPolicyEffects.js";
 
 const getInitialLegislationState = () => ({
   proposedLegislation: [],
@@ -223,33 +224,103 @@ export const createLegislationSlice = (set, get) => ({
         if (!state.activeCampaign) return state; //
 
         let legislationChanged = false;
-        const effectsToApply = [];
+        let newState = { ...state }; // Start with a copy of the top-level state
+        let updatedActiveCampaign = { ...newState.activeCampaign }; // Copy activeCampaign
 
-        const updatedActiveLegislation = state.activeLegislation.map((leg) => {
-          if (leg.monthsUntilEffective > 0) {
-            legislationChanged = true;
-            return {
-              ...leg,
-              monthsUntilEffective: leg.monthsUntilEffective - 1,
-            };
-          }
-          if (leg.monthsUntilEffective === 0 && !leg.effectsApplied) {
-            legislationChanged = true;
-            effectsToApply.push(leg);
-            return { ...leg, effectsApplied: true };
-          }
-          return leg;
-        });
+        const effectsToApplyNow = [];
 
-        if (effectsToApply.length > 0) {
+        // First pass: update monthsUntilEffective and identify policies to apply
+        const updatedActiveLegislation = newState.activeLegislation.map(
+          (leg) => {
+            if (leg.monthsUntilEffective > 0) {
+              legislationChanged = true;
+              return {
+                ...leg,
+                monthsUntilEffective: leg.monthsUntilEffective - 1,
+              };
+            }
+            if (leg.monthsUntilEffective === 0 && !leg.effectsApplied) {
+              legislationChanged = true;
+              effectsToApplyNow.push(leg); // Collect policies whose effects should be applied this tick
+              return { ...leg, effectsApplied: true }; // Mark as applied to prevent re-application
+            }
+            return leg;
+          }
+        );
+        newState.activeLegislation = updatedActiveLegislation; // Update activeLegislation in the newState draft
+
+        // Second pass: apply the effects for policies identified
+        if (effectsToApplyNow.length > 0) {
           console.log(
             "Applying policy effects:",
-            effectsToApply.map((e) => e.policyName)
+            effectsToApplyNow.map((e) => e.policyName)
           );
+          effectsToApplyNow.forEach((policyToApply) => {
+            // Apply generic effects defined in the policy's 'effects' array
+            policyToApply.effects.forEach((effect) => {
+              updatedActiveCampaign = applyPolicyEffect(
+                updatedActiveCampaign,
+                { ...effect, parameterDetails: policyToApply.parameterDetails },
+                policyToApply.chosenParameters
+              );
+            });
+
+            // NOW, apply effects specifically from chosenParameters if it's a parameterized policy affecting budget/tax
+            if (
+              policyToApply.isParameterized &&
+              policyToApply.parameterDetails &&
+              policyToApply.chosenParameters
+            ) {
+              const pDetails = policyToApply.parameterDetails;
+              const chosenValue = policyToApply.chosenParameters[pDetails.key];
+
+              if (chosenValue !== undefined) {
+                if (pDetails.targetBudgetLine) {
+                  const budgetLinePath = `startingCity.stats.budget.expenseAllocations.${pDetails.targetBudgetLine}`;
+                  const tempEffect = {
+                    targetStat: budgetLinePath,
+                    change: chosenValue,
+                    type: "absolute_change",
+                  };
+                  updatedActiveCampaign = applyPolicyEffect(
+                    updatedActiveCampaign,
+                    tempEffect
+                  );
+                  console.log(
+                    `[Legislation] Applied parameterized budget change for ${policyToApply.policyName} to ${pDetails.targetBudgetLine}: ${chosenValue}`
+                  ); //
+                } else if (pDetails.targetTaxRate) {
+                  const taxRatePath = `startingCity.stats.budget.taxRates.${pDetails.targetTaxRate}`;
+                  const tempEffect = {
+                    targetStat: taxRatePath,
+                    change: chosenValue,
+                    type: "percentage_point_change",
+                  };
+                  updatedActiveCampaign = applyPolicyEffect(
+                    updatedActiveCampaign,
+                    tempEffect
+                  );
+                  console.log(
+                    `[Legislation] Applied parameterized tax rate change for ${policyToApply.policyName} to ${pDetails.targetTaxRate}: ${chosenValue}`
+                  ); //
+                }
+              }
+            }
+
+            // Add a news event for the policy being enacted
+            get().actions.addNewsEvent?.({
+              headline: `Policy Enacted: "${policyToApply.policyName}"`,
+              summary: `The policy has now taken full effect across the city.`,
+              type: "policy_enacted",
+              policyId: policyToApply.policyId,
+            });
+          });
+          newState.activeCampaign = updatedActiveCampaign;
+          legislationChanged = true;
         }
 
         if (legislationChanged) {
-          return { activeLegislation: updatedActiveLegislation };
+          return newState;
         }
         return state;
       });

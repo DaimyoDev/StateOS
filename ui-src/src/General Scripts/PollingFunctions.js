@@ -13,7 +13,7 @@ import { getRandomInt } from "../utils/core";
  */
 export function calculateInitialPolling(
   candidate,
-  countryId,
+  countryId, // Unused, but kept for signature consistency
   allPartiesInGame,
   policyQuestionsData, // This is POLICY_QUESTIONS
   ideologyData, // This is IDEOLOGY_DEFINITIONS
@@ -21,11 +21,37 @@ export function calculateInitialPolling(
   electorateIdeologySpread,
   electorateIssueStances
 ) {
-  let totalScore = 40;
+  let totalScore = 40; // Base starting score
 
-  // ... (Party Popularity, Attributes, Name Recognition factors remain the same)
+  // --- REINTRODUCED LOGIC ---
 
-  // NEW LOGIC: Factor in Ideological Alignment with Electorate (remains the same as fixed)
+  // 1. Party Popularity Factor
+  if (candidate.partyId && allPartiesInGame && allPartiesInGame.length > 0) {
+    const candidateParty = allPartiesInGame.find(
+      (p) => p.id === candidate.partyId
+    );
+    if (candidateParty && candidateParty.popularity !== undefined) {
+      // Popularity is likely 0-100. Normalize to -0.5 to 0.5 and apply a weight.
+      // "Decently important" weight
+      totalScore += (candidateParty.popularity / 100 - 0.5) * 15;
+    }
+  }
+
+  // 2. Candidate Attributes Factor (Charisma and Integrity)
+  if (candidate.attributes) {
+    // Assuming attributes like charisma and integrity are numbers, e.g., 0-100
+    // Charisma: provides a bigger boost
+    if (candidate.attributes.charisma !== undefined) {
+      totalScore += (candidate.attributes.charisma / 100 - 0.5) * 20;
+    }
+    // Integrity: not as much boost
+    if (candidate.attributes.integrity !== undefined) {
+      totalScore += (candidate.attributes.integrity / 100 - 0.5) * 10;
+    }
+    // Other attributes could be added here later
+  }
+
+  // ... (Ideological Alignment logic - remains the same as provided)
   if (candidate.ideologyScores && electorateIdeologyCenter) {
     const AXES = Object.keys(electorateIdeologyCenter);
     let ideologyMatchScore = 0;
@@ -50,7 +76,7 @@ export function calculateInitialPolling(
     }
   }
 
-  // **MODIFIED LOGIC: Factor in Alignment with Electorate's Main Issues**
+  // **MODIFIED LOGIC: Factor in Alignment with Electorate's Main Issues** (remains the same as provided)
   if (
     candidate.policyStances &&
     electorateIssueStances &&
@@ -111,7 +137,7 @@ export function calculateInitialPolling(
   }
 
   // Add some final random variance
-  totalScore += getRandomInt(-5, 5); //
+  totalScore += getRandomInt(-5, 5);
 
   // Clamp final score between 0 and 100
   totalScore = Math.max(0, Math.min(100, Math.round(totalScore)));

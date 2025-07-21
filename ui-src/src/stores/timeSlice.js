@@ -305,7 +305,8 @@ export const createTimeSlice = (set, get) => {
 
         // Monthly updates
         if (effectiveDate.day === 1) {
-          get().actions.processMonthlyUpdates(); // This action has been refactored to aggregate its own changes
+          get().actions.processMonthlyUpdates();
+          get().actions.applyActiveLegislationEffects();
         }
 
         // Daily proposal activity
@@ -313,7 +314,7 @@ export const createTimeSlice = (set, get) => {
 
         // --- PHASE 4: AI Campaign Simulation Loop ---
         const storeActions = get().actions;
-        const campaignForAILoop = get().activeCampaign; // Re-fetch to ensure latest state after monthly updates
+        let campaignForAILoop = get().activeCampaign; // Re-fetch to ensure latest state after monthly updates
 
         if (campaignForAILoop && campaignForAILoop.elections) {
           const aiProcessingQueue = [];
@@ -324,21 +325,37 @@ export const createTimeSlice = (set, get) => {
             ) {
               election.candidates.forEach((candidate) => {
                 if (!candidate.isPlayer && candidate.id) {
-                  aiProcessingQueue.push(candidate);
+                  // Push the ID, not the object directly, so we can re-fetch by ID later.
+                  aiProcessingQueue.push(candidate.id);
                 }
               });
             }
           });
 
-          aiProcessingQueue.forEach((aiCandidateObject) => {
-            storeActions.resetAIPoliticianDailyHours?.(aiCandidateObject.id);
-            simulateAICampaignDayForPolitician(
-              aiCandidateObject,
-              get().activeCampaign, // Pass the LATEST campaign state for context
-              storeActions
-            );
+          aiProcessingQueue.forEach((aiPoliticianId) => {
+            // Reset hours for this AI first
+            storeActions.resetAIPoliticianDailyHours?.(aiPoliticianId);
+
+            // CRITICAL FIX: Re-fetch the AI politician object from the store
+            // AFTER its hours have been reset.
+            const currentAIpoliticianObject = get()
+              .activeCampaign.elections.flatMap((e) => e.candidates)
+              .find((c) => c.id === aiPoliticianId);
+
+            if (currentAIpoliticianObject) {
+              // Ensure the politician is still found in the updated state
+              simulateAICampaignDayForPolitician(
+                currentAIpoliticianObject, // Pass the LATEST AI object
+                get().activeCampaign, // Pass the LATEST campaign state for context
+                storeActions
+              );
+            }
           });
         }
+
+        // --- AFTER ALL DAILY ACTIONS ARE PROCESSED (AI AND PLAYER) ---
+        // Daily polling update (MOVED HERE to reflect all daily actions)
+        get().actions.updateDailyPolling();
 
         // --- PHASE 5: Final Operations ---
         if (electionDayInfo.shouldShowModal) {

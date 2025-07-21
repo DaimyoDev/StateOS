@@ -26,36 +26,36 @@ const PolicyVoteDetailsModal = ({ isOpen, onClose, proposalData }) => {
     const getCouncilMemberDetails = (memberId) => {
       // Iterate through all government offices to find the specific memberId
       for (const office of governmentOffices) {
-        // Case 1: The memberId is the holder of this specific office
-        if (office.holder?.id === memberId) {
-          // Ensure it's a council-related office if that's a necessary filter
-          // (Your original `find` had these checks, so we maintain that intent)
-          if (
-            office.officeNameTemplateId.includes("council") &&
-            office.officeName.includes(startingCityName)
-          ) {
+        // Check if it's a council office at the relevant level (local_city) and city
+        if (
+          office.officeNameTemplateId.includes("council") &&
+          office.level === "local_city" &&
+          office.officeName.includes(startingCityName)
+        ) {
+          // Case 1: The memberId is the single holder of this office (e.g., Mayor, but could apply to single-member council districts)
+          if (office.holder?.id === memberId) {
             return {
-              name: office.holder.name,
+              name:
+                office.holder.name ||
+                `${office.holder.firstName} ${office.holder.lastName}`,
               partyName: office.holder.partyName,
               partyColor: office.holder.partyColor,
             };
           }
-        }
 
-        // Case 2: The office has a list of members, and memberId is one of them
-        if (office.members && office.members.length > 0) {
-          // Find the specific member within this office's members array
-          const foundMember = office.members.find(
-            (member) => member.holder?.id === memberId
-          );
+          // Case 2: The office has a list of members (common for councils)
+          if (office.members && office.members.length > 0) {
+            const foundMember = office.members.find(
+              (member) => member.id === memberId // CORRECTED: Directly check member.id
+            );
 
-          if (foundMember && foundMember.holder) {
-            // Ensure it's a council-related office if that's a necessary filter
-            if (office.officeNameTemplateId.includes("council")) {
+            if (foundMember) {
               return {
-                name: foundMember.holder.name,
-                partyName: foundMember.holder.partyName,
-                partyColor: foundMember.holder.partyColor,
+                name:
+                  foundMember.name ||
+                  `${foundMember.firstName} ${foundMember.lastName}`,
+                partyName: foundMember.partyName,
+                partyColor: foundMember.partyColor,
               };
             }
           }
@@ -63,7 +63,11 @@ const PolicyVoteDetailsModal = ({ isOpen, onClose, proposalData }) => {
       }
 
       // If no matching member/holder is found after checking all offices
-      return { name: `ID: ${memberId}`, partyName: "Unknown" };
+      return {
+        name: `ID: ${memberId}`,
+        partyName: "Unknown Party",
+        partyColor: "#888",
+      };
     };
 
     const yeaVoters = (proposalData.votes.yea || []).map(
@@ -141,8 +145,8 @@ const PolicyVoteDetailsModal = ({ isOpen, onClose, proposalData }) => {
           <div className="vote-column">
             <h4>Voted Yea ({totalYea})</h4>
             <ul>
-              {voteBreakdown.yea.map((v) => (
-                <li key={v.name + v.partyName}>
+              {voteBreakdown.yea.map((v, index) => (
+                <li key={`${v.name}-${index}`}>
                   {v.name} ({v.partyName})
                 </li>
               ))}
@@ -151,8 +155,8 @@ const PolicyVoteDetailsModal = ({ isOpen, onClose, proposalData }) => {
           <div className="vote-column">
             <h4>Voted Nay ({totalNay})</h4>
             <ul>
-              {voteBreakdown.nay.map((v) => (
-                <li key={v.name + v.partyName}>
+              {voteBreakdown.nay.map((v, index) => (
+                <li key={`${v.name}-${index}`}>
                   {v.name} ({v.partyName})
                 </li>
               ))}
@@ -161,8 +165,8 @@ const PolicyVoteDetailsModal = ({ isOpen, onClose, proposalData }) => {
           <div className="vote-column">
             <h4>Abstained ({totalAbstain})</h4>
             <ul>
-              {voteBreakdown.abstain.map((v) => (
-                <li key={v.name + v.partyName}>
+              {voteBreakdown.abstain.map((v, index) => (
+                <li key={`${v.name}-${index}`}>
                   {v.name} ({v.partyName})
                 </li>
               ))}
