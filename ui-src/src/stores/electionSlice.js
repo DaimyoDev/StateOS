@@ -1,6 +1,10 @@
 // src/stores/electionSlice.js
+// This slice manages the state of all elections within an active campaign.
+// It orchestrates calls to the specialized election modules to handle complex logic.
+
+// NOTE: Import paths are updated to reflect the new refactored structure.
 import { ELECTION_TYPES_BY_COUNTRY } from "../data/electionsData.js";
-import { createDateObj, getRandomInt } from "../utils/core.js";
+import { createDateObj, getRandomInt, generateId } from "../utils/core.js";
 import { calculateElectionOutcome } from "../elections/electionResults.js";
 import { normalizePolling } from "../General Scripts/PollingFunctions.js";
 import {
@@ -89,15 +93,26 @@ const initializeElectionObject = ({
   }
   const filingDay = getRandomInt(1, 15);
 
+  // CRITICAL FIX: The unique ID is generated here and must not be overwritten.
+  const uniqueElectionId = `election_${instanceIdBase}_${electionYear}_${generateId()}`;
+
   return {
-    id: `election_${instanceIdBase}_${electionYear}_${Math.random()
-      .toString(16)
-      .slice(2)}`,
-    instanceIdBase,
-    officeName: resolvedOfficeName,
-    officeNameTemplateId: electionType.id,
+    // Manually cherry-pick properties from electionType to avoid overwriting the unique ID
     level: electionType.level,
     electoralSystem: electionType.electoralSystem,
+    generatesOneWinner: electionType.generatesOneWinner,
+    partyListType: electionType.partyListType,
+    prThresholdPercent: electionType.prThresholdPercent,
+    prAllocationMethod: electionType.prAllocationMethod,
+    mmpConstituencySeatsRatio: electionType.mmpConstituencySeatsRatio,
+    mmpListSeatsRatio: electionType.mmpListSeatsRatio,
+    voteTarget: electionType.voteTarget,
+
+    // Unique generated properties
+    id: uniqueElectionId, // Use the unique ID
+    instanceIdBase,
+    officeName: resolvedOfficeName,
+    officeNameTemplateId: electionType.id, // Keep original template ID for reference
     electionDate: {
       year: electionYear,
       month: electionMonth,
@@ -118,6 +133,8 @@ const initializeElectionObject = ({
       resultsByCandidate: [],
       resultsByParty: {},
     },
+
+    // Participant data
     candidates:
       participantsData.type === "individual_candidates"
         ? participantsData.data
@@ -128,7 +145,6 @@ const initializeElectionObject = ({
       participantsData.type === "mmp_participants"
         ? participantsData.data
         : null,
-    ...electionType,
   };
 };
 
@@ -154,16 +170,18 @@ export const createElectionSlice = (set, get) => ({
           );
 
           instances.forEach((instanceContext) => {
-            const { instanceIdBase, entityData } = instanceContext;
+            const { instanceIdBase, entityData, resolvedOfficeName } =
+              instanceContext;
             const alreadyScheduled = existingElections.some(
               (e) =>
                 e.instanceIdBase === instanceIdBase &&
                 e.electionDate.year === currentDate.year
             );
+
             if (alreadyScheduled) return;
 
             const incumbentInfo = getIncumbentsForOfficeInstance(
-              instanceContext.resolvedOfficeName,
+              resolvedOfficeName,
               electionType,
               governmentOffices
             );
@@ -172,6 +190,14 @@ export const createElectionSlice = (set, get) => ({
               entityData.population
             );
             if (seatDetails.numberOfSeats <= 0) return;
+
+            const electionPropertiesForScoring = {
+              ...electionType,
+              officeName: resolvedOfficeName,
+              incumbent: incumbentInfo,
+              electorateIssues: entityData.issues || ["Economy", "Healthcare"],
+              electorateLeaning: entityData.politicalLeaning || "Moderate",
+            };
 
             const participantsData = generateElectionParticipants({
               electionType,
@@ -182,6 +208,7 @@ export const createElectionSlice = (set, get) => ({
               countryId,
               activeCampaign: state.activeCampaign,
               entityPopulation: entityData.population,
+              electionPropertiesForScoring,
             });
 
             const newElection = initializeElectionObject({
@@ -253,7 +280,6 @@ export const createElectionSlice = (set, get) => ({
         let updatedElections = [...state.activeCampaign.elections];
         updatedElections[electionIndex] = updatedElection;
 
-        // Update Government Offices with winners
         let updatedGovernmentOffices = [
           ...state.activeCampaign.governmentOffices,
         ];
@@ -267,55 +293,79 @@ export const createElectionSlice = (set, get) => ({
           day: updatedElection.electionDate.day,
         };
 
-        if (outcome.determinedWinnersArray.length > 0) {
-          if (
+        if (
+          outcome.determinedWinnersArray &&
+          outcome.determinedWinnersArray.length > 0
+        ) {
+          const isLegislativeBody =
             updatedElection.numberOfSeatsToFill > 1 &&
-            !updatedElection.generatesOneWinner
-          ) {
-            // Legislative Body
+            !updatedElection.generatesOneWinner;
+
+          if (isLegislativeBody) {
             const officeIndex = updatedGovernmentOffices.findIndex(
               (o) => o.officeName === updatedElection.officeName
             );
-            const newMembers = outcome.determinedWinnersArray.map((winner) => ({
-              ...winner,
-              holder: winner,
-              role: `Member, ${updatedElection.officeName}`,
-            }));
+            const newMembers = outcome.determinedWinnersArray.map((winner) => {
+              const fullWinnerData = allParties.find(
+                (p) => p.id === winner.partyId
+              )
+                ? winner
+                : { ...winner, ...get().activeCampaign.politician };
+              return {
+                ...fullWinnerData,
+                holder: fullWinnerData,
+                role: `Member, ${updatedElection.officeName}`,
+              };
+            });
             if (officeIndex > -1) {
               updatedGovernmentOffices[officeIndex] = {
                 ...updatedGovernmentOffices[officeIndex],
                 members: newMembers,
                 termEnds,
+                officeNameTemplateId: updatedElection.officeNameTemplateId,
               };
             } else {
               updatedGovernmentOffices.push({
                 officeId: `gov_${updatedElection.instanceIdBase}`,
                 officeName: updatedElection.officeName,
                 level: updatedElection.level,
+                cityId: outcome.cityId,
                 members: newMembers,
                 termEnds,
+                officeNameTemplateId: updatedElection.officeNameTemplateId,
               });
             }
           } else {
             // Single Winner Office
             const winner = outcome.determinedWinnersArray[0];
+            const fullWinnerData = allParties.find(
+              (p) => p.id === winner.partyId
+            )
+              ? winner
+              : { ...winner, ...get().activeCampaign.politician };
             const officeIndex = updatedGovernmentOffices.findIndex(
               (o) => o.officeName === updatedElection.officeName
             );
-            const newHolder = { ...winner, role: updatedElection.officeName };
+            const newHolder = {
+              ...fullWinnerData,
+              role: updatedElection.officeName,
+            };
             if (officeIndex > -1) {
               updatedGovernmentOffices[officeIndex] = {
                 ...updatedGovernmentOffices[officeIndex],
                 holder: newHolder,
                 termEnds,
+                officeNameTemplateId: updatedElection.officeNameTemplateId,
               };
             } else {
               updatedGovernmentOffices.push({
                 officeId: `gov_${updatedElection.instanceIdBase}`,
                 officeName: updatedElection.officeName,
                 level: updatedElection.level,
+                cityId: outcome.cityId,
                 holder: newHolder,
                 termEnds,
+                officeNameTemplateId: updatedElection.officeNameTemplateId,
               });
             }
           }

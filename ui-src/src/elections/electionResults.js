@@ -480,12 +480,37 @@ export const calculateElectionOutcome = (
       break;
   }
 
+  // --- FIX STARTS HERE ---
+  // Step 2.5: Standardize winner assignment structure.
+  // This makes the output unambiguous for the game state update logic by clearly
+  // defining how the array of winners should be applied to the government office.
+  if (result.determinedWinnersArray) {
+    const isMultiMemberBody = seatsToFill > 1;
+
+    // MMP, PartyListPR, BlockVote, SNTV, etc., are multi-member systems.
+    // They should update the 'members' array of an office.
+    // Only single-seat elections (like standard FPTP) should update a single 'holder'.
+    if (isMultiMemberBody) {
+      result.winnerAssignment = {
+        type: "MEMBERS_ARRAY",
+        winners: result.determinedWinnersArray,
+      };
+    } else {
+      result.winnerAssignment = {
+        type: "SINGLE_HOLDER",
+        winners: result.determinedWinnersArray, // Should contain one winner
+      };
+    }
+  }
+  // --- FIX ENDS HERE ---
+
   // Step 3: Assemble the final, comprehensive outcome object
   const finalOutcome = {
     ...result,
     totalVotesActuallyCast,
     voterTurnoutPercentageActual,
     seatsToFill: result.seatsToFill || seatsToFill, // Use updated seats from MMP if available
+    cityId: electionToEnd.entityDataSnapshot.id,
   };
 
   return finalOutcome;

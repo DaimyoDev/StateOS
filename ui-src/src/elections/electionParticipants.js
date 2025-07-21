@@ -92,7 +92,7 @@ export function handleFPTPParticipants({
 
     const newChallenger = generateFullAIPolitician(
       countryId,
-      [],
+      partiesInScope,
       POLICY_QUESTIONS,
       IDEOLOGY_DEFINITIONS,
       assignedPartyForChallenger.id,
@@ -162,7 +162,7 @@ export function handlePartyListPRParticipants({
     for (let i = 0; i < listSize; i++) {
       const newCand = generateFullAIPolitician(
         countryId,
-        [],
+        partiesInScope,
         POLICY_QUESTIONS,
         IDEOLOGY_DEFINITIONS,
         party.id,
@@ -229,7 +229,7 @@ export function handleMMPParticipants({
     for (let i = 0; i < listSize; i++) {
       const newCand = generateFullAIPolitician(
         countryId,
-        [],
+        partiesInScope,
         POLICY_QUESTIONS,
         IDEOLOGY_DEFINITIONS,
         party.id,
@@ -284,7 +284,7 @@ export function handleMMPParticipants({
       do {
         newConstituencyCand = generateFullAIPolitician(
           countryId,
-          [],
+          partiesInScope,
           POLICY_QUESTIONS,
           IDEOLOGY_DEFINITIONS,
           party.id,
@@ -430,7 +430,7 @@ export function handleMMDParticipants({
 
     const newChallenger = generateFullAIPolitician(
       countryId,
-      [],
+      partiesInScope,
       POLICY_QUESTIONS,
       IDEOLOGY_DEFINITIONS,
       assignedPartyForChallenger.id,

@@ -256,6 +256,7 @@ export function generateFullAIPolitician(
   const chosenParty = forcePartyId
     ? allPartiesInScope.find((p) => p.id === forcePartyId)
     : getRandomElement(allPartiesInScope);
+
   const partyId = chosenParty?.id || "independent";
   const partyName = chosenParty?.name || "Independent";
   const partyColor = chosenParty?.color || "#888888";

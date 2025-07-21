@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useCallback } from "react";
 import "./GovernmentSubTabStyles.css";
-import "./CityOverviewTab.css"; // Changed from CityOverviewTab.css
+import "./CityOverviewTab.css"; // Using shared styles
 import CouncilCompositionPieChart from "../../charts/CouncilCompositionPieChart";
-import PoliticianCard from "../../PoliticianCard"; // NEW: Import PoliticianCard
+import PoliticianCard from "../../PoliticianCard";
 import { COUNTRIES_DATA } from "../../../data/countriesData";
 import useGameStore from "../../../store";
 
@@ -67,10 +67,56 @@ const formatLawValue = (key, value) => {
   return String(value);
 };
 
+// --- CORRECTED: Helper function to find members of a given chamber ---
+const getLegislativeChamberMembers = (
+  allGovernmentOffices,
+  activeState,
+  chamberIdentifier // e.g., '_lower_house' or '_upper_house'
+) => {
+  if (!activeState || !allGovernmentOffices.length) return [];
+
+  let chamberMembers = [];
+
+  allGovernmentOffices.forEach((office) => {
+    // Check if the office belongs to the current state and is the correct chamber type
+    if (
+      office.officeId?.includes(activeState.id) &&
+      office.level?.includes(chamberIdentifier)
+    ) {
+      if (office.holder) {
+        chamberMembers.push({
+          ...office,
+          holder: office.holder,
+          _conceptualSeatNumber: office.officeName.match(/\((\w+\s\d+)\)/)?.[1],
+        });
+      } else if (office.members && office.members.length > 0) {
+        office.members.forEach((member, index) => {
+          chamberMembers.push({
+            ...office,
+            officeId: `${office.officeId}_member_${member.id}`,
+            officeName: member.role || `${office.officeName} Member`,
+            holder: member,
+            _conceptualSeatNumber: index + 1,
+          });
+        });
+      }
+    }
+  });
+
+  // Sort members for consistent display
+  return chamberMembers.sort((a, b) => {
+    const officeNameA = a.officeName || "";
+    const officeNameB = b.officeName || "";
+    const seatNumA = officeNameA.match(/\d+/)?.[0];
+    const seatNumB = officeNameB.match(/\d+/)?.[0];
+    if (seatNumA && seatNumB) return parseInt(seatNumA) - parseInt(seatNumB);
+    return officeNameA.localeCompare(officeNameB);
+  });
+};
+
 const StateOverviewTab = ({ campaignData }) => {
   const [activeSubTab, setActiveSubTab] = useState("summary");
-  // NEW: State for filtering government officials within the 'government' tab
-  const [governmentFilter, setGovernmentFilter] = useState("all"); // 'all', 'executive', 'legislature'
+  const [governmentFilter, setGovernmentFilter] = useState("all");
 
   const { openViewPoliticianModal } = useGameStore((state) => state.actions);
   const currentTheme = useGameStore(
@@ -80,18 +126,94 @@ const StateOverviewTab = ({ campaignData }) => {
   const playerCountryId = campaignData.countryId;
 
   const activeState = useMemo(() => {
-    let state = null;
-    if (playerCountryId) {
-      const country = COUNTRIES_DATA.find((c) => c.id === playerCountryId);
-      if (country) {
-        state = country.regions?.find((r) => r.id === campaignData.regionId);
-        if (!state && country.provinces) {
-          state = country.provinces.find((p) => p.id === campaignData.regionId);
-        }
-      }
-    }
-    return state;
+    const country = COUNTRIES_DATA.find((c) => c.id === playerCountryId);
+    if (!country) return null;
+    return (
+      country.regions?.find((r) => r.id === campaignData.regionId) ||
+      country.provinces?.find((p) => p.id === campaignData.regionId)
+    );
   }, [playerCountryId, campaignData.regionId]);
+
+  const allGovernmentOffices = campaignData.governmentOffices;
+
+  // --- CORRECTED: Find executive offices using the correct checks ---
+  const governorOffice = useMemo(() => {
+    if (!activeState) return null;
+    return allGovernmentOffices.find(
+      (o) =>
+        o.officeId?.includes(activeState.id) &&
+        o.officeNameTemplateId === "governor" &&
+        o.holder
+    );
+  }, [allGovernmentOffices, activeState]);
+
+  const lieutenantGovernorOffice = useMemo(() => {
+    if (!activeState) return null;
+    return allGovernmentOffices.find(
+      (o) =>
+        o.officeId?.includes(activeState.id) &&
+        o.officeNameTemplateId === "lieutenant_governor" &&
+        o.holder
+    );
+  }, [allGovernmentOffices, activeState]);
+
+  // --- Separate memos for each legislative chamber ---
+  const upperChamberOffices = useMemo(
+    () =>
+      getLegislativeChamberMembers(
+        allGovernmentOffices,
+        activeState,
+        "_upper_house" // Matches 'local_state_upper_house'
+      ),
+    [allGovernmentOffices, activeState]
+  );
+
+  const lowerChamberOffices = useMemo(
+    () =>
+      getLegislativeChamberMembers(
+        allGovernmentOffices,
+        activeState,
+        "_lower_house"
+      ),
+    [allGovernmentOffices, activeState]
+  );
+
+  // --- Helper to create party composition data for a chamber ---
+  const getCompositionForChamber = (offices) => {
+    const partyData = {};
+    offices.forEach((office) => {
+      const holder = office.holder;
+      if (holder) {
+        const partyName = holder.partyName || "Independent/Other";
+        const partyKey = holder.partyId || partyName;
+        if (!partyData[partyKey]) {
+          partyData[partyKey] = {
+            count: 0,
+            color: holder.partyColor || "#CCCCCC",
+            id: holder.partyId || partyKey,
+            name: partyName,
+          };
+        }
+        partyData[partyKey].count++;
+      }
+    });
+    return Object.values(partyData).map((data) => ({
+      id: data.id,
+      name: data.name,
+      popularity: data.count,
+      color: data.color,
+    }));
+  };
+
+  // --- Separate compositions for each chamber ---
+  const upperChamberComposition = useMemo(
+    () => getCompositionForChamber(upperChamberOffices),
+    [upperChamberOffices]
+  );
+  const lowerChamberComposition = useMemo(
+    () => getCompositionForChamber(lowerChamberOffices),
+    [lowerChamberOffices]
+  );
 
   const {
     name: stateName,
@@ -102,6 +224,7 @@ const StateOverviewTab = ({ campaignData }) => {
     stats,
     stateLaws,
     type: regionType,
+    legislature: legislatureNames,
   } = activeState || {};
 
   const {
@@ -129,198 +252,42 @@ const StateOverviewTab = ({ campaignData }) => {
   const incomeSources = budget?.incomeSources;
   const expenseAllocations = budget?.expenseAllocations;
 
-  // Fetch all government offices from campaignData
-  const allGovernmentOffices = campaignData.governmentOffices;
-
-  // Memoized Governor/Executive Office
-  const governorOffice = useMemo(() => {
-    if (!allGovernmentOffices.length) return null;
-    return allGovernmentOffices.find(
-      (office) =>
-        (office.stateId?.includes(activeState?.id) ||
-          office.prefectureId?.includes(activeState?.id) ||
-          office.provinceId?.includes(activeState?.id)) &&
-        office.officeNameTemplateId &&
-        (office.officeNameTemplateId.includes("governor") ||
-          office.officeNameTemplateId.includes("premier") ||
-          office.officeNameTemplateId.includes("chief_minister")) &&
-        !office.officeNameTemplateId.includes("lieutenant") &&
-        !office.officeNameTemplateId.includes("vice") &&
-        office.holder
-    );
-  }, [activeState, allGovernmentOffices]);
-
-  // NEW: Memoized Lieutenant Governor/Vice Executive Office
-  const lieutenantGovernorOffice = useMemo(() => {
-    if (!allGovernmentOffices.length) return null;
-    return allGovernmentOffices.find(
-      (office) =>
-        (office.stateId?.includes(activeState?.id) ||
-          office.prefectureId?.includes(activeState?.id) ||
-          office.provinceId?.includes(activeState?.id)) &&
-        office.officeNameTemplateId &&
-        (office.officeNameTemplateId.includes("lieutenant") ||
-          office.officeNameTemplateId.includes("vice") ||
-          office.officeNameTemplateId.includes("deputy")) &&
-        office.holder
-    );
-  }, [activeState, allGovernmentOffices]);
-
-  // NEW: Flattened list of all relevant state-level legislative offices into individual seats/members
-  const flattenedLegislativeOffices = useMemo(() => {
-    if (!activeState || !allGovernmentOffices.length) return [];
-
-    let allLegislativeMembersForDisplay = [];
-
-    allGovernmentOffices.forEach((office) => {
-      const isStateLegislativeOffice =
-        (office.stateId?.includes(activeState?.id) ||
-          office.prefectureId?.includes(activeState?.id) ||
-          office.provinceId?.includes(activeState?.id)) &&
-        (office.officeId.includes("state_hr") ||
-          office.officeId.includes("state_senate"));
-
-      if (isStateLegislativeOffice) {
-        console.log(isStateLegislativeOffice);
-        if (office.members && office.members.length > 0) {
-          // This is a legislative body with a 'members' array
-          office.members.forEach((member, index) => {
-            allLegislativeMembersForDisplay.push({
-              ...office,
-              officeId: `${office.officeId}_member_${member.id}`, // Unique ID for this member's 'seat'
-              officeName: member.role || `${office.officeName} Member`, // Use member's role or a default
-              holder: member, // The member is the 'holder' for this conceptual seat
-              _conceptualSeatNumber: index + 1, // Add a conceptual seat number
-            });
-          });
-        } else if (office.holder && office.numberOfSeatsToFill === 1) {
-          // This is an individual conceptual seat (single-winner election)
-          allLegislativeMembersForDisplay.push({
-            ...office, // Use the office as is
-            holder: office.holder,
-            _conceptualSeatNumber: office.officeName.match(
-              /\(Seat (\d+)\)/
-            )?.[1]
-              ? parseInt(office.officeName.match(/\(Seat (\d+)\)/)[1])
-              : undefined,
-          });
-        }
-      }
-    });
-
-    // Sort these conceptual legislative offices/members for consistent display
-    return allLegislativeMembersForDisplay.sort((a, b) => {
-      const officeNameA = a.officeName || "";
-      const officeNameB = b.officeName || "";
-
-      const seatNumA =
-        a._conceptualSeatNumber ||
-        (officeNameA.match(/\(Seat (\d+)\)/)?.[1]
-          ? parseInt(officeNameA.match(/\(Seat (\d+)\)/)[1])
-          : NaN);
-      const seatNumB =
-        b._conceptualSeatNumber ||
-        (officeNameB.match(/\(Seat (\d+)\)/)?.[1]
-          ? parseInt(officeNameB.match(/\(Seat (\d+)\)/)[1])
-          : NaN);
-
-      const aHasNum = !isNaN(seatNumA);
-      const bHasNum = !isNaN(seatNumB);
-
-      if (aHasNum && bHasNum) {
-        return seatNumA - seatNumB;
-      } else if (aHasNum && !bHasNum) {
-        return -1;
-      } else if (!aHasNum && bHasNum) {
-        return 1;
-      } else {
-        return officeNameA.localeCompare(officeNameB);
-      }
-    });
-  }, [activeState, allGovernmentOffices]);
-
-  // Memoized legislative composition for charts
-  const legislativeCompositionByParty = useMemo(() => {
-    const partyData = {};
-    flattenedLegislativeOffices.forEach((office) => {
-      const holder = office.holder;
-      if (holder) {
-        const partyName = holder.partyName || "Independent/Other";
-        const partyKey = holder.partyId || partyName;
-        if (!partyData[partyKey]) {
-          partyData[partyKey] = {
-            count: 0,
-            color: holder.partyColor || "#CCCCCC",
-            id: holder.partyId || partyKey,
-            name: partyName,
-          };
-        }
-        partyData[partyKey].count++;
-      }
-    });
-    return Object.values(partyData).map((data) => ({
-      id: data.id,
-      name: data.name,
-      popularity: data.count,
-      color: data.color,
-    }));
-  }, [flattenedLegislativeOffices]);
-
-  // NEW: Memoized list of all relevant officials for filtering and display (including executive)
+  // --- Build official list from new chamber-specific lists ---
   const allStateOfficials = useMemo(() => {
     const officials = [];
-    console.log(governorOffice);
-    if (governorOffice && governorOffice.holder) {
-      officials.push({
-        ...governorOffice,
-        holder: governorOffice.holder,
-        type: "executive", // Custom type for filtering
-      });
-    }
-    if (lieutenantGovernorOffice && lieutenantGovernorOffice.holder) {
-      officials.push({
-        ...lieutenantGovernorOffice,
-        holder: lieutenantGovernorOffice.holder,
-        type: "executive", // Group with governor for filtering
-      });
-    }
-    flattenedLegislativeOffices.forEach((office) => {
-      if (office.holder) {
-        officials.push({
-          ...office,
-          holder: office.holder,
-          type: "legislature", // Custom type for filtering
-        });
-      }
-    });
+    if (governorOffice)
+      officials.push({ ...governorOffice, type: "executive" });
+    if (lieutenantGovernorOffice)
+      officials.push({ ...lieutenantGovernorOffice, type: "executive" });
+    upperChamberOffices.forEach((o) =>
+      officials.push({ ...o, type: "legislature_upper" })
+    );
+    lowerChamberOffices.forEach((o) =>
+      officials.push({ ...o, type: "legislature_lower" })
+    );
     return officials;
-  }, [governorOffice, lieutenantGovernorOffice, flattenedLegislativeOffices]);
+  }, [
+    governorOffice,
+    lieutenantGovernorOffice,
+    upperChamberOffices,
+    lowerChamberOffices,
+  ]);
 
-  // NEW: Filtered list of officials based on governmentFilter state
   const filteredOfficials = useMemo(() => {
-    if (governmentFilter === "all") {
-      return allStateOfficials;
-    } else if (governmentFilter === "executive") {
+    if (governmentFilter === "all") return allStateOfficials;
+    if (governmentFilter === "executive")
       return allStateOfficials.filter((o) => o.type === "executive");
-    } else if (governmentFilter === "legislature") {
-      return allStateOfficials.filter((o) => o.type === "legislature");
-    }
+    if (governmentFilter === "legislature")
+      return allStateOfficials.filter((o) => o.type.startsWith("legislature"));
     return [];
   }, [allStateOfficials, governmentFilter]);
 
   const handlePoliticianClick = useCallback(
     (politician) => {
-      if (politician && openViewPoliticianModal)
-        openViewPoliticianModal(politician);
-      else
-        console.warn(
-          "Politician data missing or action not available for modal.",
-          politician
-        );
+      if (politician) openViewPoliticianModal(politician);
     },
     [openViewPoliticianModal]
   );
-
   const formatOfficeTitleForDisplay = useCallback(
     (office, currentRegionNameForDisplay) => {
       if (!office || !office.officeName) return "Office";
@@ -330,18 +297,9 @@ const StateOverviewTab = ({ campaignData }) => {
       // Replace region-specific placeholders
       if (currentRegionNameForDisplay) {
         processedOfficeName = processedOfficeName.replace(
-          /{stateName}/g,
+          /{stateName}|{prefectureName}|{provinceName}/g,
           currentRegionNameForDisplay
         );
-        processedOfficeName = processedOfficeName.replace(
-          /{prefectureName}/g,
-          currentRegionNameForDisplay
-        );
-        processedOfficeName = processedOfficeName.replace(
-          /{provinceName}/g,
-          currentRegionNameForDisplay
-        );
-        // Attempt to get a short name for display, e.g., TX for Texas
         const stateShortName = currentRegionNameForDisplay
           .substring(0, 3)
           .toUpperCase();
@@ -351,104 +309,48 @@ const StateOverviewTab = ({ campaignData }) => {
         );
       }
 
-      const officeNameLower = processedOfficeName.toLowerCase();
-
-      // Handle Governor/Premier/Chief Minister
-      if (
-        office.officeNameTemplateId &&
-        (office.officeNameTemplateId.includes("governor") ||
-          office.officeNameTemplateId.includes("premier") ||
-          office.officeNameTemplateId.includes("chief_minister"))
-      ) {
-        if (
-          office.officeNameTemplateId.includes("lieutenant") ||
-          office.officeNameTemplateId.includes("vice")
-        ) {
-          return `Lieutenant ${office.officeName
-            .replace(currentRegionNameForDisplay, "")
-            .replace(/of\s*/i, "")
-            .trim()}`;
+      if (office.officeNameTemplateId?.includes("governor")) {
+        if (office.officeNameTemplateId.includes("lieutenant")) {
+          return `Lieutenant Governor`;
         }
-        return office.officeName
-          .replace(currentRegionNameForDisplay, "")
-          .replace(/of\s*/i, "")
-          .trim(); // Trim "of StateName"
+        return `Governor`;
       }
 
-      // Handle Legislative Bodies/Seats
-      // These are already flattened in `flattenedLegislativeOffices` for display as individual cards
       if (
-        office.level?.includes("state") ||
-        office.level?.includes("prefecture") ||
-        office.level?.includes("province")
+        office.level?.includes("_house") ||
+        office.level?.includes("_senate")
       ) {
-        // Try to extract district/constituency information
         const districtMatch = processedOfficeName.match(
-          /(District|Const\.|Constituency|Distrito|Ward)\s*([A-Za-z0-9]+(?:-[A-Za-z0-9]+)?)/i
+          /(District|Const\.|Constituency|Distrito|Ward|Seat)\s*([A-Za-z0-9]+(?:-[A-Za-z0-9]+)?)/i
         );
         let districtPart = districtMatch
-          ? `${districtMatch[1]} ${districtMatch[2]}`
-          : "";
+          ? `District ${districtMatch[2]}`
+          : "At-Large";
 
-        // Determine general role
-        if (officeNameLower.includes("senator")) {
-          return `Senator ${districtPart}`.trim();
-        } else if (
-          officeNameLower.includes("representative") ||
-          officeNameLower.includes("rep")
-        ) {
-          return `Representative ${districtPart}`.trim();
-        } else if (
-          officeNameLower.includes("member") ||
-          officeNameLower.includes("assembly")
-        ) {
-          return `Assembly Member ${districtPart}`.trim();
-        } else if (officeNameLower.includes("provincial board member")) {
-          return `Provincial Board Member ${districtPart}`.trim();
+        if (office.level.includes("_upper_")) {
+          return `${legislatureNames?.upper || "Upper House"} ${districtPart}`;
+        } else if (office.level.includes("_lower_")) {
+          return `${legislatureNames?.lower || "Lower House"} ${districtPart}`;
         }
-
-        // Fallback for general legislative members if no specific naming convention is matched
-        let cleanedName = processedOfficeName;
-        // Remove common state-related words or prefixes/suffixes that might be redundant
-        if (currentRegionNameForDisplay) {
-          const regionRegex = new RegExp(
-            `\\b${currentRegionNameForDisplay.replace(
-              /[.*+?^${}()|[\]\\]/g,
-              "\\$&"
-            )}\\b`,
-            "gi"
-          );
-          cleanedName = cleanedName.replace(regionRegex, "").trim();
-        }
-        cleanedName = cleanedName
-          .replace(/^(State|Provincial|Prefectural|Regional)\s*/i, "")
-          .trim();
-        cleanedName = cleanedName
-          .replace(/\s*(Member|Legislator|Representative|Senator)\s*$/i, "")
-          .trim();
-
-        if (cleanedName.length > 0) return cleanedName;
-        return "Legislative Member"; // More generic fallback
+        return `Legislator, ${districtPart}`;
       }
 
-      return processedOfficeName; // Fallback for other office types
+      return processedOfficeName;
     },
-    []
+    [legislatureNames]
   );
 
   if (!activeState) {
     return (
       <div className="city-overview-tab">
-        <p>
-          No state or prefecture data available. Please start a campaign to view
-          this information.
-        </p>
+        <p>No state data available.</p>
       </div>
     );
   }
 
   const renderSubTabContent = () => {
     switch (activeSubTab) {
+      // ... all other cases (summary, demographics, etc.) remain the same
       case "summary":
         return (
           <>
@@ -836,10 +738,17 @@ const StateOverviewTab = ({ campaignData }) => {
           </>
         );
       case "government": {
+        // --- Render logic for split chambers ---
+        const executiveOfficials = allStateOfficials.filter(
+          (o) => o.type === "executive"
+        );
+        const shouldShowLegislature =
+          governmentFilter === "all" || governmentFilter === "legislature";
+        const shouldShowExecutive =
+          governmentFilter === "all" || governmentFilter === "executive";
+
         return (
           <section className="city-officials-section city-section">
-            {" "}
-            {/* Using city-officials-section & city-section */}
             <h4>{regionType} Government Officials</h4>
             <div className="government-filter-buttons">
               <button
@@ -858,46 +767,91 @@ const StateOverviewTab = ({ campaignData }) => {
                 onClick={() => setGovernmentFilter("legislature")}
                 className={governmentFilter === "legislature" ? "active" : ""}
               >
-                State Legislature
+                Legislature
               </button>
             </div>
-            <div className="officials-cards-grid">
-              {filteredOfficials.length > 0 ? (
-                filteredOfficials.map((office) => (
-                  <PoliticianCard
-                    key={office.officeId}
-                    office={office}
-                    politician={office.holder}
-                    currentLocationName={stateName} // Pass stateName here
-                    formatOfficeTitle={formatOfficeTitleForDisplay}
-                    onClick={handlePoliticianClick}
-                  />
-                ))
-              ) : (
-                <p className="no-officials-message">
-                  No officials to display for this filter.
-                </p>
-              )}
-            </div>
-            {governmentFilter !== "executive" && ( // Only show legislative composition if not specifically filtering for executive
-              <>
-                {legislativeCompositionByParty.length > 0 && (
+
+            {shouldShowExecutive && executiveOfficials.length > 0 && (
+              <div className="chamber-section">
+                <h5>Executive Branch</h5>
+                <div className="officials-cards-grid">
+                  {executiveOfficials.map((office) => (
+                    <PoliticianCard
+                      key={office.officeId}
+                      office={office}
+                      politician={office.holder}
+                      currentLocationName={stateName}
+                      formatOfficeTitle={formatOfficeTitleForDisplay}
+                      onClick={handlePoliticianClick}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {shouldShowLegislature && lowerChamberOffices.length > 0 && (
+              <div className="chamber-section">
+                <h5>{legislatureNames?.lower || "Lower House"}</h5>
+                <div className="officials-cards-grid">
+                  {lowerChamberOffices.map((office) => (
+                    <PoliticianCard
+                      key={office.officeId}
+                      office={office}
+                      politician={office.holder}
+                      currentLocationName={stateName}
+                      formatOfficeTitle={formatOfficeTitleForDisplay}
+                      onClick={handlePoliticianClick}
+                    />
+                  ))}
+                </div>
+                {lowerChamberComposition.length > 0 && (
                   <div className="council-pie-chart-container">
-                    {" "}
-                    {/* Using council-pie-chart-container */}
-                    <h5>Overall Legislature Party Breakdown</h5>
+                    <h5>Party Breakdown</h5>
                     <div className="pie-chart-wrapper-council">
-                      {" "}
-                      {/* Using pie-chart-wrapper-council */}
                       <CouncilCompositionPieChart
-                        councilCompositionData={legislativeCompositionByParty}
+                        councilCompositionData={lowerChamberComposition}
                         themeColors={currentTheme?.colors}
                         themeFonts={currentTheme?.fonts}
                       />
                     </div>
                   </div>
                 )}
-              </>
+              </div>
+            )}
+
+            {shouldShowLegislature && upperChamberOffices.length > 0 && (
+              <div className="chamber-section">
+                <h5>{legislatureNames?.upper || "Upper House"}</h5>
+                <div className="officials-cards-grid">
+                  {upperChamberOffices.map((office) => (
+                    <PoliticianCard
+                      key={office.officeId}
+                      office={office}
+                      politician={office.holder}
+                      currentLocationName={stateName}
+                      formatOfficeTitle={formatOfficeTitleForDisplay}
+                      onClick={handlePoliticianClick}
+                    />
+                  ))}
+                </div>
+                {upperChamberComposition.length > 0 && (
+                  <div className="council-pie-chart-container">
+                    <h5>Party Breakdown</h5>
+                    <div className="pie-chart-wrapper-council">
+                      <CouncilCompositionPieChart
+                        councilCompositionData={upperChamberComposition}
+                        themeColors={currentTheme?.colors}
+                        themeFonts={currentTheme?.fonts}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            {filteredOfficials.length === 0 && (
+              <p className="no-officials-message">
+                No officials to display for this filter.
+              </p>
             )}
           </section>
         );

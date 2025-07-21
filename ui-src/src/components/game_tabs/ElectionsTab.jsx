@@ -413,7 +413,7 @@ function ElectionsTab({ campaignData }) {
   const electionMmpData = selectedElection?.mmpData;
 
   const sortedPartyResultsVotes = useMemo(() => {
-    const votes = electionOutcome?.resultsByParty?.votes;
+    const votes = electionOutcome?.partyVoteSummary;
     if (!votes?.length) return [];
     return [...votes].sort((a, b) => (b.votes || 0) - (a.votes || 0));
   }, [electionOutcome]);
@@ -457,8 +457,8 @@ function ElectionsTab({ campaignData }) {
     const isConcluded = electionOutcome?.status === "concluded";
 
     if (isConcluded) {
-      const { winners = [] } = electionOutcome || {};
-      const resultsByPartySeats = electionOutcome?.resultsByParty?.seats || {};
+      const { determinedWinnersArray: winners = [] } = electionOutcome || {};
+      const resultsByPartySeats = electionOutcome?.partySeatSummary || {};
 
       return (
         <div className="election-results-summary">
@@ -932,7 +932,7 @@ function ElectionsTab({ campaignData }) {
                         1
                       )}
                       % (
-                      {selectedElection.outcome.turnoutActual?.toLocaleString()}{" "}
+                      {selectedElection.outcome.totalVotesActuallyCast?.toLocaleString()}{" "}
                       votes)
                     </p>
                   )}

@@ -2,7 +2,6 @@
 // This file is responsible for determining WHICH specific election instances should be generated
 // based on the game's context (country, region, city) and the election type definitions.
 
-// NOTE: Import paths will need to be updated once the refactoring is complete.
 import {
   nationalElectionIds,
   stateElectionIds,
@@ -71,8 +70,6 @@ export const generateMayorElectionInstances = (
     _isSingleSeatContest: true,
     _effectiveElectoralSystem: electionType.electoralSystem,
     _effectiveGeneratesOneWinner: true,
-    ...electionType,
-    id: electionType.id,
   });
 
   return instances;
@@ -99,6 +96,7 @@ export const isCityCouncilElectionType = (electionType) => {
  * @param {object} electionType - The election type definition.
  * @param {object} cityData - The city data.
  * @param {string} countryId - The country ID.
+ * @param {object} countryConfig - The full country data object (used to align parameters).
  * @param {Function} buildInstanceIdBaseLocal - Local instance ID builder.
  * @returns {Array<object>} Array of instance contexts.
  */
@@ -106,9 +104,9 @@ export const generateCityCouncilElectionInstances = (
   electionType,
   cityData,
   countryId,
+  countryConfig,
   buildInstanceIdBaseLocal
 ) => {
-  // ... (Implementation from electionGenUtils.js)
   const instances = [];
   let baseOfficeNameTemplate = electionType.officeNameTemplate;
 
@@ -173,7 +171,7 @@ export const generateCityCouncilElectionInstances = (
 };
 
 /**
- * Determines if an election type is for a state/prefecture/province-level legislative body.
+ * Determines if a given election type is for a state/prefecture/province-level legislative body.
  * @param {object} electionType - The election type configuration object.
  * @returns {boolean}
  */
@@ -203,7 +201,6 @@ export const generateStateLegislativeElectionInstances = (
   currentCountryData,
   buildIdBaseFunc
 ) => {
-  // ... (Implementation from electionGenUtils.js)
   const instances = [];
   const { regionId, countryId } = activeCampaign;
   const baseOfficeName = electionType.officeNameTemplate;
@@ -264,8 +261,6 @@ export const generateStateLegislativeElectionInstances = (
             _isSingleSeatContest: electionType.generatesOneWinner,
             _effectiveElectoralSystem: electionType.electoralSystem,
             _effectiveGeneratesOneWinner: electionType.generatesOneWinner,
-            ...electionType,
-            id: electionType.id,
           });
         });
       } else if (!electionType.generatesOneWinner) {
@@ -277,8 +272,6 @@ export const generateStateLegislativeElectionInstances = (
           _isSingleSeatContest: false,
           _effectiveElectoralSystem: electionType.electoralSystem,
           _effectiveGeneratesOneWinner: false,
-          ...electionType,
-          id: electionType.id,
         });
       }
     } else if (electionType.electoralSystem === "MMP") {
@@ -291,8 +284,6 @@ export const generateStateLegislativeElectionInstances = (
         _effectiveElectoralSystem: "MMP",
         _effectiveGeneratesOneWinner: false,
         _numberOfSeatsForThisInstance: electionType.minCouncilSeats,
-        ...electionType,
-        id: electionType.id,
       });
     }
   });
@@ -339,7 +330,6 @@ export const generateNationalLegislativeElectionInstances = (
   currentCountryData,
   buildIdBaseFunc
 ) => {
-  // ... (Implementation from electionGenUtils.js)
   const instances = [];
   const { countryId, regionId } = activeCampaign;
   const baseOfficeName = electionType.officeNameTemplate;
@@ -368,8 +358,6 @@ export const generateNationalLegislativeElectionInstances = (
         _isSingleSeatContest: true,
         _effectiveElectoralSystem: electionType.electoralSystem || "FPTP",
         _effectiveGeneratesOneWinner: true,
-        ...electionType,
-        id: electionType.id,
       });
     });
   } else if (electionType.id === "national_senate") {
@@ -388,8 +376,6 @@ export const generateNationalLegislativeElectionInstances = (
         _isSingleSeatContest: true,
         _effectiveElectoralSystem: electionType.electoralSystem || "FPTP",
         _effectiveGeneratesOneWinner: true,
-        ...electionType,
-        id: electionType.id,
       });
     });
   } else if (electionType.electoralSystem === "MMP") {
@@ -406,8 +392,6 @@ export const generateNationalLegislativeElectionInstances = (
         _effectiveElectoralSystem: "MMP",
         _effectiveGeneratesOneWinner: false,
         _numberOfSeatsForThisInstance: electionType.minCouncilSeats,
-        ...electionType,
-        id: electionType.id,
       });
     }
   }

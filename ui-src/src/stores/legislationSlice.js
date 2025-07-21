@@ -180,15 +180,15 @@ export const createLegislationSlice = (set, get) => ({
           // Simulate AI Votes
           councilMembers.forEach((member) => {
             if (
-              !member.holder.isPlayer &&
-              !proposal.councilVotesCast[member.holder.id] &&
+              !member.isPlayer &&
+              !proposal.councilVotesCast[member.id] &&
               Math.random() < 0.33
             ) {
               // TODO: This complex AI voting logic should be moved to a dedicated simulation module.
               const aiVoteChoice = "yea"; // Placeholder for complex AI decision logic
               get().actions.recordCouncilVote(
                 proposal.id,
-                member.holder.id,
+                member.id,
                 aiVoteChoice
               );
             }

@@ -142,9 +142,7 @@ const CityOverviewTab = () => {
 
     governmentOffices.forEach((office) => {
       const isLocalCouncilOffice =
-        (office.level === "local_city" ||
-          office.level === "city_district" ||
-          office.level.includes("council")) &&
+        (office.level === "local_city" || office.level === "city_district") &&
         (office.officeNameTemplateId?.includes("city_council") ||
           office.officeNameTemplateId?.includes("city_municipal_council")) &&
         office.cityId === cityId;
