@@ -28,17 +28,88 @@ const getFinancialState = (cityStats) => {
   };
 };
 
-const calculateIdeologicalAlignmentScore = (aiPolitician, policyDef) => {
-  let score = 0;
-  // Base support from policy definition
-  score +=
-    (policyDef.baseSupport?.[aiPolitician.calculatedIdeology] || 0) * 1.0; // Apply a direct impact from baseSupport
+const calculateIdeologicalAlignmentScore = (
+  aiPolitician,
+  policyDef,
+  proposal
+) => {
+  let totalScore = 0;
+  const { stances } = aiPolitician;
+  const { isParameterized, parameterDetails, relevantPolicyQuestions } =
+    policyDef;
 
-  // This section would be for more complex ideological alignment based on specific policy questions
-  // if aiPolitician had specific answers to those questions (e.g., aiPolitician.stances).
-  // For now, baseSupport is the primary ideological factor.
+  // Exit if there's nothing to check against
+  if (!stances || !relevantPolicyQuestions) {
+    return 0;
+  }
 
-  return score;
+  // --- LOGIC FOR PARAMETERIZED POLICIES ---
+  if (isParameterized && parameterDetails && proposal.chosenParameters) {
+    const chosenValue = proposal.chosenParameters[parameterDetails.key];
+    const isIncrease = chosenValue > 0;
+    const isDecrease = chosenValue < 0;
+
+    // If there's no change, there's no ideological impact from the parameter
+    if (chosenValue === 0) return 0;
+
+    // Iterate through each relevant question for this policy
+    relevantPolicyQuestions.forEach((question) => {
+      const { questionId, alignsWithOptionValues, opposesOptionValues } =
+        question;
+      const aiStance = stances[questionId];
+
+      if (!aiStance) return; // AI doesn't have a stance on this specific question
+
+      // --- If the player/AI chose to INCREASE the budget ---
+      if (isIncrease) {
+        // AI's stance aligns with the policy's pro-funding values
+        if (
+          alignsWithOptionValues &&
+          alignsWithOptionValues.includes(aiStance)
+        ) {
+          totalScore += 2.0; // Strong support
+        }
+        // AI's stance aligns with the policy's anti-funding values
+        if (opposesOptionValues && opposesOptionValues.includes(aiStance)) {
+          totalScore -= 2.5; // Strong opposition
+        }
+      }
+      // --- If the player/AI chose to DECREASE the budget ---
+      else if (isDecrease) {
+        // The logic is INVERTED
+        // AI's pro-funding stance means it OPPOSES this cut
+        if (
+          alignsWithOptionValues &&
+          alignsWithOptionValues.includes(aiStance)
+        ) {
+          totalScore -= 2.5; // Strong opposition to the cut
+        }
+        // AI's anti-funding stance means it SUPPORTS this cut
+        if (opposesOptionValues && opposesOptionValues.includes(aiStance)) {
+          totalScore += 2.0; // Strong support for the cut
+        }
+      }
+    });
+  }
+  // --- LOGIC FOR NON-PARAMETERIZED POLICIES ---
+  else if (!isParameterized) {
+    relevantPolicyQuestions.forEach((question) => {
+      const { questionId, alignsWithOptionValues, opposesOptionValues } =
+        question;
+      const aiStance = stances[questionId];
+
+      if (!aiStance) return;
+
+      if (alignsWithOptionValues && alignsWithOptionValues.includes(aiStance)) {
+        totalScore += 2.0; // Support
+      }
+      if (opposesOptionValues && opposesOptionValues.includes(aiStance)) {
+        totalScore -= 2.5; // Opposition
+      }
+    });
+  }
+
+  return totalScore;
 };
 
 const calculatePolicyFocusAlignmentScore = (aiPolitician, policyDef) => {
@@ -231,8 +302,6 @@ export const decideAIVote = (
   aiPolitician,
   proposal,
   cityStats,
-  activeLegislation,
-  proposedLegislation,
   governmentOffices
 ) => {
   // Find the full policy definition
@@ -247,8 +316,8 @@ export const decideAIVote = (
   let voteScore = 0;
 
   // 1. Ideological Alignment
-  voteScore +=
-    calculateIdeologicalAlignmentScore(aiPolitician, policyDef) * 2.0; // High weight
+  voteScore += voteScore +=
+    calculateIdeologicalAlignmentScore(aiPolitician, policyDef, proposal) * 2.0; // High weight // High weight
 
   // 2. Policy Focus Alignment
   voteScore +=

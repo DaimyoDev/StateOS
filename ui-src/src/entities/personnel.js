@@ -23,6 +23,82 @@ import { calculateInitialPolling } from "../General Scripts/PollingFunctions.js"
 // --- Ideology Calculation ---
 
 /**
+ * Calculates the squared Euclidean distance between two ideology score objects.
+ * @param {object} scoresA - The first set of ideology scores.
+ * @param {object} scoresB - The second set of ideology scores.
+ * @returns {number} The squared distance, or Infinity if inputs are invalid.
+ */
+function calculateIdeologyDistance(scoresA, scoresB) {
+  if (
+    !scoresA ||
+    !scoresB ||
+    typeof scoresA !== "object" ||
+    typeof scoresB !== "object"
+  ) {
+    console.error("Invalid scores provided to calculateIdeologyDistance", {
+      scoresA,
+      scoresB,
+    });
+    return Infinity;
+  }
+  let distanceSquared = 0;
+  const allAxes = new Set([...Object.keys(scoresA), ...Object.keys(scoresB)]);
+
+  for (const axis of allAxes) {
+    const scoreA = scoresA[axis] || 0;
+    const scoreB = scoresB[axis] || 0;
+    const diff = scoreA - scoreB;
+    distanceSquared += diff * diff;
+  }
+
+  if (!isFinite(distanceSquared)) {
+    console.error("Distance calculation resulted in a non-finite number.", {
+      scoresA,
+      scoresB,
+    });
+    return Infinity;
+  }
+  return distanceSquared;
+}
+
+/**
+ * Ensures all party objects in an array have their ideologyScores populated
+ * based on their ideology string. This is a crucial pre-processing step.
+ * @param {Array} parties - The array of party objects.
+ * @param {object} ideologyData - The full IDEOLOGY_DEFINITIONS object from ideologiesData.js.
+ * @returns {Array} The updated array of parties with scores attached.
+ */
+export function initializePartyIdeologyScores(parties, ideologyData) {
+  if (!Array.isArray(parties)) {
+    console.error(
+      "initializePartyIdeologyScores expected an array, but received:",
+      parties
+    );
+    return [];
+  }
+
+  return parties.map((party) => {
+    if (party.ideologyScores) return party; // Already has scores, do nothing.
+
+    if (party.ideology && typeof party.ideology === "string") {
+      const ideologyId = party.ideology.toLowerCase().replace(/ /g, "_");
+
+      if (ideologyData[ideologyId]) {
+        return {
+          ...party,
+          ideologyId: ideologyId, // Add the ID for consistency
+          ideologyScores: ideologyData[ideologyId].idealPoint, // <-- The critical step
+        };
+      }
+    }
+    console.warn(
+      `Could not find ideology definition for party: "${party.name}"`
+    );
+    return party;
+  });
+}
+
+/**
  * Calculates a politician's ideology based on their policy stances.
  * This is a pure function, moved here from politicianSlice.js for centralized logic.
  * @param {object} stances - A map of policy question IDs to answer values.
@@ -242,7 +318,7 @@ export function generateNewPartyName(baseIdeologyName, countryName) {
  */
 export function generateFullAIPolitician(
   countryId,
-  allPartiesInScope,
+  allPartiesInScope, // IMPORTANT: This should be the array AFTER running initializePartyIdeologyScores
   policyQuestionsData = POLICY_QUESTIONS,
   ideologyData = IDEOLOGY_DEFINITIONS,
   forcePartyId = null,
@@ -253,9 +329,94 @@ export function generateFullAIPolitician(
   electorateIdeologySpread = null,
   electorateIssueStances = null
 ) {
-  const chosenParty = forcePartyId
-    ? allPartiesInScope.find((p) => p.id === forcePartyId)
-    : getRandomElement(allPartiesInScope);
+  // --- STEP 1: Determine a Target Ideology ---
+  let targetIdeology;
+  if (forcePartyId) {
+    const forcedParty = allPartiesInScope.find((p) => p.id === forcePartyId);
+    targetIdeology =
+      ideologyData[forcedParty?.ideologyId] ||
+      getRandomElement(Object.values(ideologyData));
+  } else {
+    const ideologyWeights = allPartiesInScope
+      .map((p) => p.ideologyId)
+      .filter(Boolean);
+    const randomIdeologyId = getRandomElement(
+      ideologyWeights.length > 0 ? ideologyWeights : Object.keys(ideologyData)
+    );
+    targetIdeology = ideologyData[randomIdeologyId];
+  }
+  const targetIdealPoint = targetIdeology.idealPoint;
+
+  // --- STEP 2: Generate Coherent Policy Stances with "Smarter" Deviation ---
+  const policyStances = {};
+  policyQuestionsData.forEach((question) => {
+    if (question.options && question.options.length > 0) {
+      const sortedOptions = question.options
+        .map((option) => {
+          const effects = option.axis_effects || option.ideologyEffect;
+          if (!effects) return { option, distance: Infinity };
+          const distance = calculateIdeologyDistance(targetIdealPoint, effects);
+          return { option, distance };
+        })
+        .sort((a, b) => a.distance - b.distance);
+
+      const bestOption = sortedOptions[0]?.option;
+      const secondBestOption = sortedOptions[1]?.option;
+      const thirdBestOption = sortedOptions[2]?.option;
+
+      const roll = Math.random();
+      if (bestOption && roll < 0.9) {
+        // 90% chance of picking the best option
+        policyStances[question.id] = bestOption.value;
+      } else if (secondBestOption && roll < 0.98) {
+        // 8% chance of picking the second best
+        policyStances[question.id] = secondBestOption.value;
+      } else if (thirdBestOption) {
+        // 2% chance of picking the third best
+        policyStances[question.id] = thirdBestOption.value;
+      } else {
+        policyStances[question.id] = bestOption
+          ? bestOption.value
+          : getRandomElement(question.options).value;
+      }
+    }
+  });
+
+  // Calculate the politician's actual ideology from their generated stances
+  const { ideologyName: calculatedIdeology, scores: ideologyScores } =
+    calculateIdeologyFromStances(
+      policyStances,
+      policyQuestionsData,
+      ideologyData
+    );
+
+  // --- STEP 3: Assign Party Based on Ideological Fit ---
+  let chosenParty = null;
+  let bestPartyFitDistance = Infinity;
+  const INDEPENDENT_THRESHOLD = 12.0; // Loosened threshold
+
+  if (forcePartyId) {
+    chosenParty = allPartiesInScope.find((p) => p.id === forcePartyId);
+  } else {
+    allPartiesInScope.forEach((party) => {
+      // This check will now pass thanks to our initialization function
+      if (party.ideologyScores) {
+        const distance = calculateIdeologyDistance(
+          ideologyScores,
+          party.ideologyScores
+        );
+        if (distance < bestPartyFitDistance) {
+          bestPartyFitDistance = distance;
+          chosenParty = party;
+        }
+      }
+    });
+  }
+
+  // If the best-fit party is still too far ideologically, become Independent
+  if (chosenParty && bestPartyFitDistance > INDEPENDENT_THRESHOLD) {
+    chosenParty = null;
+  }
 
   const partyId = chosenParty?.id || "independent";
   const partyName = chosenParty?.name || "Independent";
@@ -265,21 +426,6 @@ export function generateFullAIPolitician(
   const nameParts = fullName.split(" ");
   const firstName = forceFirstName || nameParts[0];
   const lastName = forceLastName || nameParts.slice(1).join(" ");
-
-  const policyStances = {};
-  (policyQuestionsData || []).forEach((question) => {
-    if (question.options && question.options.length > 0) {
-      policyStances[question.id] = getRandomElement(question.options).value;
-    }
-  });
-
-  const { ideologyName: calculatedIdeology, scores: ideologyScores } =
-    calculateIdeologyFromStances(
-      policyStances,
-      policyQuestionsData,
-      ideologyData,
-      chosenParty?.ideologyScores
-    );
 
   const attributes = {
     charisma: getRandomInt(3, 8),

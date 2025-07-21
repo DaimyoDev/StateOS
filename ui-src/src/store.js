@@ -1,6 +1,9 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import { BASE_IDEOLOGIES } from "./data/ideologiesData.js";
+import {
+  BASE_IDEOLOGIES,
+  IDEOLOGY_DEFINITIONS,
+} from "./data/ideologiesData.js";
 import { generateNewPartyName } from "./entities/personnel.js";
 // Util imports
 import { generateId, getRandomInt } from "./utils/core.js";
@@ -241,32 +244,54 @@ const useGameStore = create(
             );
             if (selectedCountryData) {
               let generatedParties = [];
-              const numberOfParties = getRandomInt(2, 15); // Example: 2-5 parties
+              const numberOfParties = getRandomInt(2, 15);
               let ideologiesForPartyGen = [...BASE_IDEOLOGIES];
+
               for (let i = 0; i < numberOfParties; i++) {
                 if (ideologiesForPartyGen.length === 0)
-                  ideologiesForPartyGen = [...BASE_IDEOLOGIES]; // Replenish if needed
+                  ideologiesForPartyGen = [...BASE_IDEOLOGIES];
+
                 const baseIdeology = ideologiesForPartyGen.splice(
                   Math.floor(Math.random() * ideologiesForPartyGen.length),
                   1
                 )[0];
 
+                // --- START OF FIX ---
+
+                // 1. Find the full ideology definition using the ID
+                const fullIdeologyDefinition =
+                  IDEOLOGY_DEFINITIONS[baseIdeology.id];
+
+                // 2. If the definition doesn't exist, skip this iteration to be safe
+                if (!fullIdeologyDefinition) {
+                  console.warn(
+                    `Could not find ideology definition for ID: ${baseIdeology.id}`
+                  );
+                  continue; // Skip to the next party
+                }
+
+                // --- END OF FIX ---
+
                 const partyName = generateNewPartyName(
                   baseIdeology.name,
                   selectedCountryData.name
                 );
-                const baseColorForIdeology = baseIdeology.color || "#808080"; // Fallback to grey if ideology has no color
+                const baseColorForIdeology = baseIdeology.color || "#808080";
                 const partySpecificColor = generateNuancedColor(
                   baseColorForIdeology,
                   getRandomInt(0, 100),
                   getRandomInt(0, 100),
                   getRandomInt(0, 300)
-                ); // Vary lightness by +/-20%, saturation by +/-15%
+                );
+
                 generatedParties.push({
                   id: `gen_party_${generateId()}`,
                   name: partyName,
-                  ideology: baseIdeology.name,
+                  ideology: baseIdeology.name, // The display name (e.g., "Conservative")
+                  ideologyId: baseIdeology.id, // The ID key (e.g., "conservative")
                   color: partySpecificColor,
+                  // --- THE CRUCIAL ADDITION ---
+                  ideologyScores: fullIdeologyDefinition.idealPoint,
                 });
               }
               set((state) => ({
@@ -274,7 +299,7 @@ const useGameStore = create(
                   ...state.currentCampaignSetup,
                   selectedCountryId: countryId,
                   selectedRegionId: null,
-                  generatedPartiesInCountry: generatedParties,
+                  generatedPartiesInCountry: generatedParties, // This array now contains parties with scores
                   playerPartyChoice: {},
                   regionPoliticalLandscape: {},
                 },

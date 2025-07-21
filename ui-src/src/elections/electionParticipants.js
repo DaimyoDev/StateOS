@@ -71,31 +71,14 @@ export function handleFPTPParticipants({
     0,
     targetTotalCandidates - candidates.length
   );
-  let availablePartiesForChallengers = [...(partiesInScope || [])];
 
   for (let i = 0; i < numberOfChallengersToGenerate; i++) {
-    let assignedPartyForChallenger = getRandomElement(
-      availablePartiesForChallengers
-    ) || {
-      id: `independent_ai_challenger_${i}`,
-      name: "Independent",
-      ideology: getRandomElement(BASE_IDEOLOGIES)?.name || "Centrist",
-      color: "#888888",
-    };
-
-    // Avoid having two candidates from the same party if possible
-    if (availablePartiesForChallengers.length > 1) {
-      availablePartiesForChallengers = availablePartiesForChallengers.filter(
-        (p) => p.id !== assignedPartyForChallenger.id
-      );
-    }
-
     const newChallenger = generateFullAIPolitician(
       countryId,
-      partiesInScope,
+      partiesInScope, // Pass all available parties
       POLICY_QUESTIONS,
       IDEOLOGY_DEFINITIONS,
-      assignedPartyForChallenger.id,
+      null, // <-- SET forcePartyId TO NULL
       null,
       null,
       false,
@@ -103,6 +86,17 @@ export function handleFPTPParticipants({
       electorateIdeologySpread,
       electorateIssueStances
     );
+
+    const isPartyAlreadyRepresented = candidates.some(
+      (existingCandidate) => existingCandidate.partyId === newChallenger.partyId
+    );
+
+    // 3. If the party is taken AND it's not "independent", make this challenger an Independent.
+    if (newChallenger.partyId !== "independent" && isPartyAlreadyRepresented) {
+      newChallenger.partyId = `independent_ai_challenger_${i}`;
+      newChallenger.partyName = "Independent";
+      newChallenger.partyColor = "#888888"; // Standard independent color
+    }
 
     if (!candidates.find((c) => c.id === newChallenger.id)) {
       candidates.push(newChallenger);
@@ -414,26 +408,14 @@ export function handleMMDParticipants({
     0,
     targetTotalCandidates - candidates.length
   );
-  let partyCycleIndex = 0;
 
   for (let i = 0; i < numberOfChallengersToGenerate; i++) {
-    let assignedPartyForChallenger =
-      partiesInScope.length > 0
-        ? { ...partiesInScope[partyCycleIndex % partiesInScope.length] }
-        : {
-            id: `independent_ai_challenger_${i}`,
-            name: "Independent",
-            ideology: getRandomElement(BASE_IDEOLOGIES)?.name || "Centrist",
-            color: "#888888",
-          };
-    partyCycleIndex++;
-
     const newChallenger = generateFullAIPolitician(
       countryId,
-      partiesInScope,
+      partiesInScope, // Pass all available parties
       POLICY_QUESTIONS,
       IDEOLOGY_DEFINITIONS,
-      assignedPartyForChallenger.id,
+      null, // <-- SET forcePartyId TO NULL
       null,
       null,
       false,
@@ -441,6 +423,17 @@ export function handleMMDParticipants({
       electorateIdeologySpread,
       electorateIssueStances
     );
+
+    const isPartyAlreadyRepresented = candidates.some(
+      (existingCandidate) => existingCandidate.partyId === newChallenger.partyId
+    );
+
+    // 3. If the party is taken AND it's not "independent", make this challenger an Independent.
+    if (newChallenger.partyId !== "independent" && isPartyAlreadyRepresented) {
+      newChallenger.partyId = `independent_ai_challenger_${i}`;
+      newChallenger.partyName = "Independent";
+      newChallenger.partyColor = "#888888"; // Standard independent color
+    }
 
     if (!candidates.find((c) => c.id === newChallenger.id)) {
       candidates.push(newChallenger);

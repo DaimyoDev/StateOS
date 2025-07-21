@@ -3,19 +3,18 @@
 export const POLICY_AREAS = {
   PUBLIC_SAFETY: "Public Safety",
   ECONOMY: "Economy & Employment",
-  HOUSING: "Housing & Development", // Expanded
+  HOUSING: "Housing & Development",
   INFRASTRUCTURE: "Infrastructure & Transport",
   EDUCATION: "Education",
   HEALTHCARE: "Healthcare",
-  ENVIRONMENT: "Environment & Sustainability", // Expanded
-  SOCIAL_SERVICES: "Social Services & Welfare", // Expanded
+  ENVIRONMENT: "Environment & Sustainability",
+  SOCIAL_SERVICES: "Social Services & Welfare",
   TAXATION: "Taxation & Budget",
   CITY_ADMIN: "City Administration & Governance",
-  CULTURE_RECREATION: "Culture & Recreation", // New Area
+  CULTURE_RECREATION: "Culture & Recreation",
 };
 
 export const CITY_POLICIES = [
-  // --- PUBLIC SAFETY (Existing + New) ---
   {
     id: "ps001_parameterized",
     name: "Adjust Police Department Funding",
@@ -39,9 +38,9 @@ export const CITY_POLICIES = [
       targetBudgetLine: "policeDepartment",
       adjustmentType: "increase_or_decrease",
       valueType: "absolute_amount",
-      min: -100000000,
-      max: 100000000,
-      step: 1000,
+      min: -1000000000,
+      max: 1000000000,
+      step: 1,
       defaultValue: 100000,
       unit: "$",
       prompt:
@@ -67,15 +66,13 @@ export const CITY_POLICIES = [
     relevantPolicyQuestions: [
       {
         questionId: "criminal_justice_reform",
-        // If parameter is positive (increase funding):
         alignsWithOptionValues: ["tough_on_crime_police_funding"],
-        // If parameter is negative (decrease funding):
-        opposesOptionValues: ["rehabilitation_decriminalization"], // Or could align if funds reallocated
+        opposesOptionValues: ["rehabilitation_decriminalization"],
       },
       {
         questionId: "police_reform_accountability",
         alignsWithOptionValues: ["support_law_enforcement_oppose_hindrance"],
-        opposesOptionValues: ["end_qualified_immunity_misconduct_registry"], // If decreasing funds is seen as anti-accountability for some
+        opposesOptionValues: ["end_qualified_immunity_misconduct_registry"],
       },
     ],
   },
