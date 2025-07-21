@@ -2,7 +2,7 @@ import { CITY_POLICIES } from "../data/policyDefinitions";
 import { RATING_LEVELS } from "../data/governmentData";
 import { calculateAdultPopulation, getRandomInt } from "./core";
 
-const getServiceRatingDetails = (
+export const getServiceRatingDetails = (
   targetBudgetLine,
   cityStats,
   RATING_LEVELS_ARR
@@ -52,7 +52,10 @@ const getServiceRatingDetails = (
 };
 
 // Refactored Helper: Calculate Fiscal Conservatism Factor
-const calculateFiscalConservatismFactor = (aiPolitician, financialState) => {
+export const calculateFiscalConservatismFactor = (
+  aiPolitician,
+  financialState
+) => {
   let factor = 0;
   switch (aiPolitician.calculatedIdeology) {
     case "Libertarian":

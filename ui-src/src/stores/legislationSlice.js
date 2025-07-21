@@ -5,7 +5,7 @@
 import { generateId } from "../utils/core.js";
 import { isDateSameOrBefore } from "../utils/generalUtils.js";
 import { CITY_POLICIES } from "../data/policyDefinitions";
-// TODO: AI voting logic should be moved to a dedicated simulation module in the future.
+import { decideAIVote } from "../simulation/aiVoting.js";
 
 const getInitialLegislationState = () => ({
   proposedLegislation: [],
@@ -21,7 +21,7 @@ export const createLegislationSlice = (set, get) => ({
 
     proposePolicy: (policyId, proposerId, chosenParameters) => {
       set((state) => {
-        const policyDef = CITY_POLICIES.find((p) => p.id === policyId);
+        const policyDef = CITY_POLICIES.find((p) => p.id === policyId); //
         if (!policyDef) {
           console.error(`[Legislation] Policy ID "${policyId}" not found.`);
           return state;
@@ -32,10 +32,10 @@ export const createLegislationSlice = (set, get) => ({
           policyId,
           proposerId,
           chosenParameters,
-          policyName: policyDef.name,
-          description: policyDef.description,
-          isParameterized: policyDef.isParameterized,
-          parameterDetails: policyDef.parameterDetails,
+          policyName: policyDef.name, //
+          description: policyDef.description, //
+          isParameterized: policyDef.isParameterized, //
+          parameterDetails: policyDef.parameterDetails, //
           status: "proposed",
           dateProposed: { ...state.activeCampaign.currentDate },
           councilVotesCast: {},
@@ -43,7 +43,7 @@ export const createLegislationSlice = (set, get) => ({
         };
 
         get().actions.addToast?.({
-          message: `Policy Proposed: "${policyDef.name}"`,
+          message: `Policy Proposed: "${policyDef.name}"`, //
           type: "info",
         });
         return {
@@ -86,10 +86,12 @@ export const createLegislationSlice = (set, get) => ({
         );
         if (!proposal) return state;
 
-        const councilOffice = state.activeCampaign.governmentOffices.find((o) =>
-          o.officeNameTemplateId?.includes("council")
+        const councilOffice = state.activeCampaign.governmentOffices.find(
+          (
+            o //
+          ) => o.officeNameTemplateId?.includes("council")
         );
-        const councilSize = councilOffice?.members?.length || 1;
+        const councilSize = councilOffice?.members?.length || 1; //
         const majorityNeeded = Math.floor(councilSize / 2) + 1;
         const yeaVotes = proposal.votes.yea?.length || 0;
         const policyDidPass = yeaVotes >= majorityNeeded;
@@ -98,15 +100,15 @@ export const createLegislationSlice = (set, get) => ({
         if (policyDidPass) {
           const policyDef = CITY_POLICIES.find(
             (p) => p.id === proposal.policyId
-          );
+          ); //
           newActiveList.push({
             id: `active_${proposal.id}`,
             policyId: proposal.policyId,
             policyName: proposal.policyName,
             dateEnacted: { ...state.activeCampaign.currentDate },
-            monthsUntilEffective: policyDef.durationToImplement || 0,
+            monthsUntilEffective: policyDef.durationToImplement || 0, //
             effectsApplied: false,
-            effects: policyDef.effects,
+            effects: policyDef.effects, //
             proposerId: proposal.proposerId,
             isParameterized: proposal.isParameterized,
             parameterDetails: proposal.parameterDetails,
@@ -131,13 +133,19 @@ export const createLegislationSlice = (set, get) => ({
     },
 
     processDailyProposalActivity: (currentDate) => {
-      const { proposedLegislation, activeCampaign } = get();
-      if (!activeCampaign) return;
+      const { proposedLegislation, activeCampaign } = get(); //
+      if (!activeCampaign) return; //
 
-      const councilOffice = activeCampaign.governmentOffices.find((o) =>
-        o.officeNameTemplateId?.includes("council")
+      const councilOffice = activeCampaign.governmentOffices.find(
+        (
+          o //
+        ) => o.officeNameTemplateId?.includes("council")
       );
-      const councilMembers = councilOffice?.members || [];
+      const councilMembers = councilOffice?.members || []; //
+      const cityStats = activeCampaign.startingCity.stats; //
+      const allActiveLegislation = get().activeLegislation;
+      const allProposedLegislation = get().proposedLegislation;
+      const governmentOffices = activeCampaign.governmentOffices; //
 
       proposedLegislation.forEach((proposal) => {
         if (proposal.status === "proposed") {
@@ -182,10 +190,17 @@ export const createLegislationSlice = (set, get) => ({
             if (
               !member.isPlayer &&
               !proposal.councilVotesCast[member.id] &&
-              Math.random() < 0.33
+              Math.random() < 0.33 // AI has a chance to vote each day during the voting period
             ) {
-              // TODO: This complex AI voting logic should be moved to a dedicated simulation module.
-              const aiVoteChoice = "yea"; // Placeholder for complex AI decision logic
+              const aiVoteChoice = decideAIVote(
+                //
+                member,
+                proposal,
+                cityStats,
+                allActiveLegislation,
+                allProposedLegislation,
+                governmentOffices
+              );
               get().actions.recordCouncilVote(
                 proposal.id,
                 member.id,
@@ -196,6 +211,7 @@ export const createLegislationSlice = (set, get) => ({
 
           // Check if voting period is over
           if (isDateSameOrBefore(proposal.votingClosesDate, currentDate)) {
+            //
             get().actions.finalizePolicyVote(proposal.id);
           }
         }
@@ -204,7 +220,7 @@ export const createLegislationSlice = (set, get) => ({
 
     applyActiveLegislationEffects: () => {
       set((state) => {
-        if (!state.activeCampaign) return state;
+        if (!state.activeCampaign) return state; //
 
         let legislationChanged = false;
         const effectsToApply = [];
@@ -226,13 +242,10 @@ export const createLegislationSlice = (set, get) => ({
         });
 
         if (effectsToApply.length > 0) {
-          // This is where a call to a dedicated policy simulation module would happen.
-          // For now, the logic is handled directly in the campaign slice for simplicity.
           console.log(
             "Applying policy effects:",
             effectsToApply.map((e) => e.policyName)
           );
-          // The actual state mutation would happen in another slice based on these effects.
         }
 
         if (legislationChanged) {
