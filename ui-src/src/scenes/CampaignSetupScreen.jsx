@@ -1,4 +1,3 @@
-// ui-src/src/scenes/CampaignSetupScreen.jsx
 import React, { useState, useEffect } from "react";
 import useGameStore from "../store";
 import JapanMap from "../maps/JapanMap";
@@ -24,12 +23,16 @@ function CampaignSetupScreen() {
   const actions = useGameStore((state) => state.actions);
   const availableCountries = useGameStore((state) => state.availableCountries);
 
+  // New state to manage the two stages: 'country_selection' and 'region_selection'
+  const [setupStage, setSetupStage] = useState("country_selection");
+  // New state to temporarily hold the selected country before confirmation
+  const [tempSelectedCountryId, setTempSelectedCountryId] = useState(null);
+
   const [selectedRegionInfo, setSelectedRegionInfo] = useState({
     id: null,
     name: null,
   });
 
-  // Destructure with null/undefined check for currentCampaignSetup first
   const {
     selectedCountryId,
     selectedRegionId,
@@ -38,7 +41,12 @@ function CampaignSetupScreen() {
     regionPoliticalLandscape,
   } = currentCampaignSetup || {};
 
-  // Find the full data for the currently selected country
+  // Find full data for the *temporarily* selected country for the details panel
+  const tempSelectedCountryData = availableCountries.find(
+    (c) => c.id === tempSelectedCountryId
+  );
+
+  // Find the full data for the *confirmed* country for the region selection stage
   const currentSelectedCountryData = availableCountries.find(
     (c) => c.id === selectedCountryId
   );
@@ -51,85 +59,50 @@ function CampaignSetupScreen() {
 
   // Effect to reset region info when country changes
   useEffect(() => {
-    // Only reset if selectedCountryId is actually part of currentCampaignSetup
-    // to avoid premature resets during initial load.
-    if (
-      currentCampaignSetup &&
-      Object.prototype.hasOwnProperty.call("selectedCountryId")
-    ) {
-      setSelectedRegionInfo({ id: null, name: null });
-      // The setSelectedRegion action should ideally handle clearing related data
-      // like regionPoliticalLandscape in the store.
-      if (actions && actions.setSelectedRegion) {
+    setSelectedRegionInfo({ id: null, name: null });
+    if (actions) {
+      if (actions.setSelectedRegion) {
         actions.setSelectedRegion(null);
       }
-      // It might also be good to reset playerPartyChoice here,
-      // or ensure it's re-evaluated based on the new country context.
-      // actions.choosePlayerParty(null); // Consider implications
+      // Also reset party choice, since parties are country-specific.
+      if (actions.choosePlayerParty) {
+        actions.choosePlayerParty(null);
+      }
     }
-  }, [selectedCountryId, actions, currentCampaignSetup]);
+  }, [selectedCountryId, actions]);
 
-  const handleCountryChange = (event) => {
-    const newCountryId = event.target.value;
-    if (actions && actions.selectCountryForCampaign) {
-      actions.selectCountryForCampaign(newCountryId);
-      // Region info and selection are reset by the useEffect watching selectedCountryId
+  const handleCountryCardClick = (countryId) => {
+    setTempSelectedCountryId(countryId);
+  };
+
+  const handleConfirmCountry = () => {
+    if (tempSelectedCountryId) {
+      actions.selectCountryForCampaign(tempSelectedCountryId);
+      setSetupStage("region_selection");
     }
+  };
+
+  const handleBackToCountrySelect = () => {
+    actions.selectCountryForCampaign(null); // Clear the confirmed country in the store
+    setTempSelectedCountryId(null); // Clear the temporary selection
+    setSetupStage("country_selection");
   };
 
   const handleRegionSelectionFromMap = (regionGameId, regionName) => {
-    // This handler is specific to map interaction (currently only Japan)
-    if (selectedCountryId === "JPN") {
-      setSelectedRegionInfo({ id: regionGameId, name: regionName });
-      if (actions && actions.setSelectedRegion) {
-        actions.setSelectedRegion(regionGameId);
-      }
-    }
-    if (selectedCountryId === "PHL") {
-      setSelectedRegionInfo({ id: regionGameId, name: regionName });
-      if (actions && actions.setSelectedRegion) {
-        actions.setSelectedRegion(regionGameId);
-      }
-    }
-    if (selectedCountryId === "USA") {
-      setSelectedRegionInfo({ id: regionGameId, name: regionName });
-      if (actions && actions.setSelectedRegion) {
-        actions.setSelectedRegion(regionGameId);
-      }
-    }
-    if (selectedCountryId === "KOR") {
-      setSelectedRegionInfo({ id: regionGameId, name: regionName });
-      if (actions && actions.setSelectedRegion) {
-        actions.setSelectedRegion(regionGameId);
-      }
-    }
-    if (selectedCountryId === "GER") {
-      setSelectedRegionInfo({ id: regionGameId, name: regionName });
-      if (actions && actions.setSelectedRegion) {
-        actions.setSelectedRegion(regionGameId);
-      }
-    }
-    if (selectedCountryId === "CAN") {
-      setSelectedRegionInfo({ id: regionGameId, name: regionName });
-      if (actions && actions.setSelectedRegion) {
-        actions.setSelectedRegion(regionGameId);
-      }
-    }
-  };
-
-  // Placeholder for selecting region if not using a map
-  const handleRegionSelectionFromList = (regionGameId, regionName) => {
-    // This would be used if you have a dropdown for regions for non-map countries
     setSelectedRegionInfo({ id: regionGameId, name: regionName });
     if (actions && actions.setSelectedRegion) {
       actions.setSelectedRegion(regionGameId);
     }
-    // If country is not selected yet, but a region for a country is chosen, select the country.
-    // This might be needed if the UI flow allows selecting region before country explicitly.
-    // For now, we assume country is selected first.
   };
 
-  const canProceedToPartySelection = selectedCountryId && selectedRegionId; // Or adapt if region is not always needed
+  const handleRegionSelectionFromList = (regionGameId, regionName) => {
+    setSelectedRegionInfo({ id: regionGameId, name: regionName });
+    if (actions && actions.setSelectedRegion) {
+      actions.setSelectedRegion(regionGameId);
+    }
+  };
+
+  const canProceedToPartySelection = selectedCountryId && selectedRegionId;
   const canStartCampaign =
     canProceedToPartySelection &&
     playerPartyChoice &&
@@ -139,9 +112,78 @@ function CampaignSetupScreen() {
     return <div>Loading campaign setup...</div>;
   }
 
+  // RENDER FOR COUNTRY SELECTION STAGE
+  if (setupStage === "country_selection") {
+    return (
+      <div className="campaign-setup-container-twocol">
+        <div className="map-area-column">
+          <h2 className="column-title important-heading">Choose a Nation</h2>
+          <p className="map-instruction-cs">
+            Select a country to begin your political journey.
+          </p>
+          <div className="country-selection-grid">
+            {availableCountries.map((country) => (
+              <div
+                key={country.id}
+                className={`country-card ${
+                  tempSelectedCountryId === country.id ? "selected" : ""
+                }`}
+                onClick={() => handleCountryCardClick(country.id)}
+              >
+                <div className="country-card-flag">{country.flag}</div>
+                <div className="country-card-name">{country.name}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="info-actions-column">
+          <div className="info-actions-content">
+            <h1 className="main-screen-title">Campaign Setup</h1>
+            {tempSelectedCountryData ? (
+              <div className="country-details-panel">
+                <h2 className="country-details-title">
+                  {tempSelectedCountryData.name}
+                </h2>
+                <p>
+                  <strong>Political System:</strong>{" "}
+                  {tempSelectedCountryData.politicalSystem}
+                </p>
+                <p>
+                  <strong>Dominant Ideologies:</strong>{" "}
+                  {tempSelectedCountryData.dominantIdeologies.join(", ")}
+                </p>
+                {/* Add more country details here as needed */}
+              </div>
+            ) : (
+              <section className="setup-section placeholder-info-cs">
+                <p>Select a country from the list to see its details.</p>
+              </section>
+            )}
+          </div>
+          <div className="form-actions setup-actions-cs sidebar-footer-actions">
+            <button
+              className="menu-button"
+              onClick={() => actions.navigateTo("CampaignStartOptionsScreen")}
+            >
+              Back
+            </button>
+            <button
+              className="action-button confirm-country"
+              onClick={handleConfirmCountry}
+              disabled={!tempSelectedCountryId}
+            >
+              Confirm Country
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // RENDER FOR REGION SELECTION STAGE
   return (
     <div className="campaign-setup-container-twocol">
-      {/* Left Column: Map Area / Country Specific Area */}
+      {/* Left Column: Map Area */}
       <div className="map-area-column">
         <h2 className="column-title important-heading">
           {currentSelectedCountryData
@@ -149,25 +191,7 @@ function CampaignSetupScreen() {
             : "Select Country and Region"}
         </h2>
 
-        {/* Country Selector always visible at the top of this column */}
-        <section className="setup-section country-selection-section">
-          <h3>Select Country:</h3>
-          <select
-            value={selectedCountryId || ""}
-            onChange={handleCountryChange}
-            className="country-selector-dropdown" // Add styling for this
-          >
-            <option value="" disabled>
-              -- Choose a Country --
-            </option>
-            {availableCountries.map((country) => (
-              <option key={country.id} value={country.id}>
-                {country.name}
-              </option>
-            ))}
-          </select>
-        </section>
-
+        {/* MAPS AND REGION LISTS */}
         {selectedCountryId === "JPN" && (
           <>
             <p className="map-instruction-cs">
@@ -181,7 +205,6 @@ function CampaignSetupScreen() {
             </div>
           </>
         )}
-
         {selectedCountryId === "PHL" && (
           <>
             <p className="map-instruction-cs">
@@ -195,7 +218,6 @@ function CampaignSetupScreen() {
             </div>
           </>
         )}
-
         {selectedCountryId === "USA" && (
           <>
             <p className="map-instruction-cs">
@@ -209,7 +231,6 @@ function CampaignSetupScreen() {
             </div>
           </>
         )}
-
         {selectedCountryId === "KOR" && (
           <>
             <p className="map-instruction-cs">
@@ -223,7 +244,6 @@ function CampaignSetupScreen() {
             </div>
           </>
         )}
-
         {selectedCountryId === "GER" && (
           <>
             <p className="map-instruction-cs">
@@ -237,7 +257,6 @@ function CampaignSetupScreen() {
             </div>
           </>
         )}
-
         {selectedCountryId === "CAN" && (
           <>
             <p className="map-instruction-cs">
@@ -251,13 +270,11 @@ function CampaignSetupScreen() {
             </div>
           </>
         )}
-
-        {selectedCountryId !== "JPN" &&
-          selectedCountryId !== "PHL" &&
-          selectedCountryId !== "USA" &&
-          selectedCountryId != "KOR" &&
-          selectedCountryId != "GER" &&
-          selectedCountryId != "CAN" && (
+        {/* Fallback for countries without maps */}
+        {currentSelectedCountryData &&
+          !["JPN", "PHL", "USA", "KOR", "GER", "CAN"].includes(
+            selectedCountryId
+          ) && (
             <div className="map-placeholder">
               <p>
                 Map for{" "}
@@ -266,13 +283,7 @@ function CampaignSetupScreen() {
                 </strong>{" "}
                 is not yet available.
               </p>
-              <p>
-                Region selection for this country will be available through a
-                list once regions are defined.
-              </p>
-              {/* Placeholder for future region dropdown for non-map countries */}
-              {currentSelectedCountryData &&
-              currentSelectedCountryData.regions &&
+              {currentSelectedCountryData.regions &&
               currentSelectedCountryData.regions.length > 0 ? (
                 <section className="setup-section region-selection-list-section">
                   <h4>Select Region:</h4>
@@ -286,7 +297,7 @@ function CampaignSetupScreen() {
                         handleRegionSelectionFromList(region.id, region.name);
                       }
                     }}
-                    className="region-selector-dropdown" // Add styling
+                    className="region-selector-dropdown"
                   >
                     <option value="" disabled>
                       {" "}
@@ -300,31 +311,25 @@ function CampaignSetupScreen() {
                   </select>
                 </section>
               ) : (
-                selectedCountryId && (
-                  <p>
-                    No regions currently defined for{" "}
-                    {currentSelectedCountryData?.name}.
-                  </p>
-                )
+                <p>
+                  No regions currently defined for{" "}
+                  {currentSelectedCountryData?.name}.
+                </p>
               )}
             </div>
           )}
-        {!selectedCountryId && (
-          <p className="map-instruction-cs">
-            Please select a country to begin.
-          </p>
-        )}
       </div>
+
       {/* Right Column: Information & Actions */}
       <div className="info-actions-column">
         <div className="info-actions-content">
           <h1 className="main-screen-title">Campaign Setup</h1>
 
           {selectedCountryId &&
-            (selectedRegionInfo.name || selectedRegionId) && ( // Show if a region is selected (via map or list)
+            (selectedRegionInfo.name || selectedRegionId) && (
               <section className="setup-section selected-region-info-cs">
                 <h2>Selected Start:</h2>
-                {selectedRegionInfo.name && ( // Display region name if available from local state (map click) or resolved from selectedRegionId
+                {selectedRegionInfo.name && (
                   <h3>
                     Region:{" "}
                     <strong>
@@ -343,17 +348,15 @@ function CampaignSetupScreen() {
               </section>
             )}
 
-          {selectedCountryId &&
-            !selectedRegionId && ( // If country is selected but no region yet
-              <section className="setup-section placeholder-info-cs">
-                <p>
-                  Please select a starting region for{" "}
-                  {currentSelectedCountryData?.name || "the selected country"}.
-                </p>
-              </section>
-            )}
+          {selectedCountryId && !selectedRegionId && (
+            <section className="setup-section placeholder-info-cs">
+              <p>
+                Please select a starting region for{" "}
+                {currentSelectedCountryData?.name || "the selected country"}.
+              </p>
+            </section>
+          )}
 
-          {/* Display Pie Chart if data is available */}
           {selectedRegionId &&
             regionPoliticalLandscape &&
             regionPoliticalLandscape.length > 0 && (
@@ -368,7 +371,6 @@ function CampaignSetupScreen() {
               </section>
             )}
 
-          {/* Party Affiliation Section - only if country and region are selected */}
           {canProceedToPartySelection && (
             <section className="setup-section party-affiliation-section">
               <h2>
@@ -397,7 +399,7 @@ function CampaignSetupScreen() {
                           actions.choosePlayerParty({
                             type: "join_generated",
                             id: party.id,
-                            name: party.name, // Store name for easier display
+                            name: party.name,
                           })
                         }
                       >
@@ -426,7 +428,7 @@ function CampaignSetupScreen() {
                             actions.choosePlayerParty({
                               type: "use_custom",
                               id: customParty.id,
-                              name: customParty.name, // Store name
+                              name: customParty.name,
                             })
                           }
                         >
@@ -448,43 +450,13 @@ function CampaignSetupScreen() {
                 >
                   Run as an Independent
                 </button>
-                {/* Feedback on selection */}
-                {playerPartyChoice?.type && (
-                  <p className="selection-feedback">
-                    Selected:
-                    {playerPartyChoice.type === "independent" && " Independent"}
-                    {playerPartyChoice.type !== "independent" &&
-                      playerPartyChoice.name &&
-                      ` ${playerPartyChoice.name}`}
-                    {playerPartyChoice.type === "join_generated" &&
-                      !playerPartyChoice.name &&
-                      generatedPartiesInCountry &&
-                      ` Joining ${
-                        generatedPartiesInCountry.find(
-                          (p) => p.id === playerPartyChoice.id
-                        )?.name
-                      }`}
-                    {playerPartyChoice.type === "use_custom" &&
-                      !playerPartyChoice.name &&
-                      allCustomParties.length > 0 &&
-                      ` Using your party: ${
-                        allCustomParties.find(
-                          (p) => p.id === playerPartyChoice.id
-                        )?.name
-                      }`}
-                  </p>
-                )}
               </div>
             </section>
           )}
-        </div>{" "}
-        {/* End of .info-actions-content (scrollable part) */}
+        </div>
         <div className="form-actions setup-actions-cs sidebar-footer-actions">
-          <button
-            className="menu-button"
-            onClick={() => actions.navigateTo("CampaignStartOptionsScreen")}
-          >
-            Back
+          <button className="menu-button" onClick={handleBackToCountrySelect}>
+            Back to Countries
           </button>
           <button
             className="action-button start-campaign"
@@ -496,8 +468,7 @@ function CampaignSetupScreen() {
             Start Campaign!
           </button>
         </div>
-      </div>{" "}
-      {/* End of .info-actions-column */}
+      </div>
     </div>
   );
 }

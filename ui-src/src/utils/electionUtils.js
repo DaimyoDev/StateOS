@@ -1,38 +1,27 @@
 import {
-  NAMES_BY_COUNTRY,
-  GENERIC_FIRST_NAMES_MALE,
-  GENERIC_FIRST_NAMES_FEMALE,
-  GENERIC_LAST_NAMES,
-} from "../data/namesData.js";
-import {
   BASE_IDEOLOGIES,
-  IDEOLOGY_KEYWORDS,
-  GENERIC_ADJECTIVES,
-  GENERIC_NOUNS,
-  ABSTRACT_NOUNS,
   IDEOLOGY_DEFINITIONS,
 } from "../data/ideologiesData.js";
-import { generateId, getRandomElement, getRandomInt } from "./generalUtils.js";
+import { generateId, getRandomElement, getRandomInt } from "./core.js";
 import { POLICY_QUESTIONS } from "../data/policyData.js";
 import { POSSIBLE_POLICY_FOCUSES } from "../data/governmentData.js";
+import { generateFullAIPolitician } from "../entities/personnel.js";
 import {
-  generateMayorElectionInstances,
   isMayorLikeElection,
+  generateMayorElectionInstances,
   isCityCouncilElectionType,
   generateCityCouncilElectionInstances,
   isStateLegislativeElectionType,
   generateStateLegislativeElectionInstances,
   isNationalLegislativeElectionType,
   generateNationalLegislativeElectionInstances,
-} from "./electionGenUtils";
+} from "../elections/electionInstance.js";
 import {
   handleFPTPParticipants,
   handlePartyListPRParticipants,
-  handleMMPParticipants,
   handleMMDParticipants,
-} from "./electionSystems.js";
-import { calculateIdeologyFromStances } from "../stores/politicianSlice.js";
-import { calculateInitialPolling } from "../General Scripts/PollingFunctions.js";
+  handleMMPParticipants,
+} from "../elections/electionParticipants.js";
 
 /**
  * Calculates the number of seats for a given election type and city population.
@@ -80,71 +69,6 @@ export function calculateNumberOfSeats(electionType, cityPopulation) {
   }
   return calculatedSeats;
 }
-
-/**
- * Generates a random AI candidate name based on country context.
- * @param {string} countryId - The ID of the country (e.g., "JPN", "USA", "GER", "PHL").
- * @returns {string} A randomly generated name or "AI Candidate" as fallback.
- */
-export const generateAICandidateNameForElection = (countryId) => {
-  const countryNameData = NAMES_BY_COUNTRY[countryId];
-
-  let firstNamesMale = GENERIC_FIRST_NAMES_MALE;
-  let firstNamesFemale = GENERIC_FIRST_NAMES_FEMALE;
-  let lastNames = GENERIC_LAST_NAMES;
-  let selectedFirstNamePool;
-
-  if (countryNameData) {
-    firstNamesMale =
-      countryNameData.male && countryNameData.male.length > 0
-        ? countryNameData.male
-        : GENERIC_FIRST_NAMES_MALE;
-    firstNamesFemale =
-      countryNameData.female && countryNameData.female.length > 0
-        ? countryNameData.female
-        : GENERIC_FIRST_NAMES_FEMALE;
-    lastNames =
-      countryNameData.last && countryNameData.last.length > 0
-        ? countryNameData.last
-        : GENERIC_LAST_NAMES;
-  } else {
-    console.warn(
-      `Name data not found for countryId: ${countryId}. Using generic names.`
-    );
-  }
-
-  // Randomly pick between male and female first names
-  if (Math.random() < 0.5 && firstNamesMale.length > 0) {
-    selectedFirstNamePool = firstNamesMale;
-  } else if (firstNamesFemale.length > 0) {
-    selectedFirstNamePool = firstNamesFemale;
-  } else if (firstNamesMale.length > 0) {
-    // Fallback if female pool was empty but male wasn't
-    selectedFirstNamePool = firstNamesMale;
-  } else {
-    // Both specific pools were empty, rely on generic ones already set
-    if (Math.random() < 0.5 && GENERIC_FIRST_NAMES_MALE.length > 0) {
-      selectedFirstNamePool = GENERIC_FIRST_NAMES_MALE;
-    } else if (GENERIC_FIRST_NAMES_FEMALE.length > 0) {
-      selectedFirstNamePool = GENERIC_FIRST_NAMES_FEMALE;
-    } else {
-      return "AI Candidate"; // Absolute fallback
-    }
-  }
-
-  if (selectedFirstNamePool.length === 0 || lastNames.length === 0) {
-    // This case should be rare if GENERIC lists are populated
-    console.warn(
-      `Selected name pools are empty for ${countryId}. Using absolute fallback.`
-    );
-    return "AI Candidate";
-  }
-
-  const firstName = getRandomElement(selectedFirstNamePool);
-  const lastName = getRandomElement(lastNames);
-
-  return `${firstName} ${lastName}`;
-};
 
 /**
  * Generates AI candidates for an election.
@@ -437,254 +361,6 @@ export const calculateRandomVoterTurnout = (
   return getRandomInt(minPercentage, maxPercentage);
 };
 
-export function distributeVotesToCandidates(
-  candidatesList,
-  totalVotesToDistribute,
-  electionIdForLog = "election"
-) {
-  if (!candidatesList || candidatesList.length === 0) {
-    return [];
-  }
-
-  // Use polling as a basis for vote share.
-  // Candidates already have polling normalized to 100 (or should have).
-  let tempCandidates = candidatesList.map((c) => ({
-    ...c,
-    polling: c.polling || 0, // Ensure polling exists
-    votes: 0, // Initialize votes
-  }));
-
-  const totalPollingSum = tempCandidates.reduce((sum, c) => sum + c.polling, 0);
-
-  if (totalPollingSum === 0 && tempCandidates.length > 0) {
-    // If all polling is 0 (unlikely if normalized, but a fallback), distribute equally
-    const equalShare = Math.floor(
-      totalVotesToDistribute / tempCandidates.length
-    );
-    let remainder = totalVotesToDistribute % tempCandidates.length;
-    return tempCandidates.map((c) => {
-      c.votes = equalShare + (remainder > 0 ? 1 : 0);
-      if (remainder > 0) remainder--;
-      return c;
-    });
-  }
-
-  if (totalPollingSum !== 100 && totalPollingSum > 0) {
-    // if polling wasn't summing to 100, re-normalize for proportion calculation here
-    console.warn(
-      `[VoteSim/${electionIdForLog}] Total polling is ${totalPollingSum}, not 100. Will use proportions.`
-    );
-  }
-
-  // Calculate votes based on polling share
-  let assignedVotesCount = 0;
-  tempCandidates.forEach((candidate) => {
-    // If totalPollingSum is 0, this gives NaN. Handled by above block.
-    const proportion =
-      totalPollingSum > 0
-        ? candidate.polling / totalPollingSum
-        : 1 / tempCandidates.length;
-    candidate.votes = Math.floor(proportion * totalVotesToDistribute);
-    assignedVotesCount += candidate.votes;
-  });
-
-  // Distribute any remaining votes due to flooring, one by one, prioritizing higher polling
-  // or use a more randomized approach for remainder to avoid always giving to top.
-  let remainingVotes = totalVotesToDistribute - assignedVotesCount;
-  if (remainingVotes > 0) {
-    // Sort by polling descending to give remainder to "stronger" candidates first
-    // Could also add a small random factor or distribute based on decimal remainders for more fairness
-    tempCandidates.sort((a, b) => {
-      // Primary sort by polling, secondary by random to break ties if needed
-      if (b.polling === a.polling) return Math.random() - 0.5;
-      return b.polling - a.polling;
-    });
-    for (let i = 0; i < remainingVotes; i++) {
-      tempCandidates[i % tempCandidates.length].votes++;
-    }
-  }
-  // Safety check: ensure total votes match
-  let finalVoteSum = tempCandidates.reduce((sum, c) => sum + c.votes, 0);
-  if (finalVoteSum !== totalVotesToDistribute && tempCandidates.length > 0) {
-    console.warn(
-      `[VoteSim/${electionIdForLog}] Vote sum mismatch. Expected ${totalVotesToDistribute}, got ${finalVoteSum}. Adjusting...`
-    );
-    let diff = totalVotesToDistribute - finalVoteSum;
-    tempCandidates[0].votes += diff; // Add/remove from the first candidate (could be more sophisticated)
-  }
-
-  console.log(
-    `[VoteSim/${electionIdForLog}] Final candidate votes:`,
-    tempCandidates.map((c) => ({ name: c.name, votes: c.votes }))
-  );
-  return tempCandidates;
-}
-
-export function generateFullAIPolitician(
-  countryId,
-  allPartiesInScope,
-  policyQuestionsData = POLICY_QUESTIONS, //
-  ideologyData = IDEOLOGY_DEFINITIONS, //
-  forcePartyId = null,
-  forceFirstName = null,
-  forceLastName = null,
-  isIncumbent = false,
-  // NEW: Electorate data for polling calculation
-  electorateIdeologyCenter = null,
-  electorateIdeologySpread = null,
-  electorateIssueStances = null
-) {
-  // Party Assignment
-  const chosenParty = forcePartyId
-    ? allPartiesInScope.find((p) => p.id === forcePartyId)
-    : getRandomElement(allPartiesInScope); //
-
-  const partyId = chosenParty?.id || "independent";
-  const partyName = chosenParty?.name || "Independent";
-  const partyColor = chosenParty?.color || "#888888";
-
-  // Name Generation
-  const fullName = generateAICandidateNameForElection(countryId); //
-  const nameParts = fullName.split(" ");
-  const firstName =
-    forceFirstName ||
-    (nameParts[0] === "AI" && nameParts[1] === "Candidate"
-      ? "AI"
-      : nameParts[0]);
-  const lastName =
-    forceLastName ||
-    (nameParts[0] === "AI" && nameParts[1] === "Candidate"
-      ? "Candidate"
-      : nameParts.slice(1).join(" ") || `LastName_${generateId()}`); //
-
-  // Policy Stances (randomly generated for AI)
-  const policyStances = {};
-  // FIX: Ensure policyQuestionsData is not null before forEach
-  (policyQuestionsData || []).forEach((question) => {
-    //
-    if (question.options && question.options.length > 0) {
-      policyStances[question.id] = getRandomElement(question.options).value; //
-    }
-  });
-
-  // Ideology Calculation: Use global calculateIdeologyFromStances
-  const { ideologyName: calculatedIdeology, scores: ideologyScores } =
-    calculateIdeologyFromStances(
-      policyStances,
-      policyQuestionsData,
-      ideologyData,
-      chosenParty?.ideologyScores
-    );
-
-  // Attributes (randomly generated)
-  const attributes = {
-    charisma: getRandomInt(3, 8), //
-    integrity: getRandomInt(2, 7),
-    intelligence: getRandomInt(4, 9),
-    negotiation: getRandomInt(3, 8),
-    oratory: getRandomInt(3, 8),
-    fundraising: getRandomInt(2, 7),
-  };
-
-  // Background (randomly generated)
-  const educationLevels = [
-    "High School Diploma",
-    "Bachelor's Degree",
-    "Master's Degree",
-    "Doctorate",
-  ];
-  const careerPaths = [
-    "Lawyer",
-    "Business Owner",
-    "Community Organizer",
-    "Teacher",
-    "Local Bureaucrat",
-    "Academic",
-  ];
-  const actualEducation = getRandomElement(educationLevels); //
-  const actualCareer = getRandomElement(careerPaths); //
-  const background = {
-    education: actualEducation,
-    career: actualCareer,
-    narrative: `A dedicated public servant with a focus on community values and pragmatic solutions. Hopes to bring positive change through collaboration and hard work. Started their political journey after a career as a ${actualCareer.toLowerCase()}, building on a foundation from their ${actualEducation.toLowerCase()}.`,
-  };
-
-  // Name Recognition (based on incumbency and party affiliation)
-  let initialNameRecognition = 0;
-  if (isIncumbent) {
-    initialNameRecognition = getRandomInt(15000, 75000); //
-  } else {
-    if (chosenParty && chosenParty.name !== "Independent") {
-      initialNameRecognition = getRandomInt(2000, 15000);
-    } else {
-      initialNameRecognition = getRandomInt(500, 5000);
-    }
-  }
-
-  // AI Campaign Hours
-  const campaignHoursPerDayForAI = getRandomInt(6, 10); //
-
-  const newPolitician = {
-    id: `ai_pol_${generateId()}`, //
-    firstName: firstName,
-    lastName: lastName,
-    name: fullName,
-    age: getRandomInt(35, 70), //
-    attributes: attributes,
-    policyStances: policyStances,
-    background: background,
-    calculatedIdeology,
-    ideologyScores, // Store the detailed scores
-
-    partyId: partyId, // Assigned from chosenParty or Independent fallback
-    partyName: partyName, // Assigned from chosenParty or Independent fallback
-    partyColor: partyColor, // Assigned from chosenParty or Independent fallback
-
-    isIncumbent: isIncumbent,
-    isPlayer: false,
-
-    politicalCapital: getRandomInt(5, 30), //
-    nameRecognition: initialNameRecognition,
-    treasury: getRandomInt(5000, 50000),
-    campaignFunds: isIncumbent
-      ? getRandomInt(10000, 75000)
-      : getRandomInt(500, 10000), //
-    approvalRating: getRandomInt(35, 60), //
-    mediaBuzz: getRandomInt(0, 20), //
-    partySupport:
-      chosenParty && chosenParty.name !== "Independent"
-        ? getRandomInt(30, 75) //
-        : 0,
-    currentOffice: null,
-
-    campaignHoursPerDay: campaignHoursPerDayForAI,
-    campaignHoursRemainingToday: campaignHoursPerDayForAI,
-
-    hiredStaff: [],
-    volunteerCount: isIncumbent ? getRandomInt(10, 50) : getRandomInt(0, 15), //
-    advertisingBudgetMonthly: 0,
-    currentAdStrategy: { focus: "none", targetId: null, intensity: 0 },
-    isInCampaign: false,
-  };
-
-  // Calculate initial polling for the new politician object using calculateInitialPolling
-  // Pass electorate data here
-  const calculatedPolling = calculateInitialPolling(
-    newPolitician,
-    countryId,
-    allPartiesInScope,
-    policyQuestionsData,
-    ideologyData,
-    electorateIdeologyCenter, // Pass new parameters
-    electorateIdeologySpread, // Pass new parameters
-    electorateIssueStances // Pass new parameters
-  );
-
-  newPolitician.polling = calculatedPolling.totalScore;
-
-  return newPolitician;
-}
-
 export function calculateBaseCandidateScore(candidate, election, campaignData) {
   if (
     !candidate ||
@@ -783,98 +459,6 @@ export function calculateBaseCandidateScore(candidate, election, campaignData) {
   score += getRandomInt(-3, 3);
 
   return Math.max(1, Math.round(score)); // Ensure score is at least 1
-}
-
-/**
- * Generates a plausible and varied political party name.
- * @param {string} baseIdeologyName - The base ideology (e.g., "Conservative", "Socialist").
- * @param {string} countryName - The name of the country (e.g., "Japan", "United States").
- * @returns {string} A generated party name.
- */
-export function generateNewPartyName(baseIdeologyName, countryName) {
-  const roll = Math.random();
-  let nameParts = [];
-
-  const ideologySpecificWords =
-    IDEOLOGY_KEYWORDS[baseIdeologyName] ||
-    IDEOLOGY_KEYWORDS["Default"].concat(baseIdeologyName);
-  const specificWord = getRandomElement(ideologySpecificWords);
-  const genericAdj = getRandomElement(GENERIC_ADJECTIVES);
-  const genericNoun = getRandomElement(GENERIC_NOUNS);
-  const abstractNoun = getRandomElement(ABSTRACT_NOUNS);
-  const countryAdj = countryName; // Could be refined to "Japanese", "American" etc. later
-
-  // Define several templates
-  if (roll < 0.1) {
-    // Template 1: [Ideology] Party (simple and common)
-    nameParts = [specificWord, "Party"];
-  } else if (roll < 0.25) {
-    // Template 2: [Generic Adj] [Specific/Ideology Word] [Generic Noun]
-    nameParts = [genericAdj, specificWord, genericNoun];
-  } else if (roll < 0.4) {
-    // Template 3: [Specific/Ideology Word] [Generic Noun]
-    nameParts = [specificWord, genericNoun];
-  } else if (roll < 0.55 && countryName) {
-    // Template 4: [Country Adj] [Specific/Ideology Word] [Party/Union/Alliance]
-    nameParts = [
-      countryAdj,
-      specificWord,
-      getRandomElement(["Party", "Union", "Alliance"]),
-    ];
-  } else if (roll < 0.7) {
-    // Template 5: [Generic Adj] [Abstract Noun] [Generic Noun]
-    nameParts = [genericAdj, abstractNoun, genericNoun];
-  } else if (roll < 0.8 && countryName) {
-    // Template 6: [Abstract Noun] of [Country]
-    nameParts = [abstractNoun, "of", countryName];
-  } else if (roll < 0.9) {
-    // Template 7: The [Specific/Ideology Word] [Abstract Noun]
-    nameParts = ["The", specificWord, abstractNoun];
-  } else if (roll < 0.95 && specificWord !== baseIdeologyName) {
-    // Template 8: [Base Ideology Name]'s [Specific Word]
-    nameParts = [baseIdeologyName + "'s", specificWord];
-  } else {
-    // Fallback/Default: [Generic Adj] [Base Ideology Name] Party
-    nameParts = [genericAdj, baseIdeologyName, "Party"];
-  }
-
-  // Clean up: Filter out empty strings, join, and remove duplicate consecutive words (simple version)
-  let finalName = nameParts
-    .filter((part) => part && part.trim() !== "")
-    .join(" ");
-  const words = finalName.split(" ");
-  const uniqueConsecutiveWords = [];
-  if (words.length > 0) {
-    uniqueConsecutiveWords.push(words[0]);
-    for (let i = 1; i < words.length; i++) {
-      if (words[i].toLowerCase() !== words[i - 1].toLowerCase()) {
-        uniqueConsecutiveWords.push(words[i]);
-      }
-    }
-  }
-  finalName = uniqueConsecutiveWords.join(" ");
-
-  // Replace placeholder [CountryName] if it made it through
-  finalName = finalName.replace(/\[CountryName\]/g, countryName);
-
-  // Ensure "Party Party" or similar doesn't happen often by checking last two words
-  const nameSplit = finalName.split(" ");
-  if (
-    nameSplit.length > 1 &&
-    nameSplit[nameSplit.length - 1].toLowerCase() ===
-      nameSplit[nameSplit.length - 2].toLowerCase() &&
-    GENERIC_NOUNS.includes(nameSplit[nameSplit.length - 1])
-  ) {
-    finalName = nameSplit.slice(0, -1).join(" "); // Remove last word if duplicate of second last and is a generic noun
-  }
-  if (finalName.trim() === "" || finalName.toLowerCase() === "party") {
-    // Further fallback
-    finalName = `${genericAdj} ${baseIdeologyName} ${getRandomElement(
-      GENERIC_NOUNS
-    )}`;
-  }
-
-  return finalName;
 }
 
 /**

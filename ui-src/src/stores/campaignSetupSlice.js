@@ -1,10 +1,10 @@
-import { generateId } from "../utils/generalUtils";
 import { ELECTION_TYPES_BY_COUNTRY } from "../data/electionsData";
 import {
   generateRandomOfficeHolder,
   calculateNumberOfSeats,
 } from "../utils/electionUtils";
-import { generateFullCityData } from "../utils/governmentUtils";
+import { generateFullCityData } from "../entities/politicialEntities";
+import { generateId } from "../utils/core";
 
 export const createCampaignSetupSlice = (set, get) => {
   return {

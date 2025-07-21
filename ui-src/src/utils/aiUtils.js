@@ -1,6 +1,6 @@
 import { CITY_POLICIES } from "../data/policyDefinitions";
-import { getRandomInt, calculateAdultPopulation } from "../utils/generalUtils";
 import { RATING_LEVELS } from "../data/governmentData";
+import { calculateAdultPopulation, getRandomInt } from "./core";
 
 const getServiceRatingDetails = (
   targetBudgetLine,

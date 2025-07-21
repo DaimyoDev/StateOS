@@ -3,7 +3,7 @@ import React, { useEffect, useState, useCallback, useMemo } from "react";
 import useGameStore from "../store"; //
 import "./ElectionNightScreen.css"; //
 import WinnerAnnouncementModal from "../components/modals/WinnerAnnouncementModal"; //
-import { getRandomInt, calculateAdultPopulation } from "../utils/generalUtils"; //
+import { getRandomInt, calculateAdultPopulation } from "../utils/core"; //
 
 const SIMULATION_SPEEDS = {
   realistic: 300000,

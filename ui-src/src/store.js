@@ -1,13 +1,10 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { BASE_IDEOLOGIES } from "./data/ideologiesData.js";
-import { generateNewPartyName } from "./utils/electionUtils.js";
+import { generateNewPartyName } from "./entities/personnel.js";
 // Util imports
-import {
-  generateId,
-  getRandomInt,
-  generateNuancedColor,
-} from "./utils/generalUtils.js";
+import { generateId, getRandomInt } from "./utils/core.js";
+import { generateNuancedColor } from "./utils/generalUtils.js";
 
 // --- Slice Creators ---
 import { createUISlice } from "./stores/uiStateSlice.js";
@@ -15,12 +12,12 @@ import { createPoliticianSlice } from "./stores/politicianSlice.js";
 import { createElectionSlice } from "./stores/electionSlice.js";
 import { createCampaignSlice } from "./stores/campaignSlice.js";
 import { createLegislationSlice } from "./stores/legislationSlice.js";
-import { createCampaignActionsSlice } from "./stores/campaignActionsSlice.js";
 import { createCampaignSetupSlice } from "./stores/campaignSetupSlice.js";
 import { createPolicySlice } from "./stores/policySlice.js";
 import { createTimeSlice } from "./stores/timeSlice.js";
 import { createNewsSlice } from "./stores/newsSlice.js";
 import { createCampaignStaffSlice } from "./stores/campaignStaffSlice.js";
+
 // --- Helper Functions (to be moved to relevant slices or utils later) ---
 
 // Will move to campaignSetupSlice
@@ -43,7 +40,6 @@ const useGameStore = create(
       const electionSliceActions = createElectionSlice(set, get);
       const campaignSlice = createCampaignSlice(set, get);
       const legislationSlice = createLegislationSlice(set, get);
-      const campaignActionsSlice = createCampaignActionsSlice(set, get);
       const campaignSetupSlice = createCampaignSetupSlice(set, get);
       const policySlice = createPolicySlice(set, get);
       const timeSlice = createTimeSlice(set, get);
@@ -69,12 +65,11 @@ const useGameStore = create(
         currentCampaignSetup: getInitialCampaignSetupState(),
 
         actions: {
-          ...electionSliceActions,
+          ...electionSliceActions.actions,
           ...campaignSlice.actions,
           ...legislationSlice.actions,
           ...uiSliceData.actions,
           ...politicianSliceData.actions,
-          ...campaignActionsSlice.actions,
           ...campaignSetupSlice.actions,
           ...policySlice,
           ...timeSlice.actions,

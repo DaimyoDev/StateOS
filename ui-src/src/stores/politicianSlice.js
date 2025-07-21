@@ -1,7 +1,8 @@
 // ui-src/src/stores/politicianSlice.js
 import { IDEOLOGY_DEFINITIONS } from "../data/ideologiesData.js";
 import { POLICY_QUESTIONS } from "../data/policyData.js";
-import { generateId } from "../utils/generalUtils.js";
+import { calculateIdeologyFromStances } from "../entities/personnel.js";
+import { generateId } from "../utils/core.js";
 
 // --- Helper Function (Stays outside the slice) ---
 const getInitialCreatingPoliticianState = () => ({
@@ -40,110 +41,6 @@ const getInitialCreatingPoliticianState = () => ({
     intensity: 50,
   },
 });
-
-// --- Helper Function (Stays outside the slice) ---
-export function calculateIdeologyFromStances(
-  stances, // This parameter is now optional for external calls if initialScores are provided
-  policyQuestionsData,
-  ideologyData,
-  initialScores = null // NEW: Optional parameter to pass pre-calculated scores
-) {
-  const AXES = [
-    "economic",
-    "social_traditionalism",
-    "sovereignty",
-    "ecology",
-    "theocratic",
-    "digitalization",
-    "personal_liberty",
-    "authority_structure",
-    "state_intervention_scope",
-    "societal_focus",
-    "rural_priority",
-    "governance_approach",
-  ];
-
-  let normalizedScores = {};
-
-  if (initialScores) {
-    // If initialScores are provided, use them directly
-    normalizedScores = { ...initialScores };
-  } else {
-    // Original logic: calculate scores from stances
-    stances = stances || {}; // Ensure stances is an object, not null
-    const currentScores = {};
-    const questionsWithNonZeroEffectOnAxis = {};
-    AXES.forEach((axis) => {
-      currentScores[axis] = 0;
-      questionsWithNonZeroEffectOnAxis[axis] = 0;
-    });
-    let totalQuestionsWithAnyEffectAnswered = 0;
-
-    policyQuestionsData.forEach((pq) => {
-      const selectedOptionValue = stances[pq.id];
-      if (selectedOptionValue) {
-        const selectedOptionData = (pq.options || []).find(
-          (opt) => opt && opt.value === selectedOptionValue
-        );
-        const effects =
-          selectedOptionData?.axis_effects ||
-          selectedOptionData?.ideologyEffect;
-        if (effects && typeof effects === "object") {
-          let questionContributed = false;
-          AXES.forEach((axis) => {
-            const effectValue = effects[axis];
-            if (typeof effectValue === "number") {
-              currentScores[axis] += effectValue;
-              if (effectValue !== 0) {
-                questionsWithNonZeroEffectOnAxis[axis]++;
-                questionContributed = true;
-              }
-            }
-          });
-          if (questionContributed) {
-            totalQuestionsWithAnyEffectAnswered++;
-          }
-        }
-      }
-    });
-
-    if (totalQuestionsWithAnyEffectAnswered === 0) {
-      AXES.forEach((axis) => (normalizedScores[axis] = 0));
-    } else {
-      AXES.forEach((axis) => {
-        normalizedScores[axis] =
-          questionsWithNonZeroEffectOnAxis[axis] > 0
-            ? currentScores[axis] / questionsWithNonZeroEffectOnAxis[axis]
-            : 0;
-      });
-    }
-  }
-
-  let determinedIdeologyName = "Centrist";
-  let minDistanceSquared = Infinity;
-  for (const ideologyDef of Object.values(ideologyData)) {
-    if (!ideologyDef.idealPoint) continue;
-    let distanceSquared = 0;
-    AXES.forEach((axis) => {
-      const idealAxisScore = ideologyDef.idealPoint[axis] || 0;
-      const diff = (normalizedScores[axis] || 0) - idealAxisScore;
-      distanceSquared += diff * diff;
-    });
-    if (distanceSquared < minDistanceSquared) {
-      minDistanceSquared = distanceSquared;
-      determinedIdeologyName = ideologyDef.name;
-    }
-  }
-
-  const averageAbsoluteScore =
-    AXES.reduce((sum, axis) => sum + Math.abs(normalizedScores[axis] || 0), 0) /
-    AXES.length;
-  if (averageAbsoluteScore < 0.25) {
-    determinedIdeologyName = "Centrist";
-  }
-
-  return { ideologyName: determinedIdeologyName, scores: normalizedScores };
-}
 
 // --- Main Slice Creator ---
 export const createPoliticianSlice = (set, get) => ({

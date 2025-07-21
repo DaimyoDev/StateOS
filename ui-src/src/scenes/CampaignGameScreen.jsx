@@ -5,7 +5,7 @@ import "./CampaignGameScreen.css";
 import Modal from "../components/modals/Modal";
 import ViewPoliticianModal from "../components/modals/ViewPoliticianModal";
 import PolicyVoteDetailsModal from "../components/modals/PolicyVoteDetailsModal";
-import { isDateBefore } from "../utils/generalUtils";
+import { isDateBefore } from "../utils/core";
 // Import your tab content components
 import DashboardTab from "../components/game_tabs/DashboardTab";
 import LocalAreaTab from "../components/game_tabs/LocalAreaTab";

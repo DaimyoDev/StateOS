@@ -1,9 +1,5 @@
 // ui-src/src/stores/timeSlice.js
-import {
-  isDateBefore,
-  areDatesEqual,
-  getRandomInt,
-} from "../utils/generalUtils.js";
+import { isDateBefore, areDatesEqual, getRandomInt } from "../utils/core";
 import {
   recalculateMonthlyBudget,
   simulateMonthlyCityStatChanges,

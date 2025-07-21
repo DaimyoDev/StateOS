@@ -1,11 +1,14 @@
-import { adjustStatLevel } from "../utils/generalUtils";
 import {
   RATING_LEVELS,
   MOOD_LEVELS,
   ECONOMIC_OUTLOOK_LEVELS,
 } from "../data/governmentData";
 import { CITY_POLICIES } from "../data/policyDefinitions";
-import { formatPercentage, formatBudgetKey } from "../utils/formattingUtils";
+import {
+  formatPercentage,
+  formatBudgetKey,
+  adjustStatLevel,
+} from "../utils/core";
 
 export const STAT_LEVEL_ARRAYS = {
   economicOutlook: ECONOMIC_OUTLOOK_LEVELS,

@@ -1,6 +1,6 @@
 // ui-src/src/utils/monthlyUtils.js
 
-import { getRandomInt, adjustStatLevel } from "./generalUtils"; // Adjust path as needed
+import { getRandomInt, adjustStatLevel } from "./core"; // Adjust path as needed
 import {
   ECONOMIC_OUTLOOK_LEVELS,
   RATING_LEVELS,
@@ -8,10 +8,10 @@ import {
 } from "../data/governmentData"; // Adjust path
 import { decideAIPolicyProposal } from "./aiUtils"; // Adjust path
 import { normalizePartyPopularities } from "./electionUtils";
-import { calculateDetailedIncomeSources } from "./governmentUtils";
 import { STAT_LEVEL_ARRAYS } from "../stores/policySlice";
 import { CITY_POLICIES } from "../data/policyDefinitions";
 import { calculateHealthcareMetrics } from "./statCalculationCore";
+import { calculateDetailedIncomeSources } from "../entities/politicialEntities";
 
 const determineKeyStatForIdeology = (ideologyName) => {
   switch (ideologyName) {

@@ -102,6 +102,8 @@ h6 {
   transition: background-color var(--transition-speed),
     transform var(--transition-speed), box-shadow var(--transition-speed);
   outline: none;
+  box-sizing: border-box;
+  margin: 10px 3px;
 }
 
 .action-button:hover,

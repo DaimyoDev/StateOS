@@ -16,18 +16,16 @@ import { POLICY_QUESTIONS } from "../data/policyData"; //
 import { ELECTION_TYPES_BY_COUNTRY } from "../data/electionsData"; //
 
 // Utility imports
+import { generateNuancedColor } from "../utils/generalUtils";
+import { normalizePolling } from "../General Scripts/PollingFunctions";
+import { getRandomElement, getRandomInt, generateId } from "../utils/core";
 import {
-  generateId,
-  getRandomElement,
-  getRandomInt,
-  generateNuancedColor,
-} from "../utils/generalUtils"; //
-import { calculateIdeologyFromStances } from "../stores/politicianSlice"; //
-import { generateFullAIPolitician } from "../utils/electionUtils";
+  calculateIdeologyFromStances,
+  generateFullAIPolitician,
+} from "../entities/personnel";
 
 // Reusable UI components
 import Modal from "../components/modals/Modal"; //
-import { normalizePolling } from "../General Scripts/PollingFunctions";
 
 // Helper function to generate a new party name
 const generateNewPartyName = (baseIdeologyName) => {
@@ -92,6 +90,19 @@ const ElectionSimulatorScreen = () => {
     }
     return [];
   }, [selectedCountry]);
+
+  const availableCities = useMemo(() => {
+    if (!selectedRegionId || !selectedCountry) return [];
+    const region = availableRegions.find((r) => r.id === selectedRegionId);
+    if (!region || !region.cities || region.cities.length === 0) return [];
+
+    // Assuming createCityObject can generate a basic city object if needed
+    // or that region.cities already contains full city objects with 'name' and 'id'
+    return region.cities.map((city) => ({
+      id: city.id,
+      name: city.name || `City ${city.id}`, // Ensure name exists
+    }));
+  }, [selectedRegionId, selectedCountry, availableRegions]);
 
   const availableElectionTypes = useMemo(() => {
     return ELECTION_TYPES_BY_COUNTRY[selectedCountryId] || []; //
@@ -281,6 +292,28 @@ const ElectionSimulatorScreen = () => {
     totalPopulation,
   ]);
 
+  // New: Function to randomize electorate profile
+  // New: Function to randomize electorate profile
+  const handleRandomizeElectorateProfile = useCallback(() => {
+    const newCenter = {};
+    const newSpread = {};
+    Object.keys(IDEOLOGY_DEFINITIONS.centrist.idealPoint).forEach((axis) => {
+      // Store as numbers, not strings from toFixed
+      newCenter[axis] = parseFloat((getRandomInt(-40, 40) / 10).toFixed(1));
+      newSpread[axis] = parseFloat((getRandomInt(1, 40) / 10).toFixed(1));
+    });
+    setElectorateIdeologyCenter(newCenter);
+    setElectorateIdeologySpread(newSpread);
+
+    const newIssueStances = {};
+    POLICY_QUESTIONS.forEach((question) => {
+      if (question.options && question.options.length > 0) {
+        newIssueStances[question.id] = getRandomInt(-100, 100);
+      }
+    });
+    setElectorateIssueStances(newIssueStances);
+  }, []);
+
   const runSimulation = useCallback(() => {
     if (!selectedCountryId || !electionType || parties.length === 0) {
       alert(
@@ -304,20 +337,27 @@ const ElectionSimulatorScreen = () => {
     }
 
     let resolvedOfficeName = selectedElectionTypeDetails.officeNameTemplate;
+
+    console.log(resolvedOfficeName);
+
+    // Get actual names for regions and cities
     const selectedRegionName = availableRegions.find(
       (r) => r.id === selectedRegionId
+    )?.name;
+    const selectedCityName = availableCities.find(
+      (c) => c.id === selectedCityId
     )?.name;
     const selectedCountryName = selectedCountry?.name;
 
     if (resolvedOfficeName.includes("{cityName}")) {
       resolvedOfficeName = resolvedOfficeName.replace(
         "{cityName}",
-        selectedCityId || "the City"
+        selectedCityName || "the City"
       );
     }
-    if (resolvedOfficeName.includes("{regionName}")) {
+    if (resolvedOfficeName.includes("{stateName}")) {
       resolvedOfficeName = resolvedOfficeName.replace(
-        "{regionName}",
+        "{stateName}",
         selectedRegionName || "the Region"
       );
     }
@@ -327,6 +367,7 @@ const ElectionSimulatorScreen = () => {
         selectedCountryName || "the Country"
       );
     }
+    // Remove any remaining placeholders if a specific entity wasn't selected
     resolvedOfficeName = resolvedOfficeName.replace(/\{.*?\}/g, "").trim();
     if (!resolvedOfficeName) resolvedOfficeName = "Simulated Election";
 
@@ -361,8 +402,12 @@ const ElectionSimulatorScreen = () => {
       entityDataSnapshot: {
         // Provide basic entity data snapshot
         population: totalPopulation,
-        id: selectedRegionId || selectedCountryId,
-        name: selectedRegionName || selectedCountryName || "Simulated Area",
+        id: selectedCityId || selectedRegionId || selectedCountryId,
+        name:
+          selectedCityName ||
+          selectedRegionName ||
+          selectedCountryName ||
+          "Simulated Area",
         demographics: {}, // Placeholder
         politicalLandscape: parties.map((p) => ({
           // Snapshot of parties for context
@@ -399,6 +444,7 @@ const ElectionSimulatorScreen = () => {
     electorateIssueStances,
     availableElectionTypes,
     availableRegions,
+    availableCities, // NEW dependency for city names
     selectedCountry,
     navigateTo,
     setSimulatedElections,
@@ -408,7 +454,12 @@ const ElectionSimulatorScreen = () => {
 
   return (
     <div className="election-simulator-screen-container ui-panel">
-      <h1 className="tab-title">Election Simulator</h1>
+      <div className="election-simulator-header">
+        <h1 className="tab-title">Election Simulator</h1>
+        <button className="menu-button" onClick={() => navigateTo("MainMenu")}>
+          Back to Main Menu
+        </button>
+      </div>
 
       <div className="simulator-layout">
         {/* Simulation Setup Panel now with Tabs */}
@@ -497,8 +548,14 @@ const ElectionSimulatorScreen = () => {
                     id="city-select"
                     value={selectedCityId}
                     onChange={(e) => setSelectedCityId(e.target.value)}
+                    disabled={availableCities.length === 0}
                   >
                     <option value="">Select a City (if available)</option>
+                    {availableCities.map((city) => (
+                      <option key={city.id} value={city.id}>
+                        {city.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
@@ -760,6 +817,14 @@ const ElectionSimulatorScreen = () => {
                       </div>
                     )
                 )}
+                <div className="electorate-controls">
+                  <button
+                    className="action-button"
+                    onClick={handleRandomizeElectorateProfile}
+                  >
+                    Randomize Electorate Profile
+                  </button>
+                </div>
               </div>
             )}
           </div>{" "}

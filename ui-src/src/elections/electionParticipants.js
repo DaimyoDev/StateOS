@@ -1,28 +1,25 @@
-// ui-src/src/utils/electionSystems.js
+// src/elections/electionParticipants.js
+// This file is responsible for determining WHO is running in a specific election instance
+// based on its electoral system (FPTP, PartyListPR, MMP, etc.).
+
+// NOTE: Import paths will need to be updated once the refactoring is complete.
 import {
   BASE_IDEOLOGIES,
   IDEOLOGY_DEFINITIONS,
-} from "../data/ideologiesData.js"; //
-import { generateId, getRandomElement, getRandomInt } from "./generalUtils.js"; //
+} from "../data/ideologiesData.js";
+import { getRandomElement, getRandomInt } from "../utils/core.js";
 import {
   generateAICandidateNameForElection,
   generateFullAIPolitician,
-  calculateBaseCandidateScore,
-} from "./electionUtils.js";
+} from "../entities/personnel.js";
+import { calculateBaseCandidateScore } from "../utils/electionUtils.js"; // This will be moved later
 import { normalizePolling } from "../General Scripts/PollingFunctions.js";
 import { POLICY_QUESTIONS } from "../data/policyData.js";
 
 /**
- * Handles participant generation and initial setup for First-Past-The-Post (FPTP) elections,
- * including Two-Round System and Electoral College.
- * @param {object} params.electionType - The election type object.
- * @param {Array<object>} params.partiesInScope - List of available parties.
- * @param {object|Array<object>|null} params.incumbentInfo - Incumbent details.
- * @param {string} params.countryId - The ID of the country.
- * @param {object} params.activeCampaign - The active campaign state for score calculation context.
- * @param {object} params.electionPropertiesForScoring - Context for base score calculation.
- * @param {number} params.entityPopulation - Population of the entity for polling normalization.
- * @returns {object} { type: "individual_candidates", data: Array<object> } with baseScores and polling.
+ * Handles participant generation for First-Past-The-Post (FPTP) style elections.
+ * @param {object} params - The parameters for participant generation.
+ * @returns {object} { type: "individual_candidates", data: Array<object> }
  */
 export function handleFPTPParticipants({
   partiesInScope,
@@ -31,9 +28,9 @@ export function handleFPTPParticipants({
   activeCampaign,
   electionPropertiesForScoring,
   entityPopulation,
-  electorateIdeologyCenter, // NEW
-  electorateIdeologySpread, // NEW
-  electorateIssueStances, // NEW
+  electorateIdeologyCenter,
+  electorateIdeologySpread,
+  electorateIssueStances,
 }) {
   let candidates = [];
   const runningIncumbents = [];
@@ -77,62 +74,20 @@ export function handleFPTPParticipants({
   let availablePartiesForChallengers = [...(partiesInScope || [])];
 
   for (let i = 0; i < numberOfChallengersToGenerate; i++) {
-    let assignedPartyForChallenger = null;
-    let partyIndexToTry = getRandomInt(
-      0,
-      availablePartiesForChallengers.length - 1
-    );
-    let potentialParty = availablePartiesForChallengers[partyIndexToTry];
+    let assignedPartyForChallenger = getRandomElement(
+      availablePartiesForChallengers
+    ) || {
+      id: `independent_ai_challenger_${i}`,
+      name: "Independent",
+      ideology: getRandomElement(BASE_IDEOLOGIES)?.name || "Centrist",
+      color: "#888888",
+    };
 
-    if (
-      runningIncumbents.length > 0 &&
-      potentialParty.id === runningIncumbents[0].partyId &&
-      availablePartiesForChallengers.length > 1
-    ) {
-      const nonIncumbentParties = availablePartiesForChallengers.filter(
-        (p) => p.id !== runningIncumbents[0].partyId
+    // Avoid having two candidates from the same party if possible
+    if (availablePartiesForChallengers.length > 1) {
+      availablePartiesForChallengers = availablePartiesForChallengers.filter(
+        (p) => p.id !== assignedPartyForChallenger.id
       );
-      if (nonIncumbentParties.length > 0) {
-        assignedPartyForChallenger = getRandomElement(nonIncumbentParties);
-        if (
-          numberOfChallengersToGenerate > 1 &&
-          availablePartiesForChallengers.length > 1
-        ) {
-          availablePartiesForChallengers =
-            availablePartiesForChallengers.filter(
-              (p) => p.id !== assignedPartyForChallenger.id
-            );
-        }
-      } else {
-        assignedPartyForChallenger = potentialParty;
-      }
-    } else {
-      assignedPartyForChallenger = potentialParty;
-      if (
-        numberOfChallengersToGenerate > 1 &&
-        availablePartiesForChallengers.length > 1
-      ) {
-        availablePartiesForChallengers = availablePartiesForChallengers.filter(
-          (p) => p.id !== assignedPartyForChallenger.id
-        );
-      }
-    }
-
-    if (!assignedPartyForChallenger) {
-      if (
-        partiesInScope.length > 0 &&
-        Math.random() < 0.2 &&
-        numberOfChallengersToGenerate > partiesInScope.length
-      ) {
-        assignedPartyForChallenger = getRandomElement(partiesInScope);
-      } else {
-        assignedPartyForChallenger = {
-          id: `independent_ai_challenger_${generateId()}`,
-          name: "Independent",
-          ideology: getRandomElement(BASE_IDEOLOGIES)?.name || "Centrist",
-          color: "#888888",
-        };
-      }
     }
 
     const newChallenger = generateFullAIPolitician(
@@ -148,20 +103,17 @@ export function handleFPTPParticipants({
       electorateIdeologySpread,
       electorateIssueStances
     );
+
     if (!candidates.find((c) => c.id === newChallenger.id)) {
       candidates.push(newChallenger);
     } else {
-      i--;
+      i--; // Decrement to ensure we generate the target number of unique challengers
     }
   }
 
-  candidates = candidates.map((cand) => ({
-    ...cand,
-    name: cand.name || generateAICandidateNameForElection(countryId),
-  }));
-
   const candidatesWithScores = candidates.map((cand) => ({
     ...cand,
+    name: cand.name || generateAICandidateNameForElection(countryId),
     baseScore: calculateBaseCandidateScore(
       cand,
       electionPropertiesForScoring,
@@ -172,7 +124,6 @@ export function handleFPTPParticipants({
   const eligibleVotersForPollingNorm = Math.floor(
     entityPopulation * (0.65 + Math.random() * 0.1)
   );
-
   const finalCandidates = normalizePolling(
     candidatesWithScores,
     eligibleVotersForPollingNorm
@@ -182,14 +133,9 @@ export function handleFPTPParticipants({
 }
 
 /**
- * Handles participant generation and initial setup for Party-List Proportional Representation (PartyListPR) elections.
- * @param {object} params.electionType - The election type object.
- * @param {Array<object>} params.partiesInScope - List of available parties.
- * @param {number} params.numberOfSeatsToFill - Total seats to fill in this instance.
- * @param {string} params.countryId - The ID of the country.
- * @param {object} params.activeCampaign - The active campaign state for score calculation context.
- * @param {object} params.electionPropertiesForScoring - Context for base score calculation.
- * @returns {object} { type: "party_lists", data: object } where data is partyId -> Array<candidateObject>.
+ * Handles participant generation for Party-List Proportional Representation (PartyListPR) elections.
+ * @param {object} params - The parameters for participant generation.
+ * @returns {object} { type: "party_lists", data: object }
  */
 export function handlePartyListPRParticipants({
   electionType,
@@ -219,7 +165,7 @@ export function handlePartyListPRParticipants({
         [],
         POLICY_QUESTIONS,
         IDEOLOGY_DEFINITIONS,
-        party,
+        party.id,
         null,
         null,
         false,
@@ -243,7 +189,7 @@ export function handlePartyListPRParticipants({
           electionPropertiesForScoring,
           activeCampaign
         ),
-        polling: 0, // Individual polling not primary for list candidates
+        polling: 0,
       });
     }
   });
@@ -251,15 +197,9 @@ export function handlePartyListPRParticipants({
 }
 
 /**
- * Handles participant generation and initial setup for Mixed-Member Proportional (MMP) elections.
- * @param {object} params.electionType - The election type object.
- * @param {Array<object>} params.partiesInScope - List of available parties.
- * @param {object|Array<object>|null} params.incumbentInfo - Incumbent details (for constituency part).
- * @param {number} params.numberOfSeatsToFill - Total seats to fill for the overall body.
- * @param {string} params.countryId - The ID of the country.
- * @param {object} params.activeCampaign - The active campaign state for score calculation context.
- * @param {object} params.electionPropertiesForScoring - Context for base score calculation.
- * @returns {object} { type: "mmp_participants", data: object } with partyLists and constituencyCandidatesByParty.
+ * Handles participant generation for Mixed-Member Proportional (MMP) elections.
+ * @param {object} params - The parameters for participant generation.
+ * @returns {object} { type: "mmp_participants", data: object }
  */
 export function handleMMPParticipants({
   electionType,
@@ -276,19 +216,15 @@ export function handleMMPParticipants({
   const partyListsOutput = {};
   const partiesSubmittingLists = partiesInScope.filter((p) => !p.isIndependent);
 
-  // 1. Generate Party Lists for MMP
+  // 1. Generate Party Lists
   partiesSubmittingLists.forEach((party) => {
     const listSeatTarget = Math.ceil(
       numberOfSeatsToFill * (electionType.mmpListSeatsRatio || 0.5)
     );
     const listSize = Math.max(
-      Math.floor(listSeatTarget * (electionType.listSizeFactor || 0.6)) + 1,
-      getRandomInt(
-        Math.max(3, listSeatTarget - (electionType.listSizeVarianceLow || 5)),
-        listSeatTarget + (electionType.listSizeVarianceHigh || 10)
-      )
+      Math.floor(listSeatTarget * 0.6) + 1,
+      getRandomInt(Math.max(3, listSeatTarget - 5), listSeatTarget + 10)
     );
-
     partyListsOutput[party.id] = [];
     for (let i = 0; i < listSize; i++) {
       const newCand = generateFullAIPolitician(
@@ -296,7 +232,7 @@ export function handleMMPParticipants({
         [],
         POLICY_QUESTIONS,
         IDEOLOGY_DEFINITIONS,
-        party,
+        party.id,
         null,
         null,
         false,
@@ -325,12 +261,11 @@ export function handleMMPParticipants({
     }
   });
 
-  // 2. Generate Constituency Candidates for MMP
+  // 2. Generate Constituency Candidates
   const constituencyCandidatesByParty = {};
   const approxConstituencySeats = Math.floor(
     numberOfSeatsToFill * (electionType.mmpConstituencySeatsRatio || 0.5)
   );
-
   partiesSubmittingLists.forEach((party) => {
     constituencyCandidatesByParty[party.id] = [];
     const numConstituencyCandsForParty = Math.max(
@@ -343,7 +278,6 @@ export function handleMMPParticipants({
         )
       )
     );
-
     for (let i = 0; i < numConstituencyCandsForParty; i++) {
       let newConstituencyCand;
       let attempts = 0;
@@ -353,7 +287,7 @@ export function handleMMPParticipants({
           [],
           POLICY_QUESTIONS,
           IDEOLOGY_DEFINITIONS,
-          party,
+          party.id,
           null,
           null,
           false,
@@ -383,6 +317,7 @@ export function handleMMPParticipants({
     }
   });
 
+  // 3. Generate Independent Constituency Candidates
   let independentConstituencyCandidates = [];
   const numIndependentConstituencyCands = getRandomInt(
     0,
@@ -390,7 +325,7 @@ export function handleMMPParticipants({
   );
   for (let i = 0; i < numIndependentConstituencyCands; i++) {
     const indParty = {
-      id: `independent_ai_const_mmp_${generateId()}`,
+      id: `independent_ai_const_mmp_${i}`,
       name: "Independent",
       ideology: getRandomElement(BASE_IDEOLOGIES)?.name || "Centrist",
       color: "#888888",
@@ -401,7 +336,7 @@ export function handleMMPParticipants({
         [],
         POLICY_QUESTIONS,
         IDEOLOGY_DEFINITIONS,
-        indParty,
+        indParty.id,
         null,
         null,
         false,
@@ -432,17 +367,9 @@ export function handleMMPParticipants({
 }
 
 /**
- * Handles participant generation and initial setup for Multi-Member District (MMD) elections
- * like Single Non-Transferable Vote (SNTV) or Block Vote.
- * @param {object} params.electionType - The election type object.
- * @param {Array<object>} params.partiesInScope - List of available parties.
- * @param {object|Array<object>|null} params.incumbentInfo - Incumbent details.
- * @param {number} params.numberOfSeatsToFill - Total seats to fill in this instance.
- * @param {string} params.countryId - The ID of the country.
- * @param {object} params.activeCampaign - The active campaign state for score calculation context.
- * @param {object} params.electionPropertiesForScoring - Context for base score calculation.
- * @param {number} params.entityPopulation - Population of the entity for polling normalization.
- * @returns {object} { type: "individual_candidates", data: Array<object> } with baseScores and polling.
+ * Handles participant generation for Multi-Member District (MMD) elections (SNTV, Block Vote).
+ * @param {object} params - The parameters for participant generation.
+ * @returns {object} { type: "individual_candidates", data: Array<object> }
  */
 export function handleMMDParticipants({
   partiesInScope,
@@ -456,6 +383,7 @@ export function handleMMDParticipants({
   electorateIdeologySpread,
   electorateIssueStances,
 }) {
+  // This logic is very similar to FPTP but generates more candidates relative to seats.
   let candidates = [];
   const runningIncumbents = [];
 
@@ -475,75 +403,30 @@ export function handleMMDParticipants({
     candidates.push(...runningIncumbents);
   }
 
-  let minFactor = 1.8;
-  let maxFactor = 3.0;
-  if (partiesInScope.length < 3) maxFactor = 2.5;
-  if (numberOfSeatsToFill < 5) {
-    minFactor = 2.0;
-    maxFactor = 3.5;
-  }
-
-  let minCandidates = Math.max(
+  const minCandidates = Math.max(
     numberOfSeatsToFill + 1,
-    Math.floor(numberOfSeatsToFill * minFactor),
-    runningIncumbents.length + 1
+    Math.floor(numberOfSeatsToFill * 1.8)
   );
-  if (partiesInScope.length > 0) {
-    minCandidates = Math.max(
-      minCandidates,
-      runningIncumbents.length + partiesInScope.length
-    );
-  }
-
-  let maxCandidates = Math.max(
-    minCandidates + Math.floor(numberOfSeatsToFill * 0.5),
-    Math.floor(numberOfSeatsToFill * maxFactor)
-  );
-  maxCandidates = Math.min(maxCandidates, numberOfSeatsToFill + 30, 70);
-  minCandidates = Math.min(minCandidates, maxCandidates);
-
+  const maxCandidates = Math.min(70, Math.floor(numberOfSeatsToFill * 3.0));
   let targetTotalCandidates = getRandomInt(minCandidates, maxCandidates);
-  targetTotalCandidates = Math.max(
-    targetTotalCandidates,
-    numberOfSeatsToFill + 1,
-    runningIncumbents.length + (partiesInScope.length > 0 ? 1 : 0)
-  );
-  targetTotalCandidates = Math.max(1, targetTotalCandidates);
 
   const numberOfChallengersToGenerate = Math.max(
     0,
     targetTotalCandidates - candidates.length
   );
-  let availablePartiesForChallengers = [...(partiesInScope || [])];
   let partyCycleIndex = 0;
 
   for (let i = 0; i < numberOfChallengersToGenerate; i++) {
-    let assignedPartyForChallenger = null;
-    if (availablePartiesForChallengers.length > 0) {
-      assignedPartyForChallenger = {
-        ...availablePartiesForChallengers[
-          partyCycleIndex % availablePartiesForChallengers.length
-        ],
-      };
-      partyCycleIndex++;
-    }
-
-    if (!assignedPartyForChallenger) {
-      if (
-        partiesInScope.length > 0 &&
-        Math.random() < 0.2 &&
-        numberOfChallengersToGenerate > partiesInScope.length
-      ) {
-        assignedPartyForChallenger = getRandomElement(partiesInScope);
-      } else {
-        assignedPartyForChallenger = {
-          id: `independent_ai_challenger_${generateId()}`,
-          name: "Independent",
-          ideology: getRandomElement(BASE_IDEOLOGIES)?.name || "Centrist",
-          color: "#888888",
-        };
-      }
-    }
+    let assignedPartyForChallenger =
+      partiesInScope.length > 0
+        ? { ...partiesInScope[partyCycleIndex % partiesInScope.length] }
+        : {
+            id: `independent_ai_challenger_${i}`,
+            name: "Independent",
+            ideology: getRandomElement(BASE_IDEOLOGIES)?.name || "Centrist",
+            color: "#888888",
+          };
+    partyCycleIndex++;
 
     const newChallenger = generateFullAIPolitician(
       countryId,
@@ -558,6 +441,7 @@ export function handleMMDParticipants({
       electorateIdeologySpread,
       electorateIssueStances
     );
+
     if (!candidates.find((c) => c.id === newChallenger.id)) {
       candidates.push(newChallenger);
     } else {
@@ -565,13 +449,9 @@ export function handleMMDParticipants({
     }
   }
 
-  candidates = candidates.map((cand) => ({
-    ...cand,
-    name: cand.name || generateAICandidateNameForElection(countryId),
-  }));
-
   const candidatesWithScores = candidates.map((cand) => ({
     ...cand,
+    name: cand.name || generateAICandidateNameForElection(countryId),
     baseScore: calculateBaseCandidateScore(
       cand,
       electionPropertiesForScoring,
@@ -582,7 +462,6 @@ export function handleMMDParticipants({
   const eligibleVotersForPollingNorm = Math.floor(
     entityPopulation * (0.65 + Math.random() * 0.1)
   );
-
   const finalCandidates = normalizePolling(
     candidatesWithScores,
     eligibleVotersForPollingNorm

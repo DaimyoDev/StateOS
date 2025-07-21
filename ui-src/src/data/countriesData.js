@@ -1,5 +1,5 @@
 import { assignNestedPopulations } from "../utils/populationUtils";
-import { generateFullStateData } from "../utils/stateUtils";
+import { generateFullStateData } from "../entities/politicialEntities";
 import { chamberTiers } from "./chamberTiers";
 import { japanPrefectures } from "./states/japanPrefectures";
 import { usaStates } from "./states/usaStates";

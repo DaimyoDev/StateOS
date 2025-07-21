@@ -4,11 +4,8 @@ import AutoSizer from "react-virtualized-auto-sizer";
 import useGameStore from "../../store";
 import "./TabStyles.css";
 import "./ElectionsTab.css";
-import {
-  isDateSameOrBefore,
-  getTimeUntil,
-  getRandomInt,
-} from "../../utils/generalUtils";
+import { isDateSameOrBefore, getTimeUntil } from "../../utils/generalUtils";
+import { getRandomInt } from "../../utils/core";
 
 // --- Utility Functions (kept outside component) ---
 const getDisplayedPolling = (actualPolling) => {

@@ -1,5 +1,5 @@
 import { IDEOLOGY_DEFINITIONS } from "../data/ideologiesData";
-import { getRandomInt } from "../utils/generalUtils";
+import { getRandomInt } from "../utils/core";
 
 /**
  * Calculates an initial polling score for a newly generated AI candidate.

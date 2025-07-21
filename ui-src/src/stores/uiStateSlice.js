@@ -1,6 +1,6 @@
 // ui-src/src/stores/uiStateSlice.js
 import { themes, defaultTheme } from "../themes"; //
-import { generateId } from "../utils/generalUtils";
+import { generateId } from "../utils/core";
 
 // Helper function to apply theme (can be kept here or moved to a more general UI util)
 const applyThemeToDocument = (themeData) => {
