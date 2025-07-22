@@ -116,23 +116,6 @@ export const usaElections = [
     councilSeatPopulationTiers: null,
   },
   {
-    id: nationalElectionIds.vice_president,
-    officeNameTemplate: "Vice President of the United States",
-    level: "national_head_of_state_and_government",
-    frequencyYears: 4,
-    electionMonth: 11,
-    generatesOneWinner: true,
-    electoralSystem: "ElectoralCollege",
-    voteTarget: "candidate_via_electors",
-    partyListType: null,
-    prThresholdPercent: null,
-    prAllocationMethod: null,
-    mmpConstituencySeatsRatio: null,
-    mmpListSeatsRatio: null,
-    minCouncilSeats: null,
-    councilSeatPopulationTiers: null,
-  },
-  {
     id: nationalElectionIds.national_hr, // House of Representatives
     officeNameTemplate: "U.S. Representative - {stateName} ({districtName})",
     level: "national_lower_house_constituency",

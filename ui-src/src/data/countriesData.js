@@ -245,6 +245,7 @@ export const generateDetailedCountryData = (countryToProcess) => {
   const nationalParties = generateNationalParties({
     countryId: processedCountry.id,
     dominantIdeologies: processedCountry.dominantIdeologies,
+    countryName: processedCountry.name,
   });
 
   // 2. Attach this consistent list to the main country object.
@@ -252,7 +253,31 @@ export const generateDetailedCountryData = (countryToProcess) => {
   // --- END OF FIX ---
 
   // 2. Generate full state data for each region
-  if (processedCountry.regions && Array.isArray(processedCountry.regions)) {
+  if (
+    processedCountry.id === "PHL" &&
+    processedCountry.provinces &&
+    Array.isArray(processedCountry.provinces)
+  ) {
+    // If so, process the PROVINCES array to generate the detailed data
+    processedCountry.provinces = processedCountry.provinces.map(
+      (staticProvince) => {
+        return generateFullStateData({
+          name: staticProvince.name,
+          countryId: processedCountry.id,
+          totalPopulation: staticProvince.population,
+          id: staticProvince.id,
+          legislativeDistricts: staticProvince.legislativeDistricts,
+          dominantIdeologies: processedCountry.dominantIdeologies,
+          nationalParties: processedCountry.nationalParties,
+        });
+      }
+    );
+  }
+  // For all other countries, use the existing logic for regions
+  else if (
+    processedCountry.regions &&
+    Array.isArray(processedCountry.regions)
+  ) {
     processedCountry.regions = processedCountry.regions.map((staticRegion) => {
       return generateFullStateData({
         name: staticRegion.name,
@@ -260,12 +285,11 @@ export const generateDetailedCountryData = (countryToProcess) => {
         totalPopulation: staticRegion.population,
         id: staticRegion.id,
         legislativeDistricts: staticRegion.legislativeDistricts,
+        dominantIdeologies: processedCountry.dominantIdeologies,
         nationalParties: processedCountry.nationalParties,
       });
     });
   }
-
-  console.log(processedCountry.regions);
 
   return processedCountry; // Return the fully processed country
 };

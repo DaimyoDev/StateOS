@@ -1,12 +1,11 @@
 // src/entities/partyGeneration.js
-
-// Make sure to import the function we're going to use
-import { generateNuancedColor, getRandomInt } from "../utils/generalUtils";
+import { generateNuancedColor } from "../utils/generalUtils";
 import { BASE_IDEOLOGIES, IDEOLOGY_DEFINITIONS } from "../data/ideologiesData";
 import {
   generateNewPartyName,
   initializePartyIdeologyScores,
 } from "./personnel";
+import { getRandomInt } from "../utils/core";
 
 export const generateNationalParties = ({
   countryId,
@@ -14,21 +13,37 @@ export const generateNationalParties = ({
   countryName,
 }) => {
   let parties = [];
-  const numParties = 4 + Math.floor(Math.random() * 4);
+  const numParties = 5 + Math.floor(Math.random() * 4); // 5-8 parties for more variety
 
-  // --- START OF REVISED LOGIC ---
+  // --- START OF NEW LOGIC ---
 
-  // Create a pool of the FULL ideology objects to access their base colors.
-  const ideologyPool =
+  // 1. Start the pool with the dominant ideologies to ensure they are represented.
+  let ideologyPool =
     dominantIdeologies?.length > 0
       ? BASE_IDEOLOGIES.filter((ideo) => dominantIdeologies.includes(ideo.name))
-      : [...BASE_IDEOLOGIES];
+      : [];
+
+  // 2. Create a pool of "minority" ideologies (all ideologies minus the dominant ones).
+  const minorityIdeologies = BASE_IDEOLOGIES.filter(
+    (ideo) => !dominantIdeologies.includes(ideo.name)
+  );
+
+  // 3. Add a few random minority ideologies to the main pool for variety.
+  const numberOfMinorityParties = getRandomInt(1, 3); // Add 1 to 3 extra parties
+  for (let i = 0; i < numberOfMinorityParties; i++) {
+    if (minorityIdeologies.length > 0) {
+      const randomIndex = Math.floor(Math.random() * minorityIdeologies.length);
+      const fringeIdeology = minorityIdeologies.splice(randomIndex, 1)[0];
+      ideologyPool.push(fringeIdeology);
+    }
+  }
+
+  // --- END OF NEW LOGIC ---
 
   const availableIdeologies = [...ideologyPool];
 
   for (let i = 0; i < numParties; i++) {
     if (availableIdeologies.length === 0) {
-      console.warn("Ran out of unique ideologies to assign to parties.");
       break;
     }
 
@@ -38,17 +53,8 @@ export const generateNationalParties = ({
     const selectedIdeologyObject = availableIdeologies[ideologyIndex];
     availableIdeologies.splice(ideologyIndex, 1);
 
-    // 1. Get the base color from the chosen ideology.
-    const baseColor = selectedIdeologyObject.color || "#808080"; // Fallback to grey
-
-    // 2. Use generateNuancedColor to create a unique shade.
-    const partyColor = generateNuancedColor(
-      baseColor,
-      getRandomInt(0, 100),
-      getRandomInt(0, 100),
-      getRandomInt(0, 100)
-    );
-
+    const baseColor = selectedIdeologyObject.color || "#808080";
+    const partyColor = generateNuancedColor(baseColor, 20, 20, 10);
     const partyName = generateNewPartyName(
       selectedIdeologyObject.name,
       countryName
@@ -60,10 +66,9 @@ export const generateNationalParties = ({
         .substr(2, 5)}`,
       name: partyName,
       ideology: selectedIdeologyObject.name,
-      color: partyColor, // 3. Use the new, nuanced color.
+      color: partyColor,
     });
   }
-  // --- END OF REVISED LOGIC ---
 
   return initializePartyIdeologyScores(parties, IDEOLOGY_DEFINITIONS);
 };

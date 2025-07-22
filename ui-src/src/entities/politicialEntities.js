@@ -687,25 +687,30 @@ export const generateFullStateData = (params = {}) => {
     };
   } else {
     // --- Placeholder Generation for states without city data ---
-    aggregatedDemographics = generateCityDemographics(); // Use city demographics as a stand-in
+    aggregatedDemographics = generateCityDemographics();
+
+    // 1. Generate the economic profile, which contains gdpPerCapita
     aggregatedEconomicProfile = generateEconomicProfile(
       totalPopulation,
       aggregatedDemographics
     );
-    aggregatedStats = generateInitialCityStats(
+
+    // 2. Generate the rest of the stats, passing in the profile we just made
+    const tempCityStats = generateInitialCityStats(
       totalPopulation,
       aggregatedDemographics,
       aggregatedEconomicProfile
     );
-    // We only need the stats part, not the full city object
+
+    // 3. Assemble the final stats object, ensuring the economic profile is included
     aggregatedStats = {
-      mainIssues: aggregatedStats.mainIssues,
-      economicOutlook: aggregatedStats.economicOutlook,
-      publicSafetyRating: aggregatedStats.publicSafetyRating,
-      educationQuality: aggregatedStats.educationQuality,
-      infrastructureState: aggregatedStats.infrastructureState,
-      overallCitizenMood: aggregatedStats.overallCitizenMood,
-      budget: aggregatedStats.budget,
+      mainIssues: tempCityStats.mainIssues,
+      economicOutlook: tempCityStats.economicOutlook,
+      publicSafetyRating: tempCityStats.publicSafetyRating,
+      educationQuality: tempCityStats.educationQuality,
+      infrastructureState: tempCityStats.infrastructureState,
+      overallCitizenMood: tempCityStats.overallCitizenMood,
+      budget: tempCityStats.budget,
     };
   }
 

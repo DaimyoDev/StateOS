@@ -349,18 +349,23 @@ function CampaignSetupScreen() {
                   Country:{" "}
                   <strong>{currentSelectedCountryData?.name || "N/A"}</strong>
                 </h3>
-                <p>
-                  <strong>Population:</strong>{" "}
-                  {selectedRegionData.population.toLocaleString()}
-                </p>
-                <p>
-                  <strong>GDP per Capita:</strong> $
-                  {selectedRegionData.economicProfile.gdpPerCapita.toLocaleString()}
-                </p>
-                <p>
-                  <strong>Key Issues:</strong>{" "}
-                  {selectedRegionData.stats.mainIssues.join(", ")}
-                </p>
+                {selectedRegionData?.stats &&
+                  selectedRegionData?.economicProfile && (
+                    <>
+                      <p>
+                        <strong>Population:</strong>{" "}
+                        {selectedRegionData.population.toLocaleString()}
+                      </p>
+                      <p>
+                        <strong>GDP per Capita:</strong> $
+                        {selectedRegionData.economicProfile.gdpPerCapita.toLocaleString()}
+                      </p>
+                      <p>
+                        <strong>Key Issues:</strong>{" "}
+                        {selectedRegionData.stats.mainIssues.join(", ")}
+                      </p>
+                    </>
+                  )}
               </section>
             )}
 

@@ -261,8 +261,6 @@ const useGameStore = create(
                 (r) => r.id === regionId
               );
 
-              console.log(regionData);
-
               return {
                 currentCampaignSetup: {
                   ...state.currentCampaignSetup,
