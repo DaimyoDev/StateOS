@@ -144,7 +144,7 @@ export const IDEOLOGY_KEYWORDS = {
   Nationalist: [
     "National",
     "Patriotic",
-    "[CountryName]'s Own",
+    "Own",
     "Sovereign",
     "Homeland First",
     "Identity",

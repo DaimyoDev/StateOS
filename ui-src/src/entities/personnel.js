@@ -392,14 +392,15 @@ export function generateFullAIPolitician(
 
   // --- STEP 3: Assign Party Based on Ideological Fit ---
   let chosenParty = null;
-  let bestPartyFitDistance = Infinity;
-  const INDEPENDENT_THRESHOLD = 12.0; // Loosened threshold
 
   if (forcePartyId) {
     chosenParty = allPartiesInScope.find((p) => p.id === forcePartyId);
   } else {
+    // If no party is forced, find the best ideological match.
+    let bestPartyFitDistance = Infinity;
+    const INDEPENDENT_THRESHOLD = 25.0;
+
     allPartiesInScope.forEach((party) => {
-      // This check will now pass thanks to our initialization function
       if (party.ideologyScores) {
         const distance = calculateIdeologyDistance(
           ideologyScores,
@@ -411,11 +412,11 @@ export function generateFullAIPolitician(
         }
       }
     });
-  }
 
-  // If the best-fit party is still too far ideologically, become Independent
-  if (chosenParty && bestPartyFitDistance > INDEPENDENT_THRESHOLD) {
-    chosenParty = null;
+    // Only run the distance check here, inside the else block.
+    if (chosenParty && bestPartyFitDistance > INDEPENDENT_THRESHOLD) {
+      chosenParty = null;
+    }
   }
 
   const partyId = chosenParty?.id || "independent";

@@ -118,7 +118,7 @@ export const koreanElections = [
   {
     id: localElectionIds.city_council,
     officeNameTemplate: "Member of {cityName} Council",
-    level: "local_city_county_district",
+    level: "local_city",
     frequencyYears: 4,
     electionMonth: null,
     generatesOneWinner: false,

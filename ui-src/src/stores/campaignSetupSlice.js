@@ -1,10 +1,8 @@
 import { ELECTION_TYPES_BY_COUNTRY } from "../data/electionsData";
 import {
-  generateRandomOfficeHolder,
-  calculateNumberOfSeats,
-} from "../utils/electionUtils";
-import { generateFullCityData } from "../entities/politicialEntities";
-import { generateId } from "../utils/core";
+  generateFullCityData,
+  generateInitialGovernmentOffices,
+} from "../entities/politicialEntities";
 
 export const createCampaignSetupSlice = (set, get) => {
   return {
@@ -51,103 +49,14 @@ export const createCampaignSetupSlice = (set, get) => {
           (c) => c.id === setupState.selectedCountryId
         );
 
-        const initialGovernmentOffices = [];
-        const countryElectionTypes =
-          ELECTION_TYPES_BY_COUNTRY[setupState.selectedCountryId] || [];
-
-        countryElectionTypes.forEach((electionType) => {
-          // Process only relevant offices for this setup
-          if (
-            !electionType.level.startsWith("local_") &&
-            !electionType.level.startsWith("regional_") &&
-            !electionType.level.startsWith("national_")
-          ) {
-            return;
-          }
-
-          let officeName = electionType.officeNameTemplate;
-          if (electionType.level.startsWith("local_")) {
-            officeName = officeName.replace(
-              /{cityNameOrMunicipalityName}|{cityName}/g,
-              cityName.trim()
-            );
-          } else if (electionType.level.startsWith("regional_")) {
-            const regionData = currentCountryData?.regions?.find(
-              (r) => r.id === setupState.selectedRegionId
-            );
-            officeName = officeName.replace(
-              /{regionName}|{stateName}|{prefectureName}|{provinceName}/g,
-              regionData?.name || "Region"
-            );
-          } else if (electionType.level.startsWith("national_")) {
-            officeName = officeName.replace(
-              "{countryName}",
-              currentCountryData?.name || "Nation"
-            );
-          }
-
-          const termLength = electionType.frequencyYears || 4;
-
-          // --- REFACTORED AND CORRECTED LOGIC ---
-
-          if (electionType.generatesOneWinner) {
-            // --- PATH A: Handles all single-winner offices (Mayor, Governor, etc.) ---
-            const holder = generateRandomOfficeHolder(
-              setupState.generatedPartiesInCountry,
-              officeName,
-              setupState.selectedCountryId
-            );
-
-            initialGovernmentOffices.push({
-              officeId: `initial_${electionType.id}_${generateId()}`,
-              officeName: officeName,
-              officeNameTemplateId: electionType.id,
-              level: electionType.level,
-              cityId: newCityObject.id, // Ensure cityId is attached for local offices
-              holder: holder,
-              members: [], // Single-winner offices have no members array
-              termEnds: {
-                year: 2025 + termLength - 1,
-                month: electionType.electionMonth || 11,
-                day: 1,
-              },
-              numberOfSeatsToFill: 1,
-            });
-          } else {
-            // --- PATH B: Handles all multi-winner offices (Councils, Legislatures) as a single body ---
-            const numberOfSeats = calculateNumberOfSeats(
-              electionType,
-              newCityObject.population
-            );
-
-            if (numberOfSeats <= 0) return; // Don't create an office with no seats
-
-            const initialMembers = [];
-            for (let i = 0; i < numberOfSeats; i++) {
-              const member = generateRandomOfficeHolder(
-                setupState.generatedPartiesInCountry,
-                `${officeName} Member ${i + 1}`, // Provide unique context for generation
-                setupState.selectedCountryId
-              );
-              initialMembers.push(member); // Add the clean politician object
-            }
-
-            initialGovernmentOffices.push({
-              officeId: `initial_${electionType.id}_${generateId()}`,
-              officeName: officeName,
-              officeNameTemplateId: electionType.id,
-              level: electionType.level,
-              cityId: newCityObject.id, // Ensure cityId is attached for local offices
-              holder: null, // Multi-winner bodies have no single holder
-              members: initialMembers,
-              termEnds: {
-                year: 2025 + termLength - 1,
-                month: electionType.electionMonth || 11,
-                day: 1,
-              },
-              numberOfSeatsToFill: numberOfSeats,
-            });
-          }
+        const initialGovernmentOffices = generateInitialGovernmentOffices({
+          countryElectionTypes:
+            ELECTION_TYPES_BY_COUNTRY[setupState.selectedCountryId] || [],
+          city: newCityObject,
+          countryData: currentCountryData,
+          regionId: setupState.selectedRegionId,
+          availableParties: setupState.generatedPartiesInCountry,
+          currentYear: 2025, // or get from a central source
         });
 
         playerPoliticianData.campaignFunds = 10000;

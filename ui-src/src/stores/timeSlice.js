@@ -313,10 +313,11 @@ export const createTimeSlice = (set, get) => {
 
         // --- PHASE 4: AI Campaign Simulation Loop ---
         const storeActions = get().actions;
-        let campaignForAILoop = get().activeCampaign; // Re-fetch to ensure latest state after monthly updates
+        let campaignForAILoop = get().activeCampaign; // Re-fetch to ensure latest state
 
         if (campaignForAILoop && campaignForAILoop.elections) {
           const aiProcessingQueue = [];
+          // (This part for creating the queue remains the same as our last fix)
           campaignForAILoop.elections.forEach((election) => {
             if (
               election.outcome?.status === "upcoming" &&
@@ -324,25 +325,33 @@ export const createTimeSlice = (set, get) => {
             ) {
               election.candidates.forEach((candidate) => {
                 if (!candidate.isPlayer && candidate.id) {
-                  // Push the ID, not the object directly, so we can re-fetch by ID later.
-                  aiProcessingQueue.push(candidate.id);
+                  aiProcessingQueue.push({
+                    aiPolitician: candidate,
+                    electionContext: election,
+                  });
                 }
               });
             }
           });
 
-          aiProcessingQueue.forEach((aiPoliticianId) => {
-            // Reset hours for this AI first
-            storeActions.resetDailyCampaignHours?.(aiPoliticianId);
-
-            // Now call simulateAICampaignDayForPolitician for this AI's actions for the day.
-            // simulateAICampaignDayForPolitician will now internally re-fetch the latest state.
-            simulateAICampaignDayForPolitician(
-              aiPoliticianId, // Pass only the ID
-              get().activeCampaign, // Pass the latest activeCampaign state for context
-              storeActions
+          // --- NEW LOGIC: Collect results first ---
+          const allAIResults = [];
+          aiProcessingQueue.forEach((job) => {
+            storeActions.resetDailyCampaignHours?.(job.aiPolitician.id);
+            const result = simulateAICampaignDayForPolitician(
+              job.aiPolitician,
+              job.electionContext,
+              campaignForAILoop // Pass the current campaign state
             );
+            if (result) {
+              allAIResults.push(result);
+            }
           });
+
+          // --- NEW LOGIC: Apply all results in a single batch update ---
+          if (allAIResults.length > 0) {
+            storeActions.applyDailyAICampaignResults(allAIResults);
+          }
         }
 
         // --- PHASE 5: Final Operations ---

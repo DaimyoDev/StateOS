@@ -1,5 +1,4 @@
 // src/entities/politicalEntities.js
-// This file consolidates the creation and generation logic for core political entities like Cities and States.
 
 // NOTE: Import paths will need to be updated once the refactoring of utils is complete.
 import {
@@ -14,7 +13,13 @@ import {
   RATING_LEVELS,
 } from "../data/governmentData";
 import { POLICY_QUESTIONS } from "../data/policyData";
-import { calculateHealthcareMetrics } from "../utils/statCalculationCore"; // Should become '../simulation/statCalculator.js'
+import { calculateHealthcareMetrics } from "../utils/statCalculationCore";
+import {
+  calculateNumberOfSeats,
+  generateRandomOfficeHolder,
+} from "../utils/electionUtils";
+import { initializePartyIdeologyScores } from "./personnel";
+import { IDEOLOGY_DEFINITIONS } from "../data/ideologiesData";
 
 // --- City Data Structure Definition ---
 export const createCityObject = (params = {}) => ({
@@ -719,4 +724,118 @@ export const generateFullStateData = (params = {}) => {
     stats: aggregatedStats,
     stateLaws: {},
   });
+};
+
+export const generateInitialGovernmentOffices = ({
+  countryElectionTypes,
+  city,
+  countryData,
+  regionId,
+  availableParties,
+}) => {
+  // --- FIX START: Process the party list to add required data ---
+  const processedParties = initializePartyIdeologyScores(
+    availableParties,
+    IDEOLOGY_DEFINITIONS
+  );
+  // --- FIX END ---
+
+  const initialGovernmentOffices = [];
+
+  countryElectionTypes.forEach((electionType) => {
+    if (
+      !electionType.level.startsWith("local_") &&
+      !electionType.level.startsWith("regional_") &&
+      !electionType.level.startsWith("national_")
+    ) {
+      return;
+    }
+
+    let officeName = electionType.officeNameTemplate;
+    if (electionType.level.startsWith("local_")) {
+      officeName = officeName.replace(
+        /{cityNameOrMunicipalityName}|{cityName}/g,
+        city.name.trim()
+      );
+    } else if (electionType.level.startsWith("regional_")) {
+      const regionData = countryData?.regions?.find((r) => r.id === regionId);
+      officeName = officeName.replace(
+        /{regionName}|{stateName}|{prefectureName}|{provinceName}/g,
+        regionData?.name || "Region"
+      );
+    } else if (electionType.level.startsWith("national_")) {
+      officeName = officeName.replace(
+        "{countryName}",
+        countryData?.name || "Nation"
+      );
+    }
+
+    const termLength = electionType.frequencyYears || 4;
+
+    if (electionType.generatesOneWinner) {
+      const holder = generateRandomOfficeHolder(
+        processedParties, // <-- Use the corrected variable
+        officeName,
+        countryData.id
+      );
+
+      initialGovernmentOffices.push({
+        officeId: `initial_${electionType.id}_${generateId()}`,
+        officeName: officeName,
+        officeNameTemplateId: electionType.id,
+        level: electionType.level,
+        cityId: city.id,
+        holder: holder,
+        members: [],
+        termEnds: {
+          year: 2025 + termLength - 1,
+          month: electionType.electionMonth || 11,
+          day: 1,
+        },
+        numberOfSeatsToFill: 1,
+      });
+    } else {
+      const numberOfSeats = calculateNumberOfSeats(
+        electionType,
+        city.population
+      );
+      if (numberOfSeats <= 0) return;
+
+      const initialMembers = [];
+      for (let i = 0; i < numberOfSeats; i++) {
+        let memberRoleTitle = `Member, ${officeName}`;
+        if (
+          ["BlockVote", "SNTV_MMD", "PluralityMMD"].includes(
+            electionType.electoralSystem
+          )
+        ) {
+          memberRoleTitle = `Member, ${officeName} (Seat ${i + 1})`;
+        }
+
+        const member = generateRandomOfficeHolder(
+          processedParties, // <-- Use the corrected variable
+          memberRoleTitle,
+          countryData.id
+        );
+        initialMembers.push(member);
+      }
+
+      initialGovernmentOffices.push({
+        officeId: `initial_${electionType.id}_${generateId()}`,
+        officeName: officeName,
+        officeNameTemplateId: electionType.id,
+        level: electionType.level,
+        cityId: city.id,
+        holder: null,
+        members: initialMembers,
+        termEnds: {
+          year: 2025 + termLength - 1,
+          month: electionType.electionMonth || 11,
+          day: 1,
+        },
+        numberOfSeatsToFill: numberOfSeats,
+      });
+    }
+  });
+  return initialGovernmentOffices;
 };

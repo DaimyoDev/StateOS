@@ -983,30 +983,25 @@ export const decideAIPolicyProposal = (
  * Assumes AI politician's hours are already reset for the day before this is called.
  */
 export const simulateAICampaignDayForPolitician = (
-  aiPoliticianId, // Pass only the ID of the AI politician
-  activeCampaign, // The current activeCampaign state (for context)
-  storeActions // All Zustand store actions (e.g., get().actions)
+  initialAIPoliticianObject, // Accepts the pre-found object
+  electionContext, // Accepts the pre-found election
+  activeCampaign // The current campaign state for context
 ) => {
-  if (!aiPoliticianId) {
-    console.warn(
-      "[simulateAICampaignDayForPolitician] Missing AI politician ID."
-    );
-    return;
+  // This function no longer calls store actions directly
+  if (
+    !initialAIPoliticianObject ||
+    !electionContext ||
+    initialAIPoliticianObject.isPlayer
+  ) {
+    return null;
   }
 
-  // Retrieve the latest AI politician object from the store at the start.
-  // We will re-fetch this inside the loop to get updated values.
-  let currentAIpoliticianObject =
-    activeCampaign.elections
-      ?.flatMap((e) => e.candidates)
-      .find((c) => c.id === aiPoliticianId) ||
-    activeCampaign.governmentOffices?.find(
-      (o) => o.holder?.id === aiPoliticianId
-    )?.holder;
+  const aiPoliticianId = initialAIPoliticianObject.id;
 
-  if (!currentAIpoliticianObject || currentAIpoliticianObject.isPlayer) {
-    return; // Do nothing if politician not found or is player
-  }
+  // --- Initialize local variables for the simulation ---
+  let hoursLeft = initialAIPoliticianObject.campaignHoursPerDay || 8;
+  let fundsLeft = initialAIPoliticianObject.campaignFunds || 0;
+  const actionsToCommit = []; // This will store the results of the simulation
 
   const city = activeCampaign.startingCity;
   const adultPopulation =
@@ -1015,78 +1010,25 @@ export const simulateAICampaignDayForPolitician = (
       city?.demographics?.ageDistribution
     ) || 1;
 
+  // --- Loop up to a max number of actions per day ---
   const MAX_AI_ACTIONS_PER_DAY = getRandomInt(1, 3);
-  let actionsPerformedThisDay = 0;
-
-  while (actionsPerformedThisDay < MAX_AI_ACTIONS_PER_DAY) {
-    // CRITICAL CHANGE: Re-fetch the latest AI politician object in each iteration
-    // to ensure `hoursLeftForThisAI` and other stats are up-to-date.
-    currentAIpoliticianObject =
-      activeCampaign.elections
-        ?.flatMap((e) => e.candidates)
-        .find((c) => c.id === aiPoliticianId) ||
-      activeCampaign.governmentOffices?.find(
-        (o) => o.holder?.id === aiPoliticianId
-      )?.holder;
-
-    if (!currentAIpoliticianObject) {
-      console.warn(
-        `[AI Campaign] Politician with ID ${aiPoliticianId} not found during loop refresh.`
-      );
-      break; // Exit if politician object somehow becomes null mid-loop
+  for (let i = 0; i < MAX_AI_ACTIONS_PER_DAY; i++) {
+    if (hoursLeft <= 0) {
+      break; // Stop if the AI runs out of time
     }
 
-    const hoursLeftForThisAI =
-      currentAIpoliticianObject.campaignHoursRemainingToday || 0;
+    const currentNameRec = initialAIPoliticianObject.nameRecognition || 0;
+    const currentVolunteers = initialAIPoliticianObject.volunteerCount || 0;
+    const currentMediaBuzz = initialAIPoliticianObject.mediaBuzz || 0;
+    const myPolling = initialAIPoliticianObject.polling || 0;
 
-    if (hoursLeftForThisAI <= 0) {
-      // console.log(`[AI Sim Stop] ${currentAIpoliticianObject.name} has no hours left (${hoursLeftForThisAI}) or max actions reached (${actionsPerformedThisDay}).`);
-      break; // No hours left, or other conditions might prevent actions
-    }
-
-    const currentFunds = currentAIpoliticianObject.campaignFunds || 0;
-    const currentNameRec = currentAIpoliticianObject.nameRecognition || 0;
-    const currentVolunteers = currentAIpoliticianObject.volunteerCount || 0;
-    const currentMediaBuzz = currentAIpoliticianObject.mediaBuzz || 0;
-
-    let myPolling = 0;
-    let currentElectionForAI = null;
-    // Find the specific election this AI is an active candidate in to get polling and daysUntilElection
-    for (const election of activeCampaign.elections || []) {
-      if (election.outcome?.status === "upcoming") {
-        const candidateEntry = election.candidates?.find(
-          (c) => c.id === currentAIpoliticianObject.id
-        );
-        if (candidateEntry) {
-          currentElectionForAI = election;
-          myPolling = candidateEntry.polling || 0;
-          break;
-        }
-      }
-    }
-
-    if (!currentElectionForAI) {
-      // AI not in an active election, focus on general activities if applicable
-      // For now, if not in an election, AI might just fundraise or recruit generally.
-      // If AI must be in an election to act, then break.
-      // console.log(`[AI Campaign] ${currentAIpoliticianObject.name} not in active election, skipping daily campaign actions.`);
-      break;
-    }
-
+    // This array will hold all actions the AI could possibly take this turn
     let availableActions = [];
 
-    // 1. Fundraising (if funds are low and not too close to election)
-    const fundraisingHoursChoice = getRandomInt(
-      2,
-      Math.min(4, hoursLeftForThisAI) // Use actual available hours
-    );
-    if (
-      currentFunds <
-        (currentElectionForAI.daysUntilElection < 30 ? 5000 : 10000) &&
-      hoursLeftForThisAI >= fundraisingHoursChoice
-    ) {
-      let score = 3.0 + (10000 - currentFunds) / 2000;
-      if (currentElectionForAI.daysUntilElection < 15) score -= 2.0;
+    // 1. Fundraising (if funds are low)
+    const fundraisingHoursChoice = getRandomInt(2, Math.min(4, hoursLeft));
+    if (fundsLeft < 10000 && hoursLeft >= fundraisingHoursChoice) {
+      let score = 3.0 + (10000 - fundsLeft) / 2000;
       availableActions.push({
         name: "personalFundraisingActivity",
         score,
@@ -1094,18 +1036,11 @@ export const simulateAICampaignDayForPolitician = (
       });
     }
 
-    // 2. Name Recognition (if low) - Door Knocking or Public Appearance
+    // 2. Name Recognition (Door Knocking or Public Appearance)
     const nameRecFraction = currentNameRec / adultPopulation;
-    const doorKnockingHoursChoice = getRandomInt(
-      2,
-      Math.min(6, hoursLeftForThisAI)
-    );
-    if (
-      nameRecFraction < 0.3 &&
-      hoursLeftForThisAI >= doorKnockingHoursChoice
-    ) {
-      let score = 2.5 + (0.3 - nameRecFraction) * 10;
-      score += currentVolunteers / 25;
+    const doorKnockingHoursChoice = getRandomInt(2, Math.min(6, hoursLeft));
+    if (nameRecFraction < 0.3 && hoursLeft >= doorKnockingHoursChoice) {
+      let score = 2.5 + (0.3 - nameRecFraction) * 10 + currentVolunteers / 25;
       availableActions.push({
         name: "goDoorKnocking",
         score,
@@ -1113,19 +1048,15 @@ export const simulateAICampaignDayForPolitician = (
       });
     }
 
-    const appearanceHoursChoice = getRandomInt(
-      2,
-      Math.min(4, hoursLeftForThisAI)
-    );
-    const mediaAppearanceCost = 100; // Define as a constant if not already
+    const appearanceHoursChoice = getRandomInt(2, Math.min(4, hoursLeft));
     if (
       nameRecFraction < 0.5 &&
-      currentFunds >= mediaAppearanceCost &&
-      hoursLeftForThisAI >= appearanceHoursChoice
+      fundsLeft >= 100 &&
+      hoursLeft >= appearanceHoursChoice
     ) {
       let score = 1.5 + (0.5 - nameRecFraction) * 5;
       score +=
-        ((currentAIpoliticianObject.attributes?.charisma || 5) - 5) * 0.2;
+        ((initialAIPoliticianObject.attributes?.charisma || 5) - 5) * 0.2;
       if (currentMediaBuzz < 40) score += 0.5;
       availableActions.push({
         name: "makePublicAppearanceActivity",
@@ -1134,22 +1065,17 @@ export const simulateAICampaignDayForPolitician = (
       });
     }
 
-    // 3. Rally (if decent name rec, funds, volunteers, and mid-to-late campaign)
-    const rallyHoursChoice = getRandomInt(3, Math.min(6, hoursLeftForThisAI));
+    // 3. Rally
+    const rallyHoursChoice = getRandomInt(3, Math.min(6, hoursLeft));
     const rallyCost = 500 + rallyHoursChoice * 150;
     if (
       nameRecFraction > 0.2 &&
-      currentFunds >= rallyCost &&
+      fundsLeft >= rallyCost &&
       currentVolunteers >= 5 * rallyHoursChoice &&
-      hoursLeftForThisAI >= rallyHoursChoice
+      hoursLeft >= rallyHoursChoice
     ) {
       let score = 1.0 + nameRecFraction * 2 + currentVolunteers / 50;
-      score += ((currentAIpoliticianObject.attributes?.oratory || 5) - 5) * 0.3;
-      if (
-        currentElectionForAI.daysUntilElection < 75 &&
-        currentElectionForAI.daysUntilElection > 10
-      )
-        score += 1.5;
+      score += ((initialAIPoliticianObject.attributes?.oratory || 5) - 5) * 0.3;
       availableActions.push({
         name: "holdRallyActivity",
         score,
@@ -1157,36 +1083,34 @@ export const simulateAICampaignDayForPolitician = (
       });
     }
 
-    const adBlitzHoursChoice = getRandomInt(2, Math.min(4, hoursLeftForThisAI));
-    const adBlitzSpend = Math.min(currentFunds * 0.1, getRandomInt(1000, 5000));
+    // 4. Ad Blitz
+    const adBlitzHoursChoice = getRandomInt(2, Math.min(4, hoursLeft));
+    const adBlitzSpend = Math.min(fundsLeft * 0.1, getRandomInt(1000, 5000));
     if (
-      currentFunds > 1000 &&
+      fundsLeft > 1000 &&
       adBlitzSpend > 500 &&
-      hoursLeftForThisAI >= adBlitzHoursChoice
+      hoursLeft >= adBlitzHoursChoice
     ) {
-      let score = 0.5;
       const topOpponentPolling = Math.max(
         0,
-        ...currentElectionForAI.candidates
-          .filter((c) => c.id !== currentAIpoliticianObject.id)
+        ...electionContext.candidates
+          .filter((c) => c.id !== aiPoliticianId)
           .map((c) => c.polling || 0)
       );
+      let score = 0.5;
       if (myPolling < topOpponentPolling - 5) score += 1.0;
-      if (currentElectionForAI.daysUntilElection < 30) score += 1.0;
 
       let adType = "positive";
       let targetId = null;
       if (
         myPolling < topOpponentPolling &&
-        (currentAIpoliticianObject.attributes?.integrity || 5) >= 4 &&
+        (initialAIPoliticianObject.attributes?.integrity || 5) >= 4 &&
         Math.random() < 0.4
       ) {
         adType = "attack";
-        const opponents = currentElectionForAI.candidates
-          .filter((c) => c.id !== currentAIpoliticianObject.id)
-          .sort((a, b) => (b.polling || 0) - (a.polling || 0));
-        if (opponents.length > 0) targetId = opponents[0].id;
-        else adType = "positive";
+        targetId = electionContext.candidates
+          .filter((c) => c.id !== aiPoliticianId)
+          .sort((a, b) => (b.polling || 0) - (a.polling || 0))[0]?.id;
       }
       availableActions.push({
         name: "launchManualAdBlitz",
@@ -1196,14 +1120,13 @@ export const simulateAICampaignDayForPolitician = (
       });
     }
 
-    const recruitHoursChoice = getRandomInt(1, Math.min(3, hoursLeftForThisAI));
+    // 5. Recruit Volunteers
+    const recruitHoursChoice = getRandomInt(1, Math.min(3, hoursLeft));
     if (
       currentVolunteers < adultPopulation * 0.002 &&
-      hoursLeftForThisAI >= recruitHoursChoice &&
-      currentElectionForAI.daysUntilElection > 15
+      hoursLeft >= recruitHoursChoice
     ) {
-      let score = 1.0;
-      if (currentVolunteers < 20) score += 1.5;
+      let score = currentVolunteers < 20 ? 2.5 : 1.0;
       availableActions.push({
         name: "recruitVolunteers",
         score,
@@ -1212,37 +1135,33 @@ export const simulateAICampaignDayForPolitician = (
     }
 
     if (availableActions.length === 0) {
-      // console.log(`[AI Campaign] ${currentAIpoliticianObject.name} has no available actions for remaining hours.`);
-      break; // No actions possible, exit loop
+      break; // No possible actions, end the day for this AI
     }
 
-    availableActions.sort(
-      (a, b) => b.score - a.score + (Math.random() * 0.1 - 0.05)
-    );
-    const chosenActionConfig = availableActions[0];
+    // --- Decide on the best action and record it ---
+    availableActions.sort((a, b) => b.score - a.score);
+    const chosenAction = availableActions[0];
 
-    // Execute the chosen action
-    if (chosenActionConfig.name === "launchManualAdBlitz") {
-      storeActions.launchManualAdBlitz?.({
-        ...chosenActionConfig.params,
-        hoursSpent: chosenActionConfig.hours,
-        politicianId: aiPoliticianId, // Pass the ID
-      });
-    } else {
-      if (typeof storeActions[chosenActionConfig.name] === "function") {
-        storeActions[chosenActionConfig.name](
-          chosenActionConfig.hours,
-          aiPoliticianId // Pass the ID
-        );
-      } else {
-        console.warn(
-          `[AI Campaign] Action ${chosenActionConfig.name} not found in storeActions.`
-        );
-      }
+    actionsToCommit.push({
+      actionName: chosenAction.name,
+      hoursSpent: chosenAction.hours,
+      params: chosenAction.params || {},
+    });
+
+    // Update local variables for the *next potential action in the same day*
+    hoursLeft -= chosenAction.hours;
+    if (chosenAction.name === "launchManualAdBlitz") {
+      fundsLeft -= chosenAction.params.spendAmount;
     }
-
-    // Increment actions performed. The hours will be re-read in the next loop iteration.
-    actionsPerformedThisDay++;
   }
-  // console.log(`[AI Sim End] ${currentAIpoliticianObject.name} - Final Hours: ${currentAIpoliticianObject.campaignHoursRemainingToday}`);
+
+  // --- Return the collected results for batch processing ---
+  if (actionsToCommit.length > 0) {
+    return {
+      politicianId: aiPoliticianId,
+      dailyResults: actionsToCommit,
+    };
+  }
+
+  return null; // Return null if no actions were taken
 };

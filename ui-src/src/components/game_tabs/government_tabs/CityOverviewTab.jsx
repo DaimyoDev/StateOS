@@ -206,20 +206,39 @@ const CityOverviewTab = () => {
     if (!councilOffices || councilOffices.length === 0) return [];
     const partyData = {};
     councilOffices.forEach((office) => {
-      const holder = office.holder;
-      if (holder) {
-        const partyName = holder.partyName || "Independent/Other";
-        const partyKey = holder.partyId || partyName;
-        if (!partyData[partyKey]) {
-          partyData[partyKey] = {
-            count: 0,
-            color: holder.partyColor || "#CCCCCC",
-            id: holder.partyId || partyKey,
-            name: partyName,
-          };
+      // This logic now handles both single holders and members of a council
+      const members =
+        office.members && office.members.length > 0
+          ? office.members
+          : office.holder
+          ? [office.holder]
+          : [];
+
+      members.forEach((member) => {
+        if (member) {
+          const partyName = member.partyName || "Independent";
+          let partyKey;
+
+          // If the politician's partyName is Independent, use a static key to group them.
+          if (partyName === "Independent") {
+            partyKey = "independent_group";
+          } else {
+            partyKey = member.partyId || partyName;
+          }
+
+          if (!partyData[partyKey]) {
+            partyData[partyKey] = {
+              count: 0,
+              // Use a consistent color and name for the grouped independents
+              color:
+                partyName === "Independent" ? "#CCCCCC" : member.partyColor,
+              id: partyKey,
+              name: partyName,
+            };
+          }
+          partyData[partyKey].count++;
         }
-        partyData[partyKey].count++;
-      }
+      });
     });
     return Object.values(partyData).map((data) => ({
       id: data.id,

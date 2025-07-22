@@ -19,6 +19,12 @@ import {
 
 // --- Local Helper Functions (To be moved to electionManager.js later) ---
 
+const cleanWinnerName = (name) => {
+  if (typeof name !== "string") return name;
+  // This regex removes a trailing parenthetical that includes "List #"
+  return name.replace(/\s*\([^)]*List\s*#\d+\)$/, "").trim();
+};
+
 const getIncumbentsForOfficeInstance = (
   resolvedOfficeName,
   electionType,
@@ -176,6 +182,31 @@ export const createElectionSlice = (set, get) => ({
           instances.forEach((instanceContext) => {
             const { instanceIdBase, entityData, resolvedOfficeName } =
               instanceContext;
+
+            const lastHeldElection = existingElections
+              .filter(
+                (e) =>
+                  e.instanceIdBase === instanceIdBase &&
+                  e.outcome?.status === "concluded"
+              )
+              .sort((a, b) => b.electionDate.year - a.electionDate.year)[0];
+
+            const lastHeldYear = lastHeldElection
+              ? lastHeldElection.electionDate.year
+              : 0;
+
+            // 2. Check if the election is due based on its frequency.
+            // (Assumes start year is 2025 for the very first election scheduling)
+            const isFirstTimeRun =
+              lastHeldYear === 0 && currentDate.year === 2025;
+            const isDue =
+              currentDate.year >= lastHeldYear + electionType.frequencyYears;
+
+            // 3. If it's not the first run and it's not due yet, skip it.
+            if (!isFirstTimeRun && !isDue) {
+              return; // Skip scheduling this election
+            }
+
             const alreadyScheduled = existingElections.some(
               (e) =>
                 e.instanceIdBase === instanceIdBase &&
@@ -306,21 +337,44 @@ export const createElectionSlice = (set, get) => ({
             !updatedElection.generatesOneWinner;
 
           if (isLegislativeBody) {
+            // --- FIX FOR LEGISLATIVE BODIES ---
             const officeIndex = updatedGovernmentOffices.findIndex(
               (o) => o.officeName === updatedElection.officeName
             );
-            const newMembers = outcome.determinedWinnersArray.map((winner) => {
-              const fullWinnerData = allParties.find(
-                (p) => p.id === winner.partyId
-              )
-                ? winner
-                : { ...winner, ...get().activeCampaign.politician };
-              return {
-                ...fullWinnerData,
-                holder: fullWinnerData, // This is potentially still a nested holder. Check source.
-                role: `Member, ${updatedElection.officeName}`,
-              };
-            });
+            const newMembers = outcome.determinedWinnersArray.map(
+              (winner, index) => {
+                const fullWinnerData = allParties.find(
+                  (p) => p.id === winner.partyId
+                )
+                  ? winner
+                  : { ...winner, ...get().activeCampaign.politician };
+
+                let roleTitle = `Member, ${updatedElection.officeName}`;
+                if (
+                  [
+                    "BlockVote",
+                    "SNTV_MMD",
+                    "PluralityMMD",
+                    "PartyListPR",
+                    "MMP",
+                  ].includes(updatedElection.electoralSystem)
+                ) {
+                  roleTitle = `Member, ${updatedElection.officeName} (Seat ${
+                    index + 1
+                  })`;
+                }
+
+                return {
+                  ...fullWinnerData,
+                  name: cleanWinnerName(fullWinnerData.name), // Clean the name
+                  holder: {
+                    ...fullWinnerData,
+                    name: cleanWinnerName(fullWinnerData.name),
+                  }, // Clean the nested holder name too
+                  role: roleTitle,
+                };
+              }
+            );
             if (officeIndex > -1) {
               updatedGovernmentOffices[officeIndex] = {
                 ...updatedGovernmentOffices[officeIndex],
@@ -352,6 +406,7 @@ export const createElectionSlice = (set, get) => ({
             );
             const newHolder = {
               ...fullWinnerData,
+              name: cleanWinnerName(fullWinnerData.name), // Clean the name
               role: updatedElection.officeName,
             };
             if (officeIndex > -1) {

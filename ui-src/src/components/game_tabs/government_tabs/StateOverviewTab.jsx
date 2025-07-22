@@ -184,13 +184,23 @@ const StateOverviewTab = ({ campaignData }) => {
     offices.forEach((office) => {
       const holder = office.holder;
       if (holder) {
-        const partyName = holder.partyName || "Independent/Other";
-        const partyKey = holder.partyId || partyName;
+        const partyName = holder.partyName || "Independent"; // Standardize to "Independent"
+        let partyKey;
+
+        // If the politician's partyName is Independent, use a static key to group them.
+        if (partyName === "Independent") {
+          partyKey = "independent_group";
+        } else {
+          // Use the original logic for actual parties
+          partyKey = holder.partyId || partyName;
+        }
+
         if (!partyData[partyKey]) {
           partyData[partyKey] = {
             count: 0,
-            color: holder.partyColor || "#CCCCCC",
-            id: holder.partyId || partyKey,
+            // Use a consistent color and name for the grouped independents
+            color: partyName === "Independent" ? "#CCCCCC" : holder.partyColor,
+            id: partyKey,
             name: partyName,
           };
         }

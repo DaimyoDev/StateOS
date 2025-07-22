@@ -429,5 +429,55 @@ export const createCampaignSlice = (set, get) => ({
         return { activeCampaign: newActiveCampaign };
       });
     },
+    applyDailyAICampaignResults: (allAIResults) => {
+      set((state) => {
+        if (!state.activeCampaign) return state;
+
+        const updatedElections = state.activeCampaign.elections.map(
+          (election) => {
+            const newCandidates = election.candidates.map((candidate) => {
+              // Find if this candidate has results to apply
+              const resultsForThisCandidate = allAIResults.find(
+                (res) => res.politicianId === candidate.id
+              );
+              if (!resultsForThisCandidate) return candidate;
+
+              let updatedCandidate = { ...candidate };
+
+              // Loop through the actions and apply their effects
+              resultsForThisCandidate.dailyResults.forEach((actionResult) => {
+                // Here you would put the logic from your individual action functions
+                // For example:
+                if (actionResult.actionName === "personalFundraisingActivity") {
+                  const fundsGained =
+                    getRandomInt(500, 2000) * actionResult.hoursSpent; // Example logic
+                  updatedCandidate.campaignFunds += fundsGained;
+                  updatedCandidate.campaignHoursRemainingToday -=
+                    actionResult.hoursSpent;
+                }
+                if (actionResult.actionName === "goDoorKnocking") {
+                  const nameRecGained =
+                    getRandomInt(100, 300) * actionResult.hoursSpent; // Example logic
+                  updatedCandidate.nameRecognition += nameRecGained;
+                  updatedCandidate.campaignHoursRemainingToday -=
+                    actionResult.hoursSpent;
+                }
+                // Add cases for all other possible AI actions...
+              });
+
+              return updatedCandidate;
+            });
+            return { ...election, candidates: newCandidates };
+          }
+        );
+
+        return {
+          activeCampaign: {
+            ...state.activeCampaign,
+            elections: updatedElections,
+          },
+        };
+      });
+    },
   },
 });

@@ -1,17 +1,13 @@
 import React, { useMemo } from "react";
 import Modal from "./Modal";
-import useGameStore from "../../store"; // To get governmentOffices for council member details
-// Import your chart component later (e.g., a new Bar chart or adapt Pie)
-// import VoteBreakdownChart from '../charts/VoteBreakdownChart';
-import "./PolicyVoteDetailsModal.css"; // Create this CSS file
+import useGameStore from "../../store";
+import "./PolicyVoteDetailsModal.css";
 
 const PolicyVoteDetailsModal = ({ isOpen, onClose, proposalData }) => {
-  const governmentOffices = useGameStore(
-    (state) => state.activeCampaign?.governmentOffices || []
-  );
-  const startingCityName = useGameStore(
-    (state) => state.activeCampaign?.startingCity?.name || ""
-  );
+  const activeCampaign = useGameStore((state) => state.activeCampaign);
+
+  const { governmentOffices = [], startingCity } = activeCampaign;
+  const startingCityName = startingCity?.name || "";
 
   // Memoize processed vote data to avoid re-calculation on every render
   const voteBreakdown = useMemo(() => {

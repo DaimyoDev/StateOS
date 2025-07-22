@@ -89,8 +89,11 @@ const WinnerListItem = React.memo(({ winner, onCandidateClick }) => (
       title={`View profile of ${winner.name}`}
     >
       {winner.name}
-    </span>{" "}
-    ({winner.partyName || "Independent"})
+    </span>
+    {/* Corrected: Added a span with the candidate-party class */}
+    <span className="candidate-party">
+      ({winner.partyName || "Independent"})
+    </span>
   </li>
 ));
 
@@ -195,10 +198,7 @@ const UpcomingDeclaredCandidateItem = React.memo(
         >
           {candidate.name}
         </span>
-        <span
-          className="candidate-party"
-          style={{ color: candidate.partyColor || "#333" }}
-        >
+        <span className="candidate-party">
           {" "}
           ({candidate.partyName || "Independent"})
         </span>
