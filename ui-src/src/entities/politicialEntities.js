@@ -1,11 +1,10 @@
 // src/entities/politicalEntities.js
-
-// NOTE: Import paths will need to be updated once the refactoring of utils is complete.
 import {
   generateId,
   getRandomInt,
   getRandomElement,
   normalizeArrayBySum,
+  distributeValueProportionally,
 } from "../utils/core";
 import {
   MOOD_LEVELS,
@@ -49,6 +48,7 @@ export const createStateObject = (params = {}) => ({
   economicProfile: params.economicProfile || {},
   stats: params.stats || {},
   stateLaws: params.stateLaws || {},
+  politicalLandscape: params.politicalLandscape || [],
 });
 
 // --- City Generation Logic ---
@@ -569,6 +569,7 @@ export const generateFullStateData = (params = {}) => {
     totalPopulation,
     id,
     legislativeDistricts,
+    nationalParties,
   } = params;
   let type = "State";
   if (countryId === "JPN") type = "Prefecture";
@@ -710,6 +711,19 @@ export const generateFullStateData = (params = {}) => {
 
   const capitalCity = cities.length > 0 ? getRandomElement(cities) : null;
 
+  let regionalPoliticalLandscape = [];
+  if (nationalParties && nationalParties.length > 0) {
+    // Create a deep copy to avoid modifying the original array
+    const partiesCopy = JSON.parse(JSON.stringify(nationalParties));
+
+    // Assign random popularity values to each party for this specific region
+    const popularities = distributeValueProportionally(100, partiesCopy.length);
+    regionalPoliticalLandscape = partiesCopy.map((party, index) => {
+      party.popularity = popularities[index];
+      return party;
+    });
+  }
+
   return createStateObject({
     id,
     name,
@@ -723,6 +737,7 @@ export const generateFullStateData = (params = {}) => {
     economicProfile: aggregatedEconomicProfile,
     stats: aggregatedStats,
     stateLaws: {},
+    politicalLandscape: regionalPoliticalLandscape,
   });
 };
 
@@ -733,12 +748,10 @@ export const generateInitialGovernmentOffices = ({
   regionId,
   availableParties,
 }) => {
-  // --- FIX START: Process the party list to add required data ---
   const processedParties = initializePartyIdeologyScores(
     availableParties,
     IDEOLOGY_DEFINITIONS
   );
-  // --- FIX END ---
 
   const initialGovernmentOffices = [];
 
@@ -805,9 +818,15 @@ export const generateInitialGovernmentOffices = ({
       for (let i = 0; i < numberOfSeats; i++) {
         let memberRoleTitle = `Member, ${officeName}`;
         if (
-          ["BlockVote", "SNTV_MMD", "PluralityMMD"].includes(
-            electionType.electoralSystem
-          )
+          [
+            "BlockVote",
+            "SNTV_MMD",
+            "PluralityMMD",
+            "PartyListPR",
+            "MMP",
+            "PartyListPR",
+            "MMP",
+          ].includes(electionType.electoralSystem)
         ) {
           memberRoleTitle = `Member, ${officeName} (Seat ${i + 1})`;
         }

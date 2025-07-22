@@ -1,8 +1,14 @@
+import {
+  BASE_COUNTRIES_DATA,
+  DEFAULT_COUNTRY_POPULATION_RANGES,
+  generateDetailedCountryData,
+} from "../data/countriesData";
 import { ELECTION_TYPES_BY_COUNTRY } from "../data/electionsData";
 import {
   generateFullCityData,
   generateInitialGovernmentOffices,
 } from "../entities/politicialEntities";
+import { assignPopulationToCountry } from "../utils/populationUtils";
 
 export const createCampaignSetupSlice = (set, get) => {
   return {
@@ -85,6 +91,51 @@ export const createCampaignSetupSlice = (set, get) => {
         get().actions.resetCampaignSetup?.(); // Action from campaignSetupSlice (future)
         get().actions.generateScheduledElections(); // from electionSlice
         get().actions.resetLegislationState();
+      },
+      loadCountries: () => set({ availableCountries: BASE_COUNTRIES_DATA }),
+      processAndSelectCountry: (countryId) => {
+        set((state) => {
+          let countryToProcess = state.availableCountries.find(
+            (c) => c.id === countryId
+          );
+
+          if (!countryToProcess || countryToProcess.isProcessed) {
+            // If already processed, just set the ID and do nothing else.
+            return {
+              currentCampaignSetup: {
+                ...state.currentCampaignSetup,
+                selectedCountryId: countryId,
+              },
+            };
+          }
+
+          // --- THE UNIFIED PIPELINE ---
+          // 1. Assign Population: Create a fresh copy and assign populations.
+          let processedCountry = assignPopulationToCountry(
+            { ...countryToProcess }, // Use a copy to avoid state mutation issues
+            DEFAULT_COUNTRY_POPULATION_RANGES
+          );
+
+          // 2. Generate Districts, State Stats, and Political Landscapes
+          processedCountry = generateDetailedCountryData(processedCountry);
+
+          // 3. Mark as processed to prevent re-doing the work
+          processedCountry.isProcessed = true;
+
+          // 4. Update the state with the fully processed country object
+          const updatedCountries = state.availableCountries.map((c) =>
+            c.id === countryId ? processedCountry : c
+          );
+
+          return {
+            availableCountries: updatedCountries,
+            currentCampaignSetup: {
+              ...state.currentCampaignSetup,
+              selectedCountryId: countryId,
+              generatedPartiesInCountry: processedCountry.nationalParties || [],
+            },
+          };
+        });
       },
     },
   };

@@ -334,6 +334,24 @@ export const generateNationalLegislativeElectionInstances = (
   const { countryId, regionId } = activeCampaign;
   const baseOfficeName = electionType.officeNameTemplate;
 
+  if (electionType.electoralSystem === "MMP") {
+    if (
+      electionType.id === nationalElectionIds.national_hr &&
+      electionType.level === "national_lower_house"
+    ) {
+      instances.push({
+        instanceIdBase: buildIdBaseFunc(electionType.id, countryId),
+        entityType: "nation",
+        entityData: { ...currentCountryData },
+        resolvedOfficeName: baseOfficeName,
+        _isSingleSeatContest: false,
+        _effectiveElectoralSystem: "MMP",
+        _effectiveGeneratesOneWinner: false,
+        _numberOfSeatsForThisInstance: electionType.minCouncilSeats,
+      });
+    }
+  }
+
   if (electionType.id === "national_hr") {
     let districtsToProcess =
       currentCountryData.nationalLowerHouseDistricts || [];
@@ -378,22 +396,6 @@ export const generateNationalLegislativeElectionInstances = (
         _effectiveGeneratesOneWinner: true,
       });
     });
-  } else if (electionType.electoralSystem === "MMP") {
-    if (
-      electionType.id === nationalElectionIds.national_hr &&
-      electionType.level === "national_lower_house"
-    ) {
-      instances.push({
-        instanceIdBase: buildIdBaseFunc(electionType.id, countryId),
-        entityType: "nation",
-        entityData: { ...currentCountryData },
-        resolvedOfficeName: baseOfficeName,
-        _isSingleSeatContest: false,
-        _effectiveElectoralSystem: "MMP",
-        _effectiveGeneratesOneWinner: false,
-        _numberOfSeatsForThisInstance: electionType.minCouncilSeats,
-      });
-    }
   }
   return instances;
 };

@@ -1,6 +1,7 @@
-import { assignNestedPopulations } from "../utils/populationUtils";
 import { generateFullStateData } from "../entities/politicialEntities";
 import { chamberTiers } from "./chamberTiers";
+import { generateLegislativeDistrictsForCountry } from "../entities/districtGeneration";
+import { generateNationalParties } from "../entities/partyGeneration";
 import { japanPrefectures } from "./states/japanPrefectures";
 import { usaStates } from "./states/usaStates";
 import { germanStates } from "./states/germanStates";
@@ -232,22 +233,39 @@ const baseCountriesData = [
   },
 ];
 
-export const COUNTRIES_DATA = assignNestedPopulations(
-  baseCountriesData,
-  DEFAULT_COUNTRY_POPULATION_RANGES
-);
+export const BASE_COUNTRIES_DATA = baseCountriesData;
 
-Object.keys(COUNTRIES_DATA).forEach((countryId) => {
-  const country = COUNTRIES_DATA[countryId];
-  if (country.regions && Array.isArray(country.regions)) {
-    country.regions = country.regions.map((staticRegion) => {
+export const generateDetailedCountryData = (countryToProcess) => {
+  if (!countryToProcess) return null;
+
+  // 1. Generate legislative districts by calling our new, focused function
+  let processedCountry =
+    generateLegislativeDistrictsForCountry(countryToProcess);
+
+  const nationalParties = generateNationalParties({
+    countryId: processedCountry.id,
+    dominantIdeologies: processedCountry.dominantIdeologies,
+  });
+
+  // 2. Attach this consistent list to the main country object.
+  processedCountry.nationalParties = nationalParties;
+  // --- END OF FIX ---
+
+  // 2. Generate full state data for each region
+  if (processedCountry.regions && Array.isArray(processedCountry.regions)) {
+    processedCountry.regions = processedCountry.regions.map((staticRegion) => {
       return generateFullStateData({
         name: staticRegion.name,
-        countryId: country.id,
+        countryId: processedCountry.id,
         totalPopulation: staticRegion.population,
         id: staticRegion.id,
         legislativeDistricts: staticRegion.legislativeDistricts,
+        nationalParties: processedCountry.nationalParties,
       });
     });
   }
-});
+
+  console.log(processedCountry.regions);
+
+  return processedCountry; // Return the fully processed country
+};

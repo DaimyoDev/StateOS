@@ -3,7 +3,7 @@ import useGameStore from "../store"; //
 import "./ElectionSimulatorScreen.css"; //
 
 // Data imports
-import { COUNTRIES_DATA } from "../data/countriesData"; //
+import { BASE_COUNTRIES_DATA } from "../data/countriesData"; //
 import {
   IDEOLOGY_DEFINITIONS,
   BASE_IDEOLOGIES,
@@ -76,7 +76,7 @@ const ElectionSimulatorScreen = () => {
 
   // Derived state for dynamic dropdowns
   const selectedCountry = useMemo(() => {
-    const country = COUNTRIES_DATA.find((c) => c.id === selectedCountryId); //
+    const country = BASE_COUNTRIES_DATA.find((c) => c.id === selectedCountryId); //
     return country || null;
   }, [selectedCountryId]);
 
@@ -508,7 +508,7 @@ const ElectionSimulatorScreen = () => {
                       setElectionType("");
                     }}
                   >
-                    {COUNTRIES_DATA.map(
+                    {BASE_COUNTRIES_DATA.map(
                       (
                         country //
                       ) => (

@@ -206,39 +206,30 @@ const CityOverviewTab = () => {
     if (!councilOffices || councilOffices.length === 0) return [];
     const partyData = {};
     councilOffices.forEach((office) => {
-      // This logic now handles both single holders and members of a council
-      const members =
-        office.members && office.members.length > 0
-          ? office.members
-          : office.holder
-          ? [office.holder]
-          : [];
+      // The 'office' variable here is already a single conceptual seat with a member in the 'holder' property.
+      const holder = office.holder;
+      if (holder) {
+        const partyName = holder.partyName || "Independent";
+        let partyKey;
 
-      members.forEach((member) => {
-        if (member) {
-          const partyName = member.partyName || "Independent";
-          let partyKey;
-
-          // If the politician's partyName is Independent, use a static key to group them.
-          if (partyName === "Independent") {
-            partyKey = "independent_group";
-          } else {
-            partyKey = member.partyId || partyName;
-          }
-
-          if (!partyData[partyKey]) {
-            partyData[partyKey] = {
-              count: 0,
-              // Use a consistent color and name for the grouped independents
-              color:
-                partyName === "Independent" ? "#CCCCCC" : member.partyColor,
-              id: partyKey,
-              name: partyName,
-            };
-          }
-          partyData[partyKey].count++;
+        // Use a static key to group all independents
+        if (partyName === "Independent") {
+          partyKey = "independent_group";
+        } else {
+          partyKey = holder.partyId || partyName;
         }
-      });
+
+        if (!partyData[partyKey]) {
+          partyData[partyKey] = {
+            count: 0,
+            color: partyName === "Independent" ? "#CCCCCC" : holder.partyColor,
+            id: partyKey,
+            name: partyName,
+          };
+        }
+        // Increment the count once per member
+        partyData[partyKey].count++;
+      }
     });
     return Object.values(partyData).map((data) => ({
       id: data.id,

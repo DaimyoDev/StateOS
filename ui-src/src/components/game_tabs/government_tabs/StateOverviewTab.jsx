@@ -3,7 +3,7 @@ import "./GovernmentSubTabStyles.css";
 import "./CityOverviewTab.css"; // Using shared styles
 import CouncilCompositionPieChart from "../../charts/CouncilCompositionPieChart";
 import PoliticianCard from "../../PoliticianCard";
-import { COUNTRIES_DATA } from "../../../data/countriesData";
+import { BASE_COUNTRIES_DATA } from "../../../data/countriesData";
 import useGameStore from "../../../store";
 
 // Helper functions (same as before)
@@ -126,7 +126,7 @@ const StateOverviewTab = ({ campaignData }) => {
   const playerCountryId = campaignData.countryId;
 
   const activeState = useMemo(() => {
-    const country = COUNTRIES_DATA.find((c) => c.id === playerCountryId);
+    const country = BASE_COUNTRIES_DATA.find((c) => c.id === playerCountryId);
     if (!country) return null;
     return (
       country.regions?.find((r) => r.id === campaignData.regionId) ||

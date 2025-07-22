@@ -6,7 +6,7 @@ import UnitedStatesMap from "../maps/UnitedStatesMap";
 import SouthKoreaMap from "../maps/SouthKoreaMap";
 import GermanyMap from "../maps/GermanyMap";
 import CanadaMap from "../maps/CanadaMap";
-import { COUNTRIES_DATA } from "../data/countriesData";
+import { BASE_COUNTRIES_DATA } from "../data/countriesData";
 import "./CampaignSetupScreen.css";
 import RegionPieChart from "../components/charts/RegionPieChart";
 
@@ -50,10 +50,13 @@ function CampaignSetupScreen() {
   const currentSelectedCountryData = availableCountries.find(
     (c) => c.id === selectedCountryId
   );
+  const selectedRegionData = currentSelectedCountryData?.regions?.find(
+    (r) => r.id === selectedRegionId
+  );
 
   useEffect(() => {
     if (actions && actions.loadCountries && availableCountries.length === 0) {
-      actions.loadCountries(COUNTRIES_DATA);
+      actions.loadCountries(BASE_COUNTRIES_DATA);
     }
   }, [actions, availableCountries.length]);
 
@@ -77,14 +80,15 @@ function CampaignSetupScreen() {
 
   const handleConfirmCountry = () => {
     if (tempSelectedCountryId) {
-      actions.selectCountryForCampaign(tempSelectedCountryId);
+      actions.processAndSelectCountry(tempSelectedCountryId);
       setSetupStage("region_selection");
     }
   };
 
   const handleBackToCountrySelect = () => {
-    actions.selectCountryForCampaign(null); // Clear the confirmed country in the store
-    setTempSelectedCountryId(null); // Clear the temporary selection
+    actions.selectCountryForCampaign(null);
+    setTempSelectedCountryId(null);
+    actions.setSelectedRegion(null);
     setSetupStage("country_selection");
   };
 
@@ -345,6 +349,18 @@ function CampaignSetupScreen() {
                   Country:{" "}
                   <strong>{currentSelectedCountryData?.name || "N/A"}</strong>
                 </h3>
+                <p>
+                  <strong>Population:</strong>{" "}
+                  {selectedRegionData.population.toLocaleString()}
+                </p>
+                <p>
+                  <strong>GDP per Capita:</strong> $
+                  {selectedRegionData.economicProfile.gdpPerCapita.toLocaleString()}
+                </p>
+                <p>
+                  <strong>Key Issues:</strong>{" "}
+                  {selectedRegionData.stats.mainIssues.join(", ")}
+                </p>
               </section>
             )}
 

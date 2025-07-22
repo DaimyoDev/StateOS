@@ -47,7 +47,7 @@ export const germanElections = [
   {
     id: stateElectionIds.state_hr,
     officeNameTemplate: "Member of State Parliament ({stateName})",
-    level: "local_state_parliament",
+    level: "local_state_lower_house",
     frequencyYears: 5,
     electionMonth: null,
     generatesOneWinner: false,

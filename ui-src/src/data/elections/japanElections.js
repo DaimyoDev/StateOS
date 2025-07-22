@@ -52,7 +52,7 @@ export const japanElections = [
   {
     id: stateElectionIds.governor,
     officeNameTemplate: "Governor of {prefectureName}",
-    level: "local_prefecture",
+    level: "local_state",
     frequencyYears: 4,
     electionMonth: 4,
     generatesOneWinner: true,
@@ -69,7 +69,7 @@ export const japanElections = [
   {
     id: stateElectionIds.state_hr,
     officeNameTemplate: "Prefectural Assembly Member - {districtName}",
-    level: "local_prefecture",
+    level: "local_state_lower_house",
     frequencyYears: 4,
     electionMonth: 4,
     generatesOneWinner: false,
