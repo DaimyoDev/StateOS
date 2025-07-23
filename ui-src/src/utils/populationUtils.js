@@ -21,7 +21,7 @@ export const assignPopulationToCountry = (country, countryPopulationRanges) => {
   if (country.regions && country.regions.length > 0) {
     const regionPopulations = distributeValueProportionally(
       country.population,
-      country.regions.length
+      country.regions
     );
     country.regions.forEach((region, index) => {
       region.population = regionPopulations[index] || 0;
@@ -32,7 +32,7 @@ export const assignPopulationToCountry = (country, countryPopulationRanges) => {
   if (country.provinces && country.provinces.length > 0) {
     const provincePopulations = distributeValueProportionally(
       country.population * 0.9,
-      country.provinces.length
+      country.provinces
     );
     country.provinces.forEach((province, index) => {
       province.population = provincePopulations[index] || 0;

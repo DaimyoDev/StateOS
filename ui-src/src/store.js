@@ -236,6 +236,9 @@ const useGameStore = create(
                 ...state.currentCampaignSetup,
                 selectedCountryId: countryId,
                 selectedRegionId: null,
+                generatedPartiesInCountry: countryId
+                  ? state.currentCampaignSetup.generatedPartiesInCountry
+                  : [],
               },
             }));
           },

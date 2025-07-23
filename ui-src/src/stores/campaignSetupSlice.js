@@ -95,19 +95,24 @@ export const createCampaignSetupSlice = (set, get) => {
       loadCountries: () => set({ availableCountries: BASE_COUNTRIES_DATA }),
       processAndSelectCountry: (countryId) => {
         set((state) => {
-          let countryToProcess = state.availableCountries.find(
+          const selectedCountry = state.availableCountries.find(
             (c) => c.id === countryId
           );
+          if (!selectedCountry) return state;
 
-          if (!countryToProcess || countryToProcess.isProcessed) {
-            // If already processed, just set the ID and do nothing else.
+          if (selectedCountry.isProcessed) {
             return {
               currentCampaignSetup: {
                 ...state.currentCampaignSetup,
                 selectedCountryId: countryId,
+                selectedRegionId: null,
+                generatedPartiesInCountry:
+                  selectedCountry.nationalParties || [],
               },
             };
           }
+
+          let countryToProcess = JSON.parse(JSON.stringify(selectedCountry));
 
           // --- THE UNIFIED PIPELINE ---
           // 1. Assign Population: Create a fresh copy and assign populations.

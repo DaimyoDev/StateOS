@@ -16,7 +16,7 @@ export const philippinesRegions = [
   { id: "PHL_R12", name: "Region XII (SOCCSKSARGEN)" },
   { id: "PHL_R13", name: "Region XIII (Caraga)" },
   {
-    id: "PHL_BARMM",
+    id: "PHL_R14",
     name: "Bangsamoro Autonomous Region in Muslim Mindanao (BARMM)",
   },
 ];

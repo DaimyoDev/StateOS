@@ -116,7 +116,8 @@ export const createCampaignSlice = (set, get) => ({
 
     // --- CORE HOUR MANAGEMENT ---
     spendCampaignHours: (hoursToSpend, politicianId = null) => {
-      let success = false;
+      // highlight-next-line
+      let success = false; // Define a variable to track success
       set((state) => {
         const newActiveCampaign = updateTargetPolitician(
           state,
@@ -124,7 +125,8 @@ export const createCampaignSlice = (set, get) => ({
           (politician) => {
             const hoursAvailable = politician.campaignHoursRemainingToday || 0;
             if (hoursAvailable >= hoursToSpend) {
-              success = true;
+              // highlight-next-line
+              success = true; // Set to true on success
               return {
                 ...politician,
                 campaignHoursRemainingToday: hoursAvailable - hoursToSpend,
@@ -141,7 +143,8 @@ export const createCampaignSlice = (set, get) => ({
         );
         return { activeCampaign: newActiveCampaign };
       });
-      return success;
+      // highlight-next-line
+      return success; // Return the final success state
     },
 
     resetDailyCampaignHours: (politicianId = null) => {
@@ -159,35 +162,66 @@ export const createCampaignSlice = (set, get) => ({
 
     // --- CAMPAIGN ACTIONS ---
     personalFundraisingActivity: (hoursToSpend = 2, politicianId = null) => {
-      if (!get().actions.spendCampaignHours(hoursToSpend, politicianId)) return;
       set((state) => {
+        // We will now perform all logic inside this single state update
+        const politicianToUpdate = politicianId
+          ? state.activeCampaign.elections
+              ?.flatMap((e) => e.candidates)
+              .find((c) => c.id === politicianId)
+          : state.activeCampaign.politician;
+
+        if (!politicianToUpdate) return state; // Safety check
+
+        const hoursAvailable =
+          politicianToUpdate.campaignHoursRemainingToday || 0;
+
+        // 1. Check for sufficient hours BEFORE doing anything else.
+        if (hoursAvailable < hoursToSpend) {
+          // Only show toast for the player
+          if (!politicianId) {
+            get().actions.addToast?.({
+              message: `Not enough campaign hours (need ${hoursToSpend}, have ${hoursAvailable}).`,
+              type: "warning",
+            });
+          }
+          // If the check fails, we stop and do not change the state.
+          return state;
+        }
+
+        // 2. If the check passes, proceed with the action's effects.
+        const fundraisingSkill =
+          politicianToUpdate.attributes?.fundraising || 5;
+        const nameRec = politicianToUpdate.nameRecognition || 0;
+        const nameRecMultiplier = 0.5 + nameRec / 200000;
+        const fundsRaised = Math.round(
+          getRandomInt(500, 1500) *
+            hoursToSpend *
+            (fundraisingSkill / 4) *
+            nameRecMultiplier
+        );
+
+        // Show the success toast only if the action was successful.
+        if (!politicianId) {
+          get().actions.addToast?.({
+            message: `Spent ${hoursToSpend}hr(s) fundraising. Raised $${fundsRaised.toLocaleString()}!`,
+            type: "success",
+          });
+        }
+
+        // 3. Create the new politician object with updated hours and funds.
+        const updatedPolitician = {
+          ...politicianToUpdate,
+          campaignHoursRemainingToday: hoursAvailable - hoursToSpend,
+          campaignFunds: (politicianToUpdate.campaignFunds || 0) + fundsRaised,
+        };
+
+        // 4. Apply this single, correct update to the state.
         const newActiveCampaign = updateTargetPolitician(
           state,
           politicianId,
-          (politician) => {
-            const fundraisingSkill = politician.attributes?.fundraising || 5;
-            const nameRec = politician.nameRecognition || 0;
-            const nameRecMultiplier = 0.5 + nameRec / 200000;
-            const fundsRaised = Math.round(
-              getRandomInt(500, 1500) *
-                hoursToSpend *
-                (fundraisingSkill / 4) *
-                nameRecMultiplier
-            );
-
-            if (!politicianId) {
-              get().actions.addToast?.({
-                message: `Spent ${hoursToSpend}hr(s) fundraising. Raised $${fundsRaised.toLocaleString()}!`,
-                type: "success",
-              });
-            }
-
-            return {
-              ...politician,
-              campaignFunds: (politician.campaignFunds || 0) + fundsRaised,
-            };
-          }
+          () => updatedPolitician
         );
+
         return { activeCampaign: newActiveCampaign };
       });
     },

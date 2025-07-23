@@ -34,6 +34,14 @@ export const GENERIC_NOUNS = [
   "Group",
   "Initiative",
   "Order",
+  "Platform",
+  "Circle",
+  "Network",
+  "Association",
+  "Federation",
+  "Democrats",
+  "Republicans",
+  "Greens",
 ];
 
 export const GENERIC_ADJECTIVES = [
@@ -56,6 +64,14 @@ export const GENERIC_ADJECTIVES = [
   "Independent",
   "Sovereign",
   "United Front of",
+  "Authentic",
+  "Social",
+  "Patriotic",
+  "Constitutional",
+  "Republican",
+  "Labour",
+  "Working",
+  "True",
 ];
 
 export const ABSTRACT_NOUNS = [
@@ -79,6 +95,14 @@ export const ABSTRACT_NOUNS = [
   "Prosperity",
   "Solidarity",
   "Accord",
+  "Generation",
+  "Courage",
+  "Dignity",
+  "Homeland",
+  "Sovereignty",
+  "Republic",
+  "Democracy",
+  "Choice",
 ];
 
 export const IDEOLOGY_KEYWORDS = {
@@ -166,7 +190,48 @@ export const IDEOLOGY_KEYWORDS = {
     "Common Ground",
     "Third Way",
   ],
-  Progressive: ["Forward", "Modern", "Equality Now", "New Society"],
+  Progressive: [
+    "Forward",
+    "Modern",
+    "Equality Now",
+    "New Society",
+    "Liberation",
+    "Equity",
+  ],
+  Communist: [
+    "Communist",
+    "Workers'",
+    "Revolutionary",
+    "Vanguard",
+    "Proletariat",
+    "Red Front",
+  ],
+  Agrarian: ["Agrarian", "Farmers'", "Rural", "Land", "Heartland", "Grange"],
+  "Religious Conservative": [
+    "Christian",
+    "Faith",
+    "Family",
+    "Values",
+    "Moral",
+    "Traditional",
+    "Heritage",
+  ],
+  Technocratic: [
+    "Technocratic",
+    "Future",
+    "Progress",
+    "Merit",
+    "Reason",
+    "Expert",
+  ],
+  Monarchist: [
+    "Monarchist",
+    "Royalist",
+    "Crown",
+    "Loyalist",
+    "Throne",
+    "Kingdom",
+  ],
 };
 
 export const IDEOLOGY_DEFINITIONS = {

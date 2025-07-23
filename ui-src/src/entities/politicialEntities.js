@@ -49,6 +49,7 @@ export const createStateObject = (params = {}) => ({
   stats: params.stats || {},
   stateLaws: params.stateLaws || {},
   politicalLandscape: params.politicalLandscape || [],
+  populationWeight: params.populationWeight || 1,
 });
 
 // --- City Generation Logic ---

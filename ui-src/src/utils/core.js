@@ -171,47 +171,99 @@ export const calculateAdultPopulation = (totalPopulation, ageDistribution) => {
 };
 
 /**
- * Distributes a total value among a number of parts, ensuring the sum matches.
- * @param {number} totalValue - The total value to distribute.
- * @param {number} numberOfParts - The number of parts to distribute among.
- * @returns {number[]} An array of values for each part.
+ * Distributes a total value among a number of buckets, either proportionally based on weights
+ * or randomly if no weights are provided.
+ * @param {number} totalValue - The total value to distribute (e.g., total population).
+ * @param {Array<object>|number} itemsOrCount - Either an array of objects (each with an optional `populationWeight`) or a simple count of buckets.
+ * @returns {number[]} An array of distributed values.
  */
-export const distributeValueProportionally = (totalValue, numberOfParts) => {
-  if (numberOfParts <= 0) return [];
-  if (totalValue <= 0) return new Array(numberOfParts).fill(0);
+export const distributeValueProportionally = (totalValue, itemsOrCount) => {
+  const items = Array.isArray(itemsOrCount)
+    ? itemsOrCount
+    : Array(itemsOrCount).fill({});
+  const count = items.length;
 
-  let values = new Array(numberOfParts).fill(0);
-  let assignedValue = 0;
-  let weights = [];
-  let totalWeight = 0;
+  if (count === 0 || totalValue <= 0) return [];
+  if (count === 1) return [totalValue];
 
-  for (let i = 0; i < numberOfParts; i++) {
-    const weight = getRandomInt(10, 100);
-    weights.push(weight);
-    totalWeight += weight;
-  }
+  const hasWeights = items.every((item) => item.populationWeight != null);
 
-  if (totalWeight > 0) {
-    for (let i = 0; i < numberOfParts; i++) {
-      const proportion = weights[i] / totalWeight;
-      values[i] = Math.floor(proportion * totalValue);
-      assignedValue += values[i];
+  if (hasWeights) {
+    // --- START OF FIX ---
+    // 1. Add a small random variation to each weight to prevent identical outcomes.
+    const itemsWithVariedWeights = items.map((item) => ({
+      ...item,
+      // Give each weight a random variance of +/- 10% to make it feel more natural
+      variedWeight: (item.populationWeight || 0) * (0.9 + Math.random() * 0.2),
+    }));
+
+    // 2. Use the new "variedWeight" for all subsequent calculations.
+    const totalWeight = itemsWithVariedWeights.reduce(
+      (sum, item) => sum + item.variedWeight,
+      0
+    );
+    // --- END OF FIX ---
+
+    if (totalWeight === 0) {
+      const equalShare = Math.floor(totalValue / count);
+      const remainder = totalValue % count;
+      return Array(count)
+        .fill(0)
+        .map((_, i) => equalShare + (i < remainder ? 1 : 0));
     }
-  }
 
-  let remainder = totalValue - assignedValue;
-  if (remainder !== 0) {
-    const sortedByWeightIndices = weights
-      .map((w, index) => ({ weight: w, index }))
-      .sort((a, b) => b.weight - a.weight)
-      .map((item) => item.index);
+    let allocations = itemsWithVariedWeights.map((item) => {
+      // Use varied weights
+      const proportion = item.variedWeight / totalWeight; // Use varied weights
+      const rawValue = proportion * totalValue;
+      return {
+        ...item,
+        integerPart: Math.floor(rawValue),
+        remainderPart: rawValue - Math.floor(rawValue),
+      };
+    });
 
-    for (let i = 0; i < Math.abs(remainder); i++) {
-      values[sortedByWeightIndices[i % numberOfParts]] += Math.sign(remainder);
+    const sumOfIntegers = allocations.reduce(
+      (sum, item) => sum + item.integerPart,
+      0
+    );
+    let pointsToDistribute = totalValue - sumOfIntegers;
+
+    allocations.sort((a, b) => b.remainderPart - a.remainderPart);
+
+    for (let i = 0; i < pointsToDistribute; i++) {
+      allocations[i].integerPart++;
     }
-  }
 
-  return values;
+    const finalDistribution = Array(count);
+    allocations.forEach((alloc) => {
+      const originalIndex = items.findIndex(
+        (original) => original.id === alloc.id
+      );
+      if (originalIndex !== -1) {
+        finalDistribution[originalIndex] = alloc.integerPart;
+      }
+    });
+
+    if (finalDistribution.includes(undefined)) {
+      console.warn("An item was missing an ID during weighted distribution.");
+      return allocations.map((a) => a.integerPart);
+    }
+    return finalDistribution;
+  } else {
+    // Fallback random distribution logic remains the same
+    let weights = Array.from({ length: count }, () => getRandomInt(10, 100));
+    const totalWeight = weights.reduce((sum, w) => sum + w, 0);
+
+    let values = weights.map((w) => Math.floor((w / totalWeight) * totalValue));
+    let currentSum = values.reduce((sum, v) => sum + v, 0);
+    let remainder = totalValue - currentSum;
+
+    for (let i = 0; i < remainder; i++) {
+      values[getRandomInt(0, count - 1)]++;
+    }
+    return values;
+  }
 };
 
 /**
