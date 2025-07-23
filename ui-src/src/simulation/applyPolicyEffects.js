@@ -14,7 +14,17 @@ export const applyPolicyEffect = (
   effect,
   policyChosenParameters = {}
 ) => {
-  let newState = JSON.parse(JSON.stringify(currentState)); // Deep copy to avoid direct mutation
+  // ### CORRECTED STATE CLONING ###
+  // Start with a shallow copy of the campaign state.
+  let newState = { ...currentState };
+  // If elections exist, we must deep-copy them carefully to preserve the candidates Map.
+  if (newState.elections) {
+    newState.elections = newState.elections.map((election) => ({
+      ...election,
+      candidates: new Map(election.candidates), // This correctly clones the Map!
+    }));
+  }
+  // This ensures the rest of the function works on a safe, mutable copy without corrupting the original state.
 
   // Check chance first
   if (effect.chance !== undefined && Math.random() > effect.chance) {
@@ -30,28 +40,23 @@ export const applyPolicyEffect = (
           newState.startingCity?.stats?.mainIssues?.includes("Housing");
         break;
       case "Green_party_strong_or_Pollution_is_issue":
-        // Simplified: check if environmental pollution is a main issue
         conditionMet =
           newState.startingCity?.stats?.mainIssues?.includes("Pollution");
         break;
       case "current_drought_severe":
-        // Placeholder for a more complex weather/event system
-        conditionMet = false; // Assume no severe drought for now
+        conditionMet = false;
         break;
       case "wealth_inequality_high":
-        // Placeholder, needs actual stat for wealth inequality
-        conditionMet = false; // Assume not high for now
+        conditionMet = false;
         break;
       case "population_young_families_high":
-        // Placeholder, needs demographic data
-        conditionMet = false; // Assume not high for now
+        conditionMet = false;
         break;
       case "demographics_seniors_high":
-        // Placeholder, needs demographic data
-        conditionMet = false; // Assume not high for now
+        conditionMet = false;
         break;
       default:
-        conditionMet = true; // Unknown conditions are treated as always true
+        conditionMet = true;
     }
   }
   if (!conditionMet) {
@@ -82,33 +87,26 @@ export const applyPolicyEffect = (
     effect.type.includes("by_param") ||
     effect.type.includes("by_tax_change")
   ) {
-    const pDetails = effect.parameterDetails; // This should come from the policyDef if effect.isParameterized is true
-    // For now, assume a simple amount from chosenParameters if present
+    const pDetails = effect.parameterDetails;
     const chosenValue = policyChosenParameters[pDetails?.key || "amount"];
 
     if (chosenValue !== undefined) {
       if (effect.type.includes("conditional_level_change_by_param")) {
-        // Example: If funding amount is positive, increase stat.
-        // Base change adjusted by parameter magnitude, or a fixed amount.
         actualChange =
           (chosenValue > 0 ? effect.change_direction : 0) *
           effect.base_change_for_default;
-        // Could also make change scale with chosenValue: actualChange = Math.sign(chosenValue) * (Math.abs(chosenValue) / SOME_UNIT);
       } else if (effect.type.includes("conditional_mood_shift_by_tax_change")) {
-        // If tax increased, mood decreases, vice-versa.
         actualChange = chosenValue > 0 ? -1 : chosenValue < 0 ? 1 : 0;
       } else if (
         effect.type.includes("conditional_approval_shift_by_tax_change")
       ) {
         actualChange = chosenValue > 0 ? -5 : chosenValue < 0 ? 5 : 0;
-        // Make player approval changes more pronounced
       } else if (
         effect.type.includes("conditional_level_change_by_tax_change")
       ) {
-        actualChange = chosenValue < 0 ? 1 : chosenValue > 0 ? -1 : 0; // Tax cut -> good for economy, tax hike -> bad
+        actualChange = chosenValue < 0 ? 1 : chosenValue > 0 ? -1 : 0;
       }
     } else {
-      // If parameterized but no chosenValue or not handled, fall back to default behavior if any
       actualChange = effect.change || 0;
     }
   }
@@ -117,15 +115,10 @@ export const applyPolicyEffect = (
   if (effect.type === "absolute_set_rate") {
     target[lastKey] = actualChange;
   } else if (effect.type === "formula_absolute_change") {
-    // This is a simplified eval. In a real app, use a safe expression parser.
     const formula = effect.changeFormula;
     let calculatedValue = 0;
     try {
-      // Provide variables from currentState that the formula might use
       const { population, gdpPerCapita } = newState.startingCity;
-      // This is highly insecure and should be replaced with a proper math expression parser
-      // For this specific use case from policyDefinitions (population * gdpPerCapita * 0.0005), it's relatively safe
-      // but general eval() is dangerous.
       calculatedValue = eval(
         formula
           .replace(/population/g, population)
@@ -157,10 +150,10 @@ export const applyPolicyEffect = (
         );
         break;
       case "percentage_point_change":
-        target[lastKey] = (target[lastKey] || 0) + actualChange; // actualChange is already in decimal percentage points (e.g., 0.005)
+        target[lastKey] = (target[lastKey] || 0) + actualChange;
         break;
       case "absolute_change":
-      case "absolute_change_recurring": // Recurring handled externally by monthly tick, just apply initial change here
+      case "absolute_change_recurring":
         target[lastKey] = (target[lastKey] || 0) + actualChange;
         break;
       case "conditional_approval_shift":

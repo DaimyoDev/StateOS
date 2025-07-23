@@ -1091,11 +1091,13 @@ export const simulateAICampaignDayForPolitician = (
       adBlitzSpend > 500 &&
       hoursLeft >= adBlitzHoursChoice
     ) {
+      const opponents = Array.from(electionContext.candidates.values()).filter(
+        (c) => c.id !== aiPoliticianId
+      );
+
       const topOpponentPolling = Math.max(
         0,
-        ...electionContext.candidates
-          .filter((c) => c.id !== aiPoliticianId)
-          .map((c) => c.polling || 0)
+        ...opponents.map((c) => c.polling || 0)
       );
       let score = 0.5;
       if (myPolling < topOpponentPolling - 5) score += 1.0;
@@ -1108,9 +1110,9 @@ export const simulateAICampaignDayForPolitician = (
         Math.random() < 0.4
       ) {
         adType = "attack";
-        targetId = electionContext.candidates
-          .filter((c) => c.id !== aiPoliticianId)
-          .sort((a, b) => (b.polling || 0) - (a.polling || 0))[0]?.id;
+        targetId = opponents.sort(
+          (a, b) => (b.polling || 0) - (a.polling || 0)
+        )[0]?.id;
       }
       availableActions.push({
         name: "launchManualAdBlitz",

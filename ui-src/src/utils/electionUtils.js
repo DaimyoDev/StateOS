@@ -566,21 +566,24 @@ export const generateRandomOfficeHolder = (
 };
 
 export const getPlayerActiveElectionDetailsForCampaignActions = (
-  campaignState
+  campaignState,
+  politicianId = null
 ) => {
   if (!campaignState || !campaignState.elections || !campaignState.politician)
     return null;
+
+  const targetId = politicianId || campaignState.politician.id;
+
   const playerElection = campaignState.elections.find(
-    (e) => e.playerIsCandidate && e.outcome?.status === "upcoming"
+    // Use Map.has() for a fast and correct check
+    (e) => e.candidates?.has(targetId) && e.outcome?.status === "upcoming"
   );
+
   if (!playerElection) return null;
-  const playerCandidateIndex = playerElection.candidates.findIndex(
-    (c) => c.id === campaignState.politician.id
-  );
-  if (playerCandidateIndex === -1) return null;
+
+  // We no longer need the index, just the election object itself.
   return {
     playerElection,
-    playerCandidateIndex,
     electionId: playerElection.id,
   };
 };

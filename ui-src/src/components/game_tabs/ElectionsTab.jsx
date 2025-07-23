@@ -425,22 +425,26 @@ function ElectionsTab({ campaignData }) {
   }, [electionOutcome]);
 
   const sortedUpcomingCandidates = useMemo(() => {
-    // Filter for valid candidate objects first
-    const validCandidates = (electionCandidates || []).filter((cand) => {
+    // --- START OF FIX ---
+    // 1. Convert the Map's values into an array.
+    const candidatesArray = Array.from(
+      (electionCandidates || new Map()).values()
+    );
+
+    // 2. Now, filter the new array.
+    const validCandidates = candidatesArray.filter((cand) => {
+      // --- END OF FIX ---
       if (!cand) {
-        // console.warn(`[ElectionsTab] sortedUpcomingCandidates: Filtered out a null/undefined candidate.`);
         return false;
       }
       if (typeof cand.name === "undefined" || typeof cand.id === "undefined") {
-        // console.warn(`[ElectionsTab] sortedUpcomingCandidates: Filtered out candidate with missing name or id.`, cand);
         return false;
       }
       return true;
     });
 
-    if (!validCandidates.length) return []; // Return empty if no valid candidates
+    if (!validCandidates.length) return [];
 
-    // Sort the valid candidates
     return [...validCandidates].sort(
       (a, b) => (b.polling || 0) - (a.polling || 0)
     );
@@ -457,7 +461,9 @@ function ElectionsTab({ campaignData }) {
     const isConcluded = electionOutcome?.status === "concluded";
 
     if (isConcluded) {
-      const { determinedWinnersArray: winners = [] } = electionOutcome || {};
+      // ### CORRECTED WINNER LOGIC ###
+      // Look for winners in the new `winnerAssignment` structure
+      const winners = electionOutcome?.winnerAssignment?.winners || [];
       const resultsByPartySeats = electionOutcome?.partySeatSummary || {};
 
       return (
@@ -477,7 +483,9 @@ function ElectionsTab({ campaignData }) {
                         <ConcludedPartyResultItem
                           key={partyRes.id}
                           partyResult={partyRes}
-                          turnoutActual={electionOutcome.turnoutActual}
+                          turnoutActual={
+                            electionOutcome.totalVotesActuallyCast
+                          } /* Corrected turnout prop */
                           seats={resultsByPartySeats[partyRes.id]}
                           partiesMap={partiesMap}
                         />
@@ -807,7 +815,7 @@ function ElectionsTab({ campaignData }) {
           )}
         </div>
       );
-    } else if (electionCandidates && electionCandidates.length > 0) {
+    } else if (electionCandidates && electionCandidates.size > 0) {
       return (
         <>
           <h4>Declared Candidates:</h4>

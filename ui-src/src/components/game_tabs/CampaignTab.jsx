@@ -88,8 +88,8 @@ const CampaignOverviewSubTab = ({ campaignData, openViewPoliticianModal }) => {
           {/* Your existing class */}
           <h4>Current Polling</h4> {/* Your existing class for h4 */}
           <ul>
-            {playerActiveElection.candidates
-              ?.sort((a, b) => (b.polling || 0) - (a.polling || 0))
+            {Array.from(playerActiveElection.candidates.values())
+              .sort((a, b) => (b.polling || 0) - (a.polling || 0))
               .map((candidate) => (
                 <li
                   key={candidate.id}
@@ -330,9 +330,8 @@ const FieldOpsSubTab = ({ campaignData, actions }) => {
               disabled={
                 campaignHoursRemainingToday < rallyHours ||
                 (politician.campaignFunds || 0) < currentRallyCost ||
-                (politician.volunteerCount || 0) < 5 * rallyHours ||
                 !politician.isInCampaign
-              } // Example volunteer check
+              }
               title={
                 campaignHoursRemainingToday < rallyHours
                   ? `Need ${rallyHours} hrs`
@@ -426,7 +425,10 @@ const CommsAdsSubTab = ({ campaignData, actions, cityKeyIssues }) => {
 
   const opponents = useMemo(() => {
     if (!playerActiveElection) return [];
-    return playerActiveElection.candidates.filter((c) => !c.isPlayer);
+    // Corrected: Convert the Map's values to an array before filtering
+    return Array.from(playerActiveElection.candidates.values()).filter(
+      (c) => !c.isPlayer
+    );
   }, [playerActiveElection]);
 
   useEffect(() => {
@@ -546,10 +548,6 @@ const CommsAdsSubTab = ({ campaignData, actions, cityKeyIssues }) => {
       spendAmount: spend,
       hoursSpent: manualAdHours,
     });
-    // Optionally reset form fields after launch
-    // setManualAdType("");
-    // setManualSpendAmount(1000);
-    // setManualAdHours(3);
   };
 
   const mediaAppearanceCost = 200;
@@ -860,8 +858,8 @@ const CommsAdsSubTab = ({ campaignData, actions, cityKeyIssues }) => {
               }
               title={mediaAppearanceTitle()}
             >
-              Request Local News Interview ({mediaAppearanceHours}hr - Treasury:
-              ${mediaAppearanceCost})
+              Request Local News Interview ({mediaAppearanceHours}hr - Campaign
+              Funds: ${mediaAppearanceCost})
             </button>
           </div>
         </div>

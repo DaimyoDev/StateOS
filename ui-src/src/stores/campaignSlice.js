@@ -1,6 +1,7 @@
 // src/stores/campaignSlice.js
 import { normalizePolling } from "../General Scripts/PollingFunctions.js";
 import { getRandomInt, calculateAdultPopulation } from "../utils/core.js";
+import { getPlayerActiveElectionDetailsForCampaignActions } from "../utils/electionUtils.js";
 
 /**
  * Helper function to find and update a specific politician (player or AI) within the activeCampaign state.
@@ -11,18 +12,15 @@ import { getRandomInt, calculateAdultPopulation } from "../utils/core.js";
  * @returns {object} The new activeCampaign state.
  */
 const updateTargetPolitician = (state, politicianId, updateFn) => {
-  if (!state.activeCampaign) return state.activeCampaign;
+  if (!state.activeCampaign) return state;
 
+  let campaignWasModified = false;
+  let newActiveCampaign = { ...state.activeCampaign };
   const actualPoliticianId =
     politicianId || state.activeCampaign.politician?.id;
-  let newActiveCampaign = { ...state.activeCampaign };
-  let campaignWasModified = false;
 
-  // Update player object if targeted
-  if (
-    !politicianId &&
-    newActiveCampaign.politician?.id === actualPoliticianId
-  ) {
+  // 1. Update main player object
+  if (!politicianId && newActiveCampaign.politician) {
     const updatedPlayer = updateFn(newActiveCampaign.politician);
     if (updatedPlayer !== newActiveCampaign.politician) {
       newActiveCampaign.politician = updatedPlayer;
@@ -30,20 +28,22 @@ const updateTargetPolitician = (state, politicianId, updateFn) => {
     }
   }
 
-  // Update politician's representation in any elections
+  // 2. Update politician in any election they are a candidate in (using the Map)
   if (newActiveCampaign.elections) {
     newActiveCampaign.elections = newActiveCampaign.elections.map(
       (election) => {
-        const candidateIndex = election.candidates?.findIndex(
-          (c) => c.id === actualPoliticianId
-        );
-        if (candidateIndex > -1) {
-          const updatedCandidates = [...election.candidates];
-          const updatedCandidate = updateFn(updatedCandidates[candidateIndex]);
-          if (updatedCandidate !== updatedCandidates[candidateIndex]) {
-            updatedCandidates[candidateIndex] = updatedCandidate;
+        // Use Map.has() for a fast check
+        if (election.candidates?.has(actualPoliticianId)) {
+          // Use Map.get() for a fast lookup
+          const oldCandidate = election.candidates.get(actualPoliticianId);
+          const updatedCandidate = updateFn(oldCandidate);
+
+          if (updatedCandidate !== oldCandidate) {
             campaignWasModified = true;
-            return { ...election, candidates: updatedCandidates };
+            // Create a new Map and set the updated candidate
+            const newCandidatesMap = new Map(election.candidates);
+            newCandidatesMap.set(actualPoliticianId, updatedCandidate);
+            return { ...election, candidates: newCandidatesMap };
           }
         }
         return election;
@@ -116,8 +116,7 @@ export const createCampaignSlice = (set, get) => ({
 
     // --- CORE HOUR MANAGEMENT ---
     spendCampaignHours: (hoursToSpend, politicianId = null) => {
-      // highlight-next-line
-      let success = false; // Define a variable to track success
+      let success = false;
       set((state) => {
         const newActiveCampaign = updateTargetPolitician(
           state,
@@ -125,8 +124,7 @@ export const createCampaignSlice = (set, get) => ({
           (politician) => {
             const hoursAvailable = politician.campaignHoursRemainingToday || 0;
             if (hoursAvailable >= hoursToSpend) {
-              // highlight-next-line
-              success = true; // Set to true on success
+              success = true;
               return {
                 ...politician,
                 campaignHoursRemainingToday: hoursAvailable - hoursToSpend,
@@ -143,8 +141,7 @@ export const createCampaignSlice = (set, get) => ({
         );
         return { activeCampaign: newActiveCampaign };
       });
-      // highlight-next-line
-      return success; // Return the final success state
+      return success;
     },
 
     resetDailyCampaignHours: (politicianId = null) => {
@@ -161,37 +158,22 @@ export const createCampaignSlice = (set, get) => ({
     },
 
     // --- CAMPAIGN ACTIONS ---
-    personalFundraisingActivity: (hoursToSpend = 2, politicianId = null) => {
+    personalFundraisingActivity: (hoursToSpend = 2) => {
       set((state) => {
-        // We will now perform all logic inside this single state update
-        const politicianToUpdate = politicianId
-          ? state.activeCampaign.elections
-              ?.flatMap((e) => e.candidates)
-              .find((c) => c.id === politicianId)
-          : state.activeCampaign.politician;
+        const { activeCampaign } = state;
+        const player = activeCampaign.politician;
 
-        if (!politicianToUpdate) return state; // Safety check
-
-        const hoursAvailable =
-          politicianToUpdate.campaignHoursRemainingToday || 0;
-
-        // 1. Check for sufficient hours BEFORE doing anything else.
+        const hoursAvailable = player.campaignHoursRemainingToday || 0;
         if (hoursAvailable < hoursToSpend) {
-          // Only show toast for the player
-          if (!politicianId) {
-            get().actions.addToast?.({
-              message: `Not enough campaign hours (need ${hoursToSpend}, have ${hoursAvailable}).`,
-              type: "warning",
-            });
-          }
-          // If the check fails, we stop and do not change the state.
+          get().actions.addToast?.({
+            message: `Not enough campaign hours (need ${hoursToSpend}, have ${hoursAvailable}).`,
+            type: "warning",
+          });
           return state;
         }
 
-        // 2. If the check passes, proceed with the action's effects.
-        const fundraisingSkill =
-          politicianToUpdate.attributes?.fundraising || 5;
-        const nameRec = politicianToUpdate.nameRecognition || 0;
+        const fundraisingSkill = player.attributes?.fundraising || 5;
+        const nameRec = player.nameRecognition || 0;
         const nameRecMultiplier = 0.5 + nameRec / 200000;
         const fundsRaised = Math.round(
           getRandomInt(500, 1500) *
@@ -200,70 +182,88 @@ export const createCampaignSlice = (set, get) => ({
             nameRecMultiplier
         );
 
-        // Show the success toast only if the action was successful.
-        if (!politicianId) {
-          get().actions.addToast?.({
-            message: `Spent ${hoursToSpend}hr(s) fundraising. Raised $${fundsRaised.toLocaleString()}!`,
-            type: "success",
-          });
-        }
-
-        // 3. Create the new politician object with updated hours and funds.
-        const updatedPolitician = {
-          ...politicianToUpdate,
+        const updates = {
           campaignHoursRemainingToday: hoursAvailable - hoursToSpend,
-          campaignFunds: (politicianToUpdate.campaignFunds || 0) + fundsRaised,
+          campaignFunds: (player.campaignFunds || 0) + fundsRaised,
         };
 
-        // 4. Apply this single, correct update to the state.
-        const newActiveCampaign = updateTargetPolitician(
-          state,
-          politicianId,
-          () => updatedPolitician
-        );
+        const updatedPolitician = { ...player, ...updates };
 
-        return { activeCampaign: newActiveCampaign };
+        const updatedElections = activeCampaign.elections.map((election) => {
+          if (election.candidates.has(player.id)) {
+            const newCandidatesMap = new Map(election.candidates);
+            const oldCandidateData = newCandidatesMap.get(player.id);
+            newCandidatesMap.set(player.id, {
+              ...oldCandidateData,
+              ...updates,
+            });
+            return { ...election, candidates: newCandidatesMap };
+          }
+          return election;
+        });
+
+        get().actions.addToast?.({
+          message: `Spent ${hoursToSpend}hr(s) fundraising. Raised $${fundsRaised.toLocaleString()}!`,
+          type: "success",
+        });
+
+        return {
+          activeCampaign: {
+            ...activeCampaign,
+            politician: updatedPolitician,
+            elections: updatedElections,
+          },
+        };
       });
     },
 
-    holdRallyActivity: (hoursForRally = 4, politicianId = null) => {
-      const preCheck = get().activeCampaign;
-      const politician = politicianId
-        ? preCheck.elections
-            ?.flatMap((e) => e.candidates)
-            .find((c) => c.id === politicianId)
-        : preCheck.politician;
-      if (!politician) return;
+    holdRallyActivity: (hoursForRally = 4) => {
+      set((state) => {
+        const { activeCampaign } = state;
+        const player = activeCampaign.politician;
+        const city = activeCampaign.startingCity;
 
-      const rallyCost = 500 + hoursForRally * 150;
-      if ((politician.campaignFunds || 0) < rallyCost) {
-        if (!politicianId)
+        const electionDetails =
+          getPlayerActiveElectionDetailsForCampaignActions(
+            activeCampaign,
+            player.id
+          );
+        if (!electionDetails) {
+          get().actions.addToast?.({
+            message: "Cannot hold rally: You are not in an active election.",
+            type: "error",
+          });
+          return state;
+        }
+
+        const hoursAvailable = player.campaignHoursRemainingToday || 0;
+        const fundsAvailable = player.campaignFunds || 0;
+        const rallyCost = 500 + hoursForRally * 150;
+
+        if (hoursAvailable < hoursForRally) {
+          get().actions.addToast?.({
+            message: `Not enough hours (Need ${hoursForRally}, have ${hoursAvailable}).`,
+            type: "warning",
+          });
+          return state;
+        }
+        if (fundsAvailable < rallyCost) {
           get().actions.addToast?.({
             message: `Not enough funds for Rally (Need $${rallyCost.toLocaleString()}).`,
             type: "error",
           });
-        return;
-      }
-      if (!get().actions.spendCampaignHours(hoursForRally, politicianId))
-        return;
-
-      set((state) => {
-        const campaign = state.activeCampaign;
-        const city = campaign.startingCity;
-        const election = campaign.elections.find((e) =>
-          e.candidates.some((c) => c.id === politician.id)
-        );
-        if (!election) return state;
+          return state;
+        }
 
         const adultPop =
           calculateAdultPopulation(
             city.population,
             city.demographics?.ageDistribution
           ) || 1;
-        const nameRecFraction = (politician.nameRecognition || 0) / adultPop;
+        const nameRecFraction = (player.nameRecognition || 0) / adultPop;
         const scoreBoost = Math.round(
           getRandomInt(hoursForRally, hoursForRally * 2) +
-            politician.attributes.oratory / 2 +
+            player.attributes.oratory / 2 +
             nameRecFraction * 3
         );
         const mediaBuzzGain = getRandomInt(
@@ -272,236 +272,695 @@ export const createCampaignSlice = (set, get) => ({
         );
         const nameRecGain = Math.round(
           getRandomInt(50 * hoursForRally, 200 * hoursForRally) *
-            (1 + (politician.mediaBuzz || 0) / 200)
+            (1 + (player.mediaBuzz || 0) / 200)
         );
 
-        const updatedElections = campaign.elections.map((e) => {
-          if (e.id === election.id) {
-            const updatedCandidates = e.candidates.map((c) =>
-              c.id === politician.id
-                ? { ...c, baseScore: (c.baseScore || 10) + scoreBoost }
-                : c
-            );
+        const updates = {
+          campaignHoursRemainingToday: hoursAvailable - hoursForRally,
+          campaignFunds: fundsAvailable - rallyCost,
+          mediaBuzz: Math.min(100, (player.mediaBuzz || 0) + mediaBuzzGain),
+          nameRecognition: Math.min(
+            adultPop,
+            (player.nameRecognition || 0) + nameRecGain
+          ),
+          baseScore: (player.baseScore || 10) + scoreBoost,
+        };
+
+        const updatedPolitician = { ...player, ...updates };
+
+        const updatedElections = activeCampaign.elections.map((e) => {
+          if (e.id === electionDetails.playerElection.id) {
+            const newCandidatesMap = new Map(e.candidates);
+            const oldCandidateData = newCandidatesMap.get(player.id);
+            newCandidatesMap.set(player.id, {
+              ...oldCandidateData,
+              ...updates,
+            });
             return {
               ...e,
-              candidates: normalizePolling(updatedCandidates, adultPop),
+              candidates: normalizePolling(newCandidatesMap, adultPop),
             };
           }
           return e;
         });
 
-        if (!politicianId) {
-          get().actions.addToast?.({
-            message: `Rally! Polling Score +${scoreBoost}. Name Rec +${nameRecGain.toLocaleString()}. Buzz +${mediaBuzzGain}.`,
-            type: "success",
-          });
-        }
-
-        const newActiveCampaign = updateTargetPolitician(
-          state,
-          politicianId,
-          (p) => ({
-            ...p,
-            campaignFunds: (p.campaignFunds || 0) - rallyCost,
-            mediaBuzz: Math.min(100, (p.mediaBuzz || 0) + mediaBuzzGain),
-            nameRecognition: Math.min(
-              adultPop,
-              (p.nameRecognition || 0) + nameRecGain
-            ),
-          })
-        );
+        get().actions.addToast?.({
+          message: `Rally! Polling Score +${scoreBoost}. Name Rec +${nameRecGain.toLocaleString()}. Buzz +${mediaBuzzGain}.`,
+          type: "success",
+        });
 
         return {
-          activeCampaign: { ...newActiveCampaign, elections: updatedElections },
+          activeCampaign: {
+            ...activeCampaign,
+            politician: updatedPolitician,
+            elections: updatedElections,
+          },
         };
       });
     },
 
-    goDoorKnocking: (hoursToSpend = 2, politicianId = null) => {
-      if (!get().actions.spendCampaignHours(hoursToSpend, politicianId)) return;
+    goDoorKnocking: (hoursToSpend = 2) => {
       set((state) => {
-        const city = state.activeCampaign.startingCity;
+        const { activeCampaign } = state;
+        const player = activeCampaign.politician;
+
+        const hoursAvailable = player.campaignHoursRemainingToday || 0;
+        if (hoursAvailable < hoursToSpend) {
+          get().actions.addToast?.({
+            message: `Not enough campaign hours (need ${hoursToSpend}, have ${hoursAvailable}).`,
+            type: "warning",
+          });
+          return state;
+        }
+
+        const city = activeCampaign.startingCity;
         const adultPop =
           calculateAdultPopulation(
             city.population,
             city.demographics?.ageDistribution
           ) || 1;
-
-        const newActiveCampaign = updateTargetPolitician(
-          state,
-          politicianId,
-          (p) => {
-            const reachPerPlayerHour =
-              10 + ((p.attributes?.charisma || 5) - 5) * 2;
-            const peopleReachedByVolunteers =
-              (p.volunteerCount || 0) * 3 * hoursToSpend;
-            const totalPeopleReached = Math.round(
-              reachPerPlayerHour * hoursToSpend + peopleReachedByVolunteers
-            );
-            const potentialNewReach = Math.max(
-              0,
-              adultPop - (p.nameRecognition || 0)
-            );
-            const actualNewPeopleRecognized = Math.min(
-              potentialNewReach,
-              totalPeopleReached
-            );
-
-            if (!politicianId) {
-              get().actions.addToast?.({
-                message: `Door knocking: Reached ~${totalPeopleReached} people. Name Rec +${actualNewPeopleRecognized.toLocaleString()}.`,
-                type: "info",
-              });
-            }
-
-            return {
-              ...p,
-              nameRecognition:
-                (p.nameRecognition || 0) + actualNewPeopleRecognized,
-            };
-          }
+        const reachPerPlayerHour =
+          10 + ((player.attributes?.charisma || 5) - 5) * 2;
+        const peopleReachedByVolunteers =
+          (player.volunteerCount || 0) * 3 * hoursToSpend;
+        const totalPeopleReached = Math.round(
+          reachPerPlayerHour * hoursToSpend + peopleReachedByVolunteers
         );
-        return { activeCampaign: newActiveCampaign };
+        const potentialNewReach = Math.max(
+          0,
+          adultPop - (player.nameRecognition || 0)
+        );
+        const actualNewPeopleRecognized = Math.min(
+          potentialNewReach,
+          totalPeopleReached
+        );
+
+        const updates = {
+          campaignHoursRemainingToday: hoursAvailable - hoursToSpend,
+          nameRecognition:
+            (player.nameRecognition || 0) + actualNewPeopleRecognized,
+        };
+
+        const updatedPolitician = { ...player, ...updates };
+
+        const updatedElections = activeCampaign.elections.map((election) => {
+          if (election.candidates.has(player.id)) {
+            const newCandidatesMap = new Map(election.candidates);
+            const oldCandidateData = newCandidatesMap.get(player.id);
+            newCandidatesMap.set(player.id, {
+              ...oldCandidateData,
+              ...updates,
+            });
+            return { ...election, candidates: newCandidatesMap };
+          }
+          return election;
+        });
+
+        get().actions.addToast?.({
+          message: `Door knocking: Reached ~${totalPeopleReached} people. Name Rec +${actualNewPeopleRecognized.toLocaleString()}.`,
+          type: "info",
+        });
+
+        return {
+          activeCampaign: {
+            ...activeCampaign,
+            politician: updatedPolitician,
+            elections: updatedElections,
+          },
+        };
       });
     },
 
-    makePublicAppearanceActivity: (hoursToSpend = 2, politicianId = null) => {
-      const cost = 100;
-      const politician = politicianId
-        ? get()
-            .activeCampaign.elections?.flatMap((e) => e.candidates)
-            .find((c) => c.id === politicianId)
-        : get().activeCampaign.politician;
-      if (!politician || (politician.campaignFunds || 0) < cost) {
-        if (!politicianId)
+    makePublicAppearanceActivity: (hoursToSpend = 2) => {
+      set((state) => {
+        const { activeCampaign } = state;
+        const player = activeCampaign.politician;
+
+        const cost = 200;
+        const hoursAvailable = player.campaignHoursRemainingToday || 0;
+        const fundsAvailable = player.campaignFunds || 0;
+
+        if (hoursAvailable < hoursToSpend) {
+          get().actions.addToast?.({
+            message: `Not enough hours (Need ${hoursToSpend}, have ${hoursAvailable}).`,
+            type: "warning",
+          });
+          return state;
+        }
+        if (fundsAvailable < cost) {
           get().actions.addToast?.({
             message: `Not enough funds (Need $${cost}).`,
             type: "error",
           });
-        return;
-      }
-      if (!get().actions.spendCampaignHours(hoursToSpend, politicianId)) return;
+          return state;
+        }
+
+        const city = activeCampaign.startingCity;
+        const adultPop =
+          calculateAdultPopulation(
+            city.population,
+            city.demographics?.ageDistribution
+          ) || 1;
+        const charismaFactor = Math.max(
+          0.5,
+          (player.attributes?.charisma || 3) / 5
+        );
+        const approvalBoost = Math.round(
+          getRandomInt(0, hoursToSpend) * charismaFactor
+        );
+        const nameRecGain = Math.round(
+          getRandomInt(10 * hoursToSpend, 30 * hoursToSpend) * charismaFactor
+        );
+        const mediaBuzzGain =
+          getRandomInt(1 * hoursToSpend, 3 * hoursToSpend) +
+          Math.floor((player.attributes?.charisma || 5) / 2);
+
+        const updates = {
+          campaignHoursRemainingToday: hoursAvailable - hoursToSpend,
+          campaignFunds: fundsAvailable - cost,
+          approvalRating: Math.min(
+            100,
+            (player.approvalRating || 0) + approvalBoost
+          ),
+          nameRecognition: Math.min(
+            adultPop,
+            (player.nameRecognition || 0) + nameRecGain
+          ),
+          mediaBuzz: Math.min(100, (player.mediaBuzz || 0) + mediaBuzzGain),
+        };
+
+        const updatedPolitician = { ...player, ...updates };
+
+        const updatedElections = activeCampaign.elections.map((election) => {
+          if (election.candidates.has(player.id)) {
+            const newCandidatesMap = new Map(election.candidates);
+            const oldCandidateData = newCandidatesMap.get(player.id);
+            newCandidatesMap.set(player.id, {
+              ...oldCandidateData,
+              ...updates,
+            });
+            return { ...election, candidates: newCandidatesMap };
+          }
+          return election;
+        });
+
+        get().actions.addToast?.({
+          message: `Public appearance: Approval +${approvalBoost}%. Name Rec +${nameRecGain.toLocaleString()}. Buzz +${mediaBuzzGain}.`,
+          type: "success",
+        });
+
+        return {
+          activeCampaign: {
+            ...activeCampaign,
+            politician: updatedPolitician,
+            elections: updatedElections,
+          },
+        };
+      });
+    },
+
+    recruitVolunteers: (hoursToSpend = 2) => {
+      set((state) => {
+        const { activeCampaign } = state;
+        const player = activeCampaign.politician;
+
+        const hoursAvailable = player.campaignHoursRemainingToday || 0;
+        if (hoursAvailable < hoursToSpend) {
+          get().actions.addToast?.({
+            message: `Not enough campaign hours (need ${hoursToSpend}, have ${hoursAvailable}).`,
+            type: "warning",
+          });
+          return state;
+        }
+
+        const charismaFactor =
+          1 + ((player.attributes?.charisma || 5) - 5) * 0.1;
+        const newVolunteers = Math.round(
+          getRandomInt(3, 8) * hoursToSpend * charismaFactor
+        );
+
+        const updates = {
+          campaignHoursRemainingToday: hoursAvailable - hoursToSpend,
+          volunteerCount: (player.volunteerCount || 0) + newVolunteers,
+        };
+
+        const updatedPolitician = { ...player, ...updates };
+
+        const updatedElections = activeCampaign.elections.map((election) => {
+          if (election.candidates.has(player.id)) {
+            const newCandidatesMap = new Map(election.candidates);
+            const oldCandidateData = newCandidatesMap.get(player.id);
+            newCandidatesMap.set(player.id, {
+              ...oldCandidateData,
+              ...updates,
+            });
+            return { ...election, candidates: newCandidatesMap };
+          }
+          return election;
+        });
+
+        get().actions.addToast?.({
+          message: `Recruiting: Gained ${newVolunteers} new volunteers!`,
+          type: "success",
+        });
+
+        return {
+          activeCampaign: {
+            ...activeCampaign,
+            politician: updatedPolitician,
+            elections: updatedElections,
+          },
+        };
+      });
+    },
+
+    setMonthlyAdvertisingBudget: (amount) => {
+      set((state) => {
+        const { activeCampaign } = state;
+        const player = activeCampaign.politician;
+
+        const parsedAmount = parseInt(amount, 10);
+        if (isNaN(parsedAmount) || parsedAmount < 0) {
+          get().actions.addToast?.({
+            message: "Invalid budget amount. Please enter a positive number.",
+            type: "error",
+          });
+          return state;
+        }
+
+        const updates = { advertisingBudgetMonthly: parsedAmount };
+        const updatedPolitician = { ...player, ...updates };
+
+        const updatedElections = activeCampaign.elections.map((election) => {
+          if (election.candidates.has(player.id)) {
+            const newCandidatesMap = new Map(election.candidates);
+            const oldCandidateData = newCandidatesMap.get(player.id);
+            newCandidatesMap.set(player.id, {
+              ...oldCandidateData,
+              ...updates,
+            });
+            return { ...election, candidates: newCandidatesMap };
+          }
+          return election;
+        });
+
+        get().actions.addToast?.({
+          message: `Monthly ad budget set to $${parsedAmount.toLocaleString()}`,
+          type: "info",
+        });
+
+        return {
+          activeCampaign: {
+            ...activeCampaign,
+            politician: updatedPolitician,
+            elections: updatedElections,
+          },
+        };
+      });
+    },
+
+    setAdvertisingStrategy: (strategyData) => {
+      set((state) => {
+        const { activeCampaign } = state;
+        const player = activeCampaign.politician;
+        const { focus, targetId, intensity } = strategyData;
+
+        if (!focus) {
+          get().actions.addToast?.({
+            message: "Invalid ad strategy focus.",
+            type: "error",
+          });
+          return state;
+        }
+        if (
+          (focus === "attack_opponent" || focus === "advocacy_issue") &&
+          !targetId
+        ) {
+          get().actions.addToast?.({
+            message: "A target must be selected for this strategy.",
+            type: "error",
+          });
+          return state;
+        }
+
+        const updates = {
+          currentAdStrategy: {
+            focus,
+            targetId: targetId || null,
+            intensity: intensity || 0,
+          },
+        };
+
+        const updatedPolitician = { ...player, ...updates };
+
+        const updatedElections = activeCampaign.elections.map((election) => {
+          if (election.candidates.has(player.id)) {
+            const newCandidatesMap = new Map(election.candidates);
+            const oldCandidateData = newCandidatesMap.get(player.id);
+            newCandidatesMap.set(player.id, {
+              ...oldCandidateData,
+              ...updates,
+            });
+            return { ...election, candidates: newCandidatesMap };
+          }
+          return election;
+        });
+
+        get().actions.addToast?.({
+          message: `Ongoing advertising strategy has been updated.`,
+          type: "info",
+        });
+
+        return {
+          activeCampaign: {
+            ...activeCampaign,
+            politician: updatedPolitician,
+            elections: updatedElections,
+          },
+        };
+      });
+    },
+
+    launchManualAdBlitz: (params) => {
+      const { adType, targetId, spendAmount, hoursSpent } = params;
 
       set((state) => {
+        const { activeCampaign } = state;
+        const player = activeCampaign.politician;
+        const city = activeCampaign.startingCity;
+
+        const electionDetails =
+          getPlayerActiveElectionDetailsForCampaignActions(
+            activeCampaign,
+            player.id
+          );
+        if (!electionDetails) {
+          get().actions.addToast?.({
+            message:
+              "Could not launch blitz: You are not in an active election.",
+            type: "error",
+          });
+          return state;
+        }
+
+        const hoursAvailable = player.campaignHoursRemainingToday || 0;
+        const fundsAvailable = player.campaignFunds || 0;
+
+        if (hoursAvailable < hoursSpent) {
+          get().actions.addToast?.({
+            message: `Not enough campaign hours (need ${hoursSpent}, have ${hoursAvailable}).`,
+            type: "warning",
+          });
+          return state;
+        }
+        if (fundsAvailable < spendAmount) {
+          get().actions.addToast?.({
+            message: `Not enough funds (Need $${spendAmount.toLocaleString()}).`,
+            type: "error",
+          });
+          return state;
+        }
+
+        let baseScoreChangePlayer = 0;
+        let baseScoreChangeOpponent = 0;
+        let opponentToTargetObj = null;
+        let mediaBuzzEffect = 0;
+        let nameRecEffect = 0;
+
+        const {
+          charisma = 5,
+          integrity = 5,
+          intelligence = 5,
+        } = player.attributes;
+        const adultPop =
+          calculateAdultPopulation(
+            city.population,
+            city.demographics?.ageDistribution
+          ) || 1;
+        const effectivenessFactor =
+          (spendAmount / 1000) *
+          (hoursSpent / 3) *
+          (1 + ((intelligence + charisma) / 2 - 5) * 0.1);
+
+        if (adType === "positive") {
+          baseScoreChangePlayer = getRandomInt(1, 2) * effectivenessFactor;
+          mediaBuzzEffect = getRandomInt(3, 6) * effectivenessFactor;
+          nameRecEffect = getRandomInt(50, 200) * effectivenessFactor;
+        } else if (adType === "attack" && targetId) {
+          opponentToTargetObj =
+            electionDetails.playerElection.candidates.get(targetId);
+          if (opponentToTargetObj) {
+            const backlashChance = 0.15 + Math.max(0, (5 - integrity) * 0.05);
+            if (Math.random() < backlashChance) {
+              baseScoreChangePlayer =
+                getRandomInt(0, 1) * effectivenessFactor * -1;
+              mediaBuzzEffect = getRandomInt(2, 4) * effectivenessFactor;
+              get().actions.addToast?.({
+                message: "Your attack ad backfired slightly!",
+                type: "warning",
+              });
+            } else {
+              baseScoreChangeOpponent =
+                getRandomInt(1, 3) * effectivenessFactor * -1;
+              mediaBuzzEffect = getRandomInt(4, 8) * effectivenessFactor;
+            }
+          }
+        } else if (adType === "issue") {
+          baseScoreChangePlayer = getRandomInt(0, 2) * effectivenessFactor;
+          mediaBuzzEffect = getRandomInt(2, 5) * effectivenessFactor;
+          nameRecEffect = getRandomInt(30, 150) * effectivenessFactor;
+        }
+
+        const playerUpdates = {
+          campaignHoursRemainingToday: hoursAvailable - hoursSpent,
+          campaignFunds: fundsAvailable - spendAmount,
+          nameRecognition: Math.min(
+            adultPop,
+            (player.nameRecognition || 0) + Math.round(nameRecEffect)
+          ),
+          mediaBuzz: Math.min(
+            100,
+            (player.mediaBuzz || 0) + Math.round(mediaBuzzEffect)
+          ),
+          baseScore:
+            (player.baseScore || 10) + Math.round(baseScoreChangePlayer),
+        };
+
+        const updatedPolitician = { ...player, ...playerUpdates };
+
+        const updatedElections = activeCampaign.elections.map((e) => {
+          if (e.id === electionDetails.playerElection.id) {
+            const newCandidatesMap = new Map(e.candidates);
+
+            // Update player in the map
+            const oldPlayerData = newCandidatesMap.get(player.id);
+            newCandidatesMap.set(player.id, {
+              ...oldPlayerData,
+              ...playerUpdates,
+            });
+
+            // Update opponent in the map if necessary
+            if (opponentToTargetObj && baseScoreChangeOpponent !== 0) {
+              const opponent = newCandidatesMap.get(opponentToTargetObj.id);
+              if (opponent) {
+                newCandidatesMap.set(opponentToTargetObj.id, {
+                  ...opponent,
+                  baseScore: Math.max(
+                    1,
+                    (opponent.baseScore || 10) +
+                      Math.round(baseScoreChangeOpponent)
+                  ),
+                });
+              }
+            }
+            return {
+              ...e,
+              candidates: normalizePolling(newCandidatesMap, adultPop),
+            };
+          }
+          return e;
+        });
+
+        get().actions.addToast?.({
+          message: `Launched ${hoursSpent}hr Ad Blitz for $${spendAmount.toLocaleString()}! Effects applied.`,
+          type: "success",
+        });
+
+        return {
+          activeCampaign: {
+            ...activeCampaign,
+            politician: updatedPolitician,
+            elections: updatedElections,
+          },
+        };
+      });
+    },
+
+    applyDailyAICampaignResults: (allAIResults) => {
+      set((state) => {
+        if (!state.activeCampaign?.elections) return state;
+
         const city = state.activeCampaign.startingCity;
         const adultPop =
           calculateAdultPopulation(
             city.population,
             city.demographics?.ageDistribution
           ) || 1;
-        const newActiveCampaign = updateTargetPolitician(
-          state,
-          politicianId,
-          (p) => {
-            const charismaFactor = Math.max(
-              0.5,
-              (p.attributes?.charisma || 3) / 5
-            );
-            const approvalBoost = Math.round(
-              getRandomInt(0, hoursToSpend) * charismaFactor
-            );
-            const nameRecGain = Math.round(
-              getRandomInt(10 * hoursToSpend, 30 * hoursToSpend) *
-                charismaFactor
-            );
-            const mediaBuzzGain =
-              getRandomInt(1 * hoursToSpend, 3 * hoursToSpend) +
-              Math.floor((p.attributes?.charisma || 5) / 2);
 
-            if (!politicianId) {
-              get().actions.addToast?.({
-                message: `Public appearance: Approval +${approvalBoost}%. Name Rec +${nameRecGain.toLocaleString()}. Buzz +${mediaBuzzGain}.`,
-                type: "success",
-              });
-            }
-
-            return {
-              ...p,
-              campaignFunds: (p.campaignFunds || 0) - cost,
-              approvalRating: Math.min(
-                100,
-                (p.approvalRating || 0) + approvalBoost
-              ),
-              nameRecognition: Math.min(
-                adultPop,
-                (p.nameRecognition || 0) + nameRecGain
-              ),
-              mediaBuzz: Math.min(100, (p.mediaBuzz || 0) + mediaBuzzGain),
-            };
-          }
+        const resultsMap = new Map(
+          allAIResults.map((res) => [res.politicianId, res.dailyResults])
         );
-        return { activeCampaign: newActiveCampaign };
-      });
-    },
-
-    recruitVolunteers: (hoursToSpend = 2, politicianId = null) => {
-      if (!get().actions.spendCampaignHours(hoursToSpend, politicianId)) return;
-      set((state) => {
-        const newActiveCampaign = updateTargetPolitician(
-          state,
-          politicianId,
-          (p) => {
-            const charismaFactor =
-              1 + ((p.attributes?.charisma || 5) - 5) * 0.1;
-            const newVolunteers = Math.round(
-              getRandomInt(3, 8) * hoursToSpend * charismaFactor
-            );
-
-            if (!politicianId) {
-              get().actions.addToast?.({
-                message: `Recruiting: Gained ${newVolunteers} new volunteers!`,
-                type: "success",
-              });
-            }
-
-            return {
-              ...p,
-              volunteerCount: (p.volunteerCount || 0) + newVolunteers,
-            };
-          }
-        );
-        return { activeCampaign: newActiveCampaign };
-      });
-    },
-    applyDailyAICampaignResults: (allAIResults) => {
-      set((state) => {
-        if (!state.activeCampaign) return state;
 
         const updatedElections = state.activeCampaign.elections.map(
           (election) => {
-            const newCandidates = election.candidates.map((candidate) => {
-              // Find if this candidate has results to apply
-              const resultsForThisCandidate = allAIResults.find(
-                (res) => res.politicianId === candidate.id
-              );
-              if (!resultsForThisCandidate) return candidate;
+            const newCandidates = new Map(election.candidates);
+            let hasChanges = false;
+            let needsPollingUpdate = false;
+
+            for (const [candidateId, candidate] of newCandidates.entries()) {
+              const resultsForThisCandidate = resultsMap.get(candidateId);
+              if (!resultsForThisCandidate) continue;
 
               let updatedCandidate = { ...candidate };
+              hasChanges = true;
 
-              // Loop through the actions and apply their effects
-              resultsForThisCandidate.dailyResults.forEach((actionResult) => {
-                // Here you would put the logic from your individual action functions
-                // For example:
-                if (actionResult.actionName === "personalFundraisingActivity") {
-                  const fundsGained =
-                    getRandomInt(500, 2000) * actionResult.hoursSpent; // Example logic
-                  updatedCandidate.campaignFunds += fundsGained;
-                  updatedCandidate.campaignHoursRemainingToday -=
-                    actionResult.hoursSpent;
+              resultsForThisCandidate.forEach((actionResult) => {
+                switch (actionResult.actionName) {
+                  case "personalFundraisingActivity": {
+                    const fundraisingSkill =
+                      updatedCandidate.attributes?.fundraising || 5;
+                    const nameRec = updatedCandidate.nameRecognition || 0;
+                    const nameRecMultiplier = 0.5 + nameRec / 200000;
+                    const fundsGained = Math.round(
+                      getRandomInt(500, 1500) *
+                        actionResult.hoursSpent *
+                        (fundraisingSkill / 4) *
+                        nameRecMultiplier
+                    );
+                    updatedCandidate.campaignFunds =
+                      (updatedCandidate.campaignFunds || 0) + fundsGained;
+                    break;
+                  }
+                  case "goDoorKnocking": {
+                    const reachPerHour =
+                      10 +
+                      ((updatedCandidate.attributes?.charisma || 5) - 5) * 2;
+                    const volunteerReach =
+                      (updatedCandidate.volunteerCount || 0) *
+                      3 *
+                      actionResult.hoursSpent;
+                    const totalReached = Math.round(
+                      reachPerHour * actionResult.hoursSpent + volunteerReach
+                    );
+                    const potentialNewReach = Math.max(
+                      0,
+                      adultPop - (updatedCandidate.nameRecognition || 0)
+                    );
+                    const newRecognition = Math.min(
+                      potentialNewReach,
+                      totalReached
+                    );
+                    updatedCandidate.nameRecognition =
+                      (updatedCandidate.nameRecognition || 0) + newRecognition;
+                    break;
+                  }
+                  case "holdRallyActivity": {
+                    needsPollingUpdate = true;
+                    const nameRecFraction =
+                      (updatedCandidate.nameRecognition || 0) / adultPop;
+                    const scoreBoost = Math.round(
+                      getRandomInt(
+                        actionResult.hoursSpent,
+                        actionResult.hoursSpent * 2
+                      ) +
+                        updatedCandidate.attributes.oratory / 2 +
+                        nameRecFraction * 3
+                    );
+                    const mediaBuzzGain = getRandomInt(
+                      3 * actionResult.hoursSpent,
+                      7 * actionResult.hoursSpent
+                    );
+                    const nameRecGain = Math.round(
+                      getRandomInt(
+                        50 * actionResult.hoursSpent,
+                        200 * actionResult.hoursSpent
+                      ) *
+                        (1 + (updatedCandidate.mediaBuzz || 0) / 200)
+                    );
+                    updatedCandidate.mediaBuzz = Math.min(
+                      100,
+                      (updatedCandidate.mediaBuzz || 0) + mediaBuzzGain
+                    );
+                    updatedCandidate.nameRecognition = Math.min(
+                      adultPop,
+                      (updatedCandidate.nameRecognition || 0) + nameRecGain
+                    );
+                    updatedCandidate.baseScore =
+                      (updatedCandidate.baseScore || 10) + scoreBoost;
+                    break;
+                  }
+                  case "recruitVolunteers": {
+                    const charismaFactor =
+                      1 +
+                      ((updatedCandidate.attributes?.charisma || 5) - 5) * 0.1;
+                    const newVolunteers = Math.round(
+                      getRandomInt(3, 8) *
+                        actionResult.hoursSpent *
+                        charismaFactor
+                    );
+                    updatedCandidate.volunteerCount =
+                      (updatedCandidate.volunteerCount || 0) + newVolunteers;
+                    break;
+                  }
+                  case "launchManualAdBlitz": {
+                    needsPollingUpdate = true;
+                    const { adType, targetId, spendAmount } =
+                      actionResult.params;
+                    const {
+                      charisma = 5,
+                      integrity = 5,
+                      intelligence = 5,
+                    } = updatedCandidate.attributes;
+                    const effectivenessFactor =
+                      (spendAmount / 1000) *
+                      (actionResult.hoursSpent / 3) *
+                      (1 + ((intelligence + charisma) / 2 - 5) * 0.1);
+                    let baseScoreChangePlayer = 0;
+
+                    if (adType === "positive") {
+                      baseScoreChangePlayer =
+                        getRandomInt(1, 2) * effectivenessFactor;
+                    } else if (adType === "attack" && targetId) {
+                      const backlashChance =
+                        0.15 + Math.max(0, (5 - integrity) * 0.05);
+                      if (Math.random() < backlashChance) {
+                        baseScoreChangePlayer =
+                          getRandomInt(0, 1) * effectivenessFactor * -1;
+                      }
+                    }
+                    updatedCandidate.baseScore =
+                      (updatedCandidate.baseScore || 10) +
+                      Math.round(baseScoreChangePlayer);
+                    break;
+                  }
                 }
-                if (actionResult.actionName === "goDoorKnocking") {
-                  const nameRecGained =
-                    getRandomInt(100, 300) * actionResult.hoursSpent; // Example logic
-                  updatedCandidate.nameRecognition += nameRecGained;
-                  updatedCandidate.campaignHoursRemainingToday -=
-                    actionResult.hoursSpent;
-                }
-                // Add cases for all other possible AI actions...
+                updatedCandidate.campaignHoursRemainingToday -=
+                  actionResult.hoursSpent;
               });
 
-              return updatedCandidate;
-            });
-            return { ...election, candidates: newCandidates };
+              newCandidates.set(candidateId, updatedCandidate);
+            }
+
+            if (hasChanges) {
+              if (needsPollingUpdate) {
+                return {
+                  ...election,
+                  candidates: normalizePolling(newCandidates, adultPop),
+                };
+              }
+              return { ...election, candidates: newCandidates };
+            }
+            return election;
           }
         );
 

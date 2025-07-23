@@ -317,20 +317,20 @@ export const createTimeSlice = (set, get) => {
 
         if (campaignForAILoop && campaignForAILoop.elections) {
           const aiProcessingQueue = [];
-          // (This part for creating the queue remains the same as our last fix)
+
           campaignForAILoop.elections.forEach((election) => {
             if (
               election.outcome?.status === "upcoming" &&
               election.candidates
             ) {
-              election.candidates.forEach((candidate) => {
+              for (const candidate of election.candidates.values()) {
                 if (!candidate.isPlayer && candidate.id) {
                   aiProcessingQueue.push({
                     aiPolitician: candidate,
                     electionContext: election,
                   });
                 }
-              });
+              }
             }
           });
 

@@ -148,7 +148,7 @@ const initializeElectionObject = ({
     candidates:
       participantsData.type === "individual_candidates"
         ? participantsData.data
-        : [],
+        : new Map(),
     partyLists:
       participantsData.type === "party_lists" ? participantsData.data : {},
     mmpData:
@@ -328,100 +328,81 @@ export const createElectionSlice = (set, get) => ({
           day: updatedElection.electionDate.day,
         };
 
+        let updatedPlayerPolitician = state.activeCampaign.politician;
+
         if (
-          outcome.determinedWinnersArray &&
-          outcome.determinedWinnersArray.length > 0
+          outcome.winnerAssignment?.winners &&
+          outcome.winnerAssignment.winners.length > 0
         ) {
-          const isLegislativeBody =
-            updatedElection.numberOfSeatsToFill > 1 &&
-            !updatedElection.generatesOneWinner;
+          const winners = outcome.winnerAssignment.winners;
+          const playerIsWinner = winners.some(
+            (winner) => winner.id === state.activeCampaign.politician.id
+          );
 
-          if (isLegislativeBody) {
-            // --- FIX FOR LEGISLATIVE BODIES ---
-            const officeIndex = updatedGovernmentOffices.findIndex(
-              (o) => o.officeName === updatedElection.officeName
-            );
-            const newMembers = outcome.determinedWinnersArray.map(
-              (winner, index) => {
-                const fullWinnerData = allParties.find(
-                  (p) => p.id === winner.partyId
-                )
-                  ? winner
-                  : { ...winner, ...get().activeCampaign.politician };
+          if (playerIsWinner) {
+            updatedPlayerPolitician = {
+              ...state.activeCampaign.politician,
+              currentOffice: updatedElection.officeName,
+            };
+          }
 
-                let roleTitle = `Member, ${updatedElection.officeName}`;
-                if (
-                  [
-                    "BlockVote",
-                    "SNTV_MMD",
-                    "PluralityMMD",
-                    "PartyListPR",
-                    "MMP",
-                  ].includes(updatedElection.electoralSystem)
-                ) {
-                  roleTitle = `Member, ${updatedElection.officeName} (Seat ${
-                    index + 1
-                  })`;
-                }
+          const officeIndex = updatedGovernmentOffices.findIndex(
+            (o) => o.officeName === updatedElection.officeName
+          );
 
-                return {
-                  ...fullWinnerData,
-                  name: cleanWinnerName(fullWinnerData.name), // Clean the name
-                  holder: {
-                    ...fullWinnerData,
-                    name: cleanWinnerName(fullWinnerData.name),
-                  }, // Clean the nested holder name too
-                  role: roleTitle,
-                };
-              }
-            );
+          if (outcome.winnerAssignment.type === "MEMBERS_ARRAY") {
+            const newMembers = winners.map((winner) => ({
+              ...winner,
+              name: cleanWinnerName(winner.name),
+              holder: {
+                ...winner,
+                name: cleanWinnerName(winner.name),
+              },
+              role: `Member, ${updatedElection.officeName}`,
+            }));
+
             if (officeIndex > -1) {
               updatedGovernmentOffices[officeIndex] = {
                 ...updatedGovernmentOffices[officeIndex],
                 members: newMembers,
                 termEnds,
-                officeNameTemplateId: updatedElection.officeNameTemplateId,
               };
             } else {
               updatedGovernmentOffices.push({
                 officeId: `gov_${updatedElection.instanceIdBase}`,
                 officeName: updatedElection.officeName,
-                level: updatedElection.level,
-                cityId: outcome.cityId,
+                level: updatedElection.level, // Add level
+                cityId:
+                  updatedElection.entityDataSnapshot.parentCityId ||
+                  updatedElection.entityDataSnapshot.id, // Add cityId
                 members: newMembers,
                 termEnds,
                 officeNameTemplateId: updatedElection.officeNameTemplateId,
               });
             }
           } else {
-            // Single Winner Office
-            const winner = outcome.determinedWinnersArray[0];
-            const fullWinnerData = allParties.find(
-              (p) => p.id === winner.partyId
-            )
-              ? winner
-              : { ...winner, ...get().activeCampaign.politician };
-            const officeIndex = updatedGovernmentOffices.findIndex(
-              (o) => o.officeName === updatedElection.officeName
-            );
+            // SINGLE_HOLDER
+            const winner = winners[0];
             const newHolder = {
-              ...fullWinnerData,
-              name: cleanWinnerName(fullWinnerData.name), // Clean the name
+              ...winner,
+              name: cleanWinnerName(winner.name),
               role: updatedElection.officeName,
             };
+
             if (officeIndex > -1) {
               updatedGovernmentOffices[officeIndex] = {
                 ...updatedGovernmentOffices[officeIndex],
                 holder: newHolder,
                 termEnds,
-                officeNameTemplateId: updatedElection.officeNameTemplateId,
               };
             } else {
               updatedGovernmentOffices.push({
                 officeId: `gov_${updatedElection.instanceIdBase}`,
                 officeName: updatedElection.officeName,
-                level: updatedElection.level,
-                cityId: outcome.cityId,
+                level: updatedElection.level, // Add level
+                cityId:
+                  updatedElection.entityDataSnapshot.parentCityId ||
+                  updatedElection.entityDataSnapshot.id, // Add cityId
                 holder: newHolder,
                 termEnds,
                 officeNameTemplateId: updatedElection.officeNameTemplateId,
@@ -435,6 +416,7 @@ export const createElectionSlice = (set, get) => ({
             ...state.activeCampaign,
             elections: updatedElections,
             governmentOffices: updatedGovernmentOffices,
+            politician: updatedPlayerPolitician,
           },
         };
       });
@@ -503,6 +485,7 @@ export const createElectionSlice = (set, get) => ({
             }
 
             const playerAsCandidate = {
+              ...politician,
               id: politician.id,
               name: `${politician.firstName} ${politician.lastName}`,
               isPlayer: true,
@@ -510,22 +493,27 @@ export const createElectionSlice = (set, get) => ({
               ...partyDetails,
             };
 
+            const currentCandidatesArray = Array.from(
+              election.candidates.values()
+            );
+
+            // 2. Add the player to the array
             const newCandidateList = [
-              ...(election.candidates || []),
+              ...currentCandidatesArray,
               playerAsCandidate,
             ];
+
             const adultPop = election.totalEligibleVoters / 0.7; // Estimate
-            const finalCandidates = normalizePolling(
-              newCandidateList.map((c) => ({
-                ...c,
-                baseScore:
-                  c.baseScore ||
-                  calculateBaseCandidateScore(
-                    c,
-                    election,
-                    state.activeCampaign
-                  ),
-              })),
+            const candidatesWithScores = newCandidateList.map((c) => ({
+              ...c,
+              baseScore:
+                c.baseScore ||
+                calculateBaseCandidateScore(c, election, state.activeCampaign),
+            }));
+
+            // 3. Normalize polling on the array, which returns a new Map
+            const finalCandidatesMap = normalizePolling(
+              candidatesWithScores,
               adultPop
             );
 
@@ -536,7 +524,7 @@ export const createElectionSlice = (set, get) => ({
             });
             return {
               ...election,
-              candidates: finalCandidates,
+              candidates: finalCandidatesMap,
               playerIsCandidate: true,
             };
           }

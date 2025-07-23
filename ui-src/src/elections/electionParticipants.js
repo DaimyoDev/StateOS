@@ -118,12 +118,12 @@ export function handleFPTPParticipants({
   const eligibleVotersForPollingNorm = Math.floor(
     entityPopulation * (0.65 + Math.random() * 0.1)
   );
-  const finalCandidates = normalizePolling(
+  const finalCandidatesMap = normalizePolling(
     candidatesWithScores,
     eligibleVotersForPollingNorm
   );
 
-  return { type: "individual_candidates", data: finalCandidates };
+  return { type: "individual_candidates", data: finalCandidatesMap };
 }
 
 /**
@@ -455,10 +455,10 @@ export function handleMMDParticipants({
   const eligibleVotersForPollingNorm = Math.floor(
     entityPopulation * (0.65 + Math.random() * 0.1)
   );
-  const finalCandidates = normalizePolling(
+  const finalCandidatesMap = normalizePolling(
     candidatesWithScores,
     eligibleVotersForPollingNorm
   );
 
-  return { type: "individual_candidates", data: finalCandidates };
+  return { type: "individual_candidates", data: finalCandidatesMap };
 }

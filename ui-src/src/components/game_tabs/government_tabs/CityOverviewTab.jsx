@@ -114,12 +114,11 @@ const CityOverviewTab = () => {
     if (!governmentOffices || !cityId) return null;
     return governmentOffices.find(
       (office) =>
-        office.level.includes("local_city") &&
+        office.officeId.includes(cityId) &&
         office.officeNameTemplateId &&
         office.officeNameTemplateId.includes("mayor") &&
         !office.officeNameTemplateId.includes("vice_mayor") &&
-        office.holder &&
-        office.cityId === cityId
+        office.holder
     );
   }, [governmentOffices, cityId]);
 
@@ -127,11 +126,10 @@ const CityOverviewTab = () => {
     if (!governmentOffices || !cityId) return null;
     return governmentOffices.find(
       (office) =>
-        office.level.includes("local_city") &&
+        office.officeId.includes(cityId) &&
         office.officeNameTemplateId &&
         office.officeNameTemplateId.includes("vice_mayor") &&
-        office.holder &&
-        office.cityId === cityId
+        office.holder
     );
   }, [governmentOffices, cityId]);
 
@@ -142,10 +140,9 @@ const CityOverviewTab = () => {
 
     governmentOffices.forEach((office) => {
       const isLocalCouncilOffice =
-        (office.level === "local_city" || office.level === "city_district") &&
+        office.officeId.includes(cityId) &&
         (office.officeNameTemplateId?.includes("city_council") ||
-          office.officeNameTemplateId?.includes("city_municipal_council")) &&
-        office.cityId === cityId;
+          office.officeNameTemplateId?.includes("city_municipal_council"));
 
       if (isLocalCouncilOffice) {
         if (office.members && office.members.length > 0) {
@@ -158,7 +155,7 @@ const CityOverviewTab = () => {
               _conceptualSeatNumber: index + 1,
             });
           });
-        } else if (office.holder && office.numberOfSeatsToFill === 1) {
+        } else if (office.holder) {
           allCouncilMembersForDisplay.push({
             ...office,
             holder: office.holder,

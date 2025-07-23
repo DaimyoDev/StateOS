@@ -150,46 +150,42 @@ export function calculateInitialPolling(
  * Expects each candidate in candidatesList to have a 'baseScore' property.
  * Adds/updates a 'polling' property on each candidate.
  *
- * @param {Array<object>} candidatesList - List of candidate objects, each with a 'baseScore'.
+ * @param {Array|Map} candidates - List of candidate objects as an Array or a Map.
  * @param {number} [totalPopulationContext=0] - Total population context (e.g., adult population of the entity).
- * @param {boolean} [isSimulationMode=false] - NEW: If true, uses baseScore directly for effectiveWeight (for simulator).
- * @returns {Array<object>} Candidates list with 'polling' percentages, sorted by polling descending.
+ * @param {boolean} [isSimulationMode=false] - If true, uses baseScore directly for effectiveWeight (for simulator).
+ * @returns {Map<string, object>} A Map of candidate objects with 'polling' percentages, keyed by candidate ID.
  */
 export function normalizePolling(
-  candidatesList = [],
+  candidates, // Can be an Array or a Map
   totalPopulationContext = 0,
   isSimulationMode = false
 ) {
-  // Added isSimulationMode
+  // 1. Convert the input to an array for consistent processing.
+  const candidatesList = Array.isArray(candidates)
+    ? candidates
+    : Array.from(candidates.values());
+
   if (!candidatesList || candidatesList.length === 0) {
-    return [];
+    return new Map(); // Always return a Map to be consistent
   }
+
   const safeAdultPopulation = Math.max(1, totalPopulationContext);
 
   const candidatesWithEffectiveWeights = candidatesList.map((c) => {
-    const baseScore = Number(c.baseScore) >= 0 ? Number(c.baseScore) : 1; // baseScore is typically polling (0-100)
-
+    const baseScore = Number(c.baseScore) >= 0 ? Number(c.baseScore) : 1;
     let effectiveWeight;
-
     if (isSimulationMode) {
-      // For simulator, baseScore is already the desired polling basis, so use it directly.
       effectiveWeight = baseScore;
     } else {
-      // For campaign mode, factor in name recognition (original logic)
       const recognizedCount = Math.min(
         c.nameRecognition || 0,
         safeAdultPopulation
       );
-      // Avoid division by zero if population is extremely small or zero
       const recognitionFraction =
         safeAdultPopulation > 0 ? recognizedCount / safeAdultPopulation : 0;
-      effectiveWeight = baseScore * Math.max(0.01, recognitionFraction); // Ensure effective weight is not 0 due to fraction
-
-      // Add a small constant to ensure all candidates have some weight, preventing totalEffectiveWeight from being zero
-      // and providing a floor for smaller fractions.
-      effectiveWeight += 0.001; // Small constant to add weight
+      effectiveWeight = baseScore * Math.max(0.01, recognitionFraction);
+      effectiveWeight += 0.001;
     }
-
     return {
       ...c,
       processedBaseScore: baseScore,
@@ -204,24 +200,15 @@ export function normalizePolling(
 
   let normalizedCandidates;
 
-  // This block ensures that if, for some reason, totalEffectiveWeight is still zero (e.g., all candidates have 0 baseScore in sim mode),
-  // it distributes polling equally.
   if (totalEffectiveWeight === 0) {
     const numCandidates = candidatesWithEffectiveWeights.length;
-    if (numCandidates === 0) return [];
-
+    if (numCandidates === 0) return new Map();
     const equalShare = Math.floor(100 / numCandidates);
     let remainderPoints = 100 % numCandidates;
     normalizedCandidates = candidatesWithEffectiveWeights.map(
       (candidate, idx) => {
         const pollingValue = equalShare + (idx < remainderPoints ? 1 : 0);
-        remainderPoints -= idx < remainderPoints ? 1 : 0;
-        return {
-          ...candidate,
-          polling: pollingValue,
-          rawPolling: pollingValue,
-          remainder: 0,
-        };
+        return { ...candidate, polling: pollingValue };
       }
     );
   } else {
@@ -243,15 +230,12 @@ export function normalizePolling(
     );
     let deficit = 100 - sumOfFlooredPolling;
 
-    candidatesWithRawPolling.sort((a, b) => {
-      if (b.remainder !== a.remainder) {
-        return b.remainder - a.remainder;
-      }
-      if (b.effectiveWeight !== a.effectiveWeight) {
-        return b.effectiveWeight - a.effectiveWeight;
-      }
-      return b.processedBaseScore - a.processedBaseScore;
-    });
+    candidatesWithRawPolling.sort(
+      (a, b) =>
+        b.remainder - a.remainder ||
+        b.effectiveWeight - a.effectiveWeight ||
+        b.processedBaseScore - a.processedBaseScore
+    );
 
     for (let i = 0; i < deficit; i++) {
       const candidateToAdjust =
@@ -263,7 +247,9 @@ export function normalizePolling(
     normalizedCandidates = candidatesWithRawPolling;
   }
 
-  return normalizedCandidates.sort(
-    (a, b) => (b.polling || 0) - (a.polling || 0)
+  // 2. Convert the final array of candidates back into a Map before returning.
+  const finalCandidatesMap = new Map(
+    normalizedCandidates.map((c) => [c.id, c])
   );
+  return finalCandidatesMap;
 }
