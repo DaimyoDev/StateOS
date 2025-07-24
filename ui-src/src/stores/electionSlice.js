@@ -4,18 +4,15 @@
 
 // NOTE: Import paths are updated to reflect the new refactored structure.
 import { ELECTION_TYPES_BY_COUNTRY } from "../data/electionsData.js";
-import { createDateObj, getRandomInt, generateId } from "../utils/core.js"; // Added adjustStatLevel
+import { createDateObj, getRandomInt } from "../utils/core.js"; // Added adjustStatLevel
 import { calculateElectionOutcome } from "../elections/electionResults.js";
 import { normalizePolling } from "../General Scripts/PollingFunctions.js";
 import {
   calculateBaseCandidateScore,
   generateElectionParticipants,
   getElectionInstances,
+  initializeElectionObject,
 } from "../utils/electionUtils.js";
-import {
-  MOOD_LEVELS,
-  ECONOMIC_OUTLOOK_LEVELS,
-} from "../data/governmentData.js";
 
 // --- Local Helper Functions (To be moved to electionManager.js later) ---
 
@@ -79,86 +76,9 @@ const calculateSeatDetailsForInstance = (electionType, entityPopulation) => {
   }
   return { numberOfSeats, seatDistributionMethod: "multi_winner" };
 };
-
-/**
- * Initializes the final election object for the store.
- */
-const initializeElectionObject = ({
-  electionType,
-  instanceContext,
-  currentDate,
-  incumbentInfo,
-  participantsData,
-  seatDetails,
-}) => {
-  const { instanceIdBase, entityData, resolvedOfficeName } = instanceContext;
-  const electionYear = currentDate.year;
-  const electionMonth = electionType.electionMonth || getRandomInt(4, 11);
-  const electionDay = getRandomInt(1, 28);
-  let filingMonth = electionMonth - getRandomInt(2, 4);
-  let filingYear = electionYear;
-  if (filingMonth <= 0) {
-    filingMonth += 12;
-    filingYear -= 1;
-  }
-  const filingDay = getRandomInt(1, 15);
-
-  // CRITICAL FIX: The unique ID is generated here and must not be overwritten.
-  const uniqueElectionId = `election_${instanceIdBase}_${electionYear}_${generateId()}`;
-
-  return {
-    // Manually cherry-pick properties from electionType to avoid overwriting the unique ID
-    level: electionType.level,
-    electoralSystem: electionType.electoralSystem,
-    generatesOneWinner: electionType.generatesOneWinner,
-    partyListType: electionType.partyListType,
-    prThresholdPercent: electionType.prThresholdPercent,
-    prAllocationMethod: electionType.prAllocationMethod,
-    mmpConstituencySeatsRatio: electionType.mmpConstituencySeatsRatio,
-    mmpListSeatsRatio: electionType.mmpListSeatsRatio,
-    voteTarget: electionType.voteTarget,
-
-    // Unique generated properties
-    id: uniqueElectionId, // Use the unique ID
-    instanceIdBase,
-    officeName: resolvedOfficeName,
-    officeNameTemplateId: electionType.id, // Keep original template ID for reference
-    electionDate: {
-      year: electionYear,
-      month: electionMonth,
-      day: electionDay,
-    },
-    filingDeadline: { year: filingYear, month: filingMonth, day: filingDay },
-    incumbentInfo,
-    numberOfSeatsToFill: seatDetails.numberOfSeats,
-    totalEligibleVoters: Math.floor(
-      (entityData.population || 0) * (0.6 + Math.random() * 0.25)
-    ),
-    politicalLandscape: entityData.politicalLandscape || [],
-    entityDataSnapshot: { ...entityData },
-    playerIsCandidate: false,
-    outcome: {
-      status: "upcoming",
-      winners: [],
-      resultsByCandidate: [],
-      resultsByParty: {},
-    },
-
-    // Participant data
-    candidates:
-      participantsData.type === "individual_candidates"
-        ? participantsData.data
-        : new Map(),
-    partyLists:
-      participantsData.type === "party_lists" ? participantsData.data : {},
-    mmpData:
-      participantsData.type === "mmp_participants"
-        ? participantsData.data
-        : null,
-  };
-};
-
 export const createElectionSlice = (set, get) => ({
+  isSimulationMode: false,
+  simulatedElections: [],
   actions: {
     generateScheduledElections: () => {
       set((state) => {
@@ -250,7 +170,8 @@ export const createElectionSlice = (set, get) => ({
               electionType,
               instanceContext,
               currentDate,
-              incumbentInfo,
+              activeCampaign: state.activeCampaign, // <-- Add this line
+              incumbentInfoForDisplay: incumbentInfo, // <-- Rename this parameter
               participantsData,
               seatDetails,
             });
@@ -303,6 +224,8 @@ export const createElectionSlice = (set, get) => ({
           simulatedElectionData
         );
 
+        console.log(outcome);
+
         const updatedElection = {
           ...electionToEnd,
           outcome: {
@@ -351,14 +274,16 @@ export const createElectionSlice = (set, get) => ({
           );
 
           if (outcome.winnerAssignment.type === "MEMBERS_ARRAY") {
-            const newMembers = winners.map((winner) => ({
+            const newMembers = winners.map((winner, i) => ({
+              // Added index 'i' here
               ...winner,
               name: cleanWinnerName(winner.name),
               holder: {
                 ...winner,
                 name: cleanWinnerName(winner.name),
               },
-              role: `Member, ${updatedElection.officeName}`,
+              // The role now includes a specific seat number
+              role: `Member, ${updatedElection.officeName} (Seat ${i + 1})`,
             }));
 
             if (officeIndex > -1) {
@@ -586,5 +511,20 @@ export const createElectionSlice = (set, get) => ({
         return state;
       });
     },
+    setIsSimulationMode: (isSim) => set({ isSimulationMode: isSim }),
+
+    // Sets the election data to be used by the simulation screens
+    setSimulatedElections: (elections) =>
+      set({ simulatedElections: elections }),
+
+    // Clears the simulation data when it's over
+    clearSimulatedElections: () => set({ simulatedElections: [] }),
+    resetElectionState: () =>
+      set({
+        isSimulationMode: false,
+        simulatedElections: [],
+        isWinnerAnnouncementModalOpen: false,
+        winnerAnnouncementData: null,
+      }),
   },
 });

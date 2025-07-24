@@ -321,7 +321,7 @@ const ElectionSimulatorScreen = () => {
       );
       return;
     }
-    if (generatedSimCandidates.length === 0) {
+    if (generatedSimCandidates.size === 0) {
       alert(
         "Please generate candidates using the 'Generate Candidates' button before running the simulation."
       );
@@ -371,11 +371,13 @@ const ElectionSimulatorScreen = () => {
     resolvedOfficeName = resolvedOfficeName.replace(/\{.*?\}/g, "").trim();
     if (!resolvedOfficeName) resolvedOfficeName = "Simulated Election";
 
-    // **MODIFIED:** Use the already generated candidates from state
-    const simulatedCandidates = generatedSimCandidates.map((c) => ({
-      ...c,
-      currentVotes: 0, // Reset votes for a new simulation run
-    }));
+    const simulatedCandidates = new Map();
+    for (const [id, candidate] of generatedSimCandidates.entries()) {
+      simulatedCandidates.set(id, {
+        ...candidate,
+        currentVotes: 0,
+      });
+    }
 
     const totalExpectedVotes = Math.max(
       0,
@@ -672,26 +674,31 @@ const ElectionSimulatorScreen = () => {
                 {/* NEW: Candidate Generation and Display Section */}
                 <div className="candidate-management">
                   <h4>Simulated Candidates:</h4>
-                  {generatedSimCandidates.length === 0 ? (
+                  {generatedSimCandidates.size === 0 ? (
                     <p>No candidates generated yet. Click the button below.</p>
                   ) : (
                     <ul className="candidate-list">
-                      {generatedSimCandidates.map((candidate) => (
-                        <li key={candidate.id} className="candidate-list-item">
-                          <span className="candidate-name">
-                            {candidate.name}
-                          </span>
-                          <span className="candidate-party-info">
-                            ({candidate.partyName || "Independent"})
-                          </span>
-                          <span className="candidate-polling">
-                            Polling: {candidate.polling?.toFixed(1) || 0}%
-                          </span>
-                          <span className="candidate-ideology-info">
-                            {candidate.calculatedIdeology}
-                          </span>
-                        </li>
-                      ))}
+                      {Array.from(generatedSimCandidates.values()).map(
+                        (candidate) => (
+                          <li
+                            key={candidate.id}
+                            className="candidate-list-item"
+                          >
+                            <span className="candidate-name">
+                              {candidate.name}
+                            </span>
+                            <span className="candidate-party-info">
+                              ({candidate.partyName || "Independent"})
+                            </span>
+                            <span className="candidate-polling">
+                              Polling: {candidate.polling?.toFixed(1) || 0}%
+                            </span>
+                            <span className="candidate-ideology-info">
+                              {candidate.calculatedIdeology}
+                            </span>
+                          </li>
+                        )
+                      )}
                     </ul>
                   )}
                   <div className="candidate-controls">

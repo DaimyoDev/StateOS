@@ -84,32 +84,43 @@ export const allocateSeatsProportionally = (
 };
 
 /**
- * Processes results for systems where individual winners are based on votes (FPTP, SNTV, BlockVote).
- * @param {object} params - The parameters for processing.
- * @returns {object} The results object.
+ * Processes a First-Past-The-Post election and returns results.
+ * @param {Object} params
+ * @param {Array<object>} allPartiesInGame - List of all parties with id, name, color, etc.
+ * @param {Map<any, object>} candidatesWithFinalVotes - Map of candidateId -> candidateObject with 'votes' and 'partyId'
+ * @param {number} seatsToFill - Number of top candidates to select
+ * @returns {object} Election summary results
  */
 export const processFPTPResults = ({
   allPartiesInGame,
   candidatesWithFinalVotes,
   seatsToFill,
 }) => {
-  const determinedWinnersArray = [...candidatesWithFinalVotes]
+  const candidateArray = Array.from(candidatesWithFinalVotes.values());
+
+  // Sort candidates by votes descending and pick top N
+  const determinedWinnersArray = candidateArray
     .sort((a, b) => (b.votes || 0) - (a.votes || 0))
     .slice(0, seatsToFill);
 
-  const partyTotals = {};
-  (candidatesWithFinalVotes || []).forEach((cand) => {
-    if (cand?.partyId)
-      partyTotals[cand.partyId] =
-        (partyTotals[cand.partyId] || 0) + (cand.votes || 0);
+  // Aggregate total votes per party
+  const partyTotals = new Map();
+  candidateArray.forEach((cand) => {
+    if (cand?.partyId) {
+      partyTotals.set(
+        cand.partyId,
+        (partyTotals.get(cand.partyId) || 0) + (cand.votes || 0)
+      );
+    }
   });
 
-  const totalPartySystemVotes = Object.values(partyTotals).reduce(
-    (s, v) => s + (v || 0),
+  const totalPartySystemVotes = Array.from(partyTotals.values()).reduce(
+    (sum, votes) => sum + votes,
     0
   );
-  const partyVoteSummary = Object.keys(partyTotals)
-    .map((partyId) => {
+
+  const partyVoteSummary = Array.from(partyTotals.entries())
+    .map(([partyId, votes]) => {
       const partyData = allPartiesInGame.find((p) => p.id === partyId) || {
         name: partyId,
         color: "#888",
@@ -118,20 +129,20 @@ export const processFPTPResults = ({
         id: partyId,
         name: partyData.name,
         color: partyData.color,
-        votes: partyTotals[partyId] || 0,
+        votes,
         percentage:
-          totalPartySystemVotes > 0
-            ? ((partyTotals[partyId] || 0) / totalPartySystemVotes) * 100
-            : 0,
+          totalPartySystemVotes > 0 ? (votes / totalPartySystemVotes) * 100 : 0,
       };
     })
-    .sort((a, b) => (b.votes || 0) - (a.votes || 0));
+    .sort((a, b) => b.votes - a.votes);
 
+  // Count seats won by each party
   const partySeatSummary = {};
   determinedWinnersArray.forEach((winner) => {
-    if (winner.partyId)
+    if (winner.partyId) {
       partySeatSummary[winner.partyId] =
         (partySeatSummary[winner.partyId] || 0) + 1;
+    }
   });
 
   return {
@@ -247,30 +258,59 @@ export const processPartyListPRResults = ({
 export const processMMPResults = ({
   electionToEnd,
   allPartiesInGame,
-  candidatesWithFinalVotes,
+  candidatesWithFinalVotes, // This is a Map of constituency candidates and their votes
   seatsToFill,
 }) => {
-  // --- Step 1: Determine Constituency Winners (Direct Mandates) ---
+  console.log("DEBUG MMP DATA:", {
+    partyLists: electionToEnd.partyLists,
+    mmpData: electionToEnd.mmpData,
+  });
+  // --- Step 1: Determine Constituency Winners (Correct) ---
   const numConstituencySeats =
     electionToEnd.mmpData?.numConstituencySeats || Math.floor(seatsToFill / 2);
-  const constituencyWinners = [...candidatesWithFinalVotes]
+  const constituencyWinners = [...candidatesWithFinalVotes.values()] // Correctly get array from Map
     .sort((a, b) => (b.votes || 0) - (a.votes || 0))
     .slice(0, numConstituencySeats);
 
   // --- Step 2: Tally Party List Votes (Second Vote) ---
+  // THIS IS THE CRITICAL FIX: Simulate the separate party vote.
   const mmpPartyVoteTotals = {};
-  // This assumes `candidatesWithFinalVotes` represents constituency votes. A true MMP would have a second vote tally.
-  // We simulate the second vote based on the sum of party votes in constituencies.
-  candidatesWithFinalVotes.forEach((cand) => {
-    if (cand.partyId && !cand.partyId.startsWith("independent")) {
-      mmpPartyVoteTotals[cand.partyId] =
-        (mmpPartyVoteTotals[cand.partyId] || 0) + (cand.votes || 0);
-    }
-  });
+
+  // We will simulate the "second vote" for the parties.
+  // We can assume the total number of party votes is similar to the total constituency votes.
+  const totalPartyVotesCast = [...candidatesWithFinalVotes.values()].reduce(
+    (sum, cand) => sum + (cand.votes || 0),
+    0
+  );
+
+  // Create a flat array of all candidates from all party lists to simulate the party vote.
+  const allPartyListCandidates = Object.values(
+    electionToEnd.partyLists || {}
+  ).flat();
+
+  if (allPartyListCandidates.length > 0) {
+    // This function will distribute the total party votes among the parties.
+    const partyVotesMap = distributeVotesToCandidates(
+      allPartyListCandidates,
+      totalPartyVotesCast,
+      `${electionToEnd.id}_party_vote` // Unique ID for this simulation
+    );
+
+    // Now, correctly sum the votes for each party from the simulation.
+    partyVotesMap.forEach((candidate) => {
+      if (candidate.partyId && !candidate.partyId.startsWith("independent")) {
+        mmpPartyVoteTotals[candidate.partyId] =
+          (mmpPartyVoteTotals[candidate.partyId] || 0) + (candidate.votes || 0);
+      }
+    });
+  }
+
   const totalPartyVotes = Object.values(mmpPartyVoteTotals).reduce(
     (s, v) => s + v,
     0
   );
+
+  // This summary will now be correctly populated.
   const partyVoteSummary = Object.keys(mmpPartyVoteTotals)
     .map((partyId) => {
       const partyData = allPartiesInGame.find((p) => p.id === partyId) || {
@@ -407,7 +447,7 @@ export const calculateElectionOutcome = (
   allPartiesInGame,
   simulatedElectionData = null
 ) => {
-  let candidatesWithFinalVotes = [];
+  let candidatesWithFinalVotes = new Map();
   let totalVotesActuallyCast = 0;
   let voterTurnoutPercentageActual = 0;
   const seatsToFill = electionToEnd.numberOfSeatsToFill || 1;
@@ -416,8 +456,13 @@ export const calculateElectionOutcome = (
   if (simulatedElectionData) {
     totalVotesActuallyCast = simulatedElectionData.totalExpectedVotes || 0;
     voterTurnoutPercentageActual = simulatedElectionData.voterTurnoutPercentage;
-    candidatesWithFinalVotes = (simulatedElectionData.candidates || []).map(
-      (c) => ({ ...c, votes: c.currentVotes || 0 })
+
+    // Convert simulated array to a Map
+    candidatesWithFinalVotes = new Map(
+      (simulatedElectionData.candidates || []).map((c) => [
+        c.id || c.name || crypto.randomUUID(), // use stable key if available
+        { ...c, votes: c.currentVotes || 0 },
+      ])
     );
   } else {
     voterTurnoutPercentageActual = getRandomInt(40, 75);
@@ -430,6 +475,7 @@ export const calculateElectionOutcome = (
       electionToEnd.electoralSystem === "PartyListPR"
         ? []
         : electionToEnd.candidates || [];
+
     if (electionToEnd.electoralSystem === "MMP" && electionToEnd.mmpData) {
       baseCandidatesForSim = Object.values(
         electionToEnd.mmpData.constituencyCandidatesByParty || {}
@@ -439,7 +485,8 @@ export const calculateElectionOutcome = (
       );
     }
 
-    if (baseCandidatesForSim.length > 0) {
+    if (baseCandidatesForSim) {
+      // distributeVotesToCandidates now returns a Map
       candidatesWithFinalVotes = distributeVotesToCandidates(
         baseCandidatesForSim,
         totalVotesActuallyCast,
@@ -456,6 +503,7 @@ export const calculateElectionOutcome = (
     totalVotesActuallyCast,
     seatsToFill,
   };
+
   let result;
   switch (electionToEnd.electoralSystem) {
     case "PartyListPR":
@@ -480,36 +528,21 @@ export const calculateElectionOutcome = (
       break;
   }
 
-  // --- FIX STARTS HERE ---
-  // Step 2.5: Standardize winner assignment structure.
-  // This makes the output unambiguous for the game state update logic by clearly
-  // defining how the array of winners should be applied to the government office.
+  // Step 3: Assign winners
   if (result.determinedWinnersArray) {
     const isMultiMemberBody = seatsToFill > 1;
-
-    // MMP, PartyListPR, BlockVote, SNTV, etc., are multi-member systems.
-    // They should update the 'members' array of an office.
-    // Only single-seat elections (like standard FPTP) should update a single 'holder'.
-    if (isMultiMemberBody) {
-      result.winnerAssignment = {
-        type: "MEMBERS_ARRAY",
-        winners: result.determinedWinnersArray,
-      };
-    } else {
-      result.winnerAssignment = {
-        type: "SINGLE_HOLDER",
-        winners: result.determinedWinnersArray, // Should contain one winner
-      };
-    }
+    result.winnerAssignment = {
+      type: isMultiMemberBody ? "MEMBERS_ARRAY" : "SINGLE_HOLDER",
+      winners: result.determinedWinnersArray,
+    };
   }
-  // --- FIX ENDS HERE ---
 
-  // Step 3: Assemble the final, comprehensive outcome object
+  // Step 4: Final outcome object
   const finalOutcome = {
     ...result,
     totalVotesActuallyCast,
     voterTurnoutPercentageActual,
-    seatsToFill: result.seatsToFill || seatsToFill, // Use updated seats from MMP if available
+    seatsToFill: result.seatsToFill || seatsToFill,
     cityId: electionToEnd.entityDataSnapshot.id,
   };
 

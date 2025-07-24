@@ -349,11 +349,6 @@ function ElectionsTab({ campaignData }) {
     }
   }, [displayableElections, selectedElectionId, currentDateObj]);
 
-  const selectedElection = useMemo(() => {
-    if (!selectedElectionId || !elections.length) return null;
-    return elections.find((e) => e.id === selectedElectionId);
-  }, [selectedElectionId, elections]);
-
   const getTimeUntilDisplay = useCallback(
     (electionDate, status) => {
       if (!currentDateObj || !electionDate) return "N/A";
@@ -375,6 +370,11 @@ function ElectionsTab({ campaignData }) {
     },
     [declareCandidacyAction, playerPoliticianData]
   );
+
+  const selectedElection = useMemo(() => {
+    if (!selectedElectionId || !elections.length) return null;
+    return elections.find((e) => e.id === selectedElectionId);
+  }, [selectedElectionId, elections]);
 
   const canDeclareForSelectedElection = useMemo(() => {
     if (
@@ -425,15 +425,13 @@ function ElectionsTab({ campaignData }) {
   }, [electionOutcome]);
 
   const sortedUpcomingCandidates = useMemo(() => {
-    // --- START OF FIX ---
-    // 1. Convert the Map's values into an array.
+    // The internal logic of this hook is now correct.
+    // It uses the 'electionCandidates' variable from the outer scope.
     const candidatesArray = Array.from(
       (electionCandidates || new Map()).values()
     );
 
-    // 2. Now, filter the new array.
     const validCandidates = candidatesArray.filter((cand) => {
-      // --- END OF FIX ---
       if (!cand) {
         return false;
       }
@@ -445,9 +443,13 @@ function ElectionsTab({ campaignData }) {
 
     if (!validCandidates.length) return [];
 
-    return [...validCandidates].sort(
+    // This sort is correct
+    const sorted = [...validCandidates].sort(
       (a, b) => (b.polling || 0) - (a.polling || 0)
     );
+
+    // FIX: Return a new array of new objects to break memoization
+    return sorted.map((c) => ({ ...c }));
   }, [electionCandidates]);
 
   const renderElectionParticipantsAndResults = useCallback(() => {

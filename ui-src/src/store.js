@@ -22,6 +22,7 @@ const getInitialCampaignSetupState = () => ({
   selectedPoliticianId: null,
   selectedCountryId: null,
   selectedRegionId: null,
+  selectedSecondAdminRegionId: null,
   generatedPartiesInCountry: [],
   playerPartyChoice: {},
   regionPoliticalLandscape: {},
@@ -276,6 +277,15 @@ const useGameStore = create(
             });
           },
 
+          setSelectedSecondAdminRegion: (regionId) => {
+            set((state) => ({
+              currentCampaignSetup: {
+                ...state.currentCampaignSetup,
+                selectedSecondAdminRegionId: regionId,
+              },
+            }));
+          },
+
           choosePlayerParty: (
             partyChoice // To campaignSetupSlice
           ) =>
@@ -286,19 +296,41 @@ const useGameStore = create(
               },
             })),
           startCampaign: () => {
-            // To campaignSetupSlice / orchestrator
             const setup = get().currentCampaignSetup;
-            if (
+
+            // Find the full country object from your available data
+            const selectedCountryData = get().availableCountries.find(
+              (c) => c.id === setup.selectedCountryId
+            );
+
+            // Determine if this country requires a second-level admin region selection
+            const hasSecondAdminRegions =
+              selectedCountryData?.secondAdminRegions?.length > 0;
+
+            // Check the base requirements first
+            const baseRequirementsMet =
               setup.selectedPoliticianId &&
               setup.selectedCountryId &&
               setup.selectedRegionId &&
               setup.playerPartyChoice &&
-              (setup.playerPartyChoice.type || setup.playerPartyChoice.id)
-            ) {
-              get().actions.navigateTo("LocalAreaSetupScreen"); // from uiSlice
+              (setup.playerPartyChoice.type || setup.playerPartyChoice.id);
+            const secondAdminRegionRequirementMet =
+              !hasSecondAdminRegions ||
+              (hasSecondAdminRegions && setup.selectedSecondAdminRegionId);
+
+            if (baseRequirementsMet && secondAdminRegionRequirementMet) {
+              get().actions.navigateTo("LocalAreaSetupScreen");
             } else {
-              console.log(setup);
-              console.error("Campaign setup incomplete");
+              console.error("Campaign setup incomplete", {
+                setup,
+                baseRequirementsMet,
+                secondAdminRegionRequirementMet,
+              });
+              get().actions.addToast({
+                id: `setup-incomplete-${Date.now()}`,
+                message: "Please complete all required setup selections.",
+                type: "error",
+              });
             }
           },
           // ---- Actions to be moved to dataSlice ----

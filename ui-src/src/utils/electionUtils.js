@@ -1029,13 +1029,13 @@ export const generateElectionParticipants = ({
  * Initializes the final election object for the store.
  */
 export const initializeElectionObject = ({
-  electionType, // The effective election type for this specific instance (merged base + instance specifics)
-  instanceContext, // { instanceIdBase, entityType, entityData, resolvedOfficeName, ... }
-  currentDate, // For setting electionDate year
-  activeCampaign, // To pass to calculateBaseCandidateScore
-  incumbentInfoForDisplay, // Processed incumbent details for storing
-  participantsData, // { type: 'individual_candidates' | 'party_lists' | 'mmp_participants' | 'party_lists_for_mmp', data: ... }
-  seatDetails, // { numberOfSeats, seatDistributionMethod }
+  electionType,
+  instanceContext,
+  currentDate,
+  activeCampaign,
+  incumbentInfoForDisplay,
+  participantsData,
+  seatDetails,
 }) => {
   const { instanceIdBase, entityData, resolvedOfficeName } = instanceContext;
   const electionYear = currentDate.year;
@@ -1077,7 +1077,7 @@ export const initializeElectionObject = ({
     }));
 
   // --- Process Participants: Calculate Base Scores and Initial Polling ---
-  let finalIndividualCandidates = [];
+  let finalIndividualCandidates = new Map();
   let finalPartyLists = {};
   let finalMmpData = null;
 
@@ -1089,26 +1089,17 @@ export const initializeElectionObject = ({
   ) {
     finalPartyLists = participantsData.data;
   } else if (participantsData.type === "mmp_participants") {
-    const mmpSourceData = participantsData.data;
+    const { partyLists: mmpPartyLists, ...constituencyData } =
+      participantsData.data;
+
+    finalPartyLists = mmpPartyLists || {};
+
     finalMmpData = {
-      constituencyCandidatesByParty: {},
-      independentConstituencyCandidates: [],
+      constituencyCandidatesByParty:
+        constituencyData.constituencyCandidatesByParty || {},
+      independentConstituencyCandidates:
+        constituencyData.independentConstituencyCandidates || [],
     };
-
-    // 1. Process Party Lists for MMP
-    if (mmpSourceData.partyLists) {
-      finalPartyLists = mmpSourceData.partyLists;
-    }
-
-    // 2. Process Constituency Candidate Pools for MMP
-    if (mmpSourceData.constituencyCandidatesByParty) {
-      finalMmpData.constituencyCandidatesByParty =
-        mmpSourceData.constituencyCandidatesByParty;
-    }
-    if (mmpSourceData.independentConstituencyCandidates) {
-      finalMmpData.independentConstituencyCandidates =
-        mmpSourceData.independentConstituencyCandidates;
-    }
   }
 
   let expectedTurnout = 55;

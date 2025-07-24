@@ -126,13 +126,16 @@ const StateOverviewTab = ({ campaignData }) => {
   const playerCountryId = campaignData.countryId;
 
   const activeState = useMemo(() => {
-    const country = BASE_COUNTRIES_DATA.find((c) => c.id === playerCountryId);
-    if (!country) return null;
-    return (
-      country.regions?.find((r) => r.id === campaignData.regionId) ||
-      country.provinces?.find((p) => p.id === campaignData.regionId)
+    const countryData = campaignData.availableCountries.find(
+      (c) => c.id === playerCountryId
     );
-  }, [playerCountryId, campaignData.regionId]);
+    if (!countryData) return null;
+
+    const dynamicRegions = countryData.regions || countryData.provinces;
+    if (!dynamicRegions) return null;
+
+    return dynamicRegions.find((r) => r.id === campaignData.regionId);
+  }, [campaignData, playerCountryId]); // Updated dependencies
 
   const allGovernmentOffices = campaignData.governmentOffices;
 
@@ -330,19 +333,29 @@ const StateOverviewTab = ({ campaignData }) => {
         office.level?.includes("_house") ||
         office.level?.includes("_senate")
       ) {
-        const districtMatch = processedOfficeName.match(
-          /(District|Const\.|Constituency|Distrito|Ward|Seat)\s*([A-Za-z0-9]+(?:-[A-Za-z0-9]+)?)/i
-        );
-        let districtPart = districtMatch
-          ? `District ${districtMatch[2]}`
-          : "At-Large";
+        // This new regex specifically looks for the "(Seat #)" pattern
+        const seatMatch = processedOfficeName.match(/\((Seat\s\d+)\)/);
 
-        if (office.level.includes("_upper_")) {
-          return `${legislatureNames?.upper || "Upper House"} ${districtPart}`;
-        } else if (office.level.includes("_lower_")) {
-          return `${legislatureNames?.lower || "Lower House"} ${districtPart}`;
+        let districtPart = "";
+        if (seatMatch) {
+          // If we find "(Seat #)", use it directly. result: "Seat 1"
+          districtPart = seatMatch[1];
+        } else {
+          // As a fallback, look for other district formats if they exist
+          const districtMatch = processedOfficeName.match(/(District\s\d+)/);
+          if (districtMatch) {
+            districtPart = districtMatch[1];
+          }
         }
-        return `Legislator, ${districtPart}`;
+
+        let chamberName = "";
+        if (office.level.includes("_upper_")) {
+          chamberName = legislatureNames?.upper || "Upper House";
+        } else if (office.level.includes("_lower_")) {
+          chamberName = legislatureNames?.lower || "Lower House";
+        }
+
+        return districtPart ? `${chamberName}, ${districtPart}` : chamberName;
       }
 
       return processedOfficeName;

@@ -302,22 +302,20 @@ const ElectionNightScreen = () => {
   const store = useGameStore(); //
   const activeCampaign = store.activeCampaign;
   const {
-    navigateTo, //
+    navigateTo,
     openWinnerAnnouncementModal,
     closeWinnerAnnouncementModal,
     openViewPoliticianModal,
     processElectionResults,
-    // Access simulation actions
-    setIsSimulationMode, //
-    clearSimulatedElections, //
+    setIsSimulationMode,
+    clearSimulatedElections,
   } = store.actions;
 
   const isWinnerAnnouncementModalOpenGlobal =
     store.isWinnerAnnouncementModalOpen;
   const winnerAnnouncementDataGlobal = store.winnerAnnouncementData;
-  // Access simulation state variables
-  const isSimulationMode = store.isSimulationMode; //
-  const simulatedElections = store.simulatedElections; //
+  const isSimulationMode = store.isSimulationMode;
+  const simulatedElections = store.simulatedElections;
 
   const [liveElections, setLiveElections] = useState([]);
   const [simulationSpeed, setSimulationSpeed] = useState(
@@ -333,13 +331,10 @@ const ElectionNightScreen = () => {
     allSimulationsCompleteRef.current = allSimulationsComplete;
   }, [allSimulationsComplete]);
 
-  // Use this memo to determine the election date based on mode
   const electionDateForThisScreen = useMemo(() => {
     if (isSimulationMode && simulatedElections.length > 0) {
-      // For simulation, use the date from the first simulated election
       return simulatedElections[0].electionDate;
     }
-    // For campaign mode, use the active campaign's viewing date
     return activeCampaign?.viewingElectionNightForDate;
   }, [
     isSimulationMode,
@@ -384,18 +379,17 @@ const ElectionNightScreen = () => {
           Math.round(eligibleVotersForSim * (turnoutForSim / 100))
         );
 
-        let simEntities = []; // This will hold parties for PR, or candidates for others
+        let simEntities = [];
 
-        // For simulation mode, the 'candidates' array within the election object is already prepared
-        // by ElectionSimulatorScreen with the correct entities (either candidates or parties).
-        // So, we primarily just need to ensure currentVotes are reset and basePolling is correct.
         if (isSimulationMode && election.candidates) {
-          simEntities = election.candidates.map((entity) => ({
-            ...entity,
-            currentVotes: 0, // Ensure votes start at 0 for the simulation
-            basePolling: entity.baseScore || entity.polling || 1, // Use provided baseScore/polling
-          }));
-          // If it's a PartyListPR election in simulation, initial livePartyResults may need to be set up
+          simEntities = Array.from(election.candidates.values()).map(
+            (entity) => ({
+              ...entity,
+              currentVotes: 0,
+              basePolling: entity.baseScore || entity.polling || 1,
+            })
+          );
+
           if (
             election.electoralSystem === "PartyListPR" &&
             simEntities.some((e) => e.isPartyEntity)
@@ -507,13 +501,18 @@ const ElectionNightScreen = () => {
               });
             }
           } else {
-            simEntities = (election.candidates || []).map((c) => ({
+            // FIX: Convert the Map from the store to an Array for local state
+            simEntities = Array.from(
+              (election.candidates || new Map()).values()
+            ).map((c) => ({
               ...c,
               isPartyEntity: false,
             }));
           }
-          if (simEntities.length === 0 && election.candidates?.length > 0) {
-            simEntities = [...election.candidates].map((c) => ({
+
+          // FIX: The fallback check must now use .size and .values() for the Map
+          if (simEntities.length === 0 && election.candidates?.size > 0) {
+            simEntities = [...election.candidates.values()].map((c) => ({
               ...c,
               isPartyEntity: false,
             }));
@@ -891,18 +890,14 @@ const ElectionNightScreen = () => {
       return;
     liveElections.forEach((election) => {
       if (election.isComplete) {
-        // If in simulation mode, clear the simulated elections after finalizing
         if (isSimulationMode) {
-          clearSimulatedElections(); // Clear data from store
+          clearSimulatedElections();
         } else {
-          // Only process results for campaign mode
           processElectionResults(election.id, election);
         }
       }
     });
 
-    // Navigate back to the Election Simulator screen when simulation is finalized
-    // or to CampaignGameScreen if it was a campaign election
     navigateTo(
       isSimulationMode ? "ElectionSimulatorScreen" : "CampaignGameScreen"
     );

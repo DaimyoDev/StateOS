@@ -42,6 +42,7 @@ export const createStateObject = (params = {}) => ({
   capitalCityId: params.capitalCityId || null,
   legislativeDistricts: params.legislativeDistricts || null,
   cities: params.cities || [],
+  secondAdminRegions: params.secondAdminRegions || [],
   population: params.population || 0,
   type: params.type,
   demographics: params.demographics || {},

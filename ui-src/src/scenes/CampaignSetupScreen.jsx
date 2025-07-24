@@ -3,6 +3,10 @@ import useGameStore from "../store";
 import JapanMap from "../maps/JapanMap";
 import PhilippinesMap from "../maps/PhilippinesMap";
 import UnitedStatesMap from "../maps/UnitedStatesMap";
+import AlabamaMap from "../maps/usaCounties/AlabamaMap";
+import ArizonaMap from "../maps/usaCounties/ArizonaMap";
+import ConnecticutMap from "../maps/usaCounties/ConnecticutMap";
+import CaliforniaMap from "../maps/usaCounties/CaliforniaMap";
 import SouthKoreaMap from "../maps/SouthKoreaMap";
 import GermanyMap from "../maps/GermanyMap";
 import CanadaMap from "../maps/CanadaMap";
@@ -36,6 +40,7 @@ function CampaignSetupScreen() {
   const {
     selectedCountryId,
     selectedRegionId,
+    selectedSecondAdminRegionId,
     playerPartyChoice,
     generatedPartiesInCountry,
     regionPoliticalLandscape,
@@ -74,6 +79,16 @@ function CampaignSetupScreen() {
     }
   }, [selectedCountryId, actions]);
 
+  const availableSecondAdminRegions = React.useMemo(() => {
+    if (!currentSelectedCountryData || !selectedRegionData) {
+      return [];
+    }
+    // Filter counties/regions based on the selected state's ID
+    return (currentSelectedCountryData.secondAdminRegions || [])
+      .filter((region) => region.stateId === selectedRegionData.id)
+      .sort((a, b) => a.name.localeCompare(b.name)); // Sorts them alphabetically
+  }, [currentSelectedCountryData, selectedRegionData]);
+
   const handleCountryCardClick = (countryId) => {
     setTempSelectedCountryId(countryId);
   };
@@ -92,6 +107,11 @@ function CampaignSetupScreen() {
     setSetupStage("country_selection");
   };
 
+  const handleBackToStateSelect = () => {
+    // This action will reset both the selected region (state) and the second admin region (county)
+    actions.setSelectedRegion(null);
+  };
+
   const handleRegionSelectionFromMap = (regionGameId, regionName) => {
     setSelectedRegionInfo({ id: regionGameId, name: regionName });
     if (actions && actions.setSelectedRegion) {
@@ -106,7 +126,18 @@ function CampaignSetupScreen() {
     }
   };
 
-  const canProceedToPartySelection = selectedCountryId && selectedRegionId;
+  const canProceedToPartySelection = React.useMemo(() => {
+    if (!selectedCountryId || !selectedRegionId) return false;
+    const hasSecondLevel = availableSecondAdminRegions.length > 0;
+    // You can proceed if there are NO counties, OR if there ARE counties and you've selected one.
+    return !hasSecondLevel || (hasSecondLevel && !!selectedSecondAdminRegionId);
+  }, [
+    selectedCountryId,
+    selectedRegionId,
+    availableSecondAdminRegions,
+    selectedSecondAdminRegionId,
+  ]);
+
   const canStartCampaign =
     canProceedToPartySelection &&
     playerPartyChoice &&
@@ -224,15 +255,84 @@ function CampaignSetupScreen() {
         )}
         {selectedCountryId === "USA" && (
           <>
-            <p className="map-instruction-cs">
-              Click on a state to begin your political career there.
-            </p>
-            <div className="map-render-wrapper">
-              <UnitedStatesMap
-                onSelectState={handleRegionSelectionFromMap}
-                selectedStateGameId={selectedRegionId}
-              />
-            </div>
+            {/* --- If NO state is selected, show the USA Map --- */}
+            {!selectedRegionId && (
+              <>
+                <p className="map-instruction-cs">
+                  Click on a state to begin your political career there.
+                </p>
+                <div className="map-render-wrapper">
+                  <UnitedStatesMap
+                    onSelectState={handleRegionSelectionFromMap}
+                    selectedStateGameId={selectedRegionId}
+                  />
+                </div>
+              </>
+            )}
+
+            {selectedRegionId === "USA_AL" && (
+              <>
+                <p className="map-instruction-cs">
+                  Now, select a starting county in Alabama.
+                </p>
+                <div className="map-render-wrapper">
+                  <AlabamaMap
+                    onSelectCounty={(countyId) =>
+                      actions.setSelectedSecondAdminRegion(countyId)
+                    }
+                    selectedCountyGameId={selectedSecondAdminRegionId}
+                  />
+                </div>
+              </>
+            )}
+
+            {selectedRegionId === "USA_AZ" && (
+              <>
+                <p className="map-instruction-cs">
+                  Now, select a starting county in Arizona.
+                </p>
+                <div className="map-render-wrapper">
+                  <ArizonaMap
+                    onSelectCounty={(countyId) =>
+                      actions.setSelectedSecondAdminRegion(countyId)
+                    }
+                    selectedCountyGameId={selectedSecondAdminRegionId}
+                  />
+                </div>
+              </>
+            )}
+
+            {selectedRegionId === "USA_CA" && (
+              <>
+                <p className="map-instruction-cs">
+                  Now, select a starting county in California.
+                </p>
+                <div className="map-render-wrapper">
+                  <CaliforniaMap
+                    onSelectCounty={(countyId) =>
+                      actions.setSelectedSecondAdminRegion(countyId)
+                    }
+                    selectedCountyGameId={selectedSecondAdminRegionId}
+                  />
+                </div>
+              </>
+            )}
+
+            {selectedRegionId === "USA_CT" && (
+              <>
+                <p className="map-instruction-cs">
+                  Now, select a starting county in Connecticut.
+                </p>
+                <div className="map-render-wrapper">
+                  <ConnecticutMap
+                    onSelectCounty={(countyId) =>
+                      actions.setSelectedSecondAdminRegion(countyId)
+                    }
+                    selectedCountyGameId={selectedSecondAdminRegionId}
+                  />
+                </div>
+              </>
+            )}
           </>
         )}
         {selectedCountryId === "KOR" && (
@@ -369,6 +469,29 @@ function CampaignSetupScreen() {
               </section>
             )}
 
+          {selectedRegionId && availableSecondAdminRegions.length > 0 && (
+            <section className="setup-section">
+              <h4>Select a County / Borough:</h4>
+              <select
+                id="county-select"
+                value={selectedSecondAdminRegionId || ""}
+                onChange={(e) =>
+                  actions.setSelectedSecondAdminRegion(e.target.value)
+                }
+                className="region-selector-dropdown"
+              >
+                <option value="" disabled>
+                  -- Choose a starting county --
+                </option>
+                {availableSecondAdminRegions.map((region) => (
+                  <option key={region.id} value={region.id}>
+                    {region.name}
+                  </option>
+                ))}
+              </select>
+            </section>
+          )}
+
           {selectedCountryId && !selectedRegionId && (
             <section className="setup-section placeholder-info-cs">
               <p>
@@ -476,9 +599,18 @@ function CampaignSetupScreen() {
           )}
         </div>
         <div className="form-actions setup-actions-cs sidebar-footer-actions">
-          <button className="menu-button" onClick={handleBackToCountrySelect}>
-            Back to Countries
-          </button>
+          {selectedRegionId ? (
+            // If a state IS selected, show "Back to States"
+            <button className="menu-button" onClick={handleBackToStateSelect}>
+              Back to States
+            </button>
+          ) : (
+            // If NO state is selected, show "Back to Countries"
+            <button className="menu-button" onClick={handleBackToCountrySelect}>
+              Back to Countries
+            </button>
+          )}
+
           <button
             className="action-button start-campaign"
             onClick={() => {

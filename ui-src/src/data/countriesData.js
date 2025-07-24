@@ -4,6 +4,7 @@ import { generateLegislativeDistrictsForCountry } from "../entities/districtGene
 import { generateNationalParties } from "../entities/partyGeneration";
 import { japanPrefectures } from "./states/japanPrefectures";
 import { usaStates } from "./states/usaStates";
+import { usaCounties } from "./states/adminRegions2/usaCounties";
 import { germanStates } from "./states/germanStates";
 import { australianStates } from "./states/australianStates";
 import {
@@ -101,6 +102,7 @@ const baseCountriesData = [
     ],
     politicalSystem: "Presidential Republic",
     regions: usaStates.map((r) => ({ ...r })),
+    secondAdminRegions: usaCounties.map((c) => ({ ...c })),
     nationalLowerHouseDistricts: [],
     nationalHrTiers: chamberTiers.USA.NATIONAL.USA_CONGRESSIONAL_DISTRICT_TIERS,
     nationalHrName: "House Of Representatives",
