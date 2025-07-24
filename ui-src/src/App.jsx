@@ -11,6 +11,7 @@ import CampaignGameScreen from "./scenes/CampaignGameScreen";
 import ElectionNightScreen from "./scenes/ElectionNightScreen";
 import ThemeCreatorEditor from "./scenes/ThemeCreatorEditor";
 import ElectionSimulatorScreen from "./scenes/ElectionSimulatorScreen";
+import CreatorHub from "./scenes/CreatorHub";
 import "./App.css";
 import ToastContainer from "./components/toasts/ToastContainer";
 
@@ -31,11 +32,8 @@ function App() {
         return <MainMenu />;
       case "SettingsScreen":
         return <SettingsScreen />;
-      // Add cases for other scenes as you build them:
-      // case 'CreatorHub':
-      //   return <CreatorHub />;
-      // case 'ElectionSimScreen':
-      //   return <ElectionSimScreen />;
+      case "CreatorHub":
+        return <CreatorHub />;
       case "CampaignStartOptionsScreen":
         return <CampaignStartOptionsScreen />;
       // case 'LoadGameScreen':
@@ -52,8 +50,8 @@ function App() {
         return <CampaignGameScreen />;
       case "ElectionNightScreen":
         return <ElectionNightScreen />;
-      case "ThemeCreatorEditor": // New case for the theme editor
-        return <ThemeCreatorEditor />; //
+      case "ThemeCreatorEditor":
+        return <ThemeCreatorEditor />;
       case "ElectionSimulatorScreen":
         return <ElectionSimulatorScreen />;
       default:

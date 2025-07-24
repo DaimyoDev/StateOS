@@ -5,7 +5,8 @@ import {
   generateNewPartyName,
   initializePartyIdeologyScores,
 } from "./personnel";
-import { getRandomInt } from "../utils/core";
+import { getRandomInt, getRandomElement, generateId } from "../utils/core";
+import { generatePartyLogo } from "../utils/logoGenerator";
 
 export const generateNationalParties = ({
   countryId,
@@ -67,6 +68,12 @@ export const generateNationalParties = ({
       countryName
     );
 
+    const logoDataUrl = generatePartyLogo({
+      primaryColor: baseColor.color,
+      ideologyId: ideologyIndex.id,
+      level: "national",
+    });
+
     parties.push({
       id: `gen_party_${countryId}_${i}_${Math.random()
         .toString(36)
@@ -74,8 +81,40 @@ export const generateNationalParties = ({
       name: partyName,
       ideology: selectedIdeologyObject.name,
       color: partyColor,
+      logoDataUrl: logoDataUrl,
     });
   }
 
   return initializePartyIdeologyScores(parties, IDEOLOGY_DEFINITIONS);
+};
+
+/**
+ * Generates a single, completely random party for use in the Creator Hub.
+ * @returns {object} A single generated party object.
+ */
+export const generateCreatorHubParty = () => {
+  // 1. Pick one random ideology from the entire base list
+  const ideology = getRandomElement(BASE_IDEOLOGIES);
+
+  // 2. Generate a name for it
+  // --- FIX: Pass the ideology NAME (string), not the whole object ---
+  const partyName = generateNewPartyName(ideology.name, "Testland");
+  const partyId = `party_${generateId()}`;
+
+  // 3. Generate its logo
+  const logoDataUrl = generatePartyLogo({
+    primaryColor: ideology.color,
+    ideologyId: ideology.id,
+    level: "national", // Logos for the hub will be national style
+  });
+
+  // 4. Build and return the complete party object
+  return {
+    id: partyId,
+    name: partyName,
+    ideology: ideology.id,
+    color: ideology.color,
+    countryId: "TEST",
+    logoDataUrl: logoDataUrl,
+  };
 };

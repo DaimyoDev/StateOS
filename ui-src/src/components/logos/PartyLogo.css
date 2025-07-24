@@ -1,0 +1,23 @@
+.party-logo {
+  image-rendering: pixelated; /* This is key for sharp pixel art */
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-background-secondary);
+  border-radius: 4px;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.party-logo-placeholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-background-secondary);
+  color: var(--color-text-muted);
+  font-weight: bold;
+  border-radius: 4px;
+  vertical-align: middle;
+  font-size: 1.2rem;
+}

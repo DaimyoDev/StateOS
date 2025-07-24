@@ -1,23 +1,236 @@
 export const BASE_IDEOLOGIES = [
-  { id: "conservative", name: "Conservative", color: "#3182CE" }, // Blue
-  { id: "liberal", name: "Liberal", color: "#E53E3E" }, // Red
-  { id: "socialist", name: "Socialist", color: "#D69E2E" }, // Amber/Yellow
-  { id: "green", name: "Green", color: "#38A169" }, // Green
-  { id: "nationalist", name: "Nationalist", color: "#6B46C1" }, // Purple
-  { id: "centrist", name: "Centrist", color: "#718096" }, // Grey
-  { id: "libertarian", name: "Libertarian", color: "#FACC15" }, // Gold/Yellow
-  { id: "social_democrat", name: "Social Democrat", color: "#E53E3E" }, // Often Red or Rose
-  { id: "progressive", name: "Progressive", color: "#9F7AEA" }, // Light Purple / Lavender
-  { id: "communist", name: "Communist", color: "#CC0000" }, // Deep Red (classic Communist red)
-  { id: "agrarian", name: "Agrarian", color: "#68D391" }, // Light/Earthy Green
-  { id: "populist", name: "Populist", color: "#ED8936" }, // Orange
+  { id: "conservative", name: "Conservative", color: "#3182CE" },
+  { id: "liberal", name: "Liberal", color: "#E53E3E" },
+  { id: "socialist", name: "Socialist", color: "#D69E2E" },
+  { id: "green", name: "Green", color: "#38A169" },
+  { id: "nationalist", name: "Nationalist", color: "#6B46C1" },
+  { id: "centrist", name: "Centrist", color: "#718096" },
+  { id: "libertarian", name: "Libertarian", color: "#FACC15" },
+  { id: "social_democrat", name: "Social Democrat", color: "#E53E3E" },
+  { id: "progressive", name: "Progressive", color: "#9F7AEA" },
+  { id: "communist", name: "Communist", color: "#CC0000" },
+  { id: "agrarian", name: "Agrarian", color: "#68D391" },
+  { id: "populist", name: "Populist", color: "#ED8936" },
   {
     id: "religious_conservative",
     name: "Religious Conservative",
     color: "#003366",
   },
-  { id: "technocratic", name: "Technocratic", color: "#4A5568" }, // Steel Grey or a Cool Blue
+  { id: "technocratic", name: "Technocratic", color: "#4A5568" },
   { id: "monarchist", name: "Monarchist", color: "#FFD700" },
+  {
+    id: "anarchist",
+    name: "Anarchist",
+    color: "#000000",
+  },
+  {
+    id: "reactionary",
+    name: "Reactionary",
+    color: "#B8860B",
+  },
+  {
+    id: "transhumanist",
+    name: "Transhumanist",
+    color: "#00CED1",
+  },
+  {
+    id: "pragmatist",
+    name: "Pragmatist",
+    color: "#A0AEC0",
+  },
+];
+
+export const SUB_IDEOLOGIES = [
+  {
+    id: "paleoconservatism",
+    name: "Paleoconservatism",
+    parentIdeology: "conservative",
+    color: "#4A5568",
+  },
+  {
+    id: "neoconservatism",
+    name: "Neoconservatism",
+    parentIdeology: "conservative",
+    color: "#4299E1",
+  },
+  {
+    id: "classical_liberalism",
+    name: "Classical Liberalism",
+    parentIdeology: "liberal",
+    color: "#ECC94B",
+  },
+  {
+    id: "social_liberalism",
+    name: "Social Liberalism",
+    parentIdeology: "liberal",
+    color: "#F56565",
+  },
+  {
+    id: "market_socialism",
+    name: "Market Socialism",
+    parentIdeology: "socialist",
+    color: "#ED8936",
+  },
+  {
+    id: "luxemburgism",
+    name: "Luxemburgism",
+    parentIdeology: "communist",
+    color: "#C53030",
+  },
+  {
+    id: "civic_nationalism",
+    name: "Civic Nationalism",
+    parentIdeology: "nationalist",
+    color: "#9F7AEA",
+  },
+  {
+    id: "ultranationalism",
+    name: "Ultranationalism",
+    parentIdeology: "nationalist",
+    color: "#5A32A3",
+  },
+  {
+    id: "minarchism",
+    name: "Minarchism",
+    parentIdeology: "libertarian",
+    color: "#F6E05E",
+  },
+  {
+    id: "anarcho-capitalism",
+    name: "Anarcho-Capitalism",
+    parentIdeology: "libertarian",
+    color: "#D4AF37",
+  },
+  {
+    id: "eco_socialism",
+    name: "Eco-Socialism",
+    parentIdeology: "green",
+    description:
+      "Combines aspects of socialism with green politics, ecology and alter-globalization.",
+    color: "#48BB78",
+  },
+  {
+    id: "eco_fascism",
+    name: "Eco-Fascism",
+    parentIdeology: "green",
+    description:
+      "A radical environmentalist ideology that uses authoritarian and nationalist principles to achieve its goals.",
+    color: "#2F855A",
+  },
+  {
+    id: "traditionalism",
+    name: "Traditionalism",
+    parentIdeology: "conservative",
+    description:
+      "Upholds deep-rooted traditions and social hierarchies as the bedrock of society.",
+    color: "#7B3F00",
+  },
+  {
+    id: "fiscal_conservatism",
+    name: "Fiscal Conservatism",
+    parentIdeology: "conservative",
+    description:
+      "Advocates for lower taxes, reduced government spending, and minimal government debt.",
+    color: "#008080",
+  },
+  {
+    id: "christian_democracy",
+    name: "Christian Democracy",
+    parentIdeology: "religious_conservative",
+    description:
+      "Combines conservative social values with a commitment to social welfare and community.",
+    color: "#4682B4",
+  },
+  {
+    id: "radicalism",
+    name: "Radicalism",
+    parentIdeology: "liberal",
+    description:
+      "Demands fundamental and revolutionary changes to societal structures and institutions.",
+    color: "#FF4500",
+  },
+  {
+    id: "civil_libertarianism",
+    name: "Civil Libertarianism",
+    parentIdeology: "liberal",
+    description:
+      "Places the highest priority on protecting civil liberties and individual rights from any encroachment.",
+    color: "#1E90FF",
+  },
+  {
+    id: "third_way",
+    name: "Third Way",
+    parentIdeology: "social_democrat",
+    description:
+      "A centrist position that seeks to reconcile right-wing and left-wing policies; a more moderate form of social democracy.",
+    color: "#DA70D6",
+  },
+  {
+    id: "maoism",
+    name: "Maoism",
+    parentIdeology: "communist",
+    description:
+      "A revolutionary theory emphasizing the role of the peasantry and continuous class struggle.",
+    color: "#CD5C5C",
+  },
+  {
+    id: "trotskyism",
+    name: "Trotskyism",
+    parentIdeology: "communist",
+    description:
+      "Advocates for a permanent global revolution of the working class.",
+    color: "#8B0000",
+  },
+  {
+    id: "syndicalism",
+    name: "Syndicalism",
+    parentIdeology: "socialist",
+    description:
+      "A revolutionary ideology where workers' unions control the economy and the state.",
+    color: "#B22222",
+  },
+  {
+    id: "deep_ecology",
+    name: "Deep Ecology",
+    parentIdeology: "green",
+    description:
+      "An environmental philosophy regarding the inherent worth of all living beings, regardless of their utility.",
+    color: "#228B22",
+  },
+  {
+    id: "eco_capitalism",
+    name: "Eco-Capitalism",
+    parentIdeology: "green",
+    description:
+      "Believes that the capitalist market can be harnessed to solve environmental issues.",
+    color: "#6B8E23",
+  },
+
+  {
+    id: "irredentism",
+    name: "Irredentism",
+    parentIdeology: "nationalist",
+    description:
+      "Advocates for annexing territories administered by another state on the grounds of common ethnicity or prior historical possession.",
+    color: "#800000",
+  },
+
+  {
+    id: "absolute_monarchism",
+    name: "Absolute Monarchism",
+    parentIdeology: "monarchist",
+    description:
+      "A system where the monarch holds supreme, autocratic authority, not restricted by any laws or constitution.",
+    color: "#4B0082",
+  },
+  {
+    id: "constitutional_monarchism",
+    name: "Constitutional Monarchism",
+    parentIdeology: "monarchist",
+    description:
+      "A system where the monarch's power is limited by a constitution and they serve as a ceremonial head of state.",
+    color: "#8A2BE2",
+  },
 ];
 
 export const GENERIC_NOUNS = [
@@ -231,6 +444,38 @@ export const IDEOLOGY_KEYWORDS = {
     "Loyalist",
     "Throne",
     "Kingdom",
+  ],
+  Anarchist: [
+    "Anarchist",
+    "Freedom",
+    "Voluntaryist",
+    "Stateless",
+    "Mutual Aid",
+    "Black Flag",
+  ],
+  Reactionary: [
+    "Reactionary",
+    "Traditionalist",
+    "Restoration",
+    "Old Guard",
+    "Throne and Altar",
+    "Counter-Revolution",
+  ],
+  Transhumanist: [
+    "Transhumanist",
+    "Future",
+    "Enhancement",
+    "Singularity",
+    "H+",
+    "Techno-Progressive",
+  ],
+  Pragmatist: [
+    "Pragmatic",
+    "Practical",
+    "Evidence-Based",
+    "Solution",
+    "Common Sense",
+    "Effective",
   ],
 };
 
@@ -505,6 +750,78 @@ export const IDEOLOGY_DEFINITIONS = {
       societal_focus: 0.5, // Hierarchical societal good, not modern collectivism/individualism
       rural_priority: 1, // Landed aristocracy, traditional rural power base
       governance_approach: -4, // Highly Elitist/Institutional (Hereditary rule)
+    },
+  },
+  anarchist: {
+    id: "anarchist",
+    name: "Anarchist",
+    idealPoint: {
+      economic: 0,
+      social_traditionalism: -2,
+      sovereignty: -4,
+      ecology: 1,
+      theocratic: -4,
+      digitalization: 0.5,
+      personal_liberty: 4,
+      authority_structure: -4,
+      state_intervention_scope: -4,
+      societal_focus: 0,
+      rural_priority: 0,
+      governance_approach: 4,
+    },
+  },
+  reactionary: {
+    id: "reactionary",
+    name: "Reactionary",
+    idealPoint: {
+      economic: 1.5,
+      social_traditionalism: 4,
+      sovereignty: 2,
+      ecology: -2,
+      theocratic: 2.5,
+      digitalization: -3,
+      personal_liberty: -3.5,
+      authority_structure: 3.5,
+      state_intervention_scope: 2,
+      societal_focus: 2.5,
+      rural_priority: 2,
+      governance_approach: -4,
+    },
+  },
+  transhumanist: {
+    id: "transhumanist",
+    name: "Transhumanist",
+    idealPoint: {
+      economic: 0,
+      social_traditionalism: -3,
+      sovereignty: -1,
+      ecology: 0.5,
+      theocratic: -3.5,
+      digitalization: 4,
+      personal_liberty: 3,
+      authority_structure: 0,
+      state_intervention_scope: 1,
+      societal_focus: 1,
+      rural_priority: -2,
+      governance_approach: -2,
+    },
+  },
+  pragmatist: {
+    id: "pragmatist",
+    name: "Pragmatist",
+    idealPoint: {
+      economic: 0.5,
+      social_traditionalism: -0.5,
+      sovereignty: 0,
+      ecology: 0.5,
+      theocratic: -1,
+      digitalization: 1,
+      personal_liberty: 0.5,
+      authority_structure: -0.5,
+      state_intervention_scope: 0,
+      societal_focus: 0,
+      rural_priority: 0,
+      governance_approach: -1.5,
     },
   },
 };
