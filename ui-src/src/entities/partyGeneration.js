@@ -72,6 +72,7 @@ export const generateNationalParties = ({
       primaryColor: baseColor.color,
       ideologyId: ideologyIndex.id,
       level: "national",
+       partyName: partyName,
     });
 
     parties.push({
@@ -94,21 +95,25 @@ export const generateNationalParties = ({
  */
 export const generateCreatorHubParty = () => {
   // 1. Pick one random ideology from the entire base list
-  const ideology = getRandomElement(BASE_IDEOLOGIES);
-
-  // 2. Generate a name for it
-  // --- FIX: Pass the ideology NAME (string), not the whole object ---
-  const partyName = generateNewPartyName(ideology.name, "Testland");
+  const ideology = getRandomElement(BASE_IDEOLOGIES); // Assuming this function exists
   const partyId = `party_${generateId()}`;
 
-  // 3. Generate its logo
+  // 2. Decide whether to use an ideology symbol or a generic text symbol
+  //    (80% chance for ideology symbol, 20% for text)
+  const symbolId = Math.random() < 0.8 ? ideology.id : "text";
+
+  // 3. Generate a name for it
+  const partyName = generateNewPartyName(ideology.name, "Testland"); // Assuming this exists
+
+  // 4. Generate its logo, passing in the chosen symbol ID
   const logoDataUrl = generatePartyLogo({
     primaryColor: ideology.color,
-    ideologyId: ideology.id,
-    level: "national", // Logos for the hub will be national style
+    ideologyId: symbolId, // Use the randomly chosen symbol set
+    level: "national",
+     partyName: partyName,
   });
 
-  // 4. Build and return the complete party object
+  // 5. Build and return the complete party object
   return {
     id: partyId,
     name: partyName,

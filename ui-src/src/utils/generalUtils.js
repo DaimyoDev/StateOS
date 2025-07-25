@@ -234,3 +234,59 @@ export const createDateObj = (dateParts) => {
   }
   return new Date(dateParts.year, dateParts.month - 1, dateParts.day);
 };
+
+/**
+ * Generates a themed, professional palette from a single base color.
+ * It uses analogous colors for harmony and complementary colors for contrast.
+ * @param {string} baseHex - The base color in HEX format.
+ * @param {number} count - The total number of colors to generate.
+ * @returns {string[]} An array of HEX color strings.
+ */
+export function generateIdeologicalPalette(baseHex, count = 12) {
+  const baseHsl = hexToHSL(baseHex); //
+  if (!baseHsl) return Array(count).fill(baseHex);
+
+  const palette = [];
+
+  // Add Neutral Colors First for consistency
+  const backgroundColorHsl = {
+    h: baseHsl.h,
+    s: 25, // Low saturation for a soft, pastel look
+    l: 92, // Very high lightness to keep it feeling like a background
+  };
+  palette.push(hslToHex(backgroundColorHsl)); // palette[0] = Thematic Background
+  palette.push("#2D3748"); // palette[1] = Dark Gray (for outlines/text)
+  palette.push("#FBBF24"); // palette[2] = Gold/Yellow (for accents)
+
+  // Generate Analogous Colors (Harmonious)
+  const analogousCount = Math.floor((count - palette.length) * 0.6);
+  for (let i = 0; i < analogousCount; i++) {
+    const hueShift = (Math.random() - 0.5) * 60; // +/- 30 degrees from base hue
+    const newSaturation = baseHsl.s + (Math.random() - 0.5) * 20;
+    const newLightness = baseHsl.l + (Math.random() - 0.5) * 30;
+    palette.push(
+      hslToHex({
+        h: (baseHsl.h + hueShift + 360) % 360,
+        s: Math.max(40, Math.min(95, newSaturation)),
+        l: Math.max(30, Math.min(80, newLightness)),
+      })
+    );
+  }
+
+  // Generate Complementary Colors (High-Contrast Accents)
+  const complementaryHue = (baseHsl.h + 180) % 360;
+  while (palette.length < count) {
+    const hueShift = (Math.random() - 0.5) * 40;
+    const newSaturation = 70 + Math.random() * 30;
+    const newLightness = 50 + Math.random() * 30;
+    palette.push(
+      hslToHex({
+        h: (complementaryHue + hueShift + 360) % 360,
+        s: Math.max(60, Math.min(100, newSaturation)),
+        l: Math.max(40, Math.min(85, newLightness)),
+      })
+    );
+  }
+
+  return palette;
+}

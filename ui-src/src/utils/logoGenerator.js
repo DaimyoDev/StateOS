@@ -1,140 +1,198 @@
-import { getSymbolForIdeology, getRandomPattern } from "../data/logoSymbols";
-import { LETTERS } from "../data/pixelLetterData";
+// src/lib/logoGenerator.js
+
+import { generateProceduralMatrix } from "../lib/proceduralMatrices";
+import { generateIdeologicalPalette } from "../utils/generalUtils";
+import { SYMBOLS } from "../data/symbols/symbols";
 import {
-  generateNuancedColor,
-  hexToHSL,
-  hslToHex,
-} from "../utils/generalUtils";
+  drawShieldOutline,
+  drawCircleMask,
+  drawDiamondMask,
+  drawSymbolOnMatrix,
+  drawText,
+} from "../lib/shapeDrawer";
+import { FONT_DATA } from "../data/fontData";
 
-/**
- * Finds a high-contrast color for a given background color.
- * It does this by shifting the hue to the opposite side of the color wheel.
- * @param {string} backgroundColorHex - The hex color of the background.
- * @returns {string} A high-contrast hex color for the symbol.
- */
-const getHighContrastColor = (backgroundColorHex) => {
-  const bgHsl = hexToHSL(backgroundColorHex);
-  if (!bgHsl) return "#FFFFFF"; // Fallback to white
-
-  // Shift hue by 180 degrees (complementary color)
-  const symbolHue = (bgHsl.h + 180) % 360;
-
-  // Ensure high saturation and lightness for visibility
-  const symbolSaturation = Math.max(70, bgHsl.s);
-  const symbolLightness = Math.max(80, 100 - bgHsl.l / 2);
-
-  return hslToHex({ h: symbolHue, s: symbolSaturation, l: symbolLightness });
+const getSymbolForIdeology = (ideologyId) => {
+  const symbols = SYMBOLS[ideologyId] || SYMBOLS.default;
+  if (!symbols || symbols.length === 0) return null;
+  return symbols[Math.floor(Math.random() * symbols.length)];
 };
 
-/**
- * Generates a procedural pixel art logo for a political party.
- * @param {object} options - The options for logo generation.
- * @param {string} options.primaryColor - The primary color from the party's ideology.
- * @param {string} options.ideologyId - The ID of the party's main ideology.
- * @param {string} [options.level='national'] - The administrative level ('national', 'state', 'county').
- * @param {string} [options.regionInitial] - The initial of the region (e.g., 'CA').
- * @returns {string} A data URL representing the generated PNG image.
- */
+function wrapText(text, maxChars) {
+  const lines = [];
+  let currentLine = "";
+  for (let i = 0; i < text.length; i++) {
+    currentLine += text[i];
+    if (currentLine.length >= maxChars) {
+      lines.push(currentLine);
+      currentLine = "";
+    }
+  }
+  if (currentLine) lines.push(currentLine);
+  return lines;
+}
+
 export const generatePartyLogo = ({
   primaryColor = "#808080",
   ideologyId = "default",
-  level = "national",
-  regionInitial = "",
-  text = "",
+  partyName = "New Party",
 }) => {
-  const canvasSize = 128; // New higher resolution
-  const pixelSize = 8; // Each matrix point is now an 8x8 block
-
+  const matrixSize = 128;
+  const canvasSize = 256;
+  const pixelSize = canvasSize / matrixSize;
   const canvas = document.createElement("canvas");
   canvas.width = canvasSize;
   canvas.height = canvasSize;
   const ctx = canvas.getContext("2d");
 
-  // --- 1. Define a multi-color palette ---
-  const backgroundColor = generateNuancedColor(primaryColor, 40, 30);
-  const patternColor = generateNuancedColor(backgroundColor, 15, 10);
+  const finalPalette = generateIdeologicalPalette(primaryColor, 12);
+  let matrix = generateProceduralMatrix(matrixSize, matrixSize, ideologyId);
+  const symbolMatrix = getSymbolForIdeology(ideologyId);
 
-  // Create a more diverse color palette based on the primary color
-  const palette = {
-    1: getHighContrastColor(backgroundColor), // Primary Symbol Color
-    2: generateNuancedColor(primaryColor, 20, 30, 60), // Secondary color with hue shift
-    3: generateNuancedColor(primaryColor, -20, 20, -60), // Accent color
-  };
+  // --- Layout Engine ---
+  if (symbolMatrix) {
+    const layouts = ["center-symbol", "top-text", "initials-and-symbol"];
+    const layout = layouts[Math.floor(Math.random() * layouts.length)];
+    const lightColor = 0;
+    const darkColor = 1;
 
-  // --- 2. Draw Background ---
-  ctx.fillStyle = backgroundColor;
-  ctx.fillRect(0, 0, canvasSize, canvasSize);
-
-  // --- 3. Draw Background Pattern ---
-  // This can also be updated to use the new color palette
-  const patternMatrix = getRandomPattern();
-  if (patternMatrix) {
-    ctx.fillStyle = patternColor;
-    for (let y = 0; y < patternMatrix.length; y++) {
-      for (let x = 0; x < patternMatrix[y].length; x++) {
-        if (patternMatrix[y][x] === 1) {
-          ctx.fillRect(x * pixelSize, y * pixelSize, pixelSize, pixelSize);
+    switch (layout) {
+      case "top-text": {
+        const symbolSize = 72;
+        const position = {
+          x: Math.floor((matrixSize - symbolSize) / 2),
+          y: 48,
+        };
+        const paletteMap = { 1: 4, 2: 1, 3: 8, 4: 0 };
+        drawSymbolOnMatrix(
+          matrix,
+          symbolMatrix,
+          position,
+          symbolSize,
+          paletteMap
+        );
+        const words = partyName.split(" ") || [];
+        const stopWords = ["THE", "A", "AN", "OF"];
+        let wordToDraw = words[0] || "";
+        if (stopWords.includes(wordToDraw.toUpperCase()) && words.length > 1) {
+          wordToDraw = words[1];
         }
+        wordToDraw = wordToDraw.slice(0, 10);
+        const lines = wrapText(wordToDraw, 5);
+        const textSize = lines.length > 1 ? 2 : 3;
+        const textBlockHeight =
+          lines.length * (FONT_DATA.meta.height * textSize);
+        let startY = Math.floor((48 - textBlockHeight) / 2);
+        lines.forEach((line) => {
+          const textWidth = line.length * (FONT_DATA.meta.width + 1) * textSize;
+          const startX = Math.floor((matrixSize - textWidth) / 2);
+          drawText(
+            matrix,
+            line,
+            lightColor,
+            darkColor,
+            { x: startX, y: startY },
+            textSize
+          );
+          startY += FONT_DATA.meta.height * textSize;
+        });
+        break;
+      }
+      case "initials-and-symbol": {
+        const symbolSize = 72;
+        const position = {
+          x: 12,
+          y: Math.floor((matrixSize - symbolSize) / 2),
+        };
+        const paletteMap = { 1: 4, 2: 1, 3: 8, 4: 0 };
+        drawSymbolOnMatrix(
+          matrix,
+          symbolMatrix,
+          position,
+          symbolSize,
+          paletteMap
+        );
+        const initials = (partyName.split(" ").map((word) => word[0]) || [])
+          .join("")
+          .slice(0, 3);
+        const textSize = initials.length > 2 ? 3 : 4;
+        const textHeight = FONT_DATA.meta.height * textSize;
+        const textWidth =
+          initials.length * (FONT_DATA.meta.width + 1) * textSize;
+        const rightAreaX = 64;
+        const rightAreaWidth = 64;
+        const startX =
+          rightAreaX + Math.floor((rightAreaWidth - textWidth) / 2);
+        drawText(
+          matrix,
+          initials,
+          lightColor,
+          darkColor,
+          { x: startX, y: Math.floor((matrixSize - textHeight) / 2) },
+          textSize
+        );
+        break;
+      }
+      case "center-symbol":
+      default: {
+        const symbolSize = 96;
+        const position = {
+          x: Math.floor((matrixSize - symbolSize) / 2),
+          y: Math.floor((matrixSize - symbolSize) / 2),
+        };
+        const paletteMap = { 1: 4, 2: 1, 3: 8, 4: 0 };
+        drawSymbolOnMatrix(
+          matrix,
+          symbolMatrix,
+          position,
+          symbolSize,
+          paletteMap
+        );
+        break;
       }
     }
   }
 
-  // --- 4. Draw Multi-color Main Symbol ---
-  const symbolMatrix = getSymbolForIdeology(ideologyId);
-  for (let y = 0; y < symbolMatrix.length; y++) {
-    for (let x = 0; x < symbolMatrix[y].length; x++) {
-      const colorIndex = symbolMatrix[y][x];
-      if (colorIndex in palette) {
-        ctx.fillStyle = palette[colorIndex];
+  // --- Shape & Background Engine ---
+  const shapeOptions = [
+    drawShieldOutline,
+    drawCircleMask,
+    drawDiamondMask,
+    null,
+  ];
+  const randomShape =
+    shapeOptions[Math.floor(Math.random() * shapeOptions.length)];
+  const isSolidEmblem = Math.random() < 0.5; // 50% chance for a solid background emblem
+
+  if (randomShape) {
+    if (isSolidEmblem) {
+      const backgroundMatrix = Array.from({ length: matrixSize }, () =>
+        Array(matrixSize).fill(0)
+      );
+      randomShape(matrix, -1);
+      for (let y = 0; y < matrixSize; y++) {
+        for (let x = 0; x < matrixSize; x++) {
+          if (matrix[y][x] !== -1) {
+            backgroundMatrix[y][x] = matrix[y][x];
+          }
+        }
+      }
+      matrix = backgroundMatrix;
+    } else {
+      randomShape(matrix, -1); // Use -1 as the transparent key
+    }
+  }
+
+  // --- Final Render Loop ---
+  for (let y = 0; y < matrix.length; y++) {
+    for (let x = 0; x < matrix[y].length; x++) {
+      const colorIndex = matrix[y][x];
+      if (colorIndex !== -1 && finalPalette[colorIndex]) {
+        // Check for -1 transparency
+        ctx.fillStyle = finalPalette[colorIndex];
         ctx.fillRect(x * pixelSize, y * pixelSize, pixelSize, pixelSize);
       }
     }
   }
-
-  if (text) {
-    const letterMatrix = LETTERS[text.toUpperCase()];
-    if (letterMatrix) {
-      const textColor = getHighContrastColor(backgroundColor);
-      ctx.fillStyle = textColor;
-
-      // These values may need to be adjusted to properly center the text
-      const textX = (canvasSize - letterMatrix[0].length * pixelSize) / 2;
-      const textY = (canvasSize - letterMatrix.length * pixelSize) / 2;
-
-      for (let y = 0; y < letterMatrix.length; y++) {
-        for (let x = 0; x < letterMatrix[y].length; x++) {
-          if (letterMatrix[y][x] === 1) {
-            ctx.fillRect(
-              textX + x * pixelSize,
-              textY + y * pixelSize,
-              pixelSize,
-              pixelSize
-            );
-          }
-        }
-      }
-    }
-  }
-
-  const highContrastStrokeColor = palette["1"];
-
-  // --- 5. Add Hierarchical Variation ---
-  if (level === "state" && regionInitial) {
-    ctx.font = "bold 10px sans-serif";
-    ctx.fillStyle = backgroundColor;
-    // -- FIX: Use the new high-contrast color for the stroke --
-    ctx.strokeStyle = highContrastStrokeColor;
-    ctx.lineWidth = 2.5;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.strokeText(regionInitial, canvasSize / 2, canvasSize / 2 + 1);
-    ctx.fillText(regionInitial, canvasSize / 2, canvasSize / 2 + 1);
-  } else if (level === "county") {
-    // -- FIX: Use the new high-contrast color for the border --
-    ctx.strokeStyle = highContrastStrokeColor;
-    ctx.lineWidth = 2;
-    ctx.strokeRect(1, 1, canvasSize - 2, canvasSize - 2);
-  }
-
   return canvas.toDataURL("image/png");
 };
