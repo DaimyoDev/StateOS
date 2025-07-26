@@ -1,0 +1,18 @@
+export const newZealandRegions = [
+  { id: "NZ_AUK", name: "Auckland" },
+  { id: "NZ_BOP", name: "Bay of Plenty" },
+  { id: "NZ_CAN", name: "Canterbury" },
+  { id: "NZ_GIS", name: "Gisborne District" },
+  { id: "NZ_HKB", name: "Hawke's Bay" },
+  { id: "NZ_MBH", name: "Marlborough District" },
+  { id: "NZ_MWT", name: "Manawatu-Wanganui" },
+  { id: "NZ_NSN", name: "Nelson City" },
+  { id: "NZ_NTL", name: "Northland" },
+  { id: "NZ_OTA", name: "Otago" },
+  { id: "NZ_STL", name: "Southland" },
+  { id: "NZ_TAS", name: "Tasman District" },
+  { id: "NZ_TKI", name: "Taranaki" },
+  { id: "NZ_WGN", name: "Wellington" },
+  { id: "NZ_WKO", name: "Waikato" },
+  { id: "NZ_WTC", name: "West Coast" },
+];

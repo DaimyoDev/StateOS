@@ -1,0 +1,16 @@
+export const greekRegions = [
+  { id: "GR_69", name: "Ayion Oros" },
+  { id: "GR_A", name: "Anatoliki Makedonia kai Thraki" },
+  { id: "GR_A1", name: "Attiki" },
+  { id: "GR_B", name: "Kentriki Makedonia" },
+  { id: "GR_C", name: "Dytiki Makedonia" },
+  { id: "GR_D", name: "Ipeiros" },
+  { id: "GR_E", name: "Thessalia" },
+  { id: "GR_F", name: "Ionioi Nisoi" },
+  { id: "GR_G", name: "Dytiki Ellada" },
+  { id: "GR_H", name: "Stereá Elláda" },
+  { id: "GR_J", name: "Peloponnisos" },
+  { id: "GR_K", name: "Voreio Aigaio" },
+  { id: "GR_L", name: "Notio Aigaio" },
+  { id: "GR_M", name: "Kriti" },
+];

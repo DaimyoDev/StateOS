@@ -1,0 +1,18 @@
+export const malaysianStatesAndFederalTerritories = [
+  { id: "MY_01", name: "Johor" },
+  { id: "MY_02", name: "Kedah" },
+  { id: "MY_03", name: "Kelantan" },
+  { id: "MY_04", name: "Melaka" },
+  { id: "MY_05", name: "Negeri Sembilan" },
+  { id: "MY_06", name: "Pahang" },
+  { id: "MY_07", name: "Pulau Pinang" },
+  { id: "MY_08", name: "Perak" },
+  { id: "MY_09", name: "Perlis" },
+  { id: "MY_10", name: "Selangor" },
+  { id: "MY_11", name: "Terengganu" },
+  { id: "MY_12", name: "Sabah" },
+  { id: "MY_13", name: "Sarawak" },
+  { id: "MY_14", name: "Kuala Lumpur" },
+  { id: "MY_15", name: "Labuan" },
+  { id: "MY_16", name: "Putrajaya" },
+];

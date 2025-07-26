@@ -1,0 +1,18 @@
+export const chileanRegions = [
+  { id: "CL_AI", name: "Aisén del General Carlos Ibáñez del Campo" },
+  { id: "CL_AN", name: "Antofagasta" },
+  { id: "CL_AP", name: "Arica y Parinacota" },
+  { id: "CL_AR", name: "La Araucanía" },
+  { id: "CL_AT", name: "Atacama" },
+  { id: "CL_BI", name: "Bío-Bío" },
+  { id: "CL_CO", name: "Coquimbo" },
+  { id: "CL_LI", name: "Libertador General Bernardo O'Higgins" },
+  { id: "CL_LL", name: "Los Lagos" },
+  { id: "CL_LR", name: "Los Ríos" },
+  { id: "CL_MA", name: "Magallanes y Antártica Chilena" },
+  { id: "CL_ML", name: "Maule" },
+  { id: "CL_NB", name: "Ñuble" },
+  { id: "CL_RM", name: "Región Metropolitana de Santiago" },
+  { id: "CL_TA", name: "Tarapacá" },
+  { id: "CL_VS", name: "Valparaíso" },
+];

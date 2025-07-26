@@ -1,0 +1,16 @@
+export const czechRegions = [
+  { id: "CZ_10", name: "Praha" },
+  { id: "CZ_20", name: "Středočeský kraj" },
+  { id: "CZ_31", name: "Jihočeský kraj" },
+  { id: "CZ_32", name: "Plzeňský kraj" },
+  { id: "CZ_41", name: "Karlovarský kraj" },
+  { id: "CZ_42", name: "Ústecký kraj" },
+  { id: "CZ_51", name: "Liberecký kraj" },
+  { id: "CZ_52", name: "Královéhradecký kraj" },
+  { id: "CZ_53", name: "Pardubický kraj" },
+  { id: "CZ_63", name: "Kraj Vysočina" },
+  { id: "CZ_64", name: "Jihomoravský kraj" },
+  { id: "CZ_71", name: "Olomoucký kraj" },
+  { id: "CZ_72", name: "Zlínský kraj" },
+  { id: "CZ_80", name: "Moravskoslezský kraj" },
+];
