@@ -4,6 +4,8 @@ import {
   generateDetailedCountryData,
 } from "../data/countriesData";
 import { ELECTION_TYPES_BY_COUNTRY } from "../data/electionsData";
+import { LOBBYING_GROUPS } from "../data/lobbyingData";
+import { NEWS_OUTLETS } from "../data/newsData";
 import {
   generateFullCityData,
   generateInitialGovernmentOffices,
@@ -82,6 +84,8 @@ export const createCampaignSetupSlice = (set, get) => {
           viewingElectionNightForDate: null,
           newsAndEvents: [],
           availableCountries: availableCountriesData,
+          newsOutlets: NEWS_OUTLETS,
+          lobbyingGroups: LOBBYING_GROUPS,
         };
 
         get().actions.clearAllNews();

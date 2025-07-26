@@ -13,10 +13,6 @@
   border-bottom: 1px solid var(--border-color);
 }
 
-/* Add more shared styles for elements commonly used within tabs:
-   panels, data grids, lists, input sections, etc.
-*/
-
 @keyframes fadeInTabContent {
   from {
     opacity: 0;

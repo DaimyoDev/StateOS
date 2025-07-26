@@ -16,6 +16,7 @@ import { WORKER_FIST } from "./socialist/workerfist";
 import { BRAIN } from "./technocratic/brain";
 import { DNA } from "./transhumanist/dna";
 import { SNAKE } from "./libertarian/snake";
+import { ROSE } from "./socialDemocrat/rose";
 
 export const SYMBOLS = {
   socialist: [WORKER_FIST],
@@ -35,5 +36,6 @@ export const SYMBOLS = {
   pragmatist: [LIGHTBULB],
   transhumanist: [DNA],
   libertarian: [SNAKE],
+  social_democrat: [ROSE],
   default: [POL_COMPBALL],
 };

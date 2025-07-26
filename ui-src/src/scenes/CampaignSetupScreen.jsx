@@ -4,6 +4,7 @@ import JapanMap from "../maps/JapanMap";
 import PhilippinesMap from "../maps/PhilippinesMap";
 import UnitedStatesMap from "../maps/UnitedStatesMap";
 import AlabamaMap from "../maps/usaCounties/AlabamaMap";
+import ArkansasMap from "../maps/usaCounties/ArkansasMap";
 import ArizonaMap from "../maps/usaCounties/ArizonaMap";
 import ConnecticutMap from "../maps/usaCounties/ConnecticutMap";
 import CaliforniaMap from "../maps/usaCounties/CaliforniaMap";
@@ -277,6 +278,22 @@ function CampaignSetupScreen() {
                 </p>
                 <div className="map-render-wrapper">
                   <AlabamaMap
+                    onSelectCounty={(countyId) =>
+                      actions.setSelectedSecondAdminRegion(countyId)
+                    }
+                    selectedCountyGameId={selectedSecondAdminRegionId}
+                  />
+                </div>
+              </>
+            )}
+
+            {selectedRegionId === "USA_AR" && (
+              <>
+                <p className="map-instruction-cs">
+                  Now, select a starting county in Arizona.
+                </p>
+                <div className="map-render-wrapper">
+                  <ArkansasMap
                     onSelectCounty={(countyId) =>
                       actions.setSelectedSecondAdminRegion(countyId)
                     }

@@ -416,14 +416,6 @@ const baseCountriesData = [
     regions: [],
   },
   {
-    id: "VNM",
-    name: "Vietnam",
-    flag: "🇻🇳",
-    dominantIdeologies: ["Communist", "Nationalist"],
-    politicalSystem: "Single-Party Socialist Republic",
-    regions: [],
-  },
-  {
     id: "MYS",
     name: "Malaysia",
     flag: "🇲🇾",
