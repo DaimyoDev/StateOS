@@ -8,6 +8,42 @@ import ArkansasMap from "../maps/usaCounties/ArkansasMap";
 import ArizonaMap from "../maps/usaCounties/ArizonaMap";
 import ConnecticutMap from "../maps/usaCounties/ConnecticutMap";
 import CaliforniaMap from "../maps/usaCounties/CaliforniaMap";
+import ColoradoMap from "../maps/usaCounties/ColoradoMap";
+import DelawareMap from "../maps/usaCounties/DelwareMap";
+import FloridaMap from "../maps/usaCounties/FloridaMap";
+import GeorgiaMap from "../maps/usaCounties/GeorgiaMap";
+import IdahoMap from "../maps/usaCounties/IdahoMap";
+import IllinoisMap from "../maps/usaCounties/IllinoisMap";
+import IndianaMap from "../maps/usaCounties/IndianaMap";
+import IowaMap from "../maps/usaCounties/IowaMap";
+import KansasMap from "../maps/usaCounties/KansasMap";
+import KentuckyMap from "../maps/usaCounties/KentuckyMap";
+import LousianaMap from "../maps/usaCounties/LousianaMap";
+import MaineMap from "../maps/usaCounties/MaineMap";
+import MarylandMap from "../maps/usaCounties/MarylandMap";
+import MassachusettsMap from "../maps/usaCounties/MassachusettsMap";
+import MichiganMap from "../maps/usaCounties/MichiganMap";
+import MinnesotaMap from "../maps/usaCounties/MinnesotaMap";
+import MississippiMap from "../maps/usaCounties/MississippiMap";
+import MissouriMap from "../maps/usaCounties/MissouriMap";
+import MontanaMap from "../maps/usaCounties/MontanaMap";
+import NebraskaMap from "../maps/usaCounties/NebraskaMap";
+import NevadaMap from "../maps/usaCounties/NevadaMap";
+import NewHampshireMap from "../maps/usaCounties/NewHampshireMap";
+import NewJerseyMap from "../maps/usaCounties/NewJerseyMap";
+import NewMexicoMap from "../maps/usaCounties/NewMexicoMap";
+import NewYorkMap from "../maps/usaCounties/NewYorkMap";
+import NorthCarolinaMap from "../maps/usaCounties/NorthCarolinaMap";
+import NorthDakotaMap from "../maps/usaCounties/NorthDakotaMap";
+import OhioMap from "../maps/usaCounties/OhioMap";
+import OklahomaMap from "../maps/usaCounties/OklahomaMap";
+import OregonMap from "../maps/usaCounties/OregonMap";
+import PennyslvaniaMap from "../maps/usaCounties/PennsylvaniaMap";
+import RhodeIslandMap from "../maps/usaCounties/RhodeIslandMap";
+import SouthCarolinaMap from "../maps/usaCounties/SouthCarolinaMap";
+import SouthDakotaMap from "../maps/usaCounties/SouthDakotaMap";
+import TennesseeMap from "../maps/usaCounties/TennesseeMap";
+import TexasMap from "../maps/usaCounties/TexasMap";
 import SouthKoreaMap from "../maps/SouthKoreaMap";
 import GermanyMap from "../maps/GermanyMap";
 import CanadaMap from "../maps/CanadaMap";
@@ -342,6 +378,582 @@ function CampaignSetupScreen() {
                 </p>
                 <div className="map-render-wrapper">
                   <ConnecticutMap
+                    onSelectCounty={(countyId) =>
+                      actions.setSelectedSecondAdminRegion(countyId)
+                    }
+                    selectedCountyGameId={selectedSecondAdminRegionId}
+                  />
+                </div>
+              </>
+            )}
+
+            {selectedRegionId === "USA_CO" && (
+              <>
+                <p className="map-instruction-cs">
+                  Now, select a starting county in Colorado.
+                </p>
+                <div className="map-render-wrapper">
+                  <ColoradoMap
+                    onSelectCounty={(countyId) =>
+                      actions.setSelectedSecondAdminRegion(countyId)
+                    }
+                    selectedCountyGameId={selectedSecondAdminRegionId}
+                  />
+                </div>
+              </>
+            )}
+
+            {selectedRegionId === "USA_DE" && (
+              <>
+                <p className="map-instruction-cs">
+                  Now, select a starting county in Delaware.
+                </p>
+                <div className="map-render-wrapper">
+                  <DelawareMap
+                    onSelectCounty={(countyId) =>
+                      actions.setSelectedSecondAdminRegion(countyId)
+                    }
+                    selectedCountyGameId={selectedSecondAdminRegionId}
+                  />
+                </div>
+              </>
+            )}
+
+            {selectedRegionId === "USA_FL" && (
+              <>
+                <p className="map-instruction-cs">
+                  Now, select a starting county in Florida.
+                </p>
+                <div className="map-render-wrapper">
+                  <FloridaMap
+                    onSelectCounty={(countyId) =>
+                      actions.setSelectedSecondAdminRegion(countyId)
+                    }
+                    selectedCountyGameId={selectedSecondAdminRegionId}
+                  />
+                </div>
+              </>
+            )}
+
+            {selectedRegionId === "USA_GA" && (
+              <>
+                <p className="map-instruction-cs">
+                  Now, select a starting county in Georgia.
+                </p>
+                <div className="map-render-wrapper">
+                  <GeorgiaMap
+                    onSelectCounty={(countyId) =>
+                      actions.setSelectedSecondAdminRegion(countyId)
+                    }
+                    selectedCountyGameId={selectedSecondAdminRegionId}
+                  />
+                </div>
+              </>
+            )}
+
+            {selectedRegionId === "USA_ID" && (
+              <>
+                <p className="map-instruction-cs">
+                  Now, select a starting county in Idaho.
+                </p>
+                <div className="map-render-wrapper">
+                  <IdahoMap
+                    onSelectCounty={(countyId) =>
+                      actions.setSelectedSecondAdminRegion(countyId)
+                    }
+                    selectedCountyGameId={selectedSecondAdminRegionId}
+                  />
+                </div>
+              </>
+            )}
+
+            {selectedRegionId === "USA_IL" && (
+              <>
+                <p className="map-instruction-cs">
+                  Now, select a starting county in Illinois.
+                </p>
+                <div className="map-render-wrapper">
+                  <IllinoisMap
+                    onSelectCounty={(countyId) =>
+                      actions.setSelectedSecondAdminRegion(countyId)
+                    }
+                    selectedCountyGameId={selectedSecondAdminRegionId}
+                  />
+                </div>
+              </>
+            )}
+
+            {selectedRegionId === "USA_IN" && (
+              <>
+                <p className="map-instruction-cs">
+                  Now, select a starting county in Indiana.
+                </p>
+                <div className="map-render-wrapper">
+                  <IndianaMap
+                    onSelectCounty={(countyId) =>
+                      actions.setSelectedSecondAdminRegion(countyId)
+                    }
+                    selectedCountyGameId={selectedSecondAdminRegionId}
+                  />
+                </div>
+              </>
+            )}
+
+            {selectedRegionId === "USA_IA" && (
+              <>
+                <p className="map-instruction-cs">
+                  Now, select a starting county in Iowa.
+                </p>
+                <div className="map-render-wrapper">
+                  <IowaMap
+                    onSelectCounty={(countyId) =>
+                      actions.setSelectedSecondAdminRegion(countyId)
+                    }
+                    selectedCountyGameId={selectedSecondAdminRegionId}
+                  />
+                </div>
+              </>
+            )}
+
+            {selectedRegionId === "USA_KS" && (
+              <>
+                <p className="map-instruction-cs">
+                  Now, select a starting county in Kansas.
+                </p>
+                <div className="map-render-wrapper">
+                  <KansasMap
+                    onSelectCounty={(countyId) =>
+                      actions.setSelectedSecondAdminRegion(countyId)
+                    }
+                    selectedCountyGameId={selectedSecondAdminRegionId}
+                  />
+                </div>
+              </>
+            )}
+
+            {selectedRegionId === "USA_LA" && (
+              <>
+                <p className="map-instruction-cs">
+                  Now, select a starting county in LousianaMap.
+                </p>
+                <div className="map-render-wrapper">
+                  <LousianaMap
+                    onSelectCounty={(countyId) =>
+                      actions.setSelectedSecondAdminRegion(countyId)
+                    }
+                    selectedCountyGameId={selectedSecondAdminRegionId}
+                  />
+                </div>
+              </>
+            )}
+
+            {selectedRegionId === "USA_ME" && (
+              <>
+                <p className="map-instruction-cs">
+                  Now, select a starting county in Maine.
+                </p>
+                <div className="map-render-wrapper">
+                  <MaineMap
+                    onSelectCounty={(countyId) =>
+                      actions.setSelectedSecondAdminRegion(countyId)
+                    }
+                    selectedCountyGameId={selectedSecondAdminRegionId}
+                  />
+                </div>
+              </>
+            )}
+
+            {selectedRegionId === "USA_MD" && (
+              <>
+                <p className="map-instruction-cs">
+                  Now, select a starting county in Maryland.
+                </p>
+                <div className="map-render-wrapper">
+                  <MarylandMap
+                    onSelectCounty={(countyId) =>
+                      actions.setSelectedSecondAdminRegion(countyId)
+                    }
+                    selectedCountyGameId={selectedSecondAdminRegionId}
+                  />
+                </div>
+              </>
+            )}
+
+            {selectedRegionId === "USA_MA" && (
+              <>
+                <p className="map-instruction-cs">
+                  Now, select a starting county in Massachusetts.
+                </p>
+                <div className="map-render-wrapper">
+                  <MassachusettsMap
+                    onSelectCounty={(countyId) =>
+                      actions.setSelectedSecondAdminRegion(countyId)
+                    }
+                    selectedCountyGameId={selectedSecondAdminRegionId}
+                  />
+                </div>
+              </>
+            )}
+
+            {selectedRegionId === "USA_MI" && (
+              <>
+                <p className="map-instruction-cs">
+                  Now, select a starting county in Michigan.
+                </p>
+                <div className="map-render-wrapper">
+                  <MichiganMap
+                    onSelectCounty={(countyId) =>
+                      actions.setSelectedSecondAdminRegion(countyId)
+                    }
+                    selectedCountyGameId={selectedSecondAdminRegionId}
+                  />
+                </div>
+              </>
+            )}
+
+            {selectedRegionId === "USA_MN" && (
+              <>
+                <p className="map-instruction-cs">
+                  Now, select a starting county in Minnesota.
+                </p>
+                <div className="map-render-wrapper">
+                  <MinnesotaMap
+                    onSelectCounty={(countyId) =>
+                      actions.setSelectedSecondAdminRegion(countyId)
+                    }
+                    selectedCountyGameId={selectedSecondAdminRegionId}
+                  />
+                </div>
+              </>
+            )}
+
+            {selectedRegionId === "USA_MS" && (
+              <>
+                <p className="map-instruction-cs">
+                  Now, select a starting county in Mississippi.
+                </p>
+                <div className="map-render-wrapper">
+                  <MississippiMap
+                    onSelectCounty={(countyId) =>
+                      actions.setSelectedSecondAdminRegion(countyId)
+                    }
+                    selectedCountyGameId={selectedSecondAdminRegionId}
+                  />
+                </div>
+              </>
+            )}
+
+            {selectedRegionId === "USA_KY" && (
+              <>
+                <p className="map-instruction-cs">
+                  Now, select a starting county in Kentucky.
+                </p>
+                <div className="map-render-wrapper">
+                  <KentuckyMap
+                    onSelectCounty={(countyId) =>
+                      actions.setSelectedSecondAdminRegion(countyId)
+                    }
+                    selectedCountyGameId={selectedSecondAdminRegionId}
+                  />
+                </div>
+              </>
+            )}
+
+            {selectedRegionId === "USA_MO" && (
+              <>
+                <p className="map-instruction-cs">
+                  Now, select a starting county in Missouri.
+                </p>
+                <div className="map-render-wrapper">
+                  <MissouriMap
+                    onSelectCounty={(countyId) =>
+                      actions.setSelectedSecondAdminRegion(countyId)
+                    }
+                    selectedCountyGameId={selectedSecondAdminRegionId}
+                  />
+                </div>
+              </>
+            )}
+
+            {selectedRegionId === "USA_MT" && (
+              <>
+                <p className="map-instruction-cs">
+                  Now, select a starting county in Montana.
+                </p>
+                <div className="map-render-wrapper">
+                  <MontanaMap
+                    onSelectCounty={(countyId) =>
+                      actions.setSelectedSecondAdminRegion(countyId)
+                    }
+                    selectedCountyGameId={selectedSecondAdminRegionId}
+                  />
+                </div>
+              </>
+            )}
+
+            {selectedRegionId === "USA_NE" && (
+              <>
+                <p className="map-instruction-cs">
+                  Now, select a starting county in Nebraska.
+                </p>
+                <div className="map-render-wrapper">
+                  <NebraskaMap
+                    onSelectCounty={(countyId) =>
+                      actions.setSelectedSecondAdminRegion(countyId)
+                    }
+                    selectedCountyGameId={selectedSecondAdminRegionId}
+                  />
+                </div>
+              </>
+            )}
+
+            {selectedRegionId === "USA_NV" && (
+              <>
+                <p className="map-instruction-cs">
+                  Now, select a starting county in Nevada.
+                </p>
+                <div className="map-render-wrapper">
+                  <NevadaMap
+                    onSelectCounty={(countyId) =>
+                      actions.setSelectedSecondAdminRegion(countyId)
+                    }
+                    selectedCountyGameId={selectedSecondAdminRegionId}
+                  />
+                </div>
+              </>
+            )}
+
+            {selectedRegionId === "USA_NH" && (
+              <>
+                <p className="map-instruction-cs">
+                  Now, select a starting county in New Hampshire.
+                </p>
+                <div className="map-render-wrapper">
+                  <NewHampshireMap
+                    onSelectCounty={(countyId) =>
+                      actions.setSelectedSecondAdminRegion(countyId)
+                    }
+                    selectedCountyGameId={selectedSecondAdminRegionId}
+                  />
+                </div>
+              </>
+            )}
+
+            {selectedRegionId === "USA_NJ" && (
+              <>
+                <p className="map-instruction-cs">
+                  Now, select a starting county in New Jersey.
+                </p>
+                <div className="map-render-wrapper">
+                  <NewJerseyMap
+                    onSelectCounty={(countyId) =>
+                      actions.setSelectedSecondAdminRegion(countyId)
+                    }
+                    selectedCountyGameId={selectedSecondAdminRegionId}
+                  />
+                </div>
+              </>
+            )}
+
+            {selectedRegionId === "USA_NM" && (
+              <>
+                <p className="map-instruction-cs">
+                  Now, select a starting county in New Mexico.
+                </p>
+                <div className="map-render-wrapper">
+                  <NewMexicoMap
+                    onSelectCounty={(countyId) =>
+                      actions.setSelectedSecondAdminRegion(countyId)
+                    }
+                    selectedCountyGameId={selectedSecondAdminRegionId}
+                  />
+                </div>
+              </>
+            )}
+
+            {selectedRegionId === "USA_NY" && (
+              <>
+                <p className="map-instruction-cs">
+                  Now, select a starting county in New York.
+                </p>
+                <div className="map-render-wrapper">
+                  <NewYorkMap
+                    onSelectCounty={(countyId) =>
+                      actions.setSelectedSecondAdminRegion(countyId)
+                    }
+                    selectedCountyGameId={selectedSecondAdminRegionId}
+                  />
+                </div>
+              </>
+            )}
+
+            {selectedRegionId === "USA_NC" && (
+              <>
+                <p className="map-instruction-cs">
+                  Now, select a starting county in North Carolina.
+                </p>
+                <div className="map-render-wrapper">
+                  <NorthCarolinaMap
+                    onSelectCounty={(countyId) =>
+                      actions.setSelectedSecondAdminRegion(countyId)
+                    }
+                    selectedCountyGameId={selectedSecondAdminRegionId}
+                  />
+                </div>
+              </>
+            )}
+
+            {selectedRegionId === "USA_ND" && (
+              <>
+                <p className="map-instruction-cs">
+                  Now, select a starting county in North Dakota.
+                </p>
+                <div className="map-render-wrapper">
+                  <NorthDakotaMap
+                    onSelectCounty={(countyId) =>
+                      actions.setSelectedSecondAdminRegion(countyId)
+                    }
+                    selectedCountyGameId={selectedSecondAdminRegionId}
+                  />
+                </div>
+              </>
+            )}
+
+            {selectedRegionId === "USA_OH" && (
+              <>
+                <p className="map-instruction-cs">
+                  Now, select a starting county in Ohio.
+                </p>
+                <div className="map-render-wrapper">
+                  <OhioMap
+                    onSelectCounty={(countyId) =>
+                      actions.setSelectedSecondAdminRegion(countyId)
+                    }
+                    selectedCountyGameId={selectedSecondAdminRegionId}
+                  />
+                </div>
+              </>
+            )}
+
+            {selectedRegionId === "USA_OK" && (
+              <>
+                <p className="map-instruction-cs">
+                  Now, select a starting county in Oklahoma.
+                </p>
+                <div className="map-render-wrapper">
+                  <OklahomaMap
+                    onSelectCounty={(countyId) =>
+                      actions.setSelectedSecondAdminRegion(countyId)
+                    }
+                    selectedCountyGameId={selectedSecondAdminRegionId}
+                  />
+                </div>
+              </>
+            )}
+
+            {selectedRegionId === "USA_OR" && (
+              <>
+                <p className="map-instruction-cs">
+                  Now, select a starting county in Oregon.
+                </p>
+                <div className="map-render-wrapper">
+                  <OregonMap
+                    onSelectCounty={(countyId) =>
+                      actions.setSelectedSecondAdminRegion(countyId)
+                    }
+                    selectedCountyGameId={selectedSecondAdminRegionId}
+                  />
+                </div>
+              </>
+            )}
+
+            {selectedRegionId === "USA_PA" && (
+              <>
+                <p className="map-instruction-cs">
+                  Now, select a starting county in Pennyslvania.
+                </p>
+                <div className="map-render-wrapper">
+                  <PennyslvaniaMap
+                    onSelectCounty={(countyId) =>
+                      actions.setSelectedSecondAdminRegion(countyId)
+                    }
+                    selectedCountyGameId={selectedSecondAdminRegionId}
+                  />
+                </div>
+              </>
+            )}
+
+            {selectedRegionId === "USA_RI" && (
+              <>
+                <p className="map-instruction-cs">
+                  Now, select a starting county in Rhode Island.
+                </p>
+                <div className="map-render-wrapper">
+                  <RhodeIslandMap
+                    onSelectCounty={(countyId) =>
+                      actions.setSelectedSecondAdminRegion(countyId)
+                    }
+                    selectedCountyGameId={selectedSecondAdminRegionId}
+                  />
+                </div>
+              </>
+            )}
+
+            {selectedRegionId === "USA_SC" && (
+              <>
+                <p className="map-instruction-cs">
+                  Now, select a starting county in South Carolina.
+                </p>
+                <div className="map-render-wrapper">
+                  <SouthCarolinaMap
+                    onSelectCounty={(countyId) =>
+                      actions.setSelectedSecondAdminRegion(countyId)
+                    }
+                    selectedCountyGameId={selectedSecondAdminRegionId}
+                  />
+                </div>
+              </>
+            )}
+
+            {selectedRegionId === "USA_SD" && (
+              <>
+                <p className="map-instruction-cs">
+                  Now, select a starting county in South Dakota.
+                </p>
+                <div className="map-render-wrapper">
+                  <SouthDakotaMap
+                    onSelectCounty={(countyId) =>
+                      actions.setSelectedSecondAdminRegion(countyId)
+                    }
+                    selectedCountyGameId={selectedSecondAdminRegionId}
+                  />
+                </div>
+              </>
+            )}
+
+            {selectedRegionId === "USA_TN" && (
+              <>
+                <p className="map-instruction-cs">
+                  Now, select a starting county in Tennessee.
+                </p>
+                <div className="map-render-wrapper">
+                  <TennesseeMap
+                    onSelectCounty={(countyId) =>
+                      actions.setSelectedSecondAdminRegion(countyId)
+                    }
+                    selectedCountyGameId={selectedSecondAdminRegionId}
+                  />
+                </div>
+              </>
+            )}
+
+            {selectedRegionId === "USA_TX" && (
+              <>
+                <p className="map-instruction-cs">
+                  Now, select a starting county in Texas.
+                </p>
+                <div className="map-render-wrapper">
+                  <TexasMap
                     onSelectCounty={(countyId) =>
                       actions.setSelectedSecondAdminRegion(countyId)
                     }

@@ -1,7 +1,7 @@
 import { generateFullStateData } from "../entities/politicialEntities";
 import { chamberTiers } from "./chamberTiers";
 import { generateLegislativeDistrictsForCountry } from "../entities/districtGeneration";
-import { generateNationalParties } from "../entities/partyGeneration";
+import { generateNationalParties } from "../entities/personnel";
 import { japanPrefectures } from "./states/japanPrefectures";
 import { usaStates } from "./states/usaStates";
 import { usaCounties } from "./states/adminRegions2/usaCounties";

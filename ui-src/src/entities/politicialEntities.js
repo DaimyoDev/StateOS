@@ -53,6 +53,20 @@ export const createStateObject = (params = {}) => ({
   populationWeight: params.populationWeight || 1,
 });
 
+export const createGovernmentOffice = (params = {}) => ({
+  officeId: params.officeId || `office_${generateId()}`,
+  officeName: params.officeName || "Unnamed Office",
+  officeNameTemplateId: params.officeNameTemplateId || null,
+  level: params.level || "national",
+  countryId: params.countryId || null,
+  regionId: params.regionId || null,
+  cityId: params.cityId || null,
+  holder: params.holder || null,
+  members: params.members || [],
+  termEnds: params.termEnds || { year: 2025, month: 11, day: 1 },
+  numberOfSeatsToFill: params.numberOfSeatsToFill || 1,
+});
+
 // --- City Generation Logic ---
 
 const generateCityName = () => {
@@ -794,19 +808,18 @@ export const generateInitialGovernmentOffices = ({
 
     if (electionType.generatesOneWinner) {
       const holder = generateRandomOfficeHolder(
-        processedParties, // <-- Use the corrected variable
+        processedParties,
         officeName,
         countryData.id
       );
 
-      initialGovernmentOffices.push({
+      const office = createGovernmentOffice({
         officeId: `initial_${electionType.id}_${generateId()}`,
         officeName: officeName,
         officeNameTemplateId: electionType.id,
         level: electionType.level,
         cityId: city.id,
         holder: holder,
-        members: [],
         termEnds: {
           year: 2025 + termLength - 1,
           month: electionType.electionMonth || 11,
@@ -814,6 +827,7 @@ export const generateInitialGovernmentOffices = ({
         },
         numberOfSeatsToFill: 1,
       });
+      initialGovernmentOffices.push(office);
     } else {
       const numberOfSeats = calculateNumberOfSeats(
         electionType,
@@ -831,28 +845,25 @@ export const generateInitialGovernmentOffices = ({
             "PluralityMMD",
             "PartyListPR",
             "MMP",
-            "PartyListPR",
-            "MMP",
           ].includes(electionType.electoralSystem)
         ) {
           memberRoleTitle = `Member, ${officeName} (Seat ${i + 1})`;
         }
 
         const member = generateRandomOfficeHolder(
-          processedParties, // <-- Use the corrected variable
+          processedParties,
           memberRoleTitle,
           countryData.id
         );
         initialMembers.push(member);
       }
 
-      initialGovernmentOffices.push({
+      const office = createGovernmentOffice({
         officeId: `initial_${electionType.id}_${generateId()}`,
         officeName: officeName,
         officeNameTemplateId: electionType.id,
         level: electionType.level,
         cityId: city.id,
-        holder: null,
         members: initialMembers,
         termEnds: {
           year: 2025 + termLength - 1,
@@ -861,7 +872,13 @@ export const generateInitialGovernmentOffices = ({
         },
         numberOfSeatsToFill: numberOfSeats,
       });
+      initialGovernmentOffices.push(office);
     }
   });
   return initialGovernmentOffices;
+};
+
+export const updateGovernmentOffice = (existingOffice, updates) => {
+  const updatedOffice = { ...existingOffice, ...updates };
+  return updatedOffice;
 };

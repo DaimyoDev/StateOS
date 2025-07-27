@@ -1,7 +1,4 @@
 // src/entities/personnel.js
-// This file consolidates the creation and generation logic for personnel entities like politicians and parties.
-
-// NOTE: Import paths will need to be updated once the refactoring is complete.
 import {
   NAMES_BY_COUNTRY,
   GENERIC_FIRST_NAMES_MALE,
@@ -9,18 +6,103 @@ import {
   GENERIC_LAST_NAMES,
 } from "../data/namesData.js";
 import {
-  BASE_IDEOLOGIES,
   IDEOLOGY_KEYWORDS,
   GENERIC_ADJECTIVES,
   GENERIC_NOUNS,
   ABSTRACT_NOUNS,
   IDEOLOGY_DEFINITIONS,
+  BASE_IDEOLOGIES,
 } from "../data/ideologiesData.js";
 import { POLICY_QUESTIONS } from "../data/policyData.js";
-import { generateId, getRandomElement, getRandomInt } from "../utils/core.js";
+import {
+  distributeValueProportionally,
+  generateId,
+  getRandomElement,
+  getRandomInt,
+} from "../utils/core.js";
 import { calculateInitialPolling } from "../General Scripts/PollingFunctions.js";
+import { generateNuancedColor } from "../utils/generalUtils.js";
+import { generatePartyLogo } from "../utils/logoGenerator.js";
 
-// --- Ideology Calculation ---
+export const createPoliticianObject = (params = {}) => ({
+  id: params.id || `pol_${generateId()}`,
+  firstName: params.firstName || "John",
+  lastName: params.lastName || "Doe",
+  name:
+    params.name || `${params.firstName || "John"} ${params.lastName || "Doe"}`,
+  age: params.age || getRandomInt(30, 75),
+  gender: params.gender || (Math.random() < 0.5 ? "male" : "female"),
+  attributes: params.attributes || {
+    charisma: getRandomInt(1, 10),
+    integrity: getRandomInt(1, 10),
+    intelligence: getRandomInt(1, 10),
+    negotiation: getRandomInt(1, 10),
+    oratory: getRandomInt(1, 10),
+    fundraising: getRandomInt(1, 10),
+  },
+  policyStances: params.policyStances || {},
+  background: params.background || {
+    education: "Unknown",
+    career: "Unknown",
+    narrative: "A new face in politics.",
+  },
+  calculatedIdeology: params.calculatedIdeology || "Centrist",
+  ideologyScores: params.ideologyScores || {},
+  partyId: params.partyId || "independent",
+  partyName: params.partyName || "Independent",
+  partyColor: params.partyColor || "#888888",
+  isIncumbent: params.isIncumbent || false,
+  isPlayer: params.isPlayer || false,
+  politicalCapital: params.politicalCapital || getRandomInt(10, 50),
+  nameRecognition: params.nameRecognition || getRandomInt(100, 10000),
+  treasury: params.treasury || getRandomInt(1000, 20000),
+  campaignFunds: params.campaignFunds || getRandomInt(500, 10000),
+  approvalRating: params.approvalRating || getRandomInt(40, 70),
+  mediaBuzz: params.mediaBuzz || getRandomInt(0, 30),
+  partySupport: params.partySupport || 0,
+  currentOffice: params.currentOffice || null,
+  campaignHoursPerDay: params.campaignHoursPerDay || 0,
+  campaignHoursRemainingToday: params.campaignHoursRemainingToday || 0,
+  hiredStaff: params.hiredStaff || [],
+  volunteerCount: params.volunteerCount || 0,
+  advertisingBudgetMonthly: params.advertisingBudgetMonthly || 0,
+  currentAdStrategy: params.currentAdStrategy || {
+    focus: "none",
+    targetId: null,
+    intensity: 0,
+  },
+  isInCampaign: params.isInCampaign || false,
+  polling: params.polling || 0,
+});
+
+export const createPartyObject = (params = {}) => ({
+  id: params.id || `party_${generateId()}`,
+  name: params.name || "New Party",
+  shortName: params.shortName || "",
+  countryId: params.countryId || null,
+  ideology: params.ideology || "Centrist",
+  ideologyId: params.ideologyId || "centrist",
+  ideologyScores: params.ideologyScores || {},
+  color: params.color || "#CCCCCC",
+  logoDataUrl: params.logoDataUrl || null,
+  foundingYear: params.foundingYear || new Date().getFullYear(),
+  nationalPopularity: params.nationalPopularity || 0,
+  regionalPopularity: params.regionalPopularity || {},
+  members: params.members || [],
+  financialStanding: params.financialStanding || 0,
+  mediaBias: params.mediaBias || 0,
+  platform: params.platform || [],
+  factions: params.factions,
+});
+
+export const createFactionObject = (params = {}) => ({
+  id: `faction_${generateId()}`,
+  name: params.name || "Unnamed Faction",
+  ideology: params.ideology || "Centrism",
+  influence: params.influence || getRandomInt(10, 40),
+  leader: params.leader || null,
+  membbers: params.members || [],
+});
 
 /**
  * Calculates the squared Euclidean distance between two ideology score objects.
@@ -508,3 +590,155 @@ export function generateFullAIPolitician(
 
   return newPolitician;
 }
+
+/**
+ * Generates a set of internal factions for a political party based on its main ideology.
+ * @param {string} partyIdeology - The main ideology of the parent party.
+ * @returns {Array<object>} An array of generated faction objects.
+ */
+export const generateFactionsForParty = (partyIdeology) => {
+  const factions = [];
+  const numFactions = getRandomInt(2, 4);
+
+  const ideologyKey = Object.keys(IDEOLOGY_DEFINITIONS).find(
+    (key) => IDEOLOGY_DEFINITIONS[key].name === partyIdeology
+  );
+  const mainIdeologyDetails = ideologyKey
+    ? IDEOLOGY_DEFINITIONS[ideologyKey]
+    : {};
+  const relatedIdeologies = mainIdeologyDetails.related || [];
+
+  const factionNameTemplates = {
+    moderate: ["Moderates", "Centrist Wing", "Pragmatists"],
+    radical: ["Hardliners", "Radical Wing", "True Believers"],
+    specific: [
+      "{ideology} Democrats",
+      "{ideology} Action Group",
+      "Friends of {ideology}",
+    ],
+  };
+
+  let availableIdeologies = [...relatedIdeologies];
+
+  // Ensure there's a moderate or pragmatist faction
+  factions.push(
+    createFactionObject({
+      name: getRandomElement(factionNameTemplates.moderate),
+      ideology: partyIdeology, // Represents the core, moderate view of the party ideology
+      influence: getRandomInt(25, 50),
+    })
+  );
+
+  for (let i = 1; i < numFactions; i++) {
+    if (availableIdeologies.length > 0) {
+      const ideology = getRandomElement(availableIdeologies);
+      // Prevent duplicates
+      availableIdeologies = availableIdeologies.filter(
+        (item) => item !== ideology
+      );
+
+      const name = getRandomElement(factionNameTemplates.specific).replace(
+        "{ideology}",
+        ideology
+      );
+      factions.push(createFactionObject({ name, ideology }));
+    } else {
+      // If no related ideologies are left, create a radical faction
+      factions.push(
+        createFactionObject({
+          name: getRandomElement(factionNameTemplates.radical),
+          ideology: partyIdeology, // Radicals often see themselves as the purest form
+        })
+      );
+      break; // Stop after adding a radical faction if we're out of specifics
+    }
+  }
+
+  // Normalize influence so it sums to 100
+  const influences = distributeValueProportionally(100, factions.length);
+  return factions.map((faction, index) => {
+    faction.influence = influences[index];
+    return faction;
+  });
+};
+
+/**
+ * Generates a list of national political parties for a given country.
+ * @param {object} params - The parameters for party generation.
+ * @param {string} params.countryId - The ID of the country.
+ * @param {Array<string>} params.dominantIdeologies - A list of dominant ideology names.
+ * @param {string} params.countryName - The name of the country.
+ * @returns {Array<object>} A list of fully-formed party objects.
+ */
+export const generateNationalParties = ({
+  countryId,
+  dominantIdeologies,
+  countryName,
+}) => {
+  let parties = [];
+  const numDominantIdeologies = dominantIdeologies?.length || 0;
+  const numMinorityParties = getRandomInt(1, 3);
+  const numParties = numDominantIdeologies + numMinorityParties;
+
+  const minorityIdeologies = BASE_IDEOLOGIES.filter(
+    (ideo) => !dominantIdeologies.includes(ideo.name)
+  );
+  const availableIdeologies = BASE_IDEOLOGIES.filter((ideo) =>
+    dominantIdeologies.includes(ideo.name)
+  );
+
+  for (let i = 0; i < numMinorityParties; i++) {
+    if (minorityIdeologies.length > 0) {
+      const randomIndex = Math.floor(Math.random() * minorityIdeologies.length);
+      const fringeIdeology = minorityIdeologies.splice(randomIndex, 1)[0];
+      availableIdeologies.push(fringeIdeology);
+    }
+  }
+
+  for (let i = 0; i < numParties; i++) {
+    if (availableIdeologies.length === 0) break;
+
+    const ideologyIndex = Math.floor(
+      Math.random() * availableIdeologies.length
+    );
+    const selectedIdeologyObject = availableIdeologies.splice(
+      ideologyIndex,
+      1
+    )[0];
+    const partyIdeologyName = selectedIdeologyObject.name;
+    const partyIdeologyId = selectedIdeologyObject.id;
+    const baseColor = selectedIdeologyObject.color || "#808080";
+    const partyColor = generateNuancedColor(
+      baseColor,
+      getRandomInt(0, 100),
+      getRandomInt(0, 100),
+      getRandomInt(0, 100)
+    );
+    const partyName = generateNewPartyName(partyIdeologyName, countryName);
+
+    // CORRECTED: Call the logo generator and store its result.
+    const logoDataUrl = generatePartyLogo({
+      primaryColor: baseColor,
+      ideologyId: partyIdeologyId,
+      level: "national",
+      partyName: partyName,
+    });
+
+    const factions = generateFactionsForParty(partyIdeologyName);
+
+    const newParty = createPartyObject({
+      id: `gen_party_${countryId}_${i}_${generateId()}`,
+      name: partyName,
+      ideology: partyIdeologyName,
+      ideologyId: partyIdeologyId, // CORRECTED: Pass the explicit ID
+      color: partyColor,
+      logoDataUrl: logoDataUrl, // CORRECTED: Pass the generated logo
+      countryId: countryId,
+      factions: factions,
+    });
+
+    parties.push(newParty);
+  }
+
+  return initializePartyIdeologyScores(parties, IDEOLOGY_DEFINITIONS);
+};

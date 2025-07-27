@@ -4,13 +4,21 @@ import {
   generateDetailedCountryData,
 } from "../data/countriesData";
 import { ELECTION_TYPES_BY_COUNTRY } from "../data/electionsData";
-import { LOBBYING_GROUPS } from "../data/lobbyingData";
-import { NEWS_OUTLETS } from "../data/newsData";
+// REMOVED: Old static data imports
+// import { LOBBYING_GROUPS } from "../data/lobbyingData";
+// import { NEWS_OUTLETS } from "../data/newsData";
 import {
   generateFullCityData,
   generateInitialGovernmentOffices,
 } from "../entities/politicialEntities";
 import { assignPopulationToCountry } from "../utils/populationUtils";
+
+// ADDED: Import the new generator functions and their dependencies
+import {
+  generateNewsOutlets,
+  generateInitialLobbyingGroups,
+} from "../entities/organizationEntities";
+import { POLICY_QUESTIONS } from "../data/policyData";
 
 export const createCampaignSetupSlice = (set, get) => {
   return {
@@ -26,7 +34,7 @@ export const createCampaignSetupSlice = (set, get) => {
           get().actions.getCurrentlyCreatingPolitician?.() ||
           get().savedPoliticians?.find(
             (p) => p.id === setupState.selectedPoliticianId
-          ); // Get player data
+          );
 
         if (
           !cityName?.trim() ||
@@ -57,6 +65,13 @@ export const createCampaignSetupSlice = (set, get) => {
           (c) => c.id === setupState.selectedCountryId
         );
 
+        const currentRegionData = currentCountryData.regions.find(
+          (region) => region.id === setupState.selectedRegionId
+        );
+        const regionalLocationName = currentRegionData
+          ? currentRegionData.name
+          : "the Region";
+
         const initialGovernmentOffices = generateInitialGovernmentOffices({
           countryElectionTypes:
             ELECTION_TYPES_BY_COUNTRY[setupState.selectedCountryId] || [],
@@ -64,10 +79,31 @@ export const createCampaignSetupSlice = (set, get) => {
           countryData: currentCountryData,
           regionId: setupState.selectedRegionId,
           availableParties: setupState.generatedPartiesInCountry,
-          currentYear: 2025, // or get from a central source
+          currentYear: 2025,
         });
 
         playerPoliticianData.campaignFunds = 10000;
+
+        // --- NEW: Dynamically generate news and lobbying ---
+        const nationalNews = generateNewsOutlets({
+          level: "national",
+          parties: setupState.generatedPartiesInCountry,
+          locationName: currentCountryData.name,
+          countryId: setupState.selectedCountryId,
+        });
+        const regionalNews = generateNewsOutlets({
+          level: "regional",
+          parties: setupState.regionPoliticalLandscape,
+          locationName: regionalLocationName,
+          countryId: setupState.selectedCountryId,
+        });
+
+        const allNewsOutlets = [...nationalNews, ...regionalNews];
+        const allLobbyingGroups = generateInitialLobbyingGroups(
+          POLICY_QUESTIONS,
+          setupState.selectedCountryId
+        );
+        // --- END NEW ---
 
         const newActiveCampaign = {
           politician: { ...playerPoliticianData },
@@ -84,16 +120,16 @@ export const createCampaignSetupSlice = (set, get) => {
           viewingElectionNightForDate: null,
           newsAndEvents: [],
           availableCountries: availableCountriesData,
-          newsOutlets: NEWS_OUTLETS,
-          lobbyingGroups: LOBBYING_GROUPS,
+          newsOutlets: allNewsOutlets,
+          lobbyingGroups: allLobbyingGroups,
         };
 
         get().actions.clearAllNews();
         set({ activeCampaign: newActiveCampaign });
         get().actions.navigateTo("CampaignGameScreen");
         get().actions.setActiveMainGameTab("Dashboard");
-        get().actions.resetCampaignSetup?.(); // Action from campaignSetupSlice (future)
-        get().actions.generateScheduledElections(); // from electionSlice
+        get().actions.resetCampaignSetup?.();
+        get().actions.generateScheduledElections();
         get().actions.resetLegislationState();
       },
       loadCountries: () => set({ availableCountries: BASE_COUNTRIES_DATA }),
@@ -118,20 +154,14 @@ export const createCampaignSetupSlice = (set, get) => {
 
           let countryToProcess = JSON.parse(JSON.stringify(selectedCountry));
 
-          // --- THE UNIFIED PIPELINE ---
-          // 1. Assign Population: Create a fresh copy and assign populations.
           let processedCountry = assignPopulationToCountry(
-            { ...countryToProcess }, // Use a copy to avoid state mutation issues
+            { ...countryToProcess },
             DEFAULT_COUNTRY_POPULATION_RANGES
           );
 
-          // 2. Generate Districts, State Stats, and Political Landscapes
           processedCountry = generateDetailedCountryData(processedCountry);
-
-          // 3. Mark as processed to prevent re-doing the work
           processedCountry.isProcessed = true;
 
-          // 4. Update the state with the fully processed country object
           const updatedCountries = state.availableCountries.map((c) =>
             c.id === countryId ? processedCountry : c
           );

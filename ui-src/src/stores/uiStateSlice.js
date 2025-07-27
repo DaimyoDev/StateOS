@@ -241,5 +241,12 @@ export const createUISlice = (set, get) => ({
         policyVoteDetailsData: null,
       });
     },
+    setViewedEntity: (id, type) => {
+      set({ viewedEntity: { id, type } });
+    },
+
+    clearViewedEntity: () => {
+      set({ viewedEntity: { id: null, type: null } });
+    },
   },
 });

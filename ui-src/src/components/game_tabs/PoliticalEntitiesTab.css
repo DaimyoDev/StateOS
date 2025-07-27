@@ -1,65 +1,201 @@
-/* Example additions for ui-src/src/components/game_tabs/TabStyles.css or a new PoliticalEntitiesTab.css */
+/* ui-src/src/components/game_tabs/PoliticalEntitiesTab.css */
 
-.political-entities-tab-content {
-  padding: 20px;
-  /* Add more specific padding or layout for this tab if different from others */
+.political-entities-tab-content h2 {
+  font-family: var(--font-heading);
+  color: var(--accent-color);
+  font-size: 1.8em;
+  margin-bottom: 5px;
+  text-align: left;
 }
 
-.tab-description {
-  font-style: italic;
-  margin-bottom: 25px;
-  color: #ccc; /* Lighter text for description */
+.political-entities-tab-content .tab-description {
+  text-align: left;
+  margin-bottom: 30px;
+  color: var(--secondary-text);
+  font-size: 1em;
 }
 
 .entity-category {
-  margin-bottom: 40px;
+  margin-bottom: 30px;
+  text-align: left;
 }
 
 .entity-category h3 {
-  border-bottom: 2px solid #555;
-  padding-bottom: 10px;
-  margin-bottom: 20px;
-  color: #fff;
-  font-size: 1.6em;
+  font-family: var(--font-heading);
+  color: var(--primary-text);
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 8px;
+  margin-bottom: 15px;
 }
 
 .entity-list {
   display: grid;
-  grid-template-columns: repeat(
-    auto-fit,
-    minmax(280px, 1fr)
-  ); /* Responsive grid */
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 20px;
 }
 
 .entity-card {
-  background-color: #2a2a2a; /* Slightly lighter than main background */
-  border: 1px solid #444;
-  border-radius: 8px;
-  padding: 20px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-  transition: transform 0.2s ease-in-out;
+  background-color: var(--secondary-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--element-radius);
+  padding: 15px;
+  box-shadow: var(--panel-shadow);
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
 }
 
-.entity-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.5);
+.entity-card.clickable:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  border-color: var(--accent-color);
 }
 
 .entity-card h4 {
-  color: #1abc9c; /* Highlight color for names */
   margin-top: 0;
   margin-bottom: 10px;
-  font-size: 1.3em;
+  font-size: 1.1em;
 }
 
 .entity-card p {
-  font-size: 0.95em;
-  line-height: 1.5;
-  color: #e0e0e0;
-  margin-bottom: 8px;
+  margin: 0 0 5px 0;
+  font-size: 0.9em;
+  color: var(--secondary-text);
 }
 
-.entity-card p strong {
-  color: #f39c12;
+.party-header {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.party-logo {
+  width: 70px; /* Increased from 50px */
+  height: 70px; /* Increased from 50px */
+  border-radius: var(--element-radius); /* Changed to match other elements */
+  object-fit: cover;
+  background-color: var(--primary-bg);
+  border: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+/* --- Detail View Styles --- */
+
+.back-button {
+  margin-bottom: 20px;
+  align-self: flex-start;
+}
+
+.entity-detail-view {
+  text-align: left;
+  animation: fadeInTabContent 0.3s ease-out;
+}
+
+.detail-header {
+  background-color: var(--secondary-bg);
+  padding: 20px;
+  border-radius: var(--element-radius);
+  margin-bottom: 25px;
+  border-left: 5px solid var(--accent-color); /* Default border color */
+  display: flex;
+  align-items: center;
+}
+
+.detail-header h1 {
+  margin: 0 0 5px 0;
+  font-size: 2.2em;
+  color: var(--accent-color);
+}
+
+.detail-header p {
+  margin: 0;
+  font-size: 1.1em;
+  color: var(--secondary-text);
+}
+
+.party-logo-large {
+  width: 120px; /* Increased from 80px */
+  height: 120px; /* Increased from 80px */
+  border-radius: var(--element-radius);
+  margin-right: 25px;
+  flex-shrink: 0;
+  border: 1px solid var(--border-color);
+}
+
+.detail-section {
+  margin-bottom: 25px;
+}
+
+.detail-section h2 {
+  font-size: 1.5em;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 5px;
+  margin-bottom: 15px;
+}
+
+.faction-detail-card,
+.staff-detail-card {
+  background-color: var(--secondary-bg);
+  padding: 12px;
+  border-radius: var(--element-radius);
+  border: 1px solid var(--border-color);
+}
+
+.faction-detail-card h4,
+.staff-detail-card h4 {
+  margin: 0 0 8px 0;
+}
+
+.faction-detail-card p,
+.staff-detail-card p {
+  margin: 0;
+  font-size: 0.9em;
+  color: var(--secondary-text);
+}
+
+.lobby-details ul {
+  padding-left: 20px;
+  margin-top: 5px;
+  margin-bottom: 10px;
+}
+
+.lobby-details li {
+  margin-bottom: 4px;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 15px;
+}
+
+.news-feed-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.news-article-card {
+  background-color: var(--secondary-bg);
+  border-left: 3px solid var(--accent-color);
+  padding: 15px;
+  border-radius: var(--element-radius);
+}
+
+.news-article-card h4 {
+  margin: 0 0 8px 0;
+  font-family: var(--font-heading);
+}
+
+.article-summary {
+  margin: 0 0 10px 0;
+  color: var(--secondary-text);
+}
+
+.article-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8em;
+  color: var(--secondary-text);
+  opacity: 0.8;
 }

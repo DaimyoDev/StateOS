@@ -87,35 +87,48 @@ export const createLegislationSlice = (set, get) => ({
         );
         if (!proposal) return state;
 
-        const councilOffice = state.activeCampaign.governmentOffices.find(
-          (
-            o //
-          ) => o.officeNameTemplateId?.includes("council")
+        const councilOffice = state.activeCampaign.governmentOffices.find((o) =>
+          o.officeNameTemplateId?.includes("council")
         );
-        const councilSize = councilOffice?.members?.length || 1; //
+        const councilSize = councilOffice?.members?.length || 1;
         const majorityNeeded = Math.floor(councilSize / 2) + 1;
         const yeaVotes = proposal.votes.yea?.length || 0;
+        const nayVotes = proposal.votes.nay?.length || 0;
         const policyDidPass = yeaVotes >= majorityNeeded;
 
         let newActiveList = [...state.activeLegislation];
         if (policyDidPass) {
           const policyDef = CITY_POLICIES.find(
             (p) => p.id === proposal.policyId
-          ); //
+          );
           newActiveList.push({
             id: `active_${proposal.id}`,
             policyId: proposal.policyId,
             policyName: proposal.policyName,
             dateEnacted: { ...state.activeCampaign.currentDate },
-            monthsUntilEffective: policyDef.durationToImplement || 0, //
+            monthsUntilEffective: policyDef.durationToImplement || 0,
             effectsApplied: false,
-            effects: policyDef.effects, //
+            effects: policyDef.effects,
             proposerId: proposal.proposerId,
             isParameterized: proposal.isParameterized,
             parameterDetails: proposal.parameterDetails,
             chosenParameters: proposal.chosenParameters,
           });
         }
+
+        // --- NEW: Generate news from all outlets about this vote ---
+        const newsEvent = {
+          type: "policy_vote",
+          context: {
+            policyId: proposal.policyId,
+            policyName: proposal.policyName,
+            didPass: policyDidPass,
+            yeaVotes: yeaVotes,
+            nayVotes: nayVotes,
+          },
+        };
+        get().actions.generateAndAddNewsForAllOutlets(newsEvent);
+        // --- END NEW ---
 
         get().actions.addToast?.({
           message: `Vote Finalized: "${proposal.policyName}" has ${

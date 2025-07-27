@@ -29,6 +29,41 @@ import {
   FRENCH_FEMALE_NAMES,
   FRENCH_LAST_NAMES,
 } from "./names/frenchNames";
+import {
+  SPANISH_MALE_NAMES,
+  SPANISH_FEMALE_NAMES,
+  SPANISH_LAST_NAMES,
+} from "./names/spanishNames";
+import {
+  ITALIAN_MALE_NAMES,
+  ITALIAN_FEMALE_NAMES,
+  ITALIAN_LAST_NAMES,
+} from "./names/italianNames";
+import {
+  POLISH_MALE_NAMES,
+  POLISH_FEMALE_NAMES,
+  POLISH_LAST_NAMES,
+} from "./names/polishNames";
+import {
+  SWEDISH_MALE_NAMES,
+  SWEDISH_FEMALE_NAMES,
+  SWEDISH_LAST_NAMES,
+} from "./names/swedishNames";
+import {
+  PORTUGUESE_MALE_NAMES,
+  PORTUGUESE_FEMALE_NAMES,
+  PORTUGUESE_LAST_NAMES,
+} from "./names/portugueseNames";
+import {
+  INDONESIAN_MALE_NAMES,
+  INDONESIAN_FEMALE_NAMES,
+  INDONESIAN_LAST_NAMES,
+} from "./names/indonesianNames";
+import {
+  INDIAN_MALE_NAMES,
+  INDIAN_FEMALE_NAMES,
+  INDIAN_LAST_NAMES,
+} from "./names/indianNames";
 
 export const NAMES_BY_COUNTRY = {
   JPN: {
@@ -70,6 +105,56 @@ export const NAMES_BY_COUNTRY = {
     male: FRENCH_MALE_NAMES,
     female: FRENCH_FEMALE_NAMES,
     last: FRENCH_LAST_NAMES,
+  },
+  ARG: {
+    male: SPANISH_MALE_NAMES,
+    female: SPANISH_MALE_NAMES,
+    last: SPANISH_LAST_NAMES,
+  },
+  GRB: {
+    male: ENGLISH_MALE_NAMES,
+    female: SPANISH_FEMALE_NAMES,
+    last: SPANISH_LAST_NAMES,
+  },
+  ITA: {
+    male: ITALIAN_MALE_NAMES,
+    female: ITALIAN_FEMALE_NAMES,
+    last: ITALIAN_LAST_NAMES,
+  },
+  ESP: {
+    male: SPANISH_MALE_NAMES,
+    female: SPANISH_FEMALE_NAMES,
+    last: SPANISH_LAST_NAMES,
+  },
+  POL: {
+    male: POLISH_MALE_NAMES,
+    female: POLISH_FEMALE_NAMES,
+    last: POLISH_LAST_NAMES,
+  },
+  SWE: {
+    male: SWEDISH_MALE_NAMES,
+    female: SWEDISH_FEMALE_NAMES,
+    last: SWEDISH_LAST_NAMES,
+  },
+  BRA: {
+    male: PORTUGUESE_MALE_NAMES,
+    female: PORTUGUESE_FEMALE_NAMES,
+    last: PORTUGUESE_LAST_NAMES,
+  },
+  IND: {
+    male: INDIAN_MALE_NAMES,
+    female: INDIAN_FEMALE_NAMES,
+    last: INDIAN_LAST_NAMES,
+  },
+  MEX: {
+    male: SPANISH_MALE_NAMES,
+    female: SPANISH_FEMALE_NAMES,
+    last: SPANISH_LAST_NAMES,
+  },
+  IDN: {
+    male: INDONESIAN_MALE_NAMES,
+    female: INDONESIAN_FEMALE_NAMES,
+    last: INDONESIAN_LAST_NAMES,
   },
 };
 
