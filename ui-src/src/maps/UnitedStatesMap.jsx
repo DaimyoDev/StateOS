@@ -1,5 +1,7 @@
-import React from "react";
+import { React, useMemo, useState } from "react";
 import "./JapanMap.css";
+import useGameStore from "../store";
+import { parseColor } from "../utils/core";
 
 const STATE_DATA = {
   MA: { gameId: "USA_MA", name: "Massachusetts" },
@@ -55,39 +57,96 @@ const STATE_DATA = {
   AK: { gameId: "USA_AK", name: "Alaska" },
 };
 
-function UnitedStatesMap({ onSelectState, selectedStateGameId }) {
+// --- (STATE_DATA and yourSvgPathData objects remain at the top of the file, unchanged) ---
+
+function UnitedStatesMap({
+  onSelectState,
+  selectedStateGameId,
+  heatmapData,
+  viewType,
+}) {
+  const [hoveredStateId, setHoveredStateId] = useState(null);
+
+  // --- NEW: Get the current theme from the store ---
+  const currentTheme = useGameStore(
+    (state) => state.availableThemes[state.activeThemeName]
+  );
+  const themeColors = currentTheme?.colors || {};
+
+  // --- NEW: Define map colors based on the theme, with fallbacks ---
+  const defaultFillColor = themeColors["--border-color"] || "#cccccc";
+  const hoverFillColor = themeColors["--accent-color"] || "#FFD700";
+  const heatMapStartColor = parseColor(
+    themeColors["--ui-panel-bg"] || "rgb(230, 240, 255)"
+  );
+  const heatMapEndColor = parseColor(
+    themeColors["--accent-color"] || "rgb(5, 48, 97)"
+  );
+
   const handleStateClick = (svgId) => {
-    const state = STATE_DATA[svgId];
-    if (state && onSelectState) {
-      onSelectState(state.gameId, state.name);
-    } else {
-      console.warn(`No game data found for SVG ID: ${svgId}`);
+    if (onSelectState) {
+      const state = STATE_DATA[svgId];
+      if (state) {
+        onSelectState(state.gameId, state.name);
+      }
     }
   };
 
-  const renderStatePath = (svgId) => {
+  const { min, max } = useMemo(() => {
+    if (!heatmapData || viewType === "party_popularity")
+      return { min: 0, max: 1 };
+    const values = heatmapData
+      .map((d) => d.value)
+      .filter((v) => typeof v === "number");
+    if (values.length === 0) return { min: 0, max: 1 };
+    return { min: Math.min(...values), max: Math.max(...values) };
+  }, [heatmapData, viewType]);
+
+  const getStateStyle = (svgId) => {
     const stateInfo = STATE_DATA[svgId];
-    if (!stateInfo) return null;
+    if (!stateInfo) return {};
 
-    const pathD = yourSvgPathData[svgId];
+    const style = {
+      stroke: "#fff",
+      strokeWidth: "1px",
+      fill: defaultFillColor, // Use theme-based default
+      cursor: onSelectState ? "pointer" : "default",
+      transition: "fill 0.2s ease-in-out",
+    };
 
-    if (!pathD) {
-      console.warn(`Path data (d attribute) missing for ${svgId}`);
-      return null;
+    if (hoveredStateId === stateInfo.gameId) {
+      style.fill = hoverFillColor; // Use theme-based hover color
+    } else {
+      const data = heatmapData?.find((d) => d.id === stateInfo.gameId);
+      if (data) {
+        if (viewType === "party_popularity") {
+          style.fill = data.color || defaultFillColor;
+        } else if (typeof data.value === "number") {
+          const ratio = max > min ? (data.value - min) / (max - min) : 0;
+          // Use theme-based start and end colors for the heat map
+          const r = Math.round(
+            heatMapStartColor.r +
+              (heatMapEndColor.r - heatMapStartColor.r) * ratio
+          );
+          const g = Math.round(
+            heatMapStartColor.g +
+              (heatMapEndColor.g - heatMapStartColor.g) * ratio
+          );
+          const b = Math.round(
+            heatMapStartColor.b +
+              (heatMapEndColor.b - heatMapStartColor.b) * ratio
+          );
+          style.fill = `rgb(${r}, ${g}, ${b})`;
+        }
+      }
     }
 
-    return (
-      <path
-        key={svgId} // React key
-        id={svgId}
-        title={stateInfo.name}
-        className={`prefecture-path ${
-          selectedStateGameId === stateInfo.gameId ? "selected" : ""
-        }`}
-        onClick={() => handleStateClick(svgId)}
-        d={pathD}
-      />
-    );
+    if (onSelectState && selectedStateGameId === stateInfo.gameId) {
+      style.stroke = "yellow"; // Selection highlight can remain a distinct color
+      style.strokeWidth = "3px";
+    }
+
+    return style;
   };
 
   const yourSvgPathData = {
@@ -204,12 +263,28 @@ function UnitedStatesMap({ onSelectState, selectedStateGameId }) {
       version="1.0"
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 1000 589"
-      className="interactive-japan-map"
       preserveAspectRatio="xMidYMid meet"
+      // --- FIX: Event handler moved here ---
+      onMouseLeave={() => setHoveredStateId(null)}
     >
       <g id="usa-states-group">
-        {" "}
-        {stateOrderFromSVG.map((svgId) => renderStatePath(svgId))}
+        {stateOrderFromSVG.map((svgId) => {
+          const stateInfo = STATE_DATA[svgId];
+          const pathD = yourSvgPathData[svgId];
+          if (!stateInfo || !pathD) return null;
+
+          return (
+            <path
+              key={svgId}
+              id={svgId}
+              title={stateInfo.name}
+              style={getStateStyle(svgId)}
+              onClick={() => handleStateClick(svgId)}
+              onMouseEnter={() => setHoveredStateId(stateInfo.gameId)}
+              d={pathD}
+            />
+          );
+        })}
       </g>
     </svg>
   );

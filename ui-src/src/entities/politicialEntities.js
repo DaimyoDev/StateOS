@@ -68,6 +68,43 @@ export const createGovernmentOffice = (params = {}) => ({
   numberOfSeatsToFill: params.numberOfSeatsToFill || 1,
 });
 
+export const generateFullSecondAdminRegionData = (params = {}) => {
+  const { baseRegionData, parentStateData, countryId } = params;
+
+  // Use the population from the static file (e.g., usaCounties.js)
+  const population = baseRegionData.population || getRandomInt(10000, 100000);
+
+  // Generate demographics and economic profile, potentially influenced by the parent state
+  const demographics = generateCityDemographics(); // Can reuse city logic for this
+  const economicProfile = generateEconomicProfile(population, demographics);
+
+  // Adjust GDP per capita to be relative to the parent state's average
+  if (parentStateData?.economicProfile?.gdpPerCapita) {
+    const stateGdpPerCapita = parentStateData.economicProfile.gdpPerCapita;
+    economicProfile.gdpPerCapita = Math.round(
+      stateGdpPerCapita * (getRandomInt(80, 115) / 100)
+    );
+  }
+
+  const stats = generateInitialCityStats(
+    population,
+    demographics,
+    economicProfile
+  );
+
+  // Create the final object
+  return {
+    ...baseRegionData, // Includes id, name, stateId from the original file
+    countryId: countryId,
+    population,
+    demographics,
+    economicProfile,
+    stats,
+    // Note: Laws would likely be inherited from the state or country level
+    // and are not generated here for simplicity.
+  };
+};
+
 // --- City Generation Logic ---
 
 const generateCityName = () => {

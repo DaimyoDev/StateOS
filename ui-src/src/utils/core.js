@@ -320,3 +320,43 @@ export const normalizeArrayBySum = (data, targetSum, precision = 2) => {
     return resultObject;
   }
 };
+
+/**
+ * Parses a CSS color string (hex or rgb) into an RGB object.
+ * @param {string} colorString - The color string (e.g., "#FFF", "#AABBCC", "rgb(10, 20, 30)").
+ * @returns {{r: number, g: number, b: number}} An object with r, g, b values.
+ */
+export const parseColor = (colorString = "") => {
+  if (typeof colorString !== "string") return { r: 204, g: 204, b: 204 };
+
+  if (colorString.startsWith("rgb")) {
+    const result = /rgb\((\d+),\s*(\d+),\s*(\d+)\)/.exec(colorString);
+    return result
+      ? {
+          r: parseInt(result[1], 10),
+          g: parseInt(result[2], 10),
+          b: parseInt(result[3], 10),
+        }
+      : { r: 204, g: 204, b: 204 }; // Fallback for invalid rgb()
+  }
+
+  if (colorString.startsWith("#")) {
+    let hex = colorString.substring(1);
+    if (hex.length === 3) {
+      hex = hex
+        .split("")
+        .map((char) => char + char)
+        .join("");
+    }
+    if (hex.length === 6) {
+      const bigint = parseInt(hex, 16);
+      return {
+        r: (bigint >> 16) & 255,
+        g: (bigint >> 8) & 255,
+        b: bigint & 255,
+      };
+    }
+  }
+
+  return { r: 204, g: 204, b: 204 }; // Default fallback for unknown formats
+};

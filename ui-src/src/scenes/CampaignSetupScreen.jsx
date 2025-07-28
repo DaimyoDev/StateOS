@@ -68,6 +68,19 @@ function CampaignSetupScreen() {
 
   // New state to manage the two stages: 'country_selection' and 'region_selection'
   const [setupStage, setSetupStage] = useState("country_selection");
+
+  // Destructure selectedCountryId from the store state
+  const { selectedCountryId } = currentCampaignSetup || {};
+
+  // --- CORRECTED LOGIC ---
+  // Use an effect to sync the stage with the global state after the component mounts.
+  useEffect(() => {
+    if (selectedCountryId) {
+      setSetupStage("region_selection");
+    }
+  }, [selectedCountryId]); // This effect runs when the component mounts and if selectedCountryId changes.
+  // --- END OF FIX ---
+
   // New state to temporarily hold the selected country before confirmation
   const [tempSelectedCountryId, setTempSelectedCountryId] = useState(null);
 
@@ -77,7 +90,6 @@ function CampaignSetupScreen() {
   });
 
   const {
-    selectedCountryId,
     selectedRegionId,
     selectedSecondAdminRegionId,
     playerPartyChoice,
@@ -226,7 +238,6 @@ function CampaignSetupScreen() {
                   <strong>Dominant Ideologies:</strong>{" "}
                   {tempSelectedCountryData.dominantIdeologies.join(", ")}
                 </p>
-                {/* Add more country details here as needed */}
               </div>
             ) : (
               <section className="setup-section placeholder-info-cs">
@@ -1085,6 +1096,14 @@ function CampaignSetupScreen() {
               )}
             </div>
           )}
+        <button
+          className="menu-button view-details-button"
+          style={{ marginTop: "1rem" }}
+          // --- FIX: Use the correct variable for the confirmed country ---
+          onClick={() => actions.navigateToCountryDetails(selectedCountryId)}
+        >
+          View Full Details & Maps
+        </button>
       </div>
 
       {/* Right Column: Information & Actions */}

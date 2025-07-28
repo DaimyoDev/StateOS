@@ -1,4 +1,7 @@
-import { generateFullStateData } from "../entities/politicialEntities";
+import {
+  generateFullStateData,
+  generateFullSecondAdminRegionData,
+} from "../entities/politicialEntities";
 import { chamberTiers } from "./chamberTiers";
 import { generateLegislativeDistrictsForCountry } from "../entities/districtGeneration";
 import { generateNationalParties } from "../entities/personnel";
@@ -601,6 +604,24 @@ export const generateDetailedCountryData = (countryToProcess) => {
         nationalParties: processedCountry.nationalParties,
       });
     });
+  }
+
+  if (
+    processedCountry.secondAdminRegions &&
+    Array.isArray(processedCountry.secondAdminRegions)
+  ) {
+    processedCountry.secondAdminRegions =
+      processedCountry.secondAdminRegions.map((staticSecondAdmin) => {
+        // Find the parent state/region to provide context
+        const parentState = processedCountry.regions.find(
+          (r) => r.id === staticSecondAdmin.stateId
+        );
+        return generateFullSecondAdminRegionData({
+          baseRegionData: staticSecondAdmin,
+          parentStateData: parentState,
+          countryId: processedCountry.id,
+        });
+      });
   }
 
   return processedCountry; // Return the fully processed country

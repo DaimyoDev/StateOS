@@ -221,14 +221,10 @@ const useGameStore = create(
           },
 
           // ---- Actions to be moved to campaignSetupSlice ----
-          initializeNewCampaignSetup: (
-            politicianId,
-            targetCountryId = "JPN"
-          ) => {
-            set({ currentCampaignSetup: getInitialCampaignSetupState() }); // Reset local state
-            get().actions.setSelectedPoliticianForSetup(politicianId); // Call action (will be in campaignSetupSlice)
-            get().actions.selectCountryForCampaign(targetCountryId); // Call action (will be in campaignSetupSlice)
-            get().actions.navigateTo("CampaignSetupScreen"); // Call UI slice action
+          initializeNewCampaignSetup: (politicianId) => {
+            set({ currentCampaignSetup: getInitialCampaignSetupState() }); // Reset setup state
+            get().actions.setSelectedPoliticianForSetup(politicianId); // Set the chosen politician
+            get().actions.navigateTo("CampaignSetupScreen"); // Navigate to the setup screen
           },
           setSelectedPoliticianForSetup: (
             politicianId // To campaignSetupSlice

@@ -13,6 +13,7 @@ import ThemeCreatorEditor from "./scenes/ThemeCreatorEditor";
 import ElectionSimulatorScreen from "./scenes/ElectionSimulatorScreen";
 import CreatorHub from "./scenes/CreatorHub";
 import PartyCreatorScreen from "./scenes/PartyCreatorScreen";
+import CountryDetailsScreen from "./scenes/CountryDetailsScreen";
 import "./App.css";
 import ToastContainer from "./components/toasts/ToastContainer";
 
@@ -57,6 +58,8 @@ function App() {
         return <ElectionSimulatorScreen />;
       case "PartyCreatorScreen":
         return <PartyCreatorScreen />;
+      case "CountryDetailsScreen":
+        return <CountryDetailsScreen />;
       default:
         console.warn(`Unknown scene: ${currentScene}, defaulting to MainMenu.`);
         return <MainMenu />; // Default to main menu

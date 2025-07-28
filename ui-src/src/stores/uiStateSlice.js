@@ -36,6 +36,7 @@ export const createUISlice = (set, get) => ({
   isPolicyVoteDetailsModalOpen: false,
   policyVoteDetailsData: null,
   themeToEdit: null,
+  viewingCountryId: null,
 
   // --- ACTIONS ---
   actions: {
@@ -50,11 +51,17 @@ export const createUISlice = (set, get) => ({
         };
       }),
 
-    // NEW: navigateBack uses the stored previousScene to go back one step.
+    navigateToCountryDetails: (countryId) => {
+      set({ viewingCountryId: countryId });
+      get().actions.navigateTo("CountryDetailsScreen");
+    },
+
+    // UPDATE navigateBack to clear the viewingCountryId
     navigateBack: () =>
       set((state) => ({
-        currentScene: state.previousScene || "MainMenu", // Fallback to MainMenu
-        previousScene: null, // Clear the previous scene after going back
+        currentScene: state.previousScene || "MainMenu", // Uses stored scene to go back
+        previousScene: null, // Clears the previous scene
+        viewingCountryId: null, // Ensure this is cleared when navigating back
       })),
 
     setActiveTheme: (themeName) => {

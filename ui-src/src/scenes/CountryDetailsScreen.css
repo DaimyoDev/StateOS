@@ -1,0 +1,100 @@
+/* src/screens/CountryDetailsScreen.css */
+
+.fullscreen-container {
+  width: 100%;
+  height: 100vh;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--primary-bg); /* Corrected variable */
+  color: var(--primary-text); /* Corrected variable */
+}
+
+.fullscreen-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid var(--border-color); /* Corrected variable */
+  padding-bottom: 1rem;
+  margin-bottom: 1rem;
+}
+
+.fullscreen-header h1 {
+  font-family: var(--font-heading); /* Use theme variable from App.css */
+  font-size: 2.5rem;
+  margin: 0;
+}
+
+.country-details-content-area {
+  display: flex;
+  flex: 1;
+  gap: 2rem;
+  overflow: hidden;
+}
+
+/* The .ui-panel class from App.css will style these containers */
+.map-view-container,
+.data-table-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem;
+  overflow: hidden;
+}
+
+.map-controls {
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.map-controls h3 {
+  margin: 0;
+  margin-right: 1rem;
+}
+
+/* Let the .menu-button class from App.css handle the button styling */
+.map-controls .menu-button.active {
+  background-color: var(--accent-color); /* Use theme variable */
+  color: var(--button-action-text); /* Use theme variable */
+  border-color: var(--accent-color); /* Use theme variable */
+  animation: none; /* Disable glow for the active button */
+}
+
+.map-render-wrapper-details {
+  flex-grow: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+}
+
+.map-render-wrapper-details svg {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.table-wrapper {
+  overflow-y: auto;
+  flex-grow: 1;
+}
+
+.data-table-container table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.data-table-container th,
+.data-table-container td {
+  padding: 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color); /* Corrected variable */
+}
+
+.data-table-container th {
+  font-family: var(--font-heading);
+  position: sticky;
+  top: 0;
+  background-color: var(--ui-panel-bg); /* Corrected: Match panel background */
+}
