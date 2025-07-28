@@ -99,10 +99,10 @@ export const createCampaignSetupSlice = (set, get) => {
         });
 
         const allNewsOutlets = [...nationalNews, ...regionalNews];
-        const allLobbyingGroups = generateInitialLobbyingGroups(
-          POLICY_QUESTIONS,
-          setupState.selectedCountryId
-        );
+        const allLobbyingGroups = generateInitialLobbyingGroups({
+          policyQuestions: POLICY_QUESTIONS,
+          countryId: setupState.selectedCountryId,
+        });
         // --- END NEW ---
 
         const newActiveCampaign = {

@@ -44,6 +44,8 @@ import SouthCarolinaMap from "../maps/usaCounties/SouthCarolinaMap";
 import SouthDakotaMap from "../maps/usaCounties/SouthDakotaMap";
 import TennesseeMap from "../maps/usaCounties/TennesseeMap";
 import TexasMap from "../maps/usaCounties/TexasMap";
+import UtahMap from "../maps/usaCounties/UtahMap";
+import VermontMap from "../maps/usaCounties/VermontMap";
 import SouthKoreaMap from "../maps/SouthKoreaMap";
 import GermanyMap from "../maps/GermanyMap";
 import CanadaMap from "../maps/CanadaMap";
@@ -954,6 +956,38 @@ function CampaignSetupScreen() {
                 </p>
                 <div className="map-render-wrapper">
                   <TexasMap
+                    onSelectCounty={(countyId) =>
+                      actions.setSelectedSecondAdminRegion(countyId)
+                    }
+                    selectedCountyGameId={selectedSecondAdminRegionId}
+                  />
+                </div>
+              </>
+            )}
+
+            {selectedRegionId === "USA_UT" && (
+              <>
+                <p className="map-instruction-cs">
+                  Now, select a starting county in Utah.
+                </p>
+                <div className="map-render-wrapper">
+                  <UtahMap
+                    onSelectCounty={(countyId) =>
+                      actions.setSelectedSecondAdminRegion(countyId)
+                    }
+                    selectedCountyGameId={selectedSecondAdminRegionId}
+                  />
+                </div>
+              </>
+            )}
+
+            {selectedRegionId === "USA_VT" && (
+              <>
+                <p className="map-instruction-cs">
+                  Now, select a starting county in Vermont.
+                </p>
+                <div className="map-render-wrapper">
+                  <VermontMap
                     onSelectCounty={(countyId) =>
                       actions.setSelectedSecondAdminRegion(countyId)
                     }

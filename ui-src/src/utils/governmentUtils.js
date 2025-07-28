@@ -1,10 +1,21 @@
-import { getRandomElement } from "./generalUtils"; // You'll need normalizeArrayBySum
 import { POLICY_QUESTIONS } from "../data/policyData"; // For electorate profile
-import {
-  ECONOMIC_OUTLOOK_LEVELS,
-  RATING_LEVELS,
-  MOOD_LEVELS,
-} from "../data/governmentData";
+import { getRandomElement } from "./core";
+
+export const formatOfficeTitleForDisplay = (office, currentLocationName) => {
+  if (!office || !office.officeName) return "Office";
+
+  let processedOfficeName = office.officeName;
+
+  // Replace placeholders like {cityName} with the actual name
+  if (currentLocationName) {
+    processedOfficeName = processedOfficeName.replace(
+      /{cityNameOrMunicipalityName}|{cityName}/g,
+      currentLocationName
+    );
+  }
+
+  return processedOfficeName;
+};
 
 // --- Electorate Policy Profile Generation ---
 export const generateInitialElectoratePolicyProfile = () => {

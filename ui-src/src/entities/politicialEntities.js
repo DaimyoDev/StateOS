@@ -19,6 +19,7 @@ import {
 } from "../utils/electionUtils";
 import { initializePartyIdeologyScores } from "./personnel";
 import { IDEOLOGY_DEFINITIONS } from "../data/ideologiesData";
+import { deepCopy } from "../utils/objectUtils";
 
 // --- City Data Structure Definition ---
 export const createCityObject = (params = {}) => ({
@@ -734,10 +735,9 @@ export const generateFullStateData = (params = {}) => {
 
   let regionalPoliticalLandscape = [];
   if (nationalParties && nationalParties.length > 0) {
-    // Create a deep copy to avoid modifying the original array
-    const partiesCopy = JSON.parse(JSON.stringify(nationalParties));
+    // CORRECTED: Use the robust deepCopy function instead of JSON.parse/stringify
+    const partiesCopy = deepCopy(nationalParties);
 
-    // Assign random popularity values to each party for this specific region
     const popularities = distributeValueProportionally(100, partiesCopy.length);
     regionalPoliticalLandscape = partiesCopy.map((party, index) => {
       party.popularity = popularities[index];

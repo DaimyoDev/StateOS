@@ -24,6 +24,23 @@ import { calculateInitialPolling } from "../General Scripts/PollingFunctions.js"
 import { generateNuancedColor } from "../utils/generalUtils.js";
 import { generatePartyLogo } from "../utils/logoGenerator.js";
 
+/**
+ * Creates a new non-elected staff member object.
+ * @param {object} params - The parameters for the staff member.
+ * @returns {object} A new staff member object.
+ */
+export const createPartyStaffObject = (params = {}) => ({
+  id: `staff_${generateId()}`,
+  name: params.name || "Staff Member",
+  role: params.role || "Analyst",
+  attributes: params.attributes || {
+    loyalty: getRandomInt(3, 9),
+    strategy: getRandomInt(4, 9),
+    communication: getRandomInt(4, 9),
+  },
+  partyId: params.partyId || null,
+});
+
 export const createPoliticianObject = (params = {}) => ({
   id: params.id || `pol_${generateId()}`,
   firstName: params.firstName || "John",
@@ -88,6 +105,10 @@ export const createPartyObject = (params = {}) => ({
   foundingYear: params.foundingYear || new Date().getFullYear(),
   nationalPopularity: params.nationalPopularity || 0,
   regionalPopularity: params.regionalPopularity || {},
+  leadership: params.leadership || {
+    chairperson: null,
+    commsDirector: null,
+  },
   members: params.members || [],
   financialStanding: params.financialStanding || 0,
   mediaBias: params.mediaBias || 0,
@@ -160,23 +181,45 @@ export function initializePartyIdeologyScores(parties, ideologyData) {
   }
 
   return parties.map((party) => {
-    if (party.ideologyScores) return party; // Already has scores, do nothing.
+    // If scores already exist, do nothing.
+    if (party.ideologyScores && Object.keys(party.ideologyScores).length > 0) {
+      return party;
+    }
 
+    // Prioritize using the explicit party.ideologyId if it exists. This is more robust
+    // than converting the name and avoids "name mismatch" errors.
+    const partyIdeologyId = party.ideologyId;
+    if (partyIdeologyId && ideologyData[partyIdeologyId]) {
+      return {
+        ...party,
+        ideologyScores: ideologyData[partyIdeologyId].idealPoint,
+      };
+    }
+
+    // Fallback for older party objects that might only have the name.
     if (party.ideology && typeof party.ideology === "string") {
-      const ideologyId = party.ideology.toLowerCase().replace(/ /g, "_");
-
-      if (ideologyData[ideologyId]) {
+      const ideologyIdFromName = party.ideology
+        .toLowerCase()
+        .replace(/ /g, "_");
+      if (ideologyData[ideologyIdFromName]) {
         return {
           ...party,
-          ideologyId: ideologyId, // Add the ID for consistency
-          ideologyScores: ideologyData[ideologyId].idealPoint, // <-- The critical step
+          ideologyId: ideologyIdFromName, // Add the ID for consistency
+          ideologyScores: ideologyData[ideologyIdFromName].idealPoint,
         };
       }
     }
+
+    console.log(party);
+
+    // If both lookups fail, warn with a more descriptive message and assign a default.
     console.warn(
-      `Could not find ideology definition for party: "${party.name}"`
+      `Could not find ideology definition for id: "${party.ideologyId}" or name: "${party.ideology}". Party: "${party.name}"`
     );
-    return party;
+    return {
+      ...party,
+      ideologyScores: ideologyData["centrist"]?.idealPoint || {},
+    };
   });
 }
 
@@ -596,7 +639,12 @@ export function generateFullAIPolitician(
  * @param {string} partyIdeology - The main ideology of the parent party.
  * @returns {Array<object>} An array of generated faction objects.
  */
-export const generateFactionsForParty = (partyIdeology) => {
+export const generateFactionsForParty = (
+  partyIdeology,
+  partyId,
+  countryId,
+  allPartiesInScope
+) => {
   const factions = [];
   const numFactions = getRandomInt(2, 4);
 
@@ -620,14 +668,20 @@ export const generateFactionsForParty = (partyIdeology) => {
 
   let availableIdeologies = [...relatedIdeologies];
 
-  // Ensure there's a moderate or pragmatist faction
-  factions.push(
-    createFactionObject({
-      name: getRandomElement(factionNameTemplates.moderate),
-      ideology: partyIdeology, // Represents the core, moderate view of the party ideology
-      influence: getRandomInt(25, 50),
-    })
-  );
+  // UPDATED: Generate a leader for each faction
+  const moderateFaction = createFactionObject({
+    name: getRandomElement(factionNameTemplates.moderate),
+    ideology: partyIdeology, // Represents the core, moderate view of the party ideology
+    influence: getRandomInt(25, 50),
+    leader: generateFullAIPolitician(
+      countryId,
+      allPartiesInScope,
+      POLICY_QUESTIONS,
+      IDEOLOGY_DEFINITIONS,
+      partyId
+    ),
+  });
+  factions.push(moderateFaction);
 
   for (let i = 1; i < numFactions; i++) {
     if (availableIdeologies.length > 0) {
@@ -641,13 +695,32 @@ export const generateFactionsForParty = (partyIdeology) => {
         "{ideology}",
         ideology
       );
-      factions.push(createFactionObject({ name, ideology }));
+      factions.push(
+        createFactionObject({
+          name,
+          ideology,
+          leader: generateFullAIPolitician(
+            countryId,
+            allPartiesInScope,
+            POLICY_QUESTIONS,
+            IDEOLOGY_DEFINITIONS,
+            partyId
+          ),
+        })
+      );
     } else {
       // If no related ideologies are left, create a radical faction
       factions.push(
         createFactionObject({
           name: getRandomElement(factionNameTemplates.radical),
           ideology: partyIdeology, // Radicals often see themselves as the purest form
+          leader: generateFullAIPolitician(
+            countryId,
+            allPartiesInScope,
+            POLICY_QUESTIONS,
+            IDEOLOGY_DEFINITIONS,
+            partyId
+          ),
         })
       );
       break; // Stop after adding a radical faction if we're out of specifics
@@ -662,6 +735,14 @@ export const generateFactionsForParty = (partyIdeology) => {
   });
 };
 
+/**
+ * Generates a list of national political parties for a given country.
+ * @param {object} params - The parameters for party generation.
+ * @param {string} params.countryId - The ID of the country.
+ * @param {Array<string>} params.dominantIdeologies - A list of dominant ideology names.
+ * @param {string} params.countryName - The name of the country.
+ * @returns {Array<object>} A list of fully-formed party objects.
+ */
 /**
  * Generates a list of national political parties for a given country.
  * @param {object} params - The parameters for party generation.
@@ -695,6 +776,16 @@ export const generateNationalParties = ({
     }
   }
 
+  // Pre-initialize scores for all potential parties for context in generation
+  const potentialPartiesForContext = availableIdeologies.map((ideo) => ({
+    ...ideo,
+    id: `${ideo.id}`,
+  }));
+  const partiesWithScoresForContext = initializePartyIdeologyScores(
+    potentialPartiesForContext,
+    IDEOLOGY_DEFINITIONS
+  );
+
   for (let i = 0; i < numParties; i++) {
     if (availableIdeologies.length === 0) break;
 
@@ -715,8 +806,8 @@ export const generateNationalParties = ({
       getRandomInt(0, 100)
     );
     const partyName = generateNewPartyName(partyIdeologyName, countryName);
+    const partyId = `gen_party_${countryId}_${i}_${generateId()}`;
 
-    // CORRECTED: Call the logo generator and store its result.
     const logoDataUrl = generatePartyLogo({
       primaryColor: baseColor,
       ideologyId: partyIdeologyId,
@@ -724,17 +815,39 @@ export const generateNationalParties = ({
       partyName: partyName,
     });
 
-    const factions = generateFactionsForParty(partyIdeologyName);
+    // UPDATED: Generate leadership and factions
+    const factions = generateFactionsForParty(
+      partyIdeologyName,
+      partyId,
+      countryId,
+      partiesWithScoresForContext
+    );
+
+    const leadership = {
+      chairperson: generateFullAIPolitician(
+        countryId,
+        partiesWithScoresForContext,
+        POLICY_QUESTIONS,
+        IDEOLOGY_DEFINITIONS,
+        partyId
+      ),
+      commsDirector: createPartyStaffObject({
+        name: generateAICandidateNameForElection(countryId),
+        role: "Communications Director",
+        partyId: partyId,
+      }),
+    };
 
     const newParty = createPartyObject({
-      id: `gen_party_${countryId}_${i}_${generateId()}`,
+      id: partyId,
       name: partyName,
       ideology: partyIdeologyName,
-      ideologyId: partyIdeologyId, // CORRECTED: Pass the explicit ID
+      ideologyId: partyIdeologyId,
       color: partyColor,
-      logoDataUrl: logoDataUrl, // CORRECTED: Pass the generated logo
+      logoDataUrl: logoDataUrl,
       countryId: countryId,
       factions: factions,
+      leadership: leadership,
     });
 
     parties.push(newParty);

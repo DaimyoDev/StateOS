@@ -32,7 +32,7 @@ function PoliticalEntitiesTab({ campaignData }) {
     (state) => state.actions.clearViewedEntity
   );
 
-  const politicalParties = campaignData?.startingCity?.politicalLandscape || [];
+  const politicalParties = campaignData?.generatedPartiesSnapshot || [];
   const lobbyingGroups = campaignData?.lobbyingGroups || [];
   const newsOutlets = campaignData?.newsOutlets || [];
 

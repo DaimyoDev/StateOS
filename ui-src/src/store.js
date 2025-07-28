@@ -14,6 +14,7 @@ import { createPolicySlice } from "./stores/policySlice.js";
 import { createTimeSlice } from "./stores/timeSlice.js";
 import { createNewsSlice } from "./stores/newsSlice.js";
 import { createCampaignStaffSlice } from "./stores/campaignStaffSlice.js";
+import { createOrganizationActionSlice } from "./stores/organizationActionSlice.js";
 
 // --- Helper Functions (to be moved to relevant slices or utils later) ---
 
@@ -43,6 +44,7 @@ const useGameStore = create(
       const timeSlice = createTimeSlice(set, get);
       const newsSlice = createNewsSlice(set, get);
       const campaignStaffSlice = createCampaignStaffSlice(set, get);
+      const organizationActions = createOrganizationActionSlice(set, get);
 
       return {
         creatingPolitian: politicianSliceData.creatingPolitician,
@@ -73,6 +75,7 @@ const useGameStore = create(
           ...timeSlice.actions,
           ...newsSlice.actions,
           ...campaignStaffSlice,
+          ...organizationActions,
 
           improveSkillOratory: () => {
             set((state) => {

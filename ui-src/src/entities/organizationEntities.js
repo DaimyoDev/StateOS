@@ -1,6 +1,152 @@
 // src/entities/organizationEntities.js
+import { LOBBYING_NAME_COMPONENTS } from "../data/lobbyingNames";
+import { NEWS_NAME_COMPONENTS } from "../data/newsOutletNames";
 import { generateId, getRandomElement, getRandomInt } from "../utils/core";
 import { generateAICandidateNameForElection } from "./personnel";
+
+/**
+ * A comprehensive list of archetypes for generating diverse lobbying groups.
+ * - focus: The primary goal or interest area of the group.
+ * - keywords: Terms used to match the group to relevant policy questions.
+ * - financialPower: The base financial strength (1-100).
+ * - policyDirection: Determines stance on issues.
+ * 'anti-regulation' tends to support the first option (less government, pro-business/liberty).
+ * 'pro-regulation' tends to support the last option (more government, social/environmental protection).
+ */
+const LOBBYING_ARCHETYPES = [
+  // Economic
+  {
+    focus: "Corporate Interests",
+    keywords: ["corporate", "business", "deregulate"],
+    financialPower: 90,
+    policyDirection: "anti-regulation",
+  },
+  {
+    focus: "Small Business Advocacy",
+    keywords: ["business", "small business", "startup"],
+    financialPower: 65,
+    policyDirection: "anti-regulation",
+  },
+  {
+    focus: "Free Market Principles",
+    keywords: ["market", "trade", "tax"],
+    financialPower: 80,
+    policyDirection: "anti-regulation",
+  },
+  {
+    focus: "Labor Rights & Unions",
+    keywords: ["union", "workers", "wage", "collective"],
+    financialPower: 70,
+    policyDirection: "pro-regulation",
+  },
+  {
+    focus: "Fair Trade Practices",
+    keywords: ["trade", "tariff", "globalization"],
+    financialPower: 55,
+    policyDirection: "pro-regulation",
+  },
+  // Environmental
+  {
+    focus: "Environmental Protection",
+    keywords: ["green", "carbon", "renewables", "eco", "conservation"],
+    financialPower: 65,
+    policyDirection: "pro-regulation",
+  },
+  {
+    focus: "Fossil Fuel Industry",
+    keywords: ["oil", "gas", "fossil", "energy"],
+    financialPower: 95,
+    policyDirection: "anti-regulation",
+  },
+  {
+    focus: "Sustainable Agriculture",
+    keywords: ["farm", "agriculture", "food"],
+    financialPower: 60,
+    policyDirection: "pro-regulation",
+  },
+  // Social & Civil Liberties
+  {
+    focus: "Firearm Ownership Rights",
+    keywords: ["firearm", "gun", "2a"],
+    financialPower: 85,
+    policyDirection: "anti-regulation",
+  },
+  {
+    focus: "Gun Control Advocacy",
+    keywords: ["firearm", "gun", "safety"],
+    financialPower: 70,
+    policyDirection: "pro-regulation",
+  },
+  {
+    focus: "Digital Privacy",
+    keywords: ["privacy", "surveillance", "data", "encryption"],
+    financialPower: 75,
+    policyDirection: "pro-regulation",
+  },
+  {
+    focus: "Civil Liberties Union",
+    keywords: ["speech", "privacy", "freedom", "rights"],
+    financialPower: 80,
+    policyDirection: "pro-regulation",
+  },
+  {
+    focus: "Religious Freedom",
+    keywords: ["religious", "faith", "conscience"],
+    financialPower: 70,
+    policyDirection: "anti-regulation",
+  },
+  // Technology
+  {
+    focus: "Technology Innovation",
+    keywords: ["tech", "ai", "innovation", "digital"],
+    financialPower: 88,
+    policyDirection: "anti-regulation",
+  },
+  {
+    focus: "Tech Regulation & Antitrust",
+    keywords: ["tech", "antitrust", "monopoly", "regulate"],
+    financialPower: 60,
+    policyDirection: "pro-regulation",
+  },
+  // Healthcare & Social Welfare
+  {
+    focus: "Pharmaceutical Industry",
+    keywords: ["pharma", "drug", "healthcare", "patent"],
+    financialPower: 92,
+    policyDirection: "anti-regulation",
+  },
+  {
+    focus: "Universal Healthcare",
+    keywords: ["healthcare", "medicare", "public health"],
+    financialPower: 75,
+    policyDirection: "pro-regulation",
+  },
+  {
+    focus: "Insurance Lobby",
+    keywords: ["insurance", "healthcare", "coverage"],
+    financialPower: 85,
+    policyDirection: "anti-regulation",
+  },
+  {
+    focus: "Social Welfare & Housing",
+    keywords: ["housing", "poverty", "welfare", "childcare"],
+    financialPower: 55,
+    policyDirection: "pro-regulation",
+  },
+  // Other
+  {
+    focus: "Defense Contractors",
+    keywords: ["defense", "military", "aerospace"],
+    financialPower: 95,
+    policyDirection: "anti-regulation",
+  },
+  {
+    focus: "Education Reform",
+    keywords: ["education", "school", "teacher"],
+    financialPower: 60,
+    policyDirection: "pro-regulation",
+  },
+];
 
 /**
  * Generates a plausible name for a news outlet.
@@ -9,17 +155,46 @@ import { generateAICandidateNameForElection } from "./personnel";
  * @returns {string} A generated news outlet name.
  */
 const generateNewsOutletName = (locationName, ideologyName) => {
+  const { prefixes, adjectives, suffixes, media_types } = NEWS_NAME_COMPONENTS;
+
+  const adjective = getRandomElement(
+    adjectives[ideologyName] || adjectives.Default
+  );
+  const prefix = getRandomElement(prefixes);
+  const suffix = getRandomElement(suffixes);
+  const media = getRandomElement(media_types);
+
+  // A collection of different name structures
   const templates = [
-    `The ${locationName} Times`,
-    `${locationName} Daily Chronicle`,
-    `${locationName} Post`,
-    `${locationName} Broadcasting Network`,
-    `${ideologyName} Voice Media`,
-    `The ${locationName} Inquirer`,
-    `${locationName} Today`,
-    `The ${ideologyName} Standard`,
+    () => `${prefix} ${locationName} ${suffix}`,
+    () => `${locationName} ${adjective} ${suffix}`,
+    () => `${locationName} ${media}`,
+    () => `${adjective} ${media}`,
+    () => `${prefix} ${adjective} ${suffix}`,
+    () => `${locationName} ${suffix}`,
+    () => `${adjective} Voice`,
+    () => `${locationName} News Network`,
+    () => `${prefix} ${locationName} Report`,
   ];
-  return getRandomElement(templates);
+
+  // Select a random template function and execute it to build the name
+  const chosenTemplate = getRandomElement(templates);
+  return chosenTemplate();
+};
+
+const generateLobbyingGroupName = (focus) => {
+  const { PREFIXES, NOUNS, CONNECTORS, FOCUS_ADJECTIVES } =
+    LOBBYING_NAME_COMPONENTS;
+  const templates = [
+    () => `${getRandomElement(PREFIXES)} ${focus} ${getRandomElement(NOUNS)}`,
+    () => `${getRandomElement(NOUNS)} ${getRandomElement(CONNECTORS)} ${focus}`,
+    () =>
+      `${getRandomElement(PREFIXES)} ${getRandomElement(
+        FOCUS_ADJECTIVES
+      )} ${focus}`,
+    () => `${focus} ${getRandomElement(NOUNS)}`,
+  ];
+  return getRandomElement(templates)();
 };
 
 // --- Personnel Object Blueprints ---
@@ -220,91 +395,80 @@ export const generateNewsOutlets = ({
   return outlets;
 };
 /**
- * Generates a set of initial lobbying groups for a campaign.
- * @param {Array<object>} policyQuestions - The list of all policy questions.
- * @param {string} countryId - The ID of the country for naming context.
+ * Generates a set of initial lobbying groups for a campaign using archetypes.
+ * @param {object} options - Generation options.
+ * @param {Array<object>} options.policyQuestions - The list of all policy questions.
+ * @param {string} options.countryId - The ID of the country for naming context.
+ * @param {number} [options.numGroups=7] - The number of groups to generate.
  * @returns {Array<object>} An array of fully-formed lobbying group objects.
  */
-export const generateInitialLobbyingGroups = (policyQuestions, countryId) => {
+export const generateInitialLobbyingGroups = ({
+  policyQuestions,
+  countryId,
+  numGroups = 7,
+}) => {
   const groups = [];
-  const archetypes = [
-    {
-      name: "National Corporate Association",
-      focus: "Economic Deregulation, Tax Cuts",
-      financialPower: 90,
-      keywords: ["corporate", "business", "deregulate"],
-    },
-    {
-      name: "Eco-Justice League",
-      focus: "Environmental Protection",
-      financialPower: 60,
-      keywords: ["green", "carbon", "renewables", "eco"],
-    },
-    {
-      name: "Federated Labor Unions",
-      focus: "Worker Rights",
-      financialPower: 70,
-      keywords: ["union", "workers", "wage", "collective"],
-    },
-    {
-      name: "Citizen Arms Advocates",
-      focus: "Firearm Ownership Rights",
-      financialPower: 80,
-      keywords: ["firearm", "gun"],
-    },
-    {
-      name: "Digital Innovation Alliance",
-      focus: "Tech Industry Growth",
-      financialPower: 85,
-      keywords: ["tech", "ai", "innovation", "digital"],
-    },
-  ];
+  const availableArchetypes = [...LOBBYING_ARCHETYPES];
 
-  for (const archetype of archetypes) {
+  for (let i = 0; i < numGroups; i++) {
+    if (availableArchetypes.length === 0) break;
+
+    // Select and remove an archetype to ensure variety
+    const archetypeIndex = getRandomInt(0, availableArchetypes.length - 1);
+    const archetype = availableArchetypes.splice(archetypeIndex, 1)[0];
+
     const biases = { alignedPolicies: [], opposedPolicies: [] };
 
-    // Find policies that match the group's focus
+    // Match policies based on keywords and policy direction
     policyQuestions.forEach((pq) => {
-      const questionText = `${pq.id} ${pq.question}`.toLowerCase();
-      if (archetype.keywords.some((kw) => questionText.includes(kw))) {
-        // Simple logic: assume the first option is pro-status quo/pro-business and the last is most radical change
-        if (pq.options && pq.options.length > 1) {
-          if (
-            archetype.name.includes("Corporate") ||
-            archetype.name.includes("Arms") ||
-            archetype.name.includes("Digital")
-          ) {
-            biases.alignedPolicies.push(pq.options[0].value);
-            biases.opposedPolicies.push(
-              pq.options[pq.options.length - 1].value
-            );
-          } else {
-            // Labor, Eco groups
-            biases.alignedPolicies.push(
-              pq.options[pq.options.length - 1].value
-            );
-            biases.opposedPolicies.push(pq.options[0].value);
-          }
+      const questionText = `${pq.id} ${pq.description}`.toLowerCase();
+      const hasKeyword = archetype.keywords.some((kw) =>
+        questionText.includes(kw)
+      );
+
+      if (hasKeyword && pq.options && pq.options.length > 1) {
+        // 'anti-regulation' groups prefer the first option (e.g., less regulation, lower taxes)
+        // 'pro-regulation' groups prefer the last option (e.g., more regulation, higher investment)
+        const proOption = pq.options[pq.options.length - 1].value;
+        const antiOption = pq.options[0].value;
+
+        if (archetype.policyDirection === "anti-regulation") {
+          biases.alignedPolicies.push(antiOption);
+          biases.opposedPolicies.push(proOption);
+        } else {
+          // 'pro-regulation'
+          biases.alignedPolicies.push(proOption);
+          biases.opposedPolicies.push(antiOption);
         }
       }
     });
 
+    // Skip creating the group if it has no policies to lobby for/against
+    if (
+      biases.alignedPolicies.length === 0 &&
+      biases.opposedPolicies.length === 0
+    ) {
+      // Add the archetype back to the pool if it wasn't used
+      availableArchetypes.push(archetype);
+      continue;
+    }
+
     const newGroup = createLobbyingGroupObject({
-      name: archetype.name,
+      name: generateLobbyingGroupName(archetype.focus),
       focus: archetype.focus,
-      financialPower: archetype.financialPower + getRandomInt(-15, 15),
+      financialPower: archetype.financialPower + getRandomInt(-10, 10),
       biases,
     });
 
-    // Generate staff for the group
     const staff = [];
-    const numStaff = getRandomInt(1, 3);
-    for (let i = 0; i < numStaff; i++) {
-      const lobbyist = createLobbyistObject({
-        name: generateAICandidateNameForElection(countryId), // Re-using for name generation
-        employerId: newGroup.id,
-      });
-      staff.push(lobbyist);
+    const numStaff = getRandomInt(1, 4);
+    for (let j = 0; j < numStaff; j++) {
+      staff.push(
+        createLobbyistObject({
+          name: generateAICandidateNameForElection(countryId),
+          employerId: newGroup.id,
+        })
+      );
     }
     newGroup.staff = staff;
     groups.push(newGroup);
