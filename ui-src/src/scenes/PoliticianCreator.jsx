@@ -160,8 +160,9 @@ function PoliticianCreator() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    actions.recalculateIdeology("Submit");
-    setTimeout(() => actions.finalizeNewPolitician(), 50);
+    actions.recalculateIdeology();
+    // The finalize action now handles navigation
+    actions.finalizeNewPolitician();
   };
 
   const handleApplyPreset = useCallback(
@@ -236,9 +237,8 @@ function PoliticianCreator() {
 
   const handleCancel = () => {
     actions.resetCreatingPolitician();
-    actions.navigateTo(
-      isEditMode ? "ManagePoliticiansScreen" : "CampaignStartOptionsScreen"
-    );
+    // UPDATED: Use the new navigateBack action
+    actions.navigateBack();
   };
 
   const handleManualRecalculate = () => {

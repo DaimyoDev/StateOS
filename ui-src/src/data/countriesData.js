@@ -19,6 +19,14 @@ import { italianRegions } from "./states/italianRegions";
 import { spanishProvinces } from "./states/spanishProvinces";
 import { swedishCounties } from "./states/swedishCounties";
 import { polishVoivodeships } from "./states/polishVoivodeships";
+import { brazilianStates } from "./states/brazilianStates";
+import { argentinianStates } from "./states/argentinianStates";
+import { austrianStates } from "./states/austrianStates";
+import { belgianRegions } from "./states/belgianStates";
+import { chileanRegions } from "./states/chileStates";
+import { colombianDepartments } from "./states/colombianStates";
+import { czechRegions } from "./states/czechStates";
+import { danishRegions } from "./states/danishStates";
 
 export const DEFAULT_COUNTRY_POPULATION_RANGES = {
   JPN: { min: 100000000, max: 130000000 },
@@ -246,7 +254,7 @@ const baseCountriesData = [
     flag: "🇧🇷",
     dominantIdeologies: ["Conservative", "Liberal", "Socialist", "Populist"],
     politicalSystem: "Presidential Republic",
-    regions: [],
+    regions: brazilianStates.map((p) => ({ ...p })),
     nationalLowerHouseDistricts: [],
   },
   {
@@ -255,7 +263,7 @@ const baseCountriesData = [
     flag: "🇦🇷",
     dominantIdeologies: ["Peronist", "Radical", "Liberal", "Conservative"],
     politicalSystem: "Presidential Republic",
-    regions: [],
+    regions: argentinianStates.map((p) => ({ ...p })),
     nationalLowerHouseDistricts: [],
   },
   {
@@ -310,7 +318,7 @@ const baseCountriesData = [
     flag: "🇦🇹",
     dominantIdeologies: ["Conservative", "Social Democrat", "Nationalist"],
     politicalSystem: "Parliamentary Republic",
-    regions: [],
+    regions: austrianStates.map((p) => ({ ...p })),
   },
   {
     id: "BEL",
@@ -323,7 +331,7 @@ const baseCountriesData = [
       "Regionalist",
     ],
     politicalSystem: "Parliamentary Monarchy (Federal)",
-    regions: [],
+    regions: belgianRegions.map((p) => ({ ...p })),
   },
   {
     id: "DNK",
@@ -331,7 +339,7 @@ const baseCountriesData = [
     flag: "🇩🇰",
     dominantIdeologies: ["Social Democrat", "Liberal", "Conservative"],
     politicalSystem: "Parliamentary Monarchy (Constitutional)",
-    regions: [],
+    regions: danishRegions.map((p) => ({ ...p })),
   },
   {
     id: "FIN",
@@ -397,7 +405,7 @@ const baseCountriesData = [
       "Christian Democrat",
     ],
     politicalSystem: "Presidential Republic",
-    regions: [],
+    regions: chileanRegions.map((p) => ({ ...p })),
   },
   {
     id: "COL",
@@ -405,7 +413,7 @@ const baseCountriesData = [
     flag: "🇨🇴",
     dominantIdeologies: ["Conservative", "Liberal", "Progressive", "Populist"],
     politicalSystem: "Presidential Republic",
-    regions: [],
+    regions: colombianDepartments.map((p) => ({ ...p })),
   },
   {
     id: "PER",
@@ -449,7 +457,7 @@ const baseCountriesData = [
     flag: "🇨🇿",
     dominantIdeologies: ["Populist", "Conservative", "Liberal"],
     politicalSystem: "Parliamentary Republic",
-    regions: [],
+    regions: czechRegions.map((p) => ({ ...p })),
   },
   {
     id: "ROU",

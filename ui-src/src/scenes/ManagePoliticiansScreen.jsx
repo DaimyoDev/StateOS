@@ -1,19 +1,19 @@
-// ui-src/src/scenes/ManagePoliticiansScreen.jsx
 import React, { useState } from "react";
 import useGameStore from "../store";
 import Modal from "../components/modals/Modal";
-import "./ManagePoliticiansScreen.css"; // Create this CSS
+import "./ManagePoliticiansScreen.css";
 
 function ManagePoliticiansScreen() {
   const savedPoliticians = useGameStore((state) => state.savedPoliticians);
   const actions = useGameStore((state) => state.actions);
+  // NEW: Get the previous scene to determine the context
+  const previousScene = useGameStore((state) => state.previousScene);
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [politicianToDelete, setPoliticianToDelete] = useState(null);
 
-  if (!actions || !savedPoliticians) {
-    return <div>Loading...</div>;
-  }
+  // Determine if the screen was opened from the campaign start flow.
+  const isCampaignSetup = previousScene === "CampaignStartOptionsScreen";
 
   const openDeleteConfirmModal = (politician) => {
     setPoliticianToDelete({
@@ -29,10 +29,16 @@ function ManagePoliticiansScreen() {
   };
 
   const confirmDeletePolitician = () => {
-    if (politicianToDelete && actions.deleteSavedPolitician) {
+    if (politicianToDelete) {
       actions.deleteSavedPolitician(politicianToDelete.id);
     }
     closeDeleteConfirmModal();
+  };
+
+  // NEW: Action for the "Use" button
+  const handleSelectPoliticianForCampaign = (politicianId) => {
+    // This action will set up the politician and navigate to the campaign setup screen
+    actions.initializeNewCampaignSetup(politicianId);
   };
 
   return (
@@ -40,13 +46,15 @@ function ManagePoliticiansScreen() {
       <div className="manage-politicians-container">
         <div className="manage-panel">
           <h1 className="manage-title important-heading">
-            Manage Your Politicians
+            {/* Change title based on context */}
+            {isCampaignSetup
+              ? "Select a Politician"
+              : "Manage Your Politicians"}
           </h1>
 
           {savedPoliticians.length === 0 ? (
             <p className="no-politicians-message">
-              You haven't created any politicians yet. Go to "Create New
-              Politician" to get started!
+              You haven't created any politicians yet.
             </p>
           ) : (
             <ul className="politician-list">
@@ -62,19 +70,19 @@ function ManagePoliticiansScreen() {
                     </span>
                   </div>
                   <div className="politician-actions">
+                    {/* UPDATED: Conditionally render the "Use" button */}
+                    {isCampaignSetup && (
+                      <button
+                        className="action-button small-button"
+                        onClick={() =>
+                          handleSelectPoliticianForCampaign(politician.id)
+                        }
+                      >
+                        Use
+                      </button>
+                    )}
                     <button
-                      className="action-button small-button" // Primary action style
-                      onClick={() => {
-                        // Initialize the setup with the chosen politician ID, but no country
-                        actions.initializeNewCampaignSetup(politician.id);
-                        // Navigate to the screen where the player can choose the country
-                        actions.navigateTo("CampaignSetupScreen");
-                      }}
-                    >
-                      Use for Campaign
-                    </button>
-                    <button
-                      className="menu-button small-button" // Secondary action style
+                      className="menu-button small-button"
                       onClick={() =>
                         actions.loadPoliticianForEditing(politician.id)
                       }
@@ -83,7 +91,7 @@ function ManagePoliticiansScreen() {
                     </button>
                     <button
                       className="button-delete small-button"
-                      onClick={() => openDeleteConfirmModal(politician)} // Open modal
+                      onClick={() => openDeleteConfirmModal(politician)}
                     >
                       Delete
                     </button>
@@ -94,17 +102,13 @@ function ManagePoliticiansScreen() {
           )}
 
           <div className="screen-actions">
-            <button
-              className="menu-button"
-              // Navigate back to CreatorHub main menu or CampaignStartOptions based on flow
-              onClick={() => actions.navigateTo("CampaignStartOptionsScreen")}
-            >
+            <button className="menu-button" onClick={actions.navigateBack}>
               Back
             </button>
             <button
               className="action-button"
               onClick={() => {
-                actions.resetCreatingPolitician(); // Ensure form is clear for new creation
+                actions.resetCreatingPolitician();
                 actions.navigateTo("PoliticianCreator");
               }}
             >
@@ -121,11 +125,11 @@ function ManagePoliticiansScreen() {
         onPrimaryAction={confirmDeletePolitician}
         secondaryActionText="Cancel"
         onSecondaryAction={closeDeleteConfirmModal}
-        primaryActionType="delete" // Ensures the delete button gets .button-delete style
+        primaryActionType="delete"
       >
         <p>
           Are you sure you want to permanently delete{" "}
-          <strong>{politicianToDelete?.name || "this politician"}</strong>?
+          <strong>{politicianToDelete?.name}</strong>?
         </p>
         <p>This action cannot be undone.</p>
       </Modal>

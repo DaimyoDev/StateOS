@@ -185,3 +185,80 @@
   transition: background-color var(--transition-speed),
     color var(--transition-speed);
 }
+
+.theme-filter-buttons {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background-color: var(--secondary-bg);
+  border-radius: var(--element-radius);
+  margin-bottom: 1rem;
+  border: 1px solid var(--border-color);
+}
+
+/* Individual filter button styling, inspired by .menu-button */
+.filter-button {
+  flex-grow: 1; /* Make buttons share the space evenly */
+  padding: 0.6rem 1rem;
+  font-family: var(--font-main);
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: var(--element-radius);
+  transition: background-color var(--transition-speed),
+    color var(--transition-speed), border-color var(--transition-speed),
+    opacity var(--transition-speed), box-shadow var(--transition-speed);
+
+  /* Default state for non-active buttons */
+  background-color: var(--button-bg);
+  color: var(--button-text);
+  border: var(--border-width) solid var(--border-color);
+  opacity: 0.8; /* Make non-active buttons slightly faded */
+  box-shadow: none; /* No shadow for default state */
+}
+
+/* Hover state for any filter button */
+.filter-button:hover {
+  background-color: var(--button-hover-bg);
+  border-color: var(--accent-border-color, var(--button-hover-bg));
+  opacity: 1; /* Full opacity on hover */
+}
+
+/* Specific styling for the ACTIVE filter button */
+.filter-button.active {
+  background-color: var(--accent-color);
+  color: var(--accent-text);
+  border-color: var(--accent-border-color);
+  font-weight: bold;
+  opacity: 1;
+  box-shadow: var(--button-shadow);
+}
+
+.theme-search-container {
+  display: flex;
+  flex-grow: 1; /* Allows it to grow */
+  min-width: 250px; /* Ensures it doesn't get too squished */
+}
+
+.theme-search-input {
+  width: 100%;
+  padding: 0.6rem 1rem;
+  font-family: var(--font-main);
+  font-size: 16px;
+  background-color: var(--input-bg);
+  color: var(--input-text);
+  border: var(--border-width) solid var(--border-color);
+  border-radius: var(--element-radius);
+  transition: border-color var(--transition-speed),
+    box-shadow var(--transition-speed);
+}
+
+.theme-search-input::placeholder {
+  color: var(--input-placeholder-text);
+}
+
+.theme-search-input:focus {
+  outline: none;
+  border-color: var(--accent-border-color);
+  box-shadow: 0 0 0 3px var(--input-focus-shadow-color);
+}

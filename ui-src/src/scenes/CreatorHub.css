@@ -5,6 +5,7 @@
   padding: 2rem;
   gap: 2rem;
   height: 100%;
+  width: 100%;
   box-sizing: border-box;
 }
 
@@ -13,45 +14,121 @@
   border-bottom: 2px solid var(--color-border);
   padding-bottom: 1rem;
   width: 100%;
-  max-width: 600px;
+  max-width: 900px;
 }
 
-.generation-controls {
-  padding: 1rem;
+.creator-hub-main-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
+  width: 100%;
+  max-width: 1200px;
 }
 
-.generated-party-display {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1.5rem;
-  padding: 2rem;
+.hub-column {
   background-color: var(--color-background-secondary);
   border: 1px solid var(--color-border);
   border-radius: 8px;
-  width: 100%;
-  max-width: 400px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
-.party-name-display {
-  font-size: 1.5rem;
-  font-weight: bold;
+.hub-column-title {
+  margin: 0;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--color-border-light);
   color: var(--color-text-accent);
   text-align: center;
 }
 
-.logo-display-area {
-  padding: 1rem;
-  background-color: var(--color-background);
-  border-radius: 6px;
+.hub-column-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: center;
 }
 
-.party-details {
-  font-size: 1rem;
+.column-description {
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+  text-align: center;
+  flex-grow: 1;
+}
+
+/* Custom Party List */
+.custom-parties-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 400px;
+  overflow-y: auto;
+  padding-right: 0.5rem; /* For scrollbar */
+}
+
+.custom-party-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem;
+  background-color: var(--color-background);
+  border-radius: 4px;
+}
+
+.party-item-name {
+  font-weight: bold;
+}
+.party-item-ideology {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+}
+
+.party-item-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* Random Generation Display */
+.generated-party-display {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
+  gap: 1rem;
+  padding: 1rem;
+  margin-top: 1rem;
+  background-color: var(--color-background);
+  border: 1px solid var(--color-border-light);
+  border-radius: 8px;
+  width: 100%;
+}
+
+.party-name-display {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: var(--color-text-accent);
+  text-align: center;
+  margin: 0;
+}
+
+.logo-display-area {
+  padding: 0.5rem;
+  background-color: #fff; /* White background for better logo visibility */
+  border-radius: 6px;
+  line-height: 0;
+}
+
+.party-details {
+  font-size: 0.9rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.party-details p {
+  margin: 0;
 }
 
 .color-swatch {
@@ -64,6 +141,35 @@
 }
 
 .form-actions {
-  margin-top: auto; /* Pushes the back button to the bottom */
-  padding-top: 2rem;
+  margin-top: auto;
+  padding-top: 1rem;
+}
+
+/* Party Editor Modal Content */
+.party-editor-modal-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.party-editor-modal-content .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.party-editor-modal-content .ideology-slider-group {
+  display: grid;
+  grid-template-columns: 1fr 2fr auto;
+  align-items: center;
+  gap: 1rem;
+}
+
+.modal-actions-override {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border);
 }

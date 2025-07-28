@@ -1,0 +1,142 @@
+.party-creator-container {
+  padding: 2rem;
+  max-width: 1000px;
+  margin: 0 auto;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.creator-form {
+  background-color: var(--color-background-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.creator-title {
+  text-align: center;
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+}
+
+.creator-tabs {
+  display: flex;
+  gap: 0.5rem;
+  border-bottom: 2px solid var(--color-border);
+  margin-bottom: 1.5rem;
+}
+
+.tab-content {
+  flex-grow: 1;
+  overflow-y: auto;
+  padding-right: 1rem; /* for scrollbar */
+}
+
+.tab-section.identity-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.pixel-canvas-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.pixel-canvas {
+  border: 2px solid var(--color-border);
+  background-color: #fff;
+  cursor: pointer;
+}
+
+.palette-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.color-palette {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.palette-color {
+  width: 30px;
+  height: 30px;
+  border: 2px solid var(--color-border-light);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: transform 0.1s ease-in-out;
+}
+
+.palette-color.selected {
+  border-color: var(--color-accent);
+  transform: scale(1.1);
+  box-shadow: 0 0 8px var(--color-accent);
+}
+
+.color-picker-input {
+  width: 50px;
+  height: 35px;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+/* Re-using styles from PoliticianCreator.css */
+.policy-stances-section .policy-controls-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.policy-questions-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+.policy-card {
+  background-color: var(--color-background);
+  border: 1px solid var(--color-border-light);
+  border-radius: 6px;
+  padding: 1rem;
+}
+
+.policy-card-question-text {
+  margin: 0 0 1rem 0;
+  font-size: 1rem;
+}
+
+.policy-card-options-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.policy-card-option-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--color-border);
+  margin-top: 1.5rem;
+}
