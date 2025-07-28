@@ -66,6 +66,7 @@ export const createPoliticianObject = (params = {}) => ({
   calculatedIdeology: params.calculatedIdeology || "Centrist",
   ideologyScores: params.ideologyScores || {},
   partyId: params.partyId || "independent",
+  factionId: params.factionId || null,
   partyName: params.partyName || "Independent",
   partyColor: params.partyColor || "#888888",
   isIncumbent: params.isIncumbent || false,
@@ -100,6 +101,7 @@ export const createPartyObject = (params = {}) => ({
   ideology: params.ideology || "Centrist",
   ideologyId: params.ideologyId || "centrist",
   ideologyScores: params.ideologyScores || {},
+  policyStances: params.policyStances || {},
   color: params.color || "#CCCCCC",
   logoDataUrl: params.logoDataUrl || null,
   foundingYear: params.foundingYear || new Date().getFullYear(),
@@ -122,7 +124,8 @@ export const createFactionObject = (params = {}) => ({
   ideology: params.ideology || "Centrism",
   influence: params.influence || getRandomInt(10, 40),
   leader: params.leader || null,
-  membbers: params.members || [],
+  members: params.members || [],
+  policyStances: params.policyStances || {},
 });
 
 /**
@@ -163,6 +166,29 @@ function calculateIdeologyDistance(scoresA, scoresB) {
   }
   return distanceSquared;
 }
+
+export const calculateAggregateStances = (politicians) => {
+  const aggregate = {};
+  if (!politicians || politicians.length === 0) return aggregate;
+
+  POLICY_QUESTIONS.forEach((pq) => {
+    const stanceCounts = {};
+    politicians.forEach((p) => {
+      const stance = p.policyStances[pq.id];
+      if (stance) {
+        stanceCounts[stance] = (stanceCounts[stance] || 0) + 1;
+      }
+    });
+
+    if (Object.keys(stanceCounts).length > 0) {
+      const mostCommonStance = Object.keys(stanceCounts).reduce((a, b) =>
+        stanceCounts[a] > stanceCounts[b] ? a : b
+      );
+      aggregate[pq.id] = mostCommonStance;
+    }
+  });
+  return aggregate;
+};
 
 /**
  * Ensures all party objects in an array have their ideologyScores populated
@@ -210,12 +236,6 @@ export function initializePartyIdeologyScores(parties, ideologyData) {
       }
     }
 
-    console.log(party);
-
-    // If both lookups fail, warn with a more descriptive message and assign a default.
-    console.warn(
-      `Could not find ideology definition for id: "${party.ideologyId}" or name: "${party.ideology}". Party: "${party.name}"`
-    );
     return {
       ...party,
       ideologyScores: ideologyData["centrist"]?.idealPoint || {},
@@ -548,6 +568,24 @@ export function generateFullAIPolitician(
   const partyName = chosenParty?.name || "Independent";
   const partyColor = chosenParty?.color || "#888888";
 
+  let chosenFactionId = null;
+  if (chosenParty && chosenParty.factions && chosenParty.factions.length > 0) {
+    let bestFactionFit = { id: null, distance: Infinity };
+    chosenParty.factions.forEach((faction) => {
+      // Use the faction leader's ideology as a proxy for the faction's center
+      if (faction.leader?.ideologyScores) {
+        const distance = calculateIdeologyDistance(
+          ideologyScores,
+          faction.leader.ideologyScores
+        );
+        if (distance < bestFactionFit.distance) {
+          bestFactionFit = { id: faction.id, distance };
+        }
+      }
+    });
+    chosenFactionId = bestFactionFit.id;
+  }
+
   const fullName = generateAICandidateNameForElection(countryId);
   const nameParts = fullName.split(" ");
   const firstName = forceFirstName || nameParts[0];
@@ -617,6 +655,7 @@ export function generateFullAIPolitician(
     advertisingBudgetMonthly: 0,
     currentAdStrategy: { focus: "none", targetId: null, intensity: 0 },
     isInCampaign: false,
+    factionId: chosenFactionId,
   };
 
   const calculatedPolling = calculateInitialPolling(
@@ -848,6 +887,20 @@ export const generateNationalParties = ({
       countryId: countryId,
       factions: factions,
       leadership: leadership,
+    });
+
+    const allPartyMembers = [
+      leadership.chairperson,
+      ...factions.map((f) => f.leader),
+    ].filter(Boolean);
+
+    newParty.policyStances = calculateAggregateStances(allPartyMembers);
+
+    newParty.factions.forEach((faction) => {
+      // Faction stance is initially based on its leader
+      faction.policyStances = calculateAggregateStances(
+        [faction.leader].filter(Boolean)
+      );
     });
 
     parties.push(newParty);

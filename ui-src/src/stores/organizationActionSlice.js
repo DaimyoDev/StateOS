@@ -120,4 +120,86 @@ export const createOrganizationActionSlice = (set, get) => ({
       type: "info",
     });
   },
+
+  donateToLobbyGroup: (groupId) => {
+    const group = get().activeCampaign?.lobbyingGroups?.find(
+      (g) => g.id === groupId
+    );
+    if (!group) return;
+    console.log(`[Action] Donating to ${group.name}.`);
+    get().actions.addToast({
+      message: `Donation screen for ${group.name} is not yet implemented.`,
+      type: "info",
+    });
+  },
+  investigateLobbyGroup: (groupId) => {
+    const group = get().activeCampaign?.lobbyingGroups?.find(
+      (g) => g.id === groupId
+    );
+    if (!group) return;
+    console.log(`[Action] Investigating ${group.name}.`);
+    get().actions.addToast({
+      message: `Investigation of ${group.name} has begun.`,
+      type: "info",
+    });
+  },
+
+  // News
+  submitPressRelease: (outletId) => {
+    const outlet = get().activeCampaign?.newsOutlets?.find(
+      (o) => o.id === outletId
+    );
+    if (!outlet) return;
+    console.log(`[Action] Submitting press release to ${outlet.name}.`);
+    get().actions.addToast({
+      message: `Press release submitted to ${outlet.name}.`,
+      type: "info",
+    });
+  },
+  buyAdvertising: (outletId) => {
+    const outlet = get().activeCampaign?.newsOutlets?.find(
+      (o) => o.id === outletId
+    );
+    if (!outlet) return;
+    console.log(`[Action] Buying advertising with ${outlet.name}.`);
+    get().actions.addToast({
+      message: `Advertising module for ${outlet.name} is not yet implemented.`,
+      type: "info",
+    });
+  },
+
+  // Party
+  requestPartyEndorsement: (partyId) => {
+    const party = get().activeCampaign?.generatedPartiesSnapshot?.find(
+      (p) => p.id === partyId
+    );
+    if (!party) return;
+    console.log(`[Action] Requesting endorsement from ${party.name}.`);
+    get().actions.addToast({
+      message: `You have formally requested an endorsement from ${party.name}.`,
+      type: "info",
+    });
+  },
+  attendPartyFundraiser: (partyId) => {
+    const party = get().activeCampaign?.generatedPartiesSnapshot?.find(
+      (p) => p.id === partyId
+    );
+    if (!party) return;
+    console.log(`[Action] Attending fundraiser for ${party.name}.`);
+    get().actions.addToast({
+      message: `You spent the evening networking at the ${party.name} fundraiser.`,
+      type: "info",
+    });
+  },
+  challengePartyLeadership: (partyId) => {
+    const party = get().activeCampaign?.generatedPartiesSnapshot?.find(
+      (p) => p.id === partyId
+    );
+    if (!party) return;
+    console.log(`[Action] Challenging leadership of ${party.name}.`);
+    get().actions.addToast({
+      message: `A leadership challenge against the chair of ${party.name} has been initiated!`,
+      type: "warning",
+    });
+  },
 });

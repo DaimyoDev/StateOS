@@ -1,10 +1,11 @@
 // ui-src/src/components/game_tabs/EntityDetailViews.jsx
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import "../components/game_tabs/PoliticalEntitiesTab.css"; // We can reuse the same styles
 import useGameStore from "../store";
 import PoliticianCard from "../components/PoliticianCard";
 import { formatOfficeTitleForDisplay } from "../utils/governmentUtils";
 
+// A helper function to format policy IDs into readable text.
 // A helper function to format policy IDs into readable text.
 const formatPolicyId = (id) => {
   if (!id) return "";
@@ -16,41 +17,33 @@ const formatPolicyId = (id) => {
 
 // --- Party Detail View ---
 const PartyDetail = ({ party }) => {
+  const [viewingStancesOf, setViewingStancesOf] = useState(null); // Can be party ID or faction ID
+  const actions = useGameStore((state) => state.actions);
   const governmentOffices = useGameStore(
     (state) => state.activeCampaign?.governmentOffices || []
   );
   const cityName = useGameStore(
     (state) => state.activeCampaign?.startingCity?.name
   );
-  const { openViewPoliticianModal } = useGameStore((state) => state.actions);
 
   // Memoized calculation to find all elected members of the current party
   const partyMembers = useMemo(() => {
     if (!party || !governmentOffices) return [];
-
     const members = [];
     governmentOffices.forEach((office) => {
       const addOfficial = (official) => {
-        // --- LOGIC CORRECTION ---
-        // Check for a match on party ID OR party name for robustness.
-        // This prevents officials from disappearing if the underlying party objects are different instances.
         if (
           official &&
           (official.partyId === party.id || official.partyName === party.name)
         ) {
-          // Avoid adding duplicates if an official holds multiple conceptual roles
           if (!members.some((m) => m.politician.id === official.id)) {
             members.push({ politician: official, office });
           }
         }
       };
-
-      if (office.holder) {
-        addOfficial(office.holder);
-      }
-      if (office.members && office.members.length > 0) {
+      if (office.holder) addOfficial(office.holder);
+      if (office.members && office.members.length > 0)
         office.members.forEach(addOfficial);
-      }
     });
     return members;
   }, [party, governmentOffices]);
@@ -58,56 +51,98 @@ const PartyDetail = ({ party }) => {
   if (!party) return <div>No party data available.</div>;
 
   const handlePoliticianClick = (politician) => {
-    if (politician && openViewPoliticianModal)
-      openViewPoliticianModal(politician);
+    if (politician && actions.openViewPoliticianModal) {
+      actions.openViewPoliticianModal(politician);
+    }
   };
 
-  const { name, logoDataUrl, color, ideology, leadership, factions } = party;
+  const stancesToShow =
+    viewingStancesOf === party.id
+      ? party.policyStances
+      : party.factions.find((f) => f.id === viewingStancesOf)?.policyStances;
 
   return (
     <div className="entity-detail-view">
-      <header className="detail-header" style={{ borderLeftColor: color }}>
-        {logoDataUrl && (
+      <header
+        className="detail-header"
+        style={{ borderLeftColor: party.color }}
+      >
+        {party.logoDataUrl && (
           <img
-            src={logoDataUrl}
-            alt={`${name} logo`}
+            src={party.logoDataUrl}
+            alt={`${party.name} logo`}
             className="party-logo-large"
           />
         )}
         <div>
-          <h1 style={{ color }}>{name}</h1>
+          <h1 style={{ color: party.color }}>{party.name}</h1>
           <p>
-            <strong>Ideology:</strong> {ideology}
+            <strong>Ideology:</strong> {party.ideology}
           </p>
         </div>
       </header>
 
+      {/* --- Stances Modal --- */}
+      {stancesToShow && (
+        <div
+          className="stances-modal-backdrop"
+          onClick={() => setViewingStancesOf(null)}
+        >
+          <div
+            className="stances-modal-content"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3>
+              {viewingStancesOf === party.id
+                ? `${party.name} Platform`
+                : `${
+                    party.factions.find((f) => f.id === viewingStancesOf)?.name
+                  } Stances`}
+            </h3>
+            <ul className="stances-list">
+              {Object.entries(stancesToShow).map(([policyId, stance]) => (
+                <li key={policyId}>
+                  <strong>{formatPolicyId(policyId)}:</strong>{" "}
+                  {formatPolicyId(stance)}
+                </li>
+              ))}
+            </ul>
+            <button
+              className="menu-button"
+              onClick={() => setViewingStancesOf(null)}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* -- Leadership Section -- */}
-      {leadership && (
+      {party.leadership && (
         <section className="detail-section">
           <h2>Party Leadership</h2>
           <div className="officials-cards-grid">
-            {leadership.chairperson && (
+            {party.leadership.chairperson && (
               <div className="staff-detail-card">
-                <h4>{leadership.chairperson.name}</h4>
+                <h4>{party.leadership.chairperson.name}</h4>
                 <p>
                   <strong>Role:</strong> Party Chairperson
                 </p>
                 <p>
                   <strong>Stance:</strong>{" "}
-                  {leadership.chairperson.calculatedIdeology}
+                  {party.leadership.chairperson.calculatedIdeology}
                 </p>
               </div>
             )}
-            {leadership.commsDirector && (
+            {party.leadership.commsDirector && (
               <div className="staff-detail-card">
-                <h4>{leadership.commsDirector.name}</h4>
+                <h4>{party.leadership.commsDirector.name}</h4>
                 <p>
                   <strong>Role:</strong> Communications Director
                 </p>
                 <p>
                   <strong>Skills:</strong> Comms:{" "}
-                  {leadership.commsDirector.attributes.communication}
+                  {party.leadership.commsDirector.attributes.communication}
                 </p>
               </div>
             )}
@@ -115,31 +150,61 @@ const PartyDetail = ({ party }) => {
         </section>
       )}
 
-      {/* -- Factions Section -- */}
-      {factions && factions.length > 0 && (
+      {/* --- Factions Section --- */}
+      {party.factions && party.factions.length > 0 && (
         <section className="detail-section">
           <h2>Internal Factions (Wings)</h2>
           <div className="faction-list">
-            {factions.map((faction) => (
-              <div key={faction.id} className="faction-detail-card">
-                <h4>{faction.name}</h4>
-                <p>
-                  <strong>Influence:</strong> {faction.influence}%
-                </p>
-                {faction.leader && (
+            {party.factions.map((faction) => {
+              const factionMembers = partyMembers.filter(
+                (m) => m.politician.factionId === faction.id
+              );
+              return (
+                <div key={faction.id} className="faction-detail-card">
+                  <h4>{faction.name}</h4>
                   <p>
-                    <strong>Leader:</strong> {faction.leader.name}
+                    <strong>Influence:</strong> {faction.influence}%
                   </p>
-                )}
-              </div>
-            ))}
+                  {faction.leader && (
+                    <p>
+                      <strong>Leader:</strong> {faction.leader.name}
+                    </p>
+                  )}
+                  <button
+                    className="action-button small"
+                    onClick={() => setViewingStancesOf(faction.id)}
+                  >
+                    View Stances
+                  </button>
+                  <h5>Elected Members ({factionMembers.length})</h5>
+                  <div className="faction-members-list">
+                    {factionMembers.length > 0 ? (
+                      factionMembers.map(({ politician, office }) => (
+                        <div
+                          key={politician.id}
+                          className="faction-member-item"
+                          onClick={() => handlePoliticianClick(politician)}
+                        >
+                          {politician.name} (
+                          {formatOfficeTitleForDisplay(office, cityName)})
+                        </div>
+                      ))
+                    ) : (
+                      <p className="no-members-text">
+                        No elected officials in this wing.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </section>
       )}
 
       {/* --- Elected Officials Section --- */}
       <section className="detail-section">
-        <h2>Elected Officials ({partyMembers.length})</h2>
+        <h2>All Elected Officials ({partyMembers.length})</h2>
         <div className="officials-cards-grid">
           {partyMembers.length > 0 ? (
             partyMembers.map(({ politician, office }) => (
@@ -160,17 +225,32 @@ const PartyDetail = ({ party }) => {
         </div>
       </section>
 
-      {/* -- Actions Section -- */}
+      {/* --- Actions Section --- */}
       <section className="detail-section">
-        <h2>Party Actions</h2>
+        <h2>Actions</h2>
         <div className="action-buttons">
-          <button className="action-button" disabled>
+          <button
+            className="action-button"
+            onClick={() => setViewingStancesOf(party.id)}
+          >
+            View Party Platform
+          </button>
+          <button
+            className="action-button"
+            onClick={() => actions.requestPartyEndorsement(party.id)}
+          >
             Request Endorsement
           </button>
-          <button className="action-button" disabled>
-            Attend Party Fundraiser
+          <button
+            className="action-button"
+            onClick={() => actions.attendPartyFundraiser(party.id)}
+          >
+            Attend Fundraiser
           </button>
-          <button className="action-button" disabled>
+          <button
+            className="action-button"
+            onClick={() => actions.challengePartyLeadership(party.id)}
+          >
             Challenge Leadership
           </button>
         </div>
@@ -181,9 +261,7 @@ const PartyDetail = ({ party }) => {
 
 // --- Lobbying Group Detail View ---
 const LobbyingGroupDetail = ({ group }) => {
-  // CORRECTED: Get actions from the store
   const actions = useGameStore((state) => state.actions);
-
   return (
     <div className="entity-detail-view">
       <div className="detail-header">
@@ -197,7 +275,6 @@ const LobbyingGroupDetail = ({ group }) => {
           </p>
         </div>
       </div>
-
       <div className="detail-section">
         <h2>Policy Stances</h2>
         <strong>Supports:</strong>
@@ -213,7 +290,6 @@ const LobbyingGroupDetail = ({ group }) => {
           ))}
         </ul>
       </div>
-
       <div className="detail-section">
         <h2>Key Contacts</h2>
         <div className="entity-list">
@@ -226,21 +302,25 @@ const LobbyingGroupDetail = ({ group }) => {
           ))}
         </div>
       </div>
-
       <div className="detail-section">
         <h2>Actions</h2>
         <div className="action-buttons">
-          {/* CORRECTED: Enabled the "Request Meeting" button and connected its action */}
           <button
             className="action-button"
             onClick={() => actions.meetWithLobbyist(group.id)}
           >
             Request Meeting
           </button>
-          <button className="action-button" disabled>
+          <button
+            className="action-button"
+            onClick={() => actions.donateToLobbyGroup(group.id)}
+          >
             Donate to Group
           </button>
-          <button className="action-button" disabled>
+          <button
+            className="action-button"
+            onClick={() => actions.investigateLobbyGroup(group.id)}
+          >
             Investigate Group
           </button>
         </div>
@@ -252,9 +332,7 @@ const LobbyingGroupDetail = ({ group }) => {
 // --- News Outlet Detail View ---
 const NewsOutletDetail = ({ outlet }) => {
   const allNewsItems = useGameStore((state) => state.newsItems);
-  // CORRECTED: Get actions from the store
   const actions = useGameStore((state) => state.actions);
-
   const outletArticles = useMemo(() => {
     return allNewsItems.filter((item) => item.outletId === outlet.id);
   }, [allNewsItems, outlet.id]);
@@ -275,7 +353,6 @@ const NewsOutletDetail = ({ outlet }) => {
           </p>
         </div>
       </div>
-
       <div className="detail-section">
         <h2>Recent Articles</h2>
         <div className="news-feed-detail">
@@ -295,7 +372,6 @@ const NewsOutletDetail = ({ outlet }) => {
           )}
         </div>
       </div>
-
       <div className="detail-section">
         <h2>Key Journalists</h2>
         <div className="entity-list">
@@ -308,21 +384,25 @@ const NewsOutletDetail = ({ outlet }) => {
           ))}
         </div>
       </div>
-
       <div className="detail-section">
         <h2>Actions</h2>
         <div className="action-buttons">
-          {/* CORRECTED: Enabled the "Grant Interview" button and connected its action */}
           <button
             className="action-button"
             onClick={() => actions.grantInterview(outlet.id)}
           >
             Grant Interview
           </button>
-          <button className="action-button" disabled>
+          <button
+            className="action-button"
+            onClick={() => actions.submitPressRelease(outlet.id)}
+          >
             Submit Press Release
           </button>
-          <button className="action-button" disabled>
+          <button
+            className="action-button"
+            onClick={() => actions.buyAdvertising(outlet.id)}
+          >
             Buy Advertising
           </button>
         </div>
