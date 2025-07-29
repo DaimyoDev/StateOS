@@ -4,7 +4,6 @@ import {
   getRandomInt,
   getRandomElement,
   normalizeArrayBySum,
-  distributeValueProportionally,
 } from "../utils/core";
 import {
   MOOD_LEVELS,
@@ -13,13 +12,20 @@ import {
 } from "../data/governmentData";
 import { POLICY_QUESTIONS } from "../data/policyData";
 import { calculateHealthcareMetrics } from "../utils/statCalculationCore";
+import { calculateNumberOfSeats } from "../utils/electionUtils";
 import {
-  calculateNumberOfSeats,
-  generateRandomOfficeHolder,
-} from "../utils/electionUtils";
-import { initializePartyIdeologyScores } from "./personnel";
+  initializePartyIdeologyScores,
+  generateFullAIPolitician,
+} from "./personnel";
 import { IDEOLOGY_DEFINITIONS } from "../data/ideologiesData";
 import { deepCopy } from "../utils/objectUtils";
+import { normalizePartyPopularities } from "../utils/electionUtils";
+import usaCityParts from "../data/cityNames/usa_city_parts.json";
+import { NAMES_BY_COUNTRY } from "../data/namesData";
+
+const cityNamesByCountry = {
+  USA: usaCityParts,
+};
 
 // --- City Data Structure Definition ---
 export const createCityObject = (params = {}) => ({
@@ -107,19 +113,58 @@ export const generateFullSecondAdminRegionData = (params = {}) => {
 
 // --- City Generation Logic ---
 
-const generateCityName = () => {
-  const prefixes = ["Spring", "North", "West", "New", "Port", "Mount", "Fort"];
-  const suffixes = [
-    "field",
-    "wood",
-    "town",
-    "ville",
-    "burg",
-    " City",
-    " Crest",
-    " Valley",
-  ];
-  return `${getRandomElement(prefixes)}${getRandomElement(suffixes)}`;
+const generateCityName = (countryId, usedNames) => {
+  const nameParts = cityNamesByCountry[countryId];
+  let generatedName = "";
+
+  // --- NEW: Get person names from the central namesData file ---
+  const personNames = [];
+  if (countryId === "USA" && NAMES_BY_COUNTRY["USA"]) {
+    // For the USA, use a mix of last names and some male first names
+    personNames.push(...(NAMES_BY_COUNTRY["USA"].last || []));
+    personNames.push(...(NAMES_BY_COUNTRY["USA"].male || []).slice(0, 20)); // Add a sample of first names
+  }
+
+  if (nameParts) {
+    let attempts = 0;
+    while (attempts < 50) {
+      const roll = Math.random();
+
+      // Pattern 1: Person Name based (e.g., Austin, Carson City, Brownville)
+      if (personNames.length > 0 && roll < 0.4) {
+        const personCore = getRandomElement(personNames);
+        const subRoll = Math.random();
+        if (subRoll < 0.5) {
+          generatedName = personCore; // e.g., Austin
+        } else if (subRoll < 0.8) {
+          generatedName = `${personCore}${getRandomElement(
+            nameParts.suffixes
+          )}`; // e.g., Brownville
+        } else {
+          generatedName = `${personCore} City`; // e.g., Carson City
+        }
+      }
+      // Pattern 2: Geographic Name based (e.g., Springfield, Northwood)
+      else {
+        const core = getRandomElement(nameParts.cores);
+        const suffix = getRandomElement(nameParts.suffixes);
+        generatedName =
+          Math.random() < 0.2
+            ? `${getRandomElement(nameParts.prefixes)} ${core}`
+            : `${core}${suffix}`;
+      }
+
+      const finalName =
+        generatedName.charAt(0).toUpperCase() + generatedName.slice(1);
+      if (!usedNames.has(finalName)) {
+        return finalName;
+      }
+      attempts++;
+    }
+  }
+
+  // Fallback
+  return `New Town ${getRandomInt(100, 999)}`;
 };
 
 export const generateCityDemographics = () => {
@@ -571,6 +616,101 @@ export const generateInitialCityLaws = ({
   return laws;
 };
 
+export const generateCitiesForState = ({
+  totalPopulation,
+  countryId,
+  regionId,
+  basePoliticalLandscape,
+}) => {
+  const cities = [];
+  let remainingPopulation = totalPopulation;
+  const usedNames = new Set();
+  const MIN_CITY_POP = 400;
+
+  if (totalPopulation < 1000) {
+    if (totalPopulation > 0) {
+      const onlyCity = generateFullCityData({
+        populationHint: totalPopulation,
+        countryId,
+        regionId,
+        basePoliticalLandscape,
+        usedNames,
+      });
+      cities.push(onlyCity);
+    }
+    return cities;
+  }
+
+  // 1. Create the Metropolis (Capital)
+  const capitalPopPercent = getRandomInt(5, 20) / 100;
+  let capitalPopulation = Math.floor(remainingPopulation * capitalPopPercent);
+  if (remainingPopulation - capitalPopulation < MIN_CITY_POP) {
+    capitalPopulation = remainingPopulation - MIN_CITY_POP;
+  }
+  const capitalCity = generateFullCityData({
+    populationHint: capitalPopulation,
+    countryId,
+    regionId,
+    basePoliticalLandscape,
+    usedNames,
+    isCapital: true,
+  });
+  cities.push(capitalCity);
+  usedNames.add(capitalCity.name);
+  remainingPopulation -= capitalPopulation;
+
+  // 2. Create 1-3 Major Cities
+  const numMajorCities = getRandomInt(20, 25);
+  for (
+    let i = 0;
+    i < numMajorCities && remainingPopulation > totalPopulation * 0.1;
+    i++
+  ) {
+    const majorCityPopPercent = getRandomInt(5, 15) / 100;
+    let majorCityPopulation = Math.floor(
+      remainingPopulation * majorCityPopPercent
+    );
+    if (remainingPopulation - majorCityPopulation < MIN_CITY_POP) break;
+
+    const majorCity = generateFullCityData({
+      populationHint: majorCityPopulation,
+      countryId,
+      regionId,
+      basePoliticalLandscape,
+      usedNames,
+    });
+    cities.push(majorCity);
+    usedNames.add(majorCity.name);
+    remainingPopulation -= majorCityPopulation;
+  }
+
+  // 3. Create a "long tail" of smaller towns and villages
+  while (remainingPopulation > MIN_CITY_POP) {
+    // Smaller towns have a max population (e.g., 100k) to prevent them from being too large
+    const maxPopForSmallTown = Math.min(remainingPopulation, 200000);
+    if (maxPopForSmallTown <= MIN_CITY_POP) break;
+
+    let nextCityPopulation = getRandomInt(MIN_CITY_POP, maxPopForSmallTown);
+
+    if (remainingPopulation - nextCityPopulation < MIN_CITY_POP) {
+      nextCityPopulation = remainingPopulation; // Assign the remainder to the last town
+    }
+
+    const nextCity = generateFullCityData({
+      populationHint: nextCityPopulation,
+      countryId,
+      regionId,
+      basePoliticalLandscape,
+      usedNames,
+    });
+    cities.push(nextCity);
+    usedNames.add(nextCity.name);
+    remainingPopulation -= nextCityPopulation;
+  }
+
+  return cities;
+};
+
 /**
  * Generates a complete, new city object with all nested data.
  * This is the main factory function for creating a city.
@@ -578,9 +718,9 @@ export const generateInitialCityLaws = ({
 export const generateFullCityData = (params = {}) => {
   const id = `city_${generateId()}`;
   const name =
-    params.playerDefinedCityName || generateCityName(params.countryId);
+    params.playerDefinedCityName ||
+    generateCityName(params.countryId, params.usedNames || new Set());
   const population = params.populationHint || getRandomInt(20000, 1000000);
-
   const demographics = generateCityDemographics();
   const economicProfile = generateEconomicProfile(population, demographics);
   const stats = generateInitialCityStats(
@@ -588,13 +728,27 @@ export const generateFullCityData = (params = {}) => {
     demographics,
     economicProfile
   );
+
   const cityLaws = generateInitialCityLaws({
     countryId: params.countryId,
     wealthLevel: stats.wealth,
     cityType: stats.type,
     gdpPerCapita: economicProfile.gdpPerCapita,
-    mainIssues: stats.mainIssues,
+    mainIssues: stats.mainIssues, // This was the missing piece
   });
+
+  // Each city gets a slight variation of the base regional political landscape
+  const politicalLandscape = (params.basePoliticalLandscape || []).map(
+    (party) => {
+      const newParty = deepCopy(party);
+      const shift = getRandomInt(-5, 5);
+      const basePopularity = newParty.popularity || 0;
+      newParty.popularity = Math.max(0, Math.min(100, basePopularity + shift));
+      return newParty;
+    }
+  );
+
+  const normalizedLandscape = normalizePartyPopularities(politicalLandscape);
 
   return createCityObject({
     id,
@@ -606,7 +760,7 @@ export const generateFullCityData = (params = {}) => {
     economicProfile,
     stats,
     cityLaws,
-    politicalLandscape: params.basePoliticalLandscape || [],
+    politicalLandscape: normalizedLandscape,
   });
 };
 
@@ -616,186 +770,112 @@ export const generateFullCityData = (params = {}) => {
  * Generates a full state data object, often by aggregating data from its cities.
  */
 export const generateFullStateData = (params = {}) => {
-  const {
-    name,
-    countryId,
-    cities = [],
+  const { countryId, totalPopulation, id, nationalParties } = params;
+
+  const baseRegionalLandscape = (nationalParties || []).map((party) => {
+    const newParty = deepCopy(party);
+    const shift = getRandomInt(-10, 10);
+    newParty.popularity = Math.max(5, Math.min(95, 50 + shift));
+    return newParty;
+  });
+  const normalizedBaseLandscape = normalizePartyPopularities(
+    baseRegionalLandscape
+  );
+
+  const cities = generateCitiesForState({
     totalPopulation,
-    id,
-    legislativeDistricts,
-    nationalParties,
-  } = params;
-  let type = "State";
-  if (countryId === "JPN") type = "Prefecture";
-  else if (countryId === "PHL") type = "Region";
-  else if (countryId === "CAN" || countryId === "KOR") type = "Province";
+    countryId,
+    regionId: id,
+    basePoliticalLandscape: normalizedBaseLandscape,
+  });
 
-  // If cities are provided, aggregate their data. Otherwise, use provided totals or generate placeholders.
-  let aggregatedDemographics, aggregatedEconomicProfile, aggregatedStats;
+  if (cities.length === 0) {
+    return createStateObject({ ...params, cities: [], population: 0 });
+  }
 
-  if (cities.length > 0 && totalPopulation > 0) {
-    // --- Aggregation Logic ---
-    const weightedDemographics = {
-      ageDistribution: { youth: 0, youngAdult: 0, adult: 0, senior: 0 },
-      educationLevels: {
-        highSchoolOrLess: 0,
-        someCollege: 0,
-        bachelorsOrHigher: 0,
-      },
-    };
-    cities.forEach((city) => {
-      const weight = city.population / totalPopulation;
-      for (const key in weightedDemographics.ageDistribution) {
-        weightedDemographics.ageDistribution[key] +=
-          city.demographics.ageDistribution[key] * weight;
-      }
-      for (const key in weightedDemographics.educationLevels) {
-        weightedDemographics.educationLevels[key] +=
-          city.demographics.educationLevels[key] * weight;
-      }
-    });
-    aggregatedDemographics = {
-      ageDistribution: normalizeArrayBySum(
-        weightedDemographics.ageDistribution,
-        100,
-        1
-      ),
-      educationLevels: normalizeArrayBySum(
-        weightedDemographics.educationLevels,
-        100,
-        1
-      ),
-    };
+  const finalTotalPopulation = cities.reduce(
+    (sum, city) => sum + city.population,
+    0
+  );
 
-    const totalGDP = cities.reduce(
-      (sum, city) => sum + city.population * city.economicProfile.gdpPerCapita,
-      0
-    );
-    const averageGdpPerCapita =
-      totalPopulation > 0 ? totalGDP / totalPopulation : 0;
-    const allIssues = cities.flatMap((city) => city.stats.mainIssues);
-    const mainIssues = [...new Set(allIssues)];
-    const allIndustries = cities.flatMap(
-      (city) => city.economicProfile.dominantIndustries
-    );
-    const dominantIndustries = [...new Set(allIndustries)];
-    aggregatedEconomicProfile = {
-      dominantIndustries,
-      gdpPerCapita: Math.round(averageGdpPerCapita),
-      keyIssues: mainIssues,
-    };
+  const { aggregatedDemographics, aggregatedEconomicProfile, issueCounts } =
+    cities.reduce(
+      (acc, city) => {
+        const weight = city.population / finalTotalPopulation;
+        for (const key in acc.aggregatedDemographics.ageDistribution) {
+          acc.aggregatedDemographics.ageDistribution[key] +=
+            city.demographics.ageDistribution[key] * weight;
+        }
+        for (const key in acc.aggregatedDemographics.educationLevels) {
+          acc.aggregatedDemographics.educationLevels[key] +=
+            city.demographics.educationLevels[key] * weight;
+        }
+        acc.aggregatedEconomicProfile.totalGDP +=
+          city.population * city.economicProfile.gdpPerCapita;
 
-    // ... Aggregation for stats ...
-    const aggregatedBudget = cities.reduce(
-      (totals, city) => {
-        totals.totalAnnualIncome += city.stats.budget.totalAnnualIncome;
-        totals.totalAnnualExpenses += city.stats.budget.totalAnnualExpenses;
-        totals.balance += city.stats.budget.balance;
-        totals.accumulatedDebt += city.stats.budget.accumulatedDebt;
-        return totals;
+        // --- NEW: Aggregate main issues ---
+        if (city.stats && city.stats.mainIssues) {
+          city.stats.mainIssues.forEach((issue) => {
+            acc.issueCounts[issue] = (acc.issueCounts[issue] || 0) + 1;
+          });
+        }
+        // --- END NEW ---
+
+        return acc;
       },
       {
-        totalAnnualIncome: 0,
-        totalAnnualExpenses: 0,
-        balance: 0,
-        accumulatedDebt: 0,
+        aggregatedDemographics: {
+          ageDistribution: { youth: 0, youngAdult: 0, adult: 0, senior: 0 },
+          educationLevels: {
+            highSchoolOrLess: 0,
+            someCollege: 0,
+            bachelorsOrHigher: 0,
+          },
+        },
+        aggregatedEconomicProfile: { totalGDP: 0 },
+        issueCounts: {}, // Initialize issue counter
       }
     );
 
-    const averageRating = (key) => {
-      const ratingMap = {
-        Excellent: 5,
-        Good: 4,
-        Average: 3,
-        Poor: 2,
-        "Very Poor": 1,
-      };
-      const reverseRatingMap = [
-        "",
-        "Very Poor",
-        "Poor",
-        "Average",
-        "Good",
-        "Excellent",
-      ];
-      const totalScore = cities.reduce(
-        (sum, city) => sum + (ratingMap[city.stats[key]] || 3),
-        0
-      );
-      const averageScore =
-        cities.length > 0 ? Math.round(totalScore / cities.length) : 3;
-      return reverseRatingMap[averageScore] || "Average";
-    };
+  aggregatedEconomicProfile.gdpPerCapita = Math.round(
+    aggregatedEconomicProfile.totalGDP / finalTotalPopulation
+  );
 
-    aggregatedStats = {
-      mainIssues,
-      economicOutlook: averageRating(
-        "economicOutlook",
-        ECONOMIC_OUTLOOK_LEVELS
-      ),
-      publicSafetyRating: averageRating("publicSafetyRating", RATING_LEVELS),
-      educationQuality: averageRating("educationQuality", RATING_LEVELS),
-      infrastructureState: averageRating("infrastructureState", RATING_LEVELS),
-      overallCitizenMood: averageRating("overallCitizenMood", MOOD_LEVELS),
-      budget: aggregatedBudget,
-    };
-  } else {
-    // --- Placeholder Generation for states without city data ---
-    aggregatedDemographics = generateCityDemographics();
+  // --- NEW: Determine the top issues for the state ---
+  const aggregatedMainIssues = Object.entries(issueCounts)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 3) // Take the top 3 most common issues
+    .map(([issue]) => issue);
+  // --- END NEW ---
 
-    // 1. Generate the economic profile, which contains gdpPerCapita
-    aggregatedEconomicProfile = generateEconomicProfile(
-      totalPopulation,
-      aggregatedDemographics
-    );
-
-    // 2. Generate the rest of the stats, passing in the profile we just made
-    const tempCityStats = generateInitialCityStats(
-      totalPopulation,
-      aggregatedDemographics,
-      aggregatedEconomicProfile
-    );
-
-    // 3. Assemble the final stats object, ensuring the economic profile is included
-    aggregatedStats = {
-      mainIssues: tempCityStats.mainIssues,
-      economicOutlook: tempCityStats.economicOutlook,
-      publicSafetyRating: tempCityStats.publicSafetyRating,
-      educationQuality: tempCityStats.educationQuality,
-      infrastructureState: tempCityStats.infrastructureState,
-      overallCitizenMood: tempCityStats.overallCitizenMood,
-      budget: tempCityStats.budget,
-    };
-  }
-
-  const capitalCity = cities.length > 0 ? getRandomElement(cities) : null;
-
-  let regionalPoliticalLandscape = [];
-  if (nationalParties && nationalParties.length > 0) {
-    // CORRECTED: Use the robust deepCopy function instead of JSON.parse/stringify
-    const partiesCopy = deepCopy(nationalParties);
-
-    const popularities = distributeValueProportionally(100, partiesCopy.length);
-    regionalPoliticalLandscape = partiesCopy.map((party, index) => {
-      party.popularity = popularities[index];
-      return party;
+  const aggregatedLandscape = {};
+  cities.forEach((city) => {
+    city.politicalLandscape.forEach((party) => {
+      if (!aggregatedLandscape[party.id]) {
+        aggregatedLandscape[party.id] = { ...party, popularity: 0 };
+      }
+      const weightedPopularity =
+        party.popularity * (city.population / finalTotalPopulation);
+      aggregatedLandscape[party.id].popularity += weightedPopularity;
     });
-  }
+  });
+  const finalPoliticalLandscape = Object.values(aggregatedLandscape);
+
+  const capitalCity = cities.sort((a, b) => b.population - a.population)[0];
 
   return createStateObject({
-    id,
-    name,
-    countryId,
+    ...params,
+    population: finalTotalPopulation,
+    cities: cities,
     capitalCityId: capitalCity ? capitalCity.id : null,
-    cities: cities.map((c) => c.id),
-    population: totalPopulation,
-    legislativeDistricts,
-    type,
     demographics: aggregatedDemographics,
     economicProfile: aggregatedEconomicProfile,
-    stats: aggregatedStats,
-    stateLaws: {},
-    politicalLandscape: regionalPoliticalLandscape,
+    politicalLandscape: normalizePartyPopularities(finalPoliticalLandscape),
+    // --- NEW: Add the aggregated stats to the state object ---
+    stats: {
+      mainIssues: aggregatedMainIssues,
+      // We can aggregate other stats like wealth, mood, etc. here in the future
+    },
   });
 };
 
@@ -844,11 +924,16 @@ export const generateInitialGovernmentOffices = ({
     const termLength = electionType.frequencyYears || 4;
 
     if (electionType.generatesOneWinner) {
-      const holder = generateRandomOfficeHolder(
+      // --- MODIFIED LOGIC for single-winner offices ---
+      const holder = generateFullAIPolitician(
+        countryData.id,
         processedParties,
-        officeName,
-        countryData.id
+        POLICY_QUESTIONS,
+        IDEOLOGY_DEFINITIONS
       );
+
+      // Set the currentOffice property on the politician object itself
+      holder.currentOffice = officeName;
 
       const office = createGovernmentOffice({
         officeId: `initial_${electionType.id}_${generateId()}`,
@@ -856,7 +941,7 @@ export const generateInitialGovernmentOffices = ({
         officeNameTemplateId: electionType.id,
         level: electionType.level,
         cityId: city.id,
-        holder: holder,
+        holder: holder, // Place the updated holder object in the office
         termEnds: {
           year: 2025 + termLength - 1,
           month: electionType.electionMonth || 11,
@@ -874,24 +959,17 @@ export const generateInitialGovernmentOffices = ({
 
       const initialMembers = [];
       for (let i = 0; i < numberOfSeats; i++) {
-        let memberRoleTitle = `Member, ${officeName}`;
-        if (
-          [
-            "BlockVote",
-            "SNTV_MMD",
-            "PluralityMMD",
-            "PartyListPR",
-            "MMP",
-          ].includes(electionType.electoralSystem)
-        ) {
-          memberRoleTitle = `Member, ${officeName} (Seat ${i + 1})`;
-        }
-
-        const member = generateRandomOfficeHolder(
+        // --- MODIFIED LOGIC for multi-member offices ---
+        const member = generateFullAIPolitician(
+          countryData.id,
           processedParties,
-          memberRoleTitle,
-          countryData.id
+          POLICY_QUESTIONS,
+          IDEOLOGY_DEFINITIONS
         );
+
+        // Set the currentOffice property on the politician object
+        member.currentOffice = officeName;
+
         initialMembers.push(member);
       }
 

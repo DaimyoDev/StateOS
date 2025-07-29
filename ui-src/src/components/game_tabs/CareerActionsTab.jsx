@@ -369,6 +369,107 @@ const ActionsSubTab = ({
   );
 };
 
+const EMPTY_ARRAY = [];
+
+const StaffSubTab = () => {
+  const talentPool = useGameStore((state) => state.talentPool || EMPTY_ARRAY);
+  const hiredStaff = useGameStore((state) => state.hiredStaff || EMPTY_ARRAY);
+  const { scoutStaffCandidate, hireStaff, fireStaff } = useGameStore(
+    (state) => state.actions
+  );
+
+  return (
+    <div className="sub-tab-content">
+      <section className="info-card hired-staff-card">
+        <h3>My Staff</h3>
+        {hiredStaff.length > 0 ? (
+          <ul className="staff-list">
+            {hiredStaff.map((staff) => (
+              <li key={staff.id} className="staff-list-item">
+                <div className="staff-info">
+                  <span className="staff-name">
+                    {staff.name}{" "}
+                    <span className="staff-role">({staff.role})</span>
+                  </span>
+                  <span className="staff-details">
+                    STR: {staff.attributes.strategy} | COM:{" "}
+                    {staff.attributes.communication} | FUN:{" "}
+                    {staff.attributes.fundraising} | LOY:{" "}
+                    {staff.attributes.loyalty}
+                  </span>
+                  <span className="staff-salary">
+                    Salary: ${staff.salary.toLocaleString()}/month
+                  </span>
+                </div>
+                <button
+                  className="button-delete small-button"
+                  onClick={() => fireStaff(staff.id)}
+                >
+                  Fire
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p>You have not hired any staff.</p>
+        )}
+      </section>
+
+      <section className="info-card scouting-pool-card">
+        <h3>Scouting Pool</h3>
+        {talentPool.length > 0 ? (
+          <ul className="staff-list">
+            {talentPool.map((staff) => (
+              <li key={staff.id} className="staff-list-item">
+                <div className="staff-info">
+                  <span className="staff-name">
+                    {staff.name}{" "}
+                    <span className="staff-role">({staff.role})</span>
+                  </span>
+                  {staff.isScouted ? (
+                    <>
+                      <span className="staff-details">
+                        STR: {staff.attributes.strategy} | COM:{" "}
+                        {staff.attributes.communication} | FUN:{" "}
+                        {staff.attributes.fundraising} | LOY:{" "}
+                        {staff.attributes.loyalty}
+                      </span>
+                      <span className="staff-salary">
+                        Salary: ${staff.salary.toLocaleString()}/month
+                      </span>
+                    </>
+                  ) : (
+                    <span className="staff-details-hidden">
+                      Stats and salary are unknown. Scout to reveal.
+                    </span>
+                  )}
+                </div>
+                {staff.isScouted ? (
+                  <button
+                    className="action-button small-button"
+                    onClick={() => hireStaff(staff.id)}
+                  >
+                    Hire
+                  </button>
+                ) : (
+                  <button
+                    className="menu-button small-button"
+                    onClick={() => scoutStaffCandidate(staff.id)}
+                  >
+                    Scout ($250)
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p>No candidates currently available for scouting.</p>
+        )}
+      </section>
+    </div>
+  );
+};
+
 function CareerActionsTab({ campaignData }) {
   const [activeSubTab, setActiveSubTab] = useState("Elections");
   const [isProposePolicyModalOpen, setIsProposePolicyModalOpen] =
@@ -614,6 +715,8 @@ function CareerActionsTab({ campaignData }) {
             addressIssueCost={addressIssueCost}
           />
         );
+      case "Staff":
+        return <StaffSubTab />;
       case "Actions":
         return (
           <ActionsSubTab
@@ -719,6 +822,12 @@ function CareerActionsTab({ campaignData }) {
             className={activeSubTab === "Office" ? "active" : ""}
           >
             My Office
+          </button>
+          <button
+            onClick={() => setActiveSubTab("Staff")}
+            className={activeSubTab === "Staff" ? "active" : ""}
+          >
+            Staff & Scouting
           </button>
           <button
             onClick={() => setActiveSubTab("Actions")}

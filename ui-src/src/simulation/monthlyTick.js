@@ -1,19 +1,31 @@
 // src/simulation/monthlyTick.js
-// This file contains the core logic for processing all game state changes that occur on a monthly basis.
-
-// NOTE: Import paths will need to be updated as the refactoring progresses.
 import { getRandomInt, adjustStatLevel } from "../utils/core.js";
 import {
   ECONOMIC_OUTLOOK_LEVELS,
   RATING_LEVELS,
   MOOD_LEVELS,
-  STAT_LEVEL_ARRAYS,
 } from "../data/governmentData";
-import { decideAIPolicyProposal } from "../utils/aiUtils.js"; // This will likely move to an AI-specific module
-import { normalizeArrayBySum } from "../utils/core.js"; // Corrected path
+import { decideAIPolicyProposal } from "../simulation/aiProposal.js";
 import { calculateDetailedIncomeSources } from "../entities/politicalEntities.js";
 import { CITY_POLICIES } from "../data/policyDefinitions";
-import { calculateHealthcareMetrics } from "./statCalculator.js";
+import { calculateAllCityStats } from "../utils/statCalculationCore.js";
+import { normalizePartyPopularities } from "../utils/electionUtils.js";
+
+/**
+ * Derives a qualitative rating (e.g., "Good", "Poor") from a numerical stat.
+ * @param {number} value - The numerical value of the stat.
+ * @param {Array<number>} thresholds - An array of thresholds, from best to worst.
+ * @param {Array<string>} labels - The RATING_LEVELS labels.
+ * @returns {string} The qualitative rating.
+ */
+const deriveRatingFromValue = (value, thresholds, labels) => {
+  for (let i = 0; i < thresholds.length; i++) {
+    if (value <= thresholds[i]) {
+      return labels[labels.length - 1 - i];
+    }
+  }
+  return labels[0]; // Return the worst rating if value exceeds all thresholds
+};
 
 /**
  * Recalculates budget figures based on the current city state.
@@ -24,7 +36,6 @@ export const runMonthlyBudgetUpdate = (campaign) => {
   if (!campaign?.startingCity?.stats?.budget) {
     return { budgetUpdates: null, newsItems: [] };
   }
-
   const city = campaign.startingCity;
   const { stats, population, economicProfile } = city;
   const { budget } = stats;
@@ -41,32 +52,39 @@ export const runMonthlyBudgetUpdate = (campaign) => {
   const newTotalAnnualIncome = Math.floor(
     Object.values(newIncomeSources).reduce((sum, val) => sum + val, 0)
   );
-  const currentTotalAnnualExpenses = budget.totalAnnualExpenses;
-  const newBalance = newTotalAnnualIncome - currentTotalAnnualExpenses;
+
+  // --- FIX: Recalculate total expenses from the sum of individual allocations ---
+  const newTotalAnnualExpenses = Math.floor(
+    Object.values(budget.expenseAllocations).reduce((sum, val) => sum + val, 0)
+  );
+
+  const newBalance = newTotalAnnualIncome - newTotalAnnualExpenses;
 
   let newAccumulatedDebt = budget.accumulatedDebt || 0;
   if (newBalance < 0) {
     newAccumulatedDebt += Math.abs(newBalance);
   } else if (newBalance > 0 && newAccumulatedDebt > 0) {
     newAccumulatedDebt = Math.max(0, newAccumulatedDebt - newBalance);
+  } else if (newBalance > 0) {
+    newAccumulatedDebt -= newBalance;
   }
 
   const budgetUpdates = {
     totalAnnualIncome: newTotalAnnualIncome,
+    totalAnnualExpenses: newTotalAnnualExpenses, // Now includes the updated total
     balance: newBalance,
     accumulatedDebt: newAccumulatedDebt,
     incomeSources: newIncomeSources,
   };
 
-  // Check if there's any meaningful change to avoid unnecessary state updates
   if (
     newTotalAnnualIncome === budget.totalAnnualIncome &&
+    newTotalAnnualExpenses === budget.totalAnnualExpenses &&
     newBalance === budget.balance &&
     newAccumulatedDebt === budget.accumulatedDebt
   ) {
     return { budgetUpdates: null, newsItems: [] };
   }
-
   return { budgetUpdates, newsItems: [] };
 };
 
@@ -78,51 +96,66 @@ export const runMonthlyBudgetUpdate = (campaign) => {
 export const runMonthlyStatUpdate = (campaign) => {
   const statUpdates = {};
   const newsItems = [];
-  const cityStats = campaign.startingCity?.stats;
+  const city = campaign.startingCity;
 
-  if (!cityStats) {
+  if (!city?.stats) {
     return { statUpdates, newsItems };
   }
 
-  // This logic could be expanded, but for now, it's a simple random drift.
-  // A more advanced simulation would tie this to policy effects, economic trends, etc.
-  const statsToDrift = [
-    "publicSafetyRating",
-    "educationQuality",
-    "infrastructureState",
-    "environmentRating",
-    "cultureArtsRating",
-  ];
-  statsToDrift.forEach((statKey) => {
-    if (Math.random() < 0.1) {
-      // 10% chance of a random drift each month
-      const change = getRandomInt(-1, 1);
-      if (change !== 0) {
-        const oldStat = cityStats[statKey];
-        const newStat = adjustStatLevel(oldStat, RATING_LEVELS, change);
-        if (newStat !== oldStat) {
-          statUpdates[statKey] = newStat;
-        }
-      }
+  // --- STEP 1: Calculate all core, numerical stats ---
+  const calculatedStats = calculateAllCityStats(city);
+  Object.assign(statUpdates, calculatedStats);
+
+  // --- STEP 2: Use new stats to influence qualitative ratings and mood ---
+  const cityStatsWithUpdates = { ...city.stats, ...statUpdates };
+
+  // Economic Outlook is influenced by unemployment.
+  let econChange = 0;
+  if (cityStatsWithUpdates.unemploymentRate < 4.0) econChange++;
+  if (cityStatsWithUpdates.unemploymentRate > 8.0) econChange--;
+  if (econChange !== 0) {
+    const newEconOutlook = adjustStatLevel(
+      city.stats.economicOutlook,
+      ECONOMIC_OUTLOOK_LEVELS,
+      econChange
+    );
+    if (newEconOutlook !== city.stats.economicOutlook) {
+      statUpdates.economicOutlook = newEconOutlook;
     }
-  });
-
-  // Recalculate derived stats like healthcare
-  const { healthcareCoverage, healthcareCostPerPerson } =
-    calculateHealthcareMetrics({
-      population: campaign.startingCity?.population,
-      currentBudgetAllocationForHealthcare:
-        cityStats.budget?.expenseAllocations?.publicHealthServices || 0,
-      demographics: campaign.startingCity?.demographics,
-      economicProfile: campaign.startingCity?.economicProfile,
-    });
-
-  if (healthcareCoverage !== cityStats.healthcareCoverage) {
-    statUpdates.healthcareCoverage = healthcareCoverage;
   }
-  if (healthcareCostPerPerson !== cityStats.healthcareCostPerPerson) {
-    statUpdates.healthcareCostPerPerson = healthcareCostPerPerson;
+
+  // Citizen Mood is a reflection of the city's health.
+  let moodChange = 0;
+  const currentEconOutlook =
+    statUpdates.economicOutlook || city.stats.economicOutlook;
+  if (ECONOMIC_OUTLOOK_LEVELS.indexOf(currentEconOutlook) >= 3) moodChange++; // Moderate Growth or Booming
+  if (ECONOMIC_OUTLOOK_LEVELS.indexOf(currentEconOutlook) <= 1) moodChange--; // Stagnant or Recession
+  if (cityStatsWithUpdates.crimeRatePer1000 < 25) moodChange++;
+  if (cityStatsWithUpdates.crimeRatePer1000 > 60) moodChange--;
+  if (cityStatsWithUpdates.povertyRate < 10) moodChange++;
+  if (cityStatsWithUpdates.povertyRate > 25) moodChange--;
+  if (cityStatsWithUpdates.healthcareCoverage > 90) moodChange++;
+
+  if (moodChange !== 0) {
+    const oldMood = city.stats.overallCitizenMood;
+    const newMood = adjustStatLevel(oldMood, MOOD_LEVELS, moodChange);
+    if (newMood !== oldMood) {
+      statUpdates.overallCitizenMood = newMood;
+    }
   }
+
+  // --- STEP 3: Derive qualitative ratings from the new numerical stats for UI display ---
+  // These are now CONSEQUENCES of the simulation, not drivers.
+  statUpdates.publicSafetyRating = deriveRatingFromValue(
+    cityStatsWithUpdates.crimeRatePer1000,
+    [20, 35, 50, 70],
+    RATING_LEVELS.slice().reverse()
+  );
+  statUpdates.educationQuality = deriveRatingFromValue(
+    cityStatsWithUpdates.povertyRate,
+    [10, 15, 22, 30],
+    RATING_LEVELS.slice().reverse()
+  ); // Placeholder logic
 
   return { statUpdates, newsItems };
 };
@@ -193,151 +226,99 @@ export const runAIPolicyProposals = (campaign, getFromStore) => {
 };
 
 /**
- * Helper to determine which city stat is most important to a given ideology.
- * @param {string} ideologyName - The name of the ideology.
- * @returns {string} The key of the relevant city stat.
- */
-const determineKeyStatForIdeology = (ideologyName) => {
-  switch (ideologyName) {
-    case "Conservative":
-    case "Nationalist":
-      return "publicSafetyRating";
-    case "Libertarian":
-      return "economicOutlook";
-    case "Socialist":
-    case "Communist":
-    case "Social Democrat":
-      return "healthcareCoverage"; // Changed to coverage for more direct impact
-    case "Progressive":
-      return "educationQuality";
-    case "Green":
-      return "environmentRating";
-    default:
-      return "overallCitizenMood";
-  }
-};
-
-/**
  * Updates party popularity monthly based on city performance and incumbent actions.
  * @param {object} campaign - The current activeCampaign object.
  * @param {Function} getFromStore - The Zustand store's get function.
  * @returns {object} { newPoliticalLandscape: Array | null, newsItems: Array }
  */
-export const runMonthlyPartyPopularityUpdate = (campaign, getFromStore) => {
+export const runMonthlyPartyPopularityUpdate = (campaign) => {
   if (!campaign?.startingCity?.politicalLandscape?.length) {
     return { newPoliticalLandscape: null, newsItems: [] };
   }
 
-  let politicalLandscapeCloned = JSON.parse(
-    JSON.stringify(campaign.startingCity.politicalLandscape)
-  );
-  const cityStats = campaign.startingCity.stats;
+  const politicalLandscape = campaign.startingCity.politicalLandscape;
+  const cityStats = campaign.startingCity.stats; // These are the newly updated stats for the month
   const mayorOffice = campaign.governmentOffices?.find(
     (off) => off.officeNameTemplateId === "mayor"
   );
   const mayorPartyId = mayorOffice?.holder?.partyId;
-  const allParties = getFromStore().allParties || [];
-  const mayorPartyDetails = allParties.find((p) => p.id === mayorPartyId);
-  const mayorPartyIdeology =
-    mayorPartyDetails?.ideology || mayorOffice?.holder?.calculatedIdeology;
 
-  const newsItems = [];
-  let overallLandscapeChanged = false;
-
-  politicalLandscapeCloned.forEach((party) => {
-    let totalShift = getRandomInt(-25, 25) / 100; // Base random shift: +/- 0.25 pp
-    const originalPopularity = party.popularity || 0;
+  const newLandscape = politicalLandscape.map((party) => {
+    let totalShift = getRandomInt(-25, 25) / 100; // Base random shift
     const isIncumbentParty =
       party.id === mayorPartyId &&
       mayorPartyId &&
       !mayorPartyId.includes("independent");
 
-    // --- 1. Incumbent Party Effects ---
     if (isIncumbentParty) {
-      const moodIndex = MOOD_LEVELS.indexOf(cityStats.overallCitizenMood);
-      if (moodIndex !== -1)
-        totalShift += [-0.6, -0.3, 0.0, 0.2, 0.4, 0.7][moodIndex] || 0;
-
-      const econOutlookIdx = ECONOMIC_OUTLOOK_LEVELS.indexOf(
-        cityStats.economicOutlook
-      );
-      if (econOutlookIdx !== -1)
-        totalShift += [-0.5, -0.25, 0.0, 0.3, 0.6][econOutlookIdx] || 0;
-
-      if (cityStats.unemploymentRate > 8.0) totalShift -= 0.35;
-      else if (cityStats.unemploymentRate < 4.5) totalShift += 0.25;
-
-      if (cityStats.healthcareCoverage < 50) totalShift -= 0.4;
-      else if (cityStats.healthcareCoverage > 90) totalShift += 0.2;
-
-      if (mayorPartyIdeology) {
-        const keyStat = determineKeyStatForIdeology(mayorPartyIdeology);
-        const statLevels = STAT_LEVEL_ARRAYS[keyStat] || RATING_LEVELS;
-        const keyStatIndex = statLevels.indexOf(cityStats[keyStat]);
-        if (keyStatIndex !== -1) {
-          const midPoint = Math.floor(statLevels.length / 2);
-          totalShift += (keyStatIndex - midPoint) * 0.3;
-        }
-      }
-    }
-    // --- 2. Opposition Party Effects ---
-    else {
-      const moodIndex = MOOD_LEVELS.indexOf(cityStats.overallCitizenMood);
-      if (moodIndex <= 1) totalShift += getRandomInt(10, 30) / 100; // Unhappy citizens look for alternatives
-
-      const econOutlookIdx = ECONOMIC_OUTLOOK_LEVELS.indexOf(
-        cityStats.economicOutlook
-      );
-      if (econOutlookIdx <= 1) totalShift += getRandomInt(10, 25) / 100; // Bad economy helps opposition
+      // Performance on key metrics directly impacts incumbent popularity
+      if (cityStats.povertyRate > 20) totalShift -= 0.5;
+      if (cityStats.povertyRate < 12) totalShift += 0.3;
+      if (cityStats.crimeRatePer1000 > 55) totalShift -= 0.6;
+      if (cityStats.crimeRatePer1000 < 25) totalShift += 0.4;
+      if (cityStats.unemploymentRate > 7.5) totalShift -= 0.4;
+      if (cityStats.unemploymentRate < 4.0) totalShift += 0.3;
+    } else {
+      // Opposition parties gain when the city is doing poorly
+      if (cityStats.povertyRate > 20) totalShift += 0.3;
+      if (cityStats.crimeRatePer1000 > 55) totalShift += 0.4;
+      if (cityStats.unemploymentRate > 7.5) totalShift += 0.25;
     }
 
-    if (totalShift !== 0) {
-      party.popularity = Math.max(
-        0.5,
-        Math.min(95, originalPopularity + totalShift)
-      );
-      if (
-        parseFloat(party.popularity.toFixed(4)) !==
-        parseFloat(originalPopularity.toFixed(4))
-      ) {
-        overallLandscapeChanged = true;
-      }
-    }
+    const newPopularity = Math.max(
+      0.5,
+      Math.min(95, (party.popularity || 0) + totalShift)
+    );
+    return { ...party, popularity: newPopularity };
   });
 
-  if (!overallLandscapeChanged) {
-    return { newPoliticalLandscape: null, newsItems: [] };
+  const normalizedLandscape = normalizePartyPopularities(newLandscape);
+  return { newPoliticalLandscape: normalizedLandscape, newsItems: [] }; // News generation can be added here
+};
+
+export const runMonthlyPlayerApprovalUpdate = (campaign) => {
+  const cityStats = campaign.startingCity?.stats;
+  if (!cityStats) return null;
+
+  const mayorOffice = campaign.governmentOffices.find(
+    (off) => off.officeNameTemplateId === "mayor"
+  );
+  const mayor = mayorOffice?.holder;
+  const currentOverallCitizenMood = cityStats.overallCitizenMood;
+
+  let approvalChangeFromMood = 0;
+  const moodIndex = MOOD_LEVELS.indexOf(currentOverallCitizenMood);
+  if (moodIndex !== -1) {
+    approvalChangeFromMood = [-2, -1, 0, 1, 2, 3][moodIndex] || 0;
   }
 
-  const normalizedLandscape = normalizeArrayBySum(
-    politicalLandscapeCloned,
-    100,
-    2
-  );
+  const currentApproval = campaign.politician.approvalRating;
+  let newPlayerApproval = currentApproval;
 
-  // Generate news for significant shifts
-  normalizedLandscape.forEach((newPartyData) => {
-    const originalParty = campaign.startingCity.politicalLandscape.find(
-      (p) => p.id === newPartyData.id
+  if (mayor && mayor.isPlayer) {
+    newPlayerApproval = Math.round(
+      Math.min(
+        100,
+        Math.max(
+          0,
+          (currentApproval || 50) + approvalChangeFromMood + getRandomInt(-1, 1)
+        )
+      )
     );
-    if (originalParty) {
-      const shift = newPartyData.popularity - (originalParty.popularity || 0);
-      if (Math.abs(shift) > 1.5) {
-        newsItems.push({
-          headline: `Shift in Support for ${newPartyData.name}`,
-          summary: `${newPartyData.name} has seen a ${
-            shift > 0 ? "notable increase" : "significant decrease"
-          } in public support. Their popularity is now estimated at ${newPartyData.popularity.toFixed(
-            1
-          )}%.`,
-          type: "political_shift",
-          scope: "local",
-          impact: shift > 0 ? "positive" : "negative",
-          partyId: newPartyData.id,
-        });
-      }
-    }
-  });
+  } else {
+    // If player is not the mayor, their approval is less tied to city mood
+    newPlayerApproval = Math.round(
+      Math.min(
+        100,
+        Math.max(
+          0,
+          (currentApproval || 50) +
+            getRandomInt(-1, 1) +
+            Math.floor(approvalChangeFromMood / 2)
+        )
+      )
+    );
+  }
 
-  return { newPoliticalLandscape: normalizedLandscape, newsItems };
+  return newPlayerApproval !== currentApproval ? newPlayerApproval : null;
 };

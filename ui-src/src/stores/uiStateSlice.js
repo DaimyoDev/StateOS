@@ -37,6 +37,8 @@ export const createUISlice = (set, get) => ({
   policyVoteDetailsData: null,
   themeToEdit: null,
   viewingCountryId: null,
+  isLoadingGame: false,
+  loadingMessage: "",
 
   // --- ACTIONS ---
   actions: {
@@ -183,5 +185,7 @@ export const createUISlice = (set, get) => ({
       set({ isPolicyVoteDetailsModalOpen: false, policyVoteDetailsData: null }),
     setViewedEntity: (id, type) => set({ viewedEntity: { id, type } }),
     clearViewedEntity: () => set({ viewedEntity: { id: null, type: null } }),
+    setLoadingGame: (isLoading, message = "") =>
+      set({ isLoadingGame: isLoading, loadingMessage: message }),
   },
 });

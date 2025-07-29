@@ -16,6 +16,7 @@ import { createNewsSlice } from "./stores/newsSlice.js";
 import { createCampaignStaffSlice } from "./stores/campaignStaffSlice.js";
 import { createOrganizationActionSlice } from "./stores/organizationActionSlice.js";
 import { createCustomEntitySlice } from "./stores/customEntitySlice.js";
+import { createPersonnelSlice } from "./stores/personnelSlice.js";
 
 // --- Helper Functions (to be moved to relevant slices or utils later) ---
 
@@ -47,6 +48,7 @@ const useGameStore = create(
       const campaignStaffSlice = createCampaignStaffSlice(set, get);
       const organizationActions = createOrganizationActionSlice(set, get);
       const customEntitySlice = createCustomEntitySlice(set, get);
+      const personnelSlice = createPersonnelSlice(set, get);
 
       return {
         creatingPolitian: politicianSliceData.creatingPolitician,
@@ -65,6 +67,7 @@ const useGameStore = create(
 
         allCustomParties: customEntitySlice.allCustomParties,
         savedElectionSetups: customEntitySlice.savedElectionSetups,
+        politicianRelationships: personnelSlice.politicianRelationships,
 
         currentCampaignSetup: getInitialCampaignSetupState(),
 
@@ -81,6 +84,7 @@ const useGameStore = create(
           ...campaignStaffSlice,
           ...organizationActions,
           ...customEntitySlice.actions,
+          ...personnelSlice.actions,
 
           improveSkillOratory: () => {
             set((state) => {

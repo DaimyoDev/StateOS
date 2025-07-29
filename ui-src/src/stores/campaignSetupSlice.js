@@ -4,13 +4,7 @@ import {
   generateDetailedCountryData,
 } from "../data/countriesData";
 import { ELECTION_TYPES_BY_COUNTRY } from "../data/electionsData";
-// REMOVED: Old static data imports
-// import { LOBBYING_GROUPS } from "../data/lobbyingData";
-// import { NEWS_OUTLETS } from "../data/newsData";
-import {
-  generateFullCityData,
-  generateInitialGovernmentOffices,
-} from "../entities/politicialEntities";
+import { generateInitialGovernmentOffices } from "../entities/politicalEntities";
 import { assignPopulationToCountry } from "../utils/populationUtils";
 
 // ADDED: Import the new generator functions and their dependencies
@@ -20,58 +14,71 @@ import {
 } from "../entities/organizationEntities";
 import { POLICY_QUESTIONS } from "../data/policyData";
 
+const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 export const createCampaignSetupSlice = (set, get) => {
   return {
     actions: {
-      finalizeLocalAreaAndStart: (
-        cityName,
+      // --- REFACTORED to be an async function ---
+      finalizeLocalAreaAndStart: async (
+        selectedCityObject,
         playerPoliticianData,
         allCustomPartiesData,
         availableCountriesData
       ) => {
+        const {
+          setLoadingGame,
+          navigateTo,
+          setActiveMainGameTab,
+          resetCampaignSetup,
+          generateScheduledElections,
+          resetLegislationState,
+          clearAllNews,
+          initializeRelationships,
+          generateTalentPool,
+        } = get().actions;
+
+        // --- STEP 1: Show the initial loading screen ---
+        setLoadingGame(true, "Initializing world generation...");
+        await pause(50); // Give React time to render the loading screen
+
         const setupState = get().currentCampaignSetup;
-        const playerPolitician =
-          get().actions.getCurrentlyCreatingPolitician?.() ||
-          get().savedPoliticians?.find(
-            (p) => p.id === setupState.selectedPoliticianId
-          );
+        const playerPolitician = get().savedPoliticians?.find(
+          (p) => p.id === setupState.selectedPoliticianId
+        );
 
         if (
-          !cityName?.trim() ||
+          !selectedCityObject ||
           !playerPolitician ||
           !setupState.selectedCountryId ||
           !setupState.selectedRegionId
         ) {
           alert(
-            "City name, politician, country, and region selection must be complete."
+            "City, politician, country, and region selection must be complete."
           );
+          setLoadingGame(false);
           return;
         }
 
-        const cityGenerationParams = {
-          playerDefinedCityName: cityName.trim(),
-          countryId: setupState.selectedCountryId,
-          regionId: setupState.selectedRegionId,
-          basePoliticalLandscape: setupState.regionPoliticalLandscape,
-        };
-        const newCityObject = generateFullCityData(cityGenerationParams);
+        // --- STEP 2: Perform generation logic in sequential, awaited steps ---
 
+        setLoadingGame(true, "Establishing your starting city...");
+        await pause(20);
+        const newCityObject = selectedCityObject;
         if (!newCityObject) {
           alert("Critical error: Could not generate city data.");
+          setLoadingGame(false);
           return;
         }
 
+        setLoadingGame(true, "Forming the government...");
+        await pause(20);
         const currentCountryData = availableCountriesData.find(
           (c) => c.id === setupState.selectedCountryId
         );
-
         const currentRegionData = currentCountryData.regions.find(
           (region) => region.id === setupState.selectedRegionId
         );
-        const regionalLocationName = currentRegionData
-          ? currentRegionData.name
-          : "the Region";
-
         const initialGovernmentOffices = generateInitialGovernmentOffices({
           countryElectionTypes:
             ELECTION_TYPES_BY_COUNTRY[setupState.selectedCountryId] || [],
@@ -84,7 +91,11 @@ export const createCampaignSetupSlice = (set, get) => {
 
         playerPoliticianData.campaignFunds = 10000;
 
-        // --- NEW: Dynamically generate news and lobbying ---
+        setLoadingGame(true, "Setting up media and special interests...");
+        await pause(20);
+        const regionalLocationName = currentRegionData
+          ? currentRegionData.name
+          : "the Region";
         const nationalNews = generateNewsOutlets({
           level: "national",
           parties: setupState.generatedPartiesInCountry,
@@ -97,13 +108,18 @@ export const createCampaignSetupSlice = (set, get) => {
           locationName: regionalLocationName,
           countryId: setupState.selectedCountryId,
         });
-
         const allNewsOutlets = [...nationalNews, ...regionalNews];
         const allLobbyingGroups = generateInitialLobbyingGroups({
           policyQuestions: POLICY_QUESTIONS,
           countryId: setupState.selectedCountryId,
         });
-        // --- END NEW ---
+
+        const allInitialPoliticians = initialGovernmentOffices
+          .flatMap(
+            (office) => office.members || (office.holder ? [office.holder] : [])
+          )
+          .filter(Boolean);
+        initializeRelationships(allInitialPoliticians);
 
         const newActiveCampaign = {
           politician: { ...playerPoliticianData },
@@ -124,13 +140,27 @@ export const createCampaignSetupSlice = (set, get) => {
           lobbyingGroups: allLobbyingGroups,
         };
 
-        get().actions.clearAllNews();
+        // --- STEP 3: Finalize state and navigate ---
+        setLoadingGame(true, "Finalizing...");
+        await pause(20);
+
+        clearAllNews();
         set({ activeCampaign: newActiveCampaign });
-        get().actions.navigateTo("CampaignGameScreen");
-        get().actions.setActiveMainGameTab("Dashboard");
-        get().actions.resetCampaignSetup?.();
-        get().actions.generateScheduledElections();
-        get().actions.resetLegislationState();
+
+        setLoadingGame(true, "Assembling staff talent pool...");
+        await pause(20);
+        if (generateTalentPool) {
+          generateTalentPool(setupState.selectedCountryId);
+        }
+
+        navigateTo("CampaignGameScreen");
+        setActiveMainGameTab("Dashboard");
+        resetCampaignSetup?.();
+        generateScheduledElections();
+        resetLegislationState();
+
+        // Hide the loading screen after everything is done
+        setLoadingGame(false);
       },
       loadCountries: () => set({ availableCountries: BASE_COUNTRIES_DATA }),
       processAndSelectCountry: (countryId) => {

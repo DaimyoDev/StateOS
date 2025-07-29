@@ -9,6 +9,12 @@ const getInitialCreatingPoliticianState = () => ({
   firstName: "Alex",
   lastName: "Meridian",
   age: 35,
+  sex: "female",
+  policyFocus: "Economic Growth",
+  politicalCapital: 20,
+  nameRecognition: 5000,
+  treasury: 10000,
+  campaignFunds: 5000,
   attributes: {
     charisma: 5,
     integrity: 5,
@@ -97,6 +103,7 @@ export const createPoliticianSlice = (set, get) => ({
 
     finalizeNewPolitician: () => {
       const { navigateBack } = get().actions;
+      // We directly use the creatingPolitician object which now holds the correct stat values
       const newPolitician = { ...get().creatingPolitician };
 
       if (!newPolitician.id) {
@@ -118,7 +125,6 @@ export const createPoliticianSlice = (set, get) => ({
       });
 
       get().actions.resetCreatingPolitician();
-      // UPDATED: Use the new navigateBack action instead of a hardcoded destination.
       navigateBack();
     },
 

@@ -15,6 +15,7 @@ import GovernmentTab from "../components/game_tabs/GovernmentTab";
 import CampaignTab from "../components/game_tabs/CampaignTab";
 import NewsEventsTab from "../components/game_tabs/NewsEventsTab";
 import PoliticalEntitiesTab from "../components/game_tabs/PoliticalEntitiesTab";
+import PoliticiansTab from "../components/game_tabs/PoliticiansTab";
 
 const TABS = [
   { id: "Dashboard", label: "Dashboard" },
@@ -25,6 +26,7 @@ const TABS = [
   { id: "Campaign", label: "Campaign" },
   { id: "NewsEvents", label: "News & Events" },
   { id: "PoliticalEntities", label: "Political Entities" },
+  { id: "Politicians", label: "Politicians" },
 ];
 
 function CampaignGameScreen() {
@@ -143,6 +145,8 @@ function CampaignGameScreen() {
         return <CareerActionsTab campaignData={activeCampaign} />;
       case "Government":
         return <GovernmentTab campaignData={activeCampaign} />;
+      case "Politicians":
+        return <PoliticiansTab />;
       case "Campaign":
         return <CampaignTab campaignData={activeCampaign} />;
       case "NewsEvents":

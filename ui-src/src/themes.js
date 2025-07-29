@@ -5660,59 +5660,6 @@ export const themes = {
       "--transition-speed": "0.15s ease-in-out",
     },
   },
-  nileDynasty: {
-    name: "Nile Dynasty",
-    colors: {
-      "--primary-bg": "#FDEEAC", // Sandy yellow
-      "--secondary-bg": "#F8E49C", // Darker sand
-      "--ui-panel-bg": "#FFFFFF",
-      "--button-bg": "#26428B", // Lapis/Nile blue
-      "--button-hover-bg": "#36529B",
-      "--button-active-bg": "#16327B",
-      "--button-text": "#FFFFFF",
-      "--primary-text": "#2C1E00", // Dark, hieroglyphic brown
-      "--secondary-text": "#5C4E30",
-      "--accent-color": "#40E0D0", // Turquoise
-      "--accent-text": "#2C1E00",
-      "--rgb-accent-color": hexToRgbString("#40E0D0"),
-      "--highlight-bg": "rgba(64, 224, 208, 0.15)",
-      "--border-color": "#DCD0B0",
-      "--accent-border-color": "#40E0D0",
-      "--error-text": "#D9534F",
-      "--success-text": "#5CB85C",
-      "--disabled-bg": "#E0E0E0",
-      "--disabled-text": "#A0A0A0",
-      "--button-action-bg": "#FFD700", // Gold
-      "--button-action-hover-bg": "#E6C200",
-      "--button-action-text": "#2C1E00",
-      "--button-delete-bg": "#26428B",
-      "--button-delete-hover-bg": "#16327B",
-      "--button-delete-text": "#FFFFFF",
-      "--input-bg": "#FCF5D9",
-      "--input-text": "#2C1E00",
-      "--input-placeholder-text": "#A9A290",
-      "--progress-track-bg": "#F8E49C",
-      "--map-background-color": "#F8E49C",
-      "--map-region-default-fill": "#B0A59A",
-      "--map-region-border": "#FFFFFF",
-      "--map-region-hover-fill": "rgba(64, 224, 208, 0.4)",
-    },
-    fonts: {
-      "--font-main": fontInter,
-      "--font-heading": fontMerriweather,
-    },
-    styles: {
-      "--panel-shadow": "0 1px 4px rgba(0,0,0,0.1)",
-      "--button-shadow": "0 1px 2px rgba(0,0,0,0.08)",
-      "--element-radius": "3px",
-      "--border-width": "1px",
-      "--focus-ring-color": "#26428B",
-      "--progress-value-color": "#26428B",
-      "--checkbox-accent-color": "#40E0D0",
-      "--input-focus-shadow-color": "rgba(64, 224, 208, 0.3)",
-      "--transition-speed": "0.15s ease-in-out",
-    },
-  },
   istanbulBazaar: {
     name: "Istanbul Bazaar",
     colors: {

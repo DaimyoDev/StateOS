@@ -1,6 +1,5 @@
 /* ui-src/src/components/game_tabs/DashboardTab.css */
 .dashboard-tab {
-  /* .ui-panel styles are applied via className */
   padding: 20px;
 }
 
@@ -9,6 +8,7 @@
   color: var(--accent-color);
   font-family: var(--font-heading);
   margin-bottom: 5px;
+  text-align: left;
 }
 
 .current-date-dashboard {
@@ -17,24 +17,22 @@
   margin-bottom: 25px;
   border-bottom: 1px solid var(--border-color);
   padding-bottom: 10px;
+  text-align: left;
 }
 
 .dashboard-grid {
   display: grid;
-  grid-template-columns: repeat(
-    auto-fit,
-    minmax(320px, 1fr)
-  ); /* Responsive grid */
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   gap: 20px;
 }
 
 .info-card h3 {
   font-family: var(--font-heading);
-  color: var(--primary-text); /* Or var(--accent-color) for more emphasis */
+  color: var(--primary-text);
   margin-top: 0;
   margin-bottom: 15px;
   font-size: 1.15em;
-  border-bottom: 1px solid var(--secondary-bg); /* Use a lighter border or var(--border-color) */
+  border-bottom: 1px solid var(--secondary-bg);
   padding-bottom: 8px;
 }
 
@@ -43,16 +41,14 @@
   font-size: 0.95em;
   line-height: 1.5;
   color: var(--primary-text);
+  display: flex;
+  justify-content: space-between;
 }
 
 .info-card p strong {
   color: var(--secondary-text);
-  margin-right: 5px;
-}
-
-.player-status-card p,
-.city-snapshot-card p {
-  margin-bottom: 10px; /* More spacing for these key info cards */
+  margin-right: 10px;
+  flex-shrink: 0;
 }
 
 .upcoming-events-card .event-item {
@@ -63,7 +59,7 @@
   border-bottom: none;
 }
 .upcoming-events-card .event-item p {
-  margin: 4px 0;
+  justify-content: flex-start;
 }
 .upcoming-events-card .countdown {
   font-style: italic;
@@ -78,12 +74,10 @@
 
 .quick-actions-card .action-button-group {
   display: flex;
-  flex-direction: column; /* Stack buttons vertically */
+  flex-direction: column;
   gap: 10px;
 }
 
 .quick-actions-card .action-button {
-  width: 100%; /* Make buttons full width of card */
-  text-align: left;
-  padding-left: 15px; /* Align text nicely */
+  width: 100%;
 }

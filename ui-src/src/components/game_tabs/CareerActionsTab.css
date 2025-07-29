@@ -284,3 +284,65 @@
   margin: 0; /* Remove default margin from .action-button if it's in a flex group like this */
   flex-shrink: 0;
 }
+
+.staff-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.staff-list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 5px;
+  border-bottom: 1px dashed var(--secondary-bg);
+}
+.staff-list-item:last-child {
+  border-bottom: none;
+}
+
+.staff-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  flex-grow: 1;
+}
+
+.staff-name {
+  font-weight: 600;
+  color: var(--primary-text);
+}
+
+.staff-role {
+  font-weight: 400;
+  font-style: italic;
+  color: var(--secondary-text);
+}
+
+.staff-details {
+  font-size: 0.85em;
+  color: var(--accent-color);
+  font-weight: 500;
+}
+
+.staff-details-hidden {
+  font-size: 0.85em;
+  color: var(--secondary-text);
+  font-style: italic;
+}
+
+.staff-salary {
+  font-size: 0.85em;
+  color: var(--primary-text);
+}
+
+.staff-list-item .menu-button.small-button,
+.staff-list-item .action-button.small-button,
+.staff-list-item .button-delete.small-button {
+  padding: 6px 12px;
+  font-size: 0.85em;
+  margin-left: 10px;
+  flex-shrink: 0;
+}

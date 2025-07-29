@@ -1,8 +1,8 @@
 // ui-src/src/scenes/LocalAreaSetupScreen.jsx
-import React, { useState, useMemo } from "react"; // Added useMemo
+import React, { useState, useMemo, useEffect } from "react";
 import useGameStore from "../store";
 import "./LocalAreaSetupScreen.css";
-import RegionPieChart from "../components/charts/RegionPieChart"; // Assuming you might want to show it here too
+import RegionPieChart from "../components/charts/RegionPieChart";
 
 function LocalAreaSetupScreen() {
   // Select all necessary data slices from the store
@@ -23,7 +23,28 @@ function LocalAreaSetupScreen() {
     (state) => state.availableThemes[state.activeThemeName]
   );
 
-  const [cityName, setCityName] = useState("");
+  const [selectedCityId, setSelectedCityId] = useState("");
+
+  const citiesInRegion = useMemo(() => {
+    if (
+      !currentCampaignSetup?.selectedCountryId ||
+      !currentCampaignSetup?.selectedRegionId
+    )
+      return [];
+    const country = availableCountries.find(
+      (c) => c.id === currentCampaignSetup.selectedCountryId
+    );
+    const region = country?.regions?.find(
+      (r) => r.id === currentCampaignSetup.selectedRegionId
+    );
+    return region?.cities || [];
+  }, [availableCountries, currentCampaignSetup]);
+
+  useEffect(() => {
+    if (citiesInRegion.length > 0) {
+      setSelectedCityId(citiesInRegion[0].id);
+    }
+  }, [citiesInRegion]);
 
   // Use useMemo to derive complex data. This will only re-calculate if dependencies change.
   const displayData = useMemo(() => {
@@ -100,37 +121,28 @@ function LocalAreaSetupScreen() {
   ]);
 
   const handleSubmitCity = () => {
-    if (cityName.trim() && actions && actions.finalizeLocalAreaAndStart) {
-      // Find the selected politician object
+    if (selectedCityId && actions && actions.finalizeLocalAreaAndStart) {
       const selectedPoliticianObject = savedPoliticians.find(
         (p) => p.id === currentCampaignSetup?.selectedPoliticianId
       );
+      const selectedCityObject = citiesInRegion.find(
+        (c) => c.id === selectedCityId
+      );
 
-      if (!selectedPoliticianObject) {
-        alert(
-          "Selected politician data not found. Please go back and re-select."
-        );
+      if (!selectedPoliticianObject || !selectedCityObject) {
+        alert("Error: Missing politician or city data. Please go back.");
         return;
       }
-      if (
-        !currentCampaignSetup?.selectedCountryId ||
-        !currentCampaignSetup?.selectedRegionId
-      ) {
-        alert(
-          "Country or Region selection is missing. Please go back and complete setup."
-        );
-        return;
-      }
-      // Call with all required arguments
+
+      // --- MODIFIED: Pass the selected city object directly ---
       actions.finalizeLocalAreaAndStart(
-        cityName.trim(),
+        selectedCityObject, // Pass the whole object
         selectedPoliticianObject,
         allCustomParties,
         availableCountries
       );
     } else {
-      console.log(cityName);
-      alert("Please enter a name for your starting city or district.");
+      alert("Please select a starting city.");
     }
   };
 
@@ -208,16 +220,26 @@ function LocalAreaSetupScreen() {
           )}
 
         <div className="form-group city-name-group">
-          <label htmlFor="cityName">
-            Name your starting city, town, or district:
+          <label htmlFor="citySelect">
+            Select your starting city, town, or district:
           </label>
-          <input
-            type="text"
-            id="cityName"
-            value={cityName}
-            onChange={(e) => setCityName(e.target.value)}
-            placeholder="e.g., Springfield, District 7, Hope County"
-          />
+          <select
+            id="citySelect"
+            value={selectedCityId}
+            onChange={(e) => setSelectedCityId(e.target.value)}
+            className="region-selector-dropdown" // Re-using style from setup screen
+          >
+            <option value="" disabled>
+              -- Choose a City --
+            </option>
+            {citiesInRegion
+              .sort((a, b) => b.population - a.population)
+              .map((city) => (
+                <option key={city.id} value={city.id}>
+                  {city.name} (Pop. {city.population.toLocaleString()})
+                </option>
+              ))}
+          </select>
         </div>
 
         <div className="form-actions-las">

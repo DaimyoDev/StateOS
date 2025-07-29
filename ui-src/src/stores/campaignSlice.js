@@ -972,5 +972,33 @@ export const createCampaignSlice = (set, get) => ({
         };
       });
     },
+    updateActiveCampaign: (updates) => {
+      set((state) => {
+        if (!state.activeCampaign) return {};
+        return {
+          activeCampaign: {
+            ...state.activeCampaign,
+            ...updates,
+          },
+        };
+      });
+    },
+
+    // This is a more specific helper for updating nested fields on the player politician
+    // to avoid spreading the entire politician object every time.
+    updatePlayerPolitician: (politicianUpdates) => {
+      set((state) => {
+        if (!state.activeCampaign?.politician) return {};
+        return {
+          activeCampaign: {
+            ...state.activeCampaign,
+            politician: {
+              ...state.activeCampaign.politician,
+              ...politicianUpdates,
+            },
+          },
+        };
+      });
+    },
   },
 });

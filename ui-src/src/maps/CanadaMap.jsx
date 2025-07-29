@@ -1,4 +1,6 @@
-import React from "react";
+import React, { useMemo, useState } from "react";
+import useGameStore from "../store";
+import { parseColor } from "../utils/core.js";
 import "./JapanMap.css";
 
 const PROVINCE_DATA = {
@@ -17,39 +19,97 @@ const PROVINCE_DATA = {
   CAPE: { gameId: "CAN_PE", name: "Prince Edward Islands" },
 };
 
-function CanadaMap({ onSelectProvince, selectedProvinceGameId }) {
+function CanadaMap({
+  onSelectProvince,
+  selectedProvinceGameId,
+  heatmapData,
+  viewType,
+}) {
+  const [hoveredProvinceId, setHoveredProvinceId] = useState(null);
+  const currentTheme = useGameStore(
+    (state) => state.availableThemes[state.activeThemeName]
+  );
+
+  // --- Use the specific theme variables you provided ---
+  const mapTheme = currentTheme.colors || {};
+  const landColor = mapTheme["--map-region-default-fill"] || "#cccccc";
+  const borderColor = mapTheme["--map-region-border"] || "#ffffff";
+  const hoverColor = mapTheme["--map-region-hover-fill"] || "#FFD700";
+  const selectedColor = mapTheme["--accent-color"] || "yellow";
+
+  // Heatmap gradient will be based on your theme's land and hover colors
+  const actionColor = mapTheme["--button-action-bg"] || "#e74c3c";
+  const heatMapStartColor = parseColor(landColor);
+  const heatMapEndColor = parseColor(actionColor);
+
   const handleProvinceClick = (svgId) => {
-    const province = PROVINCE_DATA[svgId];
-    if (province && onSelectProvince) {
-      onSelectProvince(province.gameId, province.name);
-    } else {
-      console.warn(`No game data found for SVG ID: ${svgId}`);
+    if (onSelectProvince) {
+      const province = PROVINCE_DATA[svgId];
+      if (province) {
+        onSelectProvince(province.gameId, province.name);
+      }
     }
   };
 
-  const renderProvincePath = (svgId) => {
+  const { min, max } = useMemo(() => {
+    if (!heatmapData || viewType === "party_popularity")
+      return { min: 0, max: 1 };
+    const values = heatmapData
+      .map((d) => d.value)
+      .filter((v) => typeof v === "number");
+    if (values.length === 0) return { min: 0, max: 1 };
+    return { min: Math.min(...values), max: Math.max(...values) };
+  }, [heatmapData, viewType]);
+
+  const getProvinceStyle = (svgId) => {
     const provinceInfo = PROVINCE_DATA[svgId];
-    if (!provinceInfo) return null;
+    if (!provinceInfo) return {};
 
-    const pathD = yourSvgPathData[svgId];
+    const style = {
+      stroke: borderColor,
+      strokeWidth: "1px",
+      fill: landColor,
+      cursor: onSelectProvince ? "pointer" : "default",
+      transition: "fill 0.2s ease-in-out, stroke 0.2s ease-in-out",
+    };
 
-    if (!pathD) {
-      console.warn(`Path data (d attribute) missing for ${svgId}`);
-      return null;
+    const isSelected =
+      onSelectProvince && selectedProvinceGameId === provinceInfo.gameId;
+
+    if (hoveredProvinceId === provinceInfo.gameId) {
+      style.fill = hoverColor;
+    } else if (isSelected) {
+      style.fill = selectedColor;
+    } else {
+      const data = heatmapData?.find((d) => d.id === provinceInfo.gameId);
+      if (data) {
+        if (viewType === "party_popularity") {
+          style.fill = data.color || landColor;
+        } else if (typeof data.value === "number") {
+          const ratio = max > min ? (data.value - min) / (max - min) : 0;
+          const r = Math.round(
+            heatMapStartColor.r +
+              (heatMapEndColor.r - heatMapStartColor.r) * ratio
+          );
+          const g = Math.round(
+            heatMapStartColor.g +
+              (heatMapEndColor.g - heatMapStartColor.g) * ratio
+          );
+          const b = Math.round(
+            heatMapStartColor.b +
+              (heatMapEndColor.b - heatMapStartColor.b) * ratio
+          );
+          style.fill = `rgb(${r}, ${g}, ${b})`;
+        }
+      }
     }
 
-    return (
-      <path
-        key={svgId} // React key
-        id={svgId}
-        title={provinceInfo.name}
-        className={`prefecture-path ${
-          selectedProvinceGameId === provinceInfo.gameId ? "selected" : ""
-        }`}
-        onClick={() => handleProvinceClick(svgId)}
-        d={pathD}
-      />
-    );
+    if (onSelectProvince && selectedProvinceGameId === provinceInfo.gameId) {
+      style.stroke = selectedColor;
+      style.strokeWidth = "3px";
+    }
+
+    return style;
   };
 
   const yourSvgPathData = {
@@ -69,7 +129,7 @@ function CanadaMap({ onSelectProvince, selectedProvinceGameId }) {
   };
 
   // Get the list of IDs from the SVG to maintain order
-  const stateOrderFromSVG = [
+  const provinceOrderFromSVG = [
     "CABC",
     "CAAB",
     "CASK",
@@ -92,10 +152,26 @@ function CanadaMap({ onSelectProvince, selectedProvinceGameId }) {
       viewBox="0 550 1000 300"
       className="interactive-japan-map"
       preserveAspectRatio="xMidYMid meet"
+      onMouseLeave={() => setHoveredProvinceId(null)}
     >
       <g id="can-states-group">
-        {" "}
-        {stateOrderFromSVG.map((svgId) => renderProvincePath(svgId))}
+        {provinceOrderFromSVG.map((svgId) => {
+          const provinceInfo = PROVINCE_DATA[svgId];
+          const pathD = yourSvgPathData[svgId];
+          if (!provinceInfo || !pathD) return null;
+
+          return (
+            <path
+              key={svgId}
+              id={svgId}
+              title={provinceInfo.name}
+              style={getProvinceStyle(svgId)}
+              onClick={() => handleProvinceClick(svgId)}
+              onMouseEnter={() => setHoveredProvinceId(provinceInfo.gameId)}
+              d={pathD}
+            />
+          );
+        })}
       </g>
     </svg>
   );

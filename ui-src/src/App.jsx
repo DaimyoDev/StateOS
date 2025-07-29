@@ -14,11 +14,13 @@ import ElectionSimulatorScreen from "./scenes/ElectionSimulatorScreen";
 import CreatorHub from "./scenes/CreatorHub";
 import PartyCreatorScreen from "./scenes/PartyCreatorScreen";
 import CountryDetailsScreen from "./scenes/CountryDetailsScreen";
+import LoadingScreen from "./scenes/LoadingScreen";
 import "./App.css";
 import ToastContainer from "./components/toasts/ToastContainer";
 
 function App() {
   const currentScene = useGameStore((state) => state.currentScene);
+  const isLoadingGame = useGameStore((state) => state.isLoadingGame);
   const actions = useGameStore((state) => state.actions);
 
   // Initialize theme on first load
@@ -60,6 +62,8 @@ function App() {
         return <PartyCreatorScreen />;
       case "CountryDetailsScreen":
         return <CountryDetailsScreen />;
+      case "LoadingScreen":
+        return <LoadingScreen />;
       default:
         console.warn(`Unknown scene: ${currentScene}, defaulting to MainMenu.`);
         return <MainMenu />; // Default to main menu
@@ -68,7 +72,7 @@ function App() {
 
   return (
     <div className="App">
-      {renderScene()}
+      {isLoadingGame ? <LoadingScreen /> : renderScene()}
       <ToastContainer />
     </div>
   );

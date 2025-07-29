@@ -1,13 +1,12 @@
 /* ui-src/src/components/game_tabs/LocalAreaTab.css */
 
 .local-area-tab {
-  /* .ui-panel styles are applied to the root by className */
   padding: 20px;
 }
 
 .local-info-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   gap: 20px;
   margin-bottom: 30px;
 }
@@ -18,8 +17,7 @@
   border-radius: var(--element-radius);
   border: 1px solid var(--border-color);
   box-shadow: var(--panel-shadow);
-  /* Add this to prevent grid items from overflowing if their content is too wide */
-  overflow: hidden; /* This will clip content that tries to expand beyond the card's boundary */
+  overflow: hidden;
 }
 
 .info-card h3 {
@@ -45,17 +43,21 @@
   font-size: 0.95em;
   line-height: 1.5;
   color: var(--primary-text);
+  display: flex;
+  justify-content: space-between;
 }
 
 .info-card p strong {
   color: var(--secondary-text);
-  margin-right: 5px;
+  margin-right: 10px;
+  flex-shrink: 0;
 }
 
 .issues-list {
   list-style-type: disc;
   padding-left: 20px;
   margin-top: 5px;
+  text-align: left;
 }
 
 .issues-list li {
@@ -66,45 +68,14 @@
 
 .landscape-card {
   padding: 10px;
-  display: flex; /* Allow content to be centered if pie-chart-wrapper doesn't take full width */
-  flex-direction: column; /* Stack title and chart wrapper */
-  align-items: center; /* Center chart wrapper if it's narrower than card */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .pie-chart-wrapper-local-tab {
-  /* REMOVE max-width: max-content; */
-  width: 100%; /* Make this wrapper take the full width of the landscape-card content area */
-  /* max-width: 500px; /* OPTIONAL: You can set a max-width for the chart area itself */
-  /* height: auto; /* Let content determine height */ /* Already like this */
+  width: 100%;
   display: flex;
-  justify-content: center; /* Centers the RegionPieChart component if it's narrower */
+  justify-content: center;
   align-items: center;
-  /* border: 1px dashed blue; /* For debugging layout */
-}
-
-.city-finances-card p span {
-  font-weight: bold;
-}
-
-/* Local Actions Panel */
-.local-actions-panel {
-  margin-top: 30px;
-  padding: 20px;
-  /* .ui-panel styling from app.css should provide base */
-}
-
-.local-actions-panel .section-title {
-  /* Using h3 now for consistency */
-  font-family: var(--font-heading);
-  color: var(--primary-text);
-  margin-top: 0;
-  margin-bottom: 20px;
-  border-bottom: 1px solid var(--border-color);
-  padding-bottom: 10px;
-}
-
-.local-actions-panel .action-button-group {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
 }

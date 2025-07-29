@@ -57,8 +57,6 @@ const STATE_DATA = {
   AK: { gameId: "USA_AK", name: "Alaska" },
 };
 
-// --- (STATE_DATA and yourSvgPathData objects remain at the top of the file, unchanged) ---
-
 function UnitedStatesMap({
   onSelectState,
   selectedStateGameId,
@@ -66,22 +64,23 @@ function UnitedStatesMap({
   viewType,
 }) {
   const [hoveredStateId, setHoveredStateId] = useState(null);
-
-  // --- NEW: Get the current theme from the store ---
   const currentTheme = useGameStore(
     (state) => state.availableThemes[state.activeThemeName]
   );
-  const themeColors = currentTheme?.colors || {};
 
-  // --- NEW: Define map colors based on the theme, with fallbacks ---
-  const defaultFillColor = themeColors["--border-color"] || "#cccccc";
-  const hoverFillColor = themeColors["--accent-color"] || "#FFD700";
-  const heatMapStartColor = parseColor(
-    themeColors["--ui-panel-bg"] || "rgb(230, 240, 255)"
-  );
-  const heatMapEndColor = parseColor(
-    themeColors["--accent-color"] || "rgb(5, 48, 97)"
-  );
+  // --- FIX: Access the dedicated mapStyles object from the theme ---
+  const mapTheme = currentTheme.colors || {};
+
+  // --- FIX: Define map colors based on the mapStyles variables ---
+  const landColor = mapTheme["--map-region-default-fill"] || "#cccccc";
+  const borderColor = mapTheme["--map-region-border"] || "#ffffff";
+  const hoverColor = mapTheme["--map-region-hover-fill"] || "#FFD700";
+  const selectedColor = mapTheme["--accent-color"] || "yellow";
+
+  // The heat map will now gradient from the land color to the hover color
+  const actionColor = mapTheme["--button-action-bg"] || "#e74c3c";
+  const heatMapStartColor = parseColor(landColor);
+  const heatMapEndColor = parseColor(actionColor);
 
   const handleStateClick = (svgId) => {
     if (onSelectState) {
@@ -107,23 +106,27 @@ function UnitedStatesMap({
     if (!stateInfo) return {};
 
     const style = {
-      stroke: "#fff",
+      stroke: borderColor, // Use theme border color
       strokeWidth: "1px",
-      fill: defaultFillColor, // Use theme-based default
+      fill: landColor, // Use theme land color as the default
       cursor: onSelectState ? "pointer" : "default",
-      transition: "fill 0.2s ease-in-out",
+      transition: "fill 0.2s ease-in-out, stroke 0.2s ease-in-out",
     };
 
+    const isSelected =
+      onSelectState && selectedStateGameId === stateInfo.gameId;
+
     if (hoveredStateId === stateInfo.gameId) {
-      style.fill = hoverFillColor; // Use theme-based hover color
+      style.fill = hoverColor; // Use theme hover color
+    } else if (isSelected) {
+      style.fill = selectedColor;
     } else {
       const data = heatmapData?.find((d) => d.id === stateInfo.gameId);
       if (data) {
         if (viewType === "party_popularity") {
-          style.fill = data.color || defaultFillColor;
+          style.fill = data.color || landColor;
         } else if (typeof data.value === "number") {
           const ratio = max > min ? (data.value - min) / (max - min) : 0;
-          // Use theme-based start and end colors for the heat map
           const r = Math.round(
             heatMapStartColor.r +
               (heatMapEndColor.r - heatMapStartColor.r) * ratio
@@ -142,7 +145,7 @@ function UnitedStatesMap({
     }
 
     if (onSelectState && selectedStateGameId === stateInfo.gameId) {
-      style.stroke = "yellow"; // Selection highlight can remain a distinct color
+      style.stroke = selectedColor; // Use theme selection color
       style.strokeWidth = "3px";
     }
 
@@ -264,7 +267,6 @@ function UnitedStatesMap({
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 1000 589"
       preserveAspectRatio="xMidYMid meet"
-      // --- FIX: Event handler moved here ---
       onMouseLeave={() => setHoveredStateId(null)}
     >
       <g id="usa-states-group">

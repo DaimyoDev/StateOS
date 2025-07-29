@@ -304,4 +304,55 @@ export const calculateCrimeRate = ({
   return parseFloat(crimeRate.toFixed(1));
 };
 
-//immigration rate, political entities tab
+export const calculateAllCityStats = (city) => {
+  if (!city || !city.stats || !city.economicProfile || !city.demographics) {
+    console.warn("[StatCalc] Missing core city data for calculation.");
+    return {};
+  }
+
+  const { population, demographics, economicProfile, stats } = city;
+  const { budget } = stats;
+
+  // --- Step 1: Calculate primary metrics ---
+  const { healthcareCoverage, healthcareCostPerPerson } =
+    calculateHealthcareMetrics({
+      population,
+      currentBudgetAllocationForHealthcare:
+        budget.expenseAllocations.publicHealthServices,
+      demographics,
+      economicProfile,
+    });
+
+  const povertyRate = calculatePovertyRate({
+    population,
+    economicProfile,
+    budgetAllocationForSocialWelfare:
+      budget.expenseAllocations.socialWelfarePrograms,
+    educationQuality: stats.educationQuality,
+    demographics,
+    // activePolicies: city.cityLaws, // Pass active policies/laws here
+  });
+
+  const crimeRatePer1000 = calculateCrimeRate({
+    population,
+    economicProfile,
+    budgetAllocationForPublicSafety: budget.expenseAllocations.policeDepartment,
+    publicSafetyRating: stats.publicSafetyRating,
+    povertyRate, // Use the newly calculated poverty rate
+    educationQuality: stats.educationQuality,
+    cityType: stats.type,
+    // activePolicies: city.cityLaws,
+  });
+
+  // --- Step 2: Return an object with all the updated stats ---
+  // This can be spread onto the existing stats object in the monthly tick.
+  return {
+    healthcareCoverage,
+    healthcareCostPerPerson,
+    povertyRate,
+    crimeRatePer1000,
+    // Add any other future calculated stats here
+  };
+};
+
+//immigration rate,

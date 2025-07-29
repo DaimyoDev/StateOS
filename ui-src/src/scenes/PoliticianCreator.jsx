@@ -8,6 +8,7 @@ import {
 } from "../data/policyData";
 import { BASE_IDEOLOGIES } from "../data/ideologiesData";
 import { POLICY_PRESETS } from "../data/policyPresetsData";
+import { POSSIBLE_POLICY_FOCUSES } from "../data/governmentData";
 
 // --- Helper: Memoized PolicyOption (Keep as is) ---
 const PolicyOption = React.memo(function PolicyOption({
@@ -92,7 +93,6 @@ function PoliticianCreator() {
   const creatingPolitician = useGameStore((state) => state.creatingPolitician);
   const politicianToEditId = useGameStore((state) => state.politicianToEditId);
   const actions = useGameStore((state) => state.actions);
-  console.log(creatingPolitician);
   const isEditMode = !!politicianToEditId;
 
   const { categories, sortedCategoryNames } = useMemo(() => {
@@ -136,8 +136,19 @@ function PoliticianCreator() {
     actions.updateCreatingPoliticianField(e.target.name, e.target.value);
   };
 
+  const handleRangeInputChange = (e) => {
+    actions.updateCreatingPoliticianField(
+      e.target.name,
+      parseInt(e.target.value, 10)
+    );
+  };
+
   const handleAgeChange = (e) => {
     actions.updateCreatingPoliticianField("age", parseInt(e.target.value, 10));
+  };
+
+  const handleSelectChange = (e) => {
+    actions.updateCreatingPoliticianField(e.target.name, e.target.value);
   };
 
   const handleAttributeChange = (attr, value) => {
@@ -186,6 +197,7 @@ function PoliticianCreator() {
   );
 
   const handleRandomize = useCallback(() => {
+    // Name and Age
     actions.updateCreatingPoliticianField(
       "firstName",
       `First${Math.floor(Math.random() * 1000)}`
@@ -199,6 +211,20 @@ function PoliticianCreator() {
       25 + Math.floor(Math.random() * 50)
     );
 
+    // --- NEW: Randomize new identity fields ---
+    actions.updateCreatingPoliticianField(
+      "sex",
+      Math.random() < 0.5 ? "male" : "female"
+    );
+    actions.updateCreatingPoliticianField(
+      "policyFocus",
+      POSSIBLE_POLICY_FOCUSES[
+        Math.floor(Math.random() * POSSIBLE_POLICY_FOCUSES.length)
+      ]
+    );
+    // --- END NEW ---
+
+    // Policy Stances
     const newRandomStances = {};
     POLICY_QUESTIONS.forEach((policyQuestionObject) => {
       if (
@@ -218,12 +244,14 @@ function PoliticianCreator() {
     });
     actions.updateCreatingPoliticianField("policyStances", newRandomStances);
 
+    // Attributes
     const newRandomAttributes = { ...creatingPolitician.attributes };
     ATTRIBUTES_LIST.forEach((attr) => {
       newRandomAttributes[attr.toLowerCase()] = Math.floor(Math.random() * 11);
     });
     actions.updateCreatingPoliticianField("attributes", newRandomAttributes);
 
+    // Background
     const newRandomBackground = { ...creatingPolitician.background };
     BACKGROUND_FIELDS.forEach((field) => {
       if (Array.isArray(field.options) && field.options.length > 0) {
@@ -232,6 +260,27 @@ function PoliticianCreator() {
       }
     });
     actions.updateCreatingPoliticianField("background", newRandomBackground);
+
+    // --- NEW: Randomize starting resource fields ---
+    actions.updateCreatingPoliticianField(
+      "politicalCapital",
+      5 + Math.floor(Math.random() * 56) // Range 5-60
+    );
+    actions.updateCreatingPoliticianField(
+      "nameRecognition",
+      500 + Math.floor(Math.random() * 49501) // Range 500-50,000
+    );
+    actions.updateCreatingPoliticianField(
+      "treasury",
+      1000 + Math.floor(Math.random() * 149001) // Range 1,000-150,000
+    );
+    actions.updateCreatingPoliticianField(
+      "campaignFunds",
+      500 + Math.floor(Math.random() * 74501) // Range 500-75,000
+    );
+    // --- END NEW ---
+
+    // Final Recalculation
     actions.recalculateIdeology("Randomized");
   }, [actions, creatingPolitician.attributes, creatingPolitician.background]);
 
@@ -269,6 +318,15 @@ function PoliticianCreator() {
             className={`tab-button ${activeTab === "identity" ? "active" : ""}`}
           >
             Identity
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("resources")}
+            className={`tab-button ${
+              activeTab === "resources" ? "active" : ""
+            }`}
+          >
+            Starting Resources
           </button>
           <button
             type="button"
@@ -326,6 +384,99 @@ function PoliticianCreator() {
                   value={creatingPolitician.age}
                   onChange={handleAgeChange}
                 />
+              </div>
+              <div className="form-group">
+                {/* CHANGED */}
+                <label>Sex:</label>
+                <select
+                  // CHANGED
+                  name="sex"
+                  // CHANGED
+                  value={creatingPolitician.sex}
+                  onChange={handleSelectChange}
+                >
+                  <option value="female">Female</option>
+                  <option value="male">Male</option>
+                </select>
+              </div>
+            </section>
+          )}
+
+          {activeTab === "resources" && (
+            <section className="tab-section resources-section">
+              <h2>Starting Resources</h2>
+              <p className="policy-instructions">
+                Directly set the initial resources and influence for your
+                politician.
+              </p>
+
+              <div className="attributes-grid">
+                <div className="form-group">
+                  <label htmlFor="politicalCapital">
+                    Political Capital: {creatingPolitician.politicalCapital}
+                  </label>
+                  <input
+                    type="range"
+                    id="politicalCapital"
+                    name="politicalCapital"
+                    min="0"
+                    max="100"
+                    step="1"
+                    value={creatingPolitician.politicalCapital}
+                    onChange={handleRangeInputChange}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="nameRecognition">
+                    Name Recognition:{" "}
+                    {creatingPolitician.nameRecognition.toLocaleString()}
+                  </label>
+                  <input
+                    type="range"
+                    id="nameRecognition"
+                    name="nameRecognition"
+                    min="0"
+                    max="100000"
+                    step="500"
+                    value={creatingPolitician.nameRecognition}
+                    onChange={handleRangeInputChange}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="treasury">
+                    Personal Treasury: $
+                    {creatingPolitician.treasury.toLocaleString()}
+                  </label>
+                  <input
+                    type="range"
+                    id="treasury"
+                    name="treasury"
+                    min="0"
+                    max="500000"
+                    step="1000"
+                    value={creatingPolitician.treasury}
+                    onChange={handleRangeInputChange}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="campaignFunds">
+                    Campaign Funds: $
+                    {creatingPolitician.campaignFunds.toLocaleString()}
+                  </label>
+                  <input
+                    type="range"
+                    id="campaignFunds"
+                    name="campaignFunds"
+                    min="0"
+                    max="250000"
+                    step="500"
+                    value={creatingPolitician.campaignFunds}
+                    onChange={handleRangeInputChange}
+                  />
+                </div>
               </div>
             </section>
           )}
@@ -485,6 +636,32 @@ function PoliticianCreator() {
                   </select>
                 </div>
               ))}
+              <h3>Political Focus</h3>
+              <div className="form-group">
+                <label htmlFor="policyFocus">Starting Policy Focus:</label>
+                <p
+                  style={{
+                    fontSize: "0.8em",
+                    color: "var(--secondary-text)",
+                    margin: "-5px 0 10px 0",
+                  }}
+                >
+                  This choice will influence the types of policies your
+                  character is initially skilled at and likely to propose.
+                </p>
+                <select
+                  id="policyFocus"
+                  name="policyFocus"
+                  value={creatingPolitician.policyFocus}
+                  onChange={handleSelectChange}
+                >
+                  {POSSIBLE_POLICY_FOCUSES.map((focus) => (
+                    <option key={focus} value={focus}>
+                      {focus}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </section>
           )}
         </div>

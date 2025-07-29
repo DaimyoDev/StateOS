@@ -1,25 +1,22 @@
 // ui-src/src/stores/timeSlice.js
 import { isDateBefore, areDatesEqual, getRandomInt } from "../utils/core";
 import {
-  recalculateMonthlyBudget,
-  simulateMonthlyCityStatChanges,
-  simulateMonthlyPlayerApprovalUpdate,
-  simulateAIPolicyProposals,
-  updateMonthlyPartyPopularity,
-} from "../utils/monthlyCalcUtils.js";
+  runMonthlyBudgetUpdate,
+  runMonthlyStatUpdate,
+  runMonthlyPlayerApprovalUpdate,
+  runAIPolicyProposals,
+  runMonthlyPartyPopularityUpdate,
+} from "../simulation/monthlyTick.js";
 import { simulateAICampaignDayForPolitician } from "../utils/aiUtils.js";
 
 // --- Refactored Internal Helper Functions (now pure functions, no longer calling set directly) ---
-const _updateCityStatPure = (campaign, statName, newValue) => {
+const _updateCityStatsPure = (campaign, statUpdates) => {
   if (!campaign?.startingCity?.stats) return campaign;
   return {
     ...campaign,
     startingCity: {
       ...campaign.startingCity,
-      stats: {
-        ...campaign.startingCity.stats,
-        [statName]: newValue,
-      },
+      stats: { ...campaign.startingCity.stats, ...statUpdates },
     },
   };
 };
@@ -32,10 +29,7 @@ const _updateBudgetFiguresPure = (campaign, budgetUpdates) => {
       ...campaign.startingCity,
       stats: {
         ...campaign.startingCity.stats,
-        budget: {
-          ...campaign.startingCity.stats.budget,
-          ...budgetUpdates,
-        },
+        budget: { ...campaign.startingCity.stats.budget, ...budgetUpdates },
       },
     },
   };
@@ -56,7 +50,7 @@ const _updatePlayerApprovalPure = (campaign, newApproval) => {
   if (newApproval === null || !campaign) return campaign;
   return {
     ...campaign,
-    playerApproval: newApproval,
+    politician: { ...campaign.politician, approvalRating: newApproval },
   };
 };
 
@@ -67,115 +61,80 @@ export const createTimeSlice = (set, get) => {
     actions: {
       processMonthlyUpdates: () => {
         set((state) => {
-          // All updates within this single set() call
-          let currentCampaign = { ...state.activeCampaign }; // Start with a fresh clone of activeCampaign for local modifications
-          if (
-            !currentCampaign?.currentDate ||
-            !currentCampaign.startingCity?.stats
-          ) {
-            console.warn(
-              "[TimeSlice] ProcessMonthlyUpdates: Initial campaign data missing or invalid."
-            );
-            return state; // Return original state if conditions not met
-          }
+          let currentCampaign = { ...state.activeCampaign };
+          if (!currentCampaign?.currentDate) return state;
 
           let collectedNewsThisMonth = [];
 
-          // 1. Apply active legislation effects (This action itself calls set(), so we'll re-fetch state after it runs)
-          // Since it's a separate action, its effects are applied via its own set()
-          // and we need to ensure this is truly reflected in currentCampaign for subsequent steps.
-          // For simplicity, we assume applyActiveLegislationEffects updates state correctly before proceeding.
-          get().actions.applyActiveLegislationEffects?.();
-          // After this, currentCampaign might be stale, so we re-fetch for the next steps
-          currentCampaign = get().activeCampaign; // Re-fetch the latest state after external action
+          // --- REFACTORED MONTHLY UPDATE PIPELINE ---
 
-          // Defensive check if campaign somehow became null after re-fetch
-          if (!currentCampaign) {
-            console.error(
-              "[TimeSlice] Campaign disappeared after policy effects re-fetch!"
-            );
-            return state;
-          }
+          // 1. Apply active legislation effects (this action calls its own `set`)
+          get().actions.applyActiveLegislationEffects?.();
+          currentCampaign = get().activeCampaign; // Re-fetch state
+          if (!currentCampaign) return state;
 
           // 2. Recalculate Budget
-          const budgetSimResult = recalculateMonthlyBudget(currentCampaign);
-          if (budgetSimResult.budgetUpdates) {
+          const budgetResult = runMonthlyBudgetUpdate(currentCampaign);
+          if (budgetResult.budgetUpdates) {
             currentCampaign = _updateBudgetFiguresPure(
               currentCampaign,
-              budgetSimResult.budgetUpdates
+              budgetResult.budgetUpdates
             );
           }
-          collectedNewsThisMonth.push(...budgetSimResult.newsItems);
+          collectedNewsThisMonth.push(...budgetResult.newsItems);
 
-          // 3. Simulate city stat changes
-          const cityStatSimResults = simulateMonthlyCityStatChanges(
-            currentCampaign,
-            get
-          );
-          if (Object.keys(cityStatSimResults.statUpdates).length > 0) {
-            for (const [statName, newValue] of Object.entries(
-              cityStatSimResults.statUpdates
-            )) {
-              currentCampaign = _updateCityStatPure(
-                currentCampaign,
-                statName,
-                newValue
-              );
-            }
+          // 3. Simulate and update all city stats
+          const statResult = runMonthlyStatUpdate(currentCampaign);
+          if (Object.keys(statResult.statUpdates).length > 0) {
+            currentCampaign = _updateCityStatsPure(
+              currentCampaign,
+              statResult.statUpdates
+            );
           }
-          collectedNewsThisMonth.push(...cityStatSimResults.newsItems);
+          collectedNewsThisMonth.push(...statResult.newsItems);
 
           // 4. Simulate player approval update
           const newPlayerApproval =
-            simulateMonthlyPlayerApprovalUpdate(currentCampaign);
+            runMonthlyPlayerApprovalUpdate(currentCampaign);
           currentCampaign = _updatePlayerApprovalPure(
             currentCampaign,
             newPlayerApproval
           );
 
-          // 5. AI Policy Proposal Logic
-          const aiProposals = simulateAIPolicyProposals(currentCampaign, get);
+          // 5. AI Policy Proposals
+          const aiProposals = runAIPolicyProposals(currentCampaign, get);
           if (aiProposals.length > 0) {
             aiProposals.forEach((proposal) => {
-              // Note: proposePolicy is an external action that calls set() itself.
-              // Its effects on proposedLegislation are handled by its own dispatch.
               get().actions.proposePolicy?.(
                 proposal.policyId,
                 proposal.proposerId,
                 proposal.chosenParameters
               );
             });
-            // After proposePolicy, currentCampaign *could* be stale again for subsequent AI proposals in the loop.
-            // For now, we accept this slight potential desync within a single monthly tick for AI proposals,
-            // as they are usually added, not modifying existing campaign state other than proposedLegislation list.
           }
 
-          // 6. Update Dynamic Party Popularity
-          const partyPopResults = updateMonthlyPartyPopularity(
+          // 6. Update Party Popularity
+          const partyPopResult = runMonthlyPartyPopularityUpdate(
             currentCampaign,
             get
           );
-          if (partyPopResults.newPoliticalLandscape) {
+          if (partyPopResult.newPoliticalLandscape) {
             currentCampaign = _updatePoliticalLandscapePure(
               currentCampaign,
-              partyPopResults.newPoliticalLandscape
+              partyPopResult.newPoliticalLandscape
             );
           }
-          collectedNewsThisMonth.push(...partyPopResults.newsItems);
+          collectedNewsThisMonth.push(...partyPopResult.newsItems);
 
-          // 7. Dispatch all collected news for the month
+          // 7. Dispatch collected news
           if (collectedNewsThisMonth.length > 0) {
-            if (currentCampaign?.currentDate) {
-              // Use currentCampaign here
-              const datedNews = collectedNewsThisMonth.map((d) => ({
-                ...d,
-                date: { ...currentCampaign.currentDate },
-              }));
-              get().actions.addNewsEvent?.(datedNews);
-            }
+            const datedNews = collectedNewsThisMonth.map((d) => ({
+              ...d,
+              date: { ...currentCampaign.currentDate },
+            }));
+            get().actions.addNewsEvent?.(datedNews);
           }
 
-          // Return the final, updated campaign object
           return { activeCampaign: currentCampaign };
         });
       },

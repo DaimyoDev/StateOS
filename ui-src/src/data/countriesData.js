@@ -1,7 +1,7 @@
 import {
   generateFullStateData,
   generateFullSecondAdminRegionData,
-} from "../entities/politicialEntities";
+} from "../entities/politicalEntities";
 import { chamberTiers } from "./chamberTiers";
 import { generateLegislativeDistrictsForCountry } from "../entities/districtGeneration";
 import { generateNationalParties } from "../entities/personnel";
@@ -594,14 +594,15 @@ export const generateDetailedCountryData = (countryToProcess) => {
   // 2. Generate full state data for each region
   if (processedCountry.regions && Array.isArray(processedCountry.regions)) {
     processedCountry.regions = processedCountry.regions.map((staticRegion) => {
+      // --- MODIFIED ---
+      // Pass the generated national parties down to the state generator.
       return generateFullStateData({
         name: staticRegion.name,
         countryId: processedCountry.id,
         totalPopulation: staticRegion.population,
         id: staticRegion.id,
         legislativeDistricts: staticRegion.legislativeDistricts,
-        dominantIdeologies: processedCountry.dominantIdeologies,
-        nationalParties: processedCountry.nationalParties,
+        nationalParties: processedCountry.nationalParties, // Pass the parties here
       });
     });
   }
@@ -622,6 +623,23 @@ export const generateDetailedCountryData = (countryToProcess) => {
           countryId: processedCountry.id,
         });
       });
+  }
+
+  if (processedCountry.regions.length > 0) {
+    const totalCountryPopulation = processedCountry.regions.reduce(
+      (sum, region) => sum + region.population,
+      0
+    );
+    const totalCountryGDP = processedCountry.regions.reduce(
+      (sum, region) =>
+        sum + region.population * region.economicProfile.gdpPerCapita,
+      0
+    );
+
+    processedCountry.population = totalCountryPopulation;
+    processedCountry.gdpPerCapita = Math.round(
+      totalCountryGDP / totalCountryPopulation
+    );
   }
 
   return processedCountry; // Return the fully processed country

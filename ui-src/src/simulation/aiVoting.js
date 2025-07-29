@@ -1,10 +1,8 @@
 // ui-src/src/utils/aiVoting.js
 import { CITY_POLICIES } from "../data/policyDefinitions"; //
 import { RATING_LEVELS } from "../data/governmentData"; //
-import {
-  calculateFiscalConservatismFactor,
-  getServiceRatingDetails,
-} from "../utils/aiUtils";
+import { calculateFiscalConservatismFactor } from "./aiProposal";
+import { getServiceRatingDetails } from "../utils/aiUtils";
 
 // Helper function to determine the financial state, reused from aiUtils logic
 const getFinancialState = (cityStats) => {

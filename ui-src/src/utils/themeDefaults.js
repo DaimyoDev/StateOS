@@ -102,7 +102,6 @@ export const DEFAULT_THEME_KEYS = new Set([
   "lakeBled",
   "grandDuchy",
   "vallettaKnights",
-  "nileDynasty",
   "istanbulBazaar",
   "haLongBay",
   "cyberPunkNoir",
