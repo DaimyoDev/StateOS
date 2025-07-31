@@ -1,0 +1,38 @@
+{
+  "prefixes": [
+    "Nowa",
+    "Stara",
+    "Górna",
+    "Dolna",
+    "Wielka",
+    "Mała",
+    "Zamek",
+    "Pod",
+    "Królewska",
+    "Ostro"
+  ],
+  "cores": [
+    "Wola",
+    "Góra",
+    "Pola",
+    "Dąb",
+    "Most",
+    "Gród",
+    "Biały",
+    "Czarny",
+    "Zielona",
+    "Rzeka"
+  ],
+  "suffixes": [
+    "owo",
+    "ice",
+    "ce",
+    "ki",
+    "ska",
+    "czyn",
+    "in",
+    "any",
+    "ków",
+    "iec"
+  ]
+}

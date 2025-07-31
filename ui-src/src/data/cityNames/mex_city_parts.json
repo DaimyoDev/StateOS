@@ -1,0 +1,31 @@
+{
+  "prefixes": [
+    "Ciudad",
+    "Monterrey",
+    "Guadalajara",
+    "Puebla",
+    "Tijuana",
+    "Mexico",
+    "Zapata",
+    "Morelos",
+    "Veracruz",
+    "Querétaro",
+    "San",
+    "Villa"
+  ],
+  "cores": [
+    "Ciudad",
+    "Monterrey",
+    "Guadalajara",
+    "Puebla",
+    "Tijuana",
+    "Mexico",
+    "Zapata",
+    "Morelos",
+    "Veracruz",
+    "Querétaro",
+    "San",
+    "Villa"
+  ],
+  "suffixes": ["Nueva", "Grande"]
+}

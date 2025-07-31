@@ -1,0 +1,43 @@
+{
+  "prefixes": [
+    "São",
+    "Rio",
+    "Porto",
+    "Novo",
+    "Velho",
+    "Grande",
+    "Costa",
+    "Sul",
+    "Norte",
+    "Leste",
+    "Oeste",
+    "Vila",
+    "Jardim"
+  ],
+  "cores": [
+    "Cidade",
+    "Floresta",
+    "Praia",
+    "Jardim",
+    "Vila",
+    "Campo",
+    "Lago",
+    "Serra",
+    "Vale",
+    "Cachoeira",
+    "Bosque",
+    "Jardim"
+  ],
+  "suffixes": [
+    "Grande",
+    "Novo",
+    "Vieira",
+    "Costa",
+    "Vila",
+    "Silva",
+    "Monte",
+    "Rio",
+    "Doce",
+    "Bonita"
+  ]
+}

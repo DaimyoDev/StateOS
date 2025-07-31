@@ -11,6 +11,8 @@ import CanadaMap from "../maps/CanadaMap";
 import "./CountryDetailsScreen.css"; // We will create this file next
 import ArgentinianMap from "../maps/ArgentinianMap";
 import AustralianMap from "../maps/AustraliaMap";
+import AustrianMap from "../maps/AustrianMap";
+import BelgianMap from "../maps/BelgianMap";
 
 function CountryDetailsScreen() {
   const actions = useGameStore((state) => state.actions);
@@ -79,6 +81,10 @@ function CountryDetailsScreen() {
         return <ArgentinianMap {...props} />;
       case "AUS":
         return <AustralianMap {...props} />;
+      case "AUT":
+        return <AustrianMap {...props} />;
+      case "BEL":
+        return <BelgianMap {...props} />;
       default:
         return (
           <div className="map-placeholder">

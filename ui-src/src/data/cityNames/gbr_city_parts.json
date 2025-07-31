@@ -1,0 +1,38 @@
+{
+  "prefixes": [
+    "North",
+    "South",
+    "East",
+    "West",
+    "New",
+    "King's",
+    "Bishop's",
+    "Market",
+    "Upper",
+    "Lower"
+  ],
+  "cores": [
+    "Spring",
+    "Green",
+    "Fair",
+    "River",
+    "Oak",
+    "Maple",
+    "Red",
+    "White",
+    "Stone",
+    "Wood"
+  ],
+  "suffixes": [
+    "field",
+    "ville",
+    "ton",
+    "bury",
+    "borough",
+    "ham",
+    "stead",
+    "ford",
+    "bridge",
+    "wick"
+  ]
+}

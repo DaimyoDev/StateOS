@@ -1,0 +1,31 @@
+{
+  "prefixes": [
+    "Buenos",
+    "Córdoba",
+    "Rosario",
+    "Mendoza",
+    "Salta",
+    "Tucumán",
+    "Santa",
+    "Feria",
+    "Neuquen",
+    "Gran",
+    "Villa",
+    "Puerto"
+  ],
+  "cores": [
+    "Buenos",
+    "Córdoba",
+    "Rosario",
+    "Mendoza",
+    "Salta",
+    "Tucumán",
+    "Santa",
+    "Feria",
+    "Neuquen",
+    "Gran",
+    "Villa",
+    "Puerto"
+  ],
+  "suffixes": ["Grande", "Nueva", "Villa"]
+}

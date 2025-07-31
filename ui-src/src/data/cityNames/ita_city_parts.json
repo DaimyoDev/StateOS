@@ -1,0 +1,38 @@
+{
+  "prefixes": [
+    "San",
+    "Santa",
+    "Castel",
+    "Monte",
+    "Porto",
+    "Poggio",
+    "Ponte",
+    "Val",
+    "Fium",
+    "Borgo"
+  ],
+  "cores": [
+    "Grande",
+    "Nuovo",
+    "Bello",
+    "Forte",
+    "Acqua",
+    "Piana",
+    "Valli",
+    "Sasso",
+    "Lago",
+    "Colle"
+  ],
+  "suffixes": [
+    "poli",
+    "ano",
+    "ezza",
+    "aggio",
+    "ello",
+    "ate",
+    "ona",
+    "ara",
+    "ico",
+    "asco"
+  ]
+}

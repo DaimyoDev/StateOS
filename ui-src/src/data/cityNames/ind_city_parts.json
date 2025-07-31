@@ -1,0 +1,33 @@
+{
+  "prefixes": [
+    "Delhi",
+    "Mumbai",
+    "Kolkata",
+    "Chennai",
+    "Jaipur",
+    "Udaipur",
+    "Lucknow",
+    "Kanpur",
+    "Allahabad",
+    "Varanasi",
+    "Mysore",
+    "Pune",
+    "Nagpur"
+  ],
+  "cores": [
+    "Delhi",
+    "Mumbai",
+    "Kolkata",
+    "Chennai",
+    "Jaipur",
+    "Udaipur",
+    "Lucknow",
+    "Kanpur",
+    "Allahabad",
+    "Varanasi",
+    "Mysore",
+    "Pune",
+    "Nagpur"
+  ],
+  "suffixes": ["nagar", "pur", "ghat", "wali", "devi", "nath", "mandir"]
+}

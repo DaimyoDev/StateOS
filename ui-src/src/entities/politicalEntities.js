@@ -21,10 +21,33 @@ import { IDEOLOGY_DEFINITIONS } from "../data/ideologiesData";
 import { deepCopy } from "../utils/objectUtils";
 import { normalizePartyPopularities } from "../utils/electionUtils";
 import usaCityParts from "../data/cityNames/usa_city_parts.json";
+import jpnCityParts from "../data/cityNames/jpn_city_parts.json";
+import canCityParts from "../data/cityNames/can_city_parts.json";
+import gerCityParts from "../data/cityNames/ger_city_parts.json";
+import ausCityParts from "../data/cityNames/aus_city_parts.json";
+import phlCityParts from "../data/cityNames/phl_city_parts.json";
+import korCityParts from "../data/cityNames/kor_city_parts.json";
+import polCityParts from "../data/cityNames/pol_city_parts.json";
+import itaCityParts from "../data/cityNames/ita_city_parts.json";
+import gbrCityParts from "../data/cityNames/gbr_city_parts.json";
+import espCityParts from "../data/cityNames/esp_city_parts.json";
+import fraCityParts from "../data/cityNames/fra_city_parts.json";
 import { NAMES_BY_COUNTRY } from "../data/namesData";
 
 const cityNamesByCountry = {
   USA: usaCityParts,
+  JPN: jpnCityParts,
+  CAN: canCityParts,
+  GER: gerCityParts,
+  AUS: ausCityParts,
+  PHL: phlCityParts,
+  KOR: korCityParts,
+  AUT: gerCityParts,
+  POL: polCityParts,
+  ITA: itaCityParts,
+  GBR: gbrCityParts,
+  ESP: espCityParts,
+  FRA: fraCityParts,
 };
 
 // --- City Data Structure Definition ---
@@ -117,13 +140,9 @@ const generateCityName = (countryId, usedNames) => {
   const nameParts = cityNamesByCountry[countryId];
   let generatedName = "";
 
-  // --- NEW: Get person names from the central namesData file ---
   const personNames = [];
-  if (countryId === "USA" && NAMES_BY_COUNTRY["USA"]) {
-    // For the USA, use a mix of last names and some male first names
-    personNames.push(...(NAMES_BY_COUNTRY["USA"].last || []));
-    personNames.push(...(NAMES_BY_COUNTRY["USA"].male || []).slice(0, 20)); // Add a sample of first names
-  }
+  personNames.push(...(NAMES_BY_COUNTRY[countryId].last || []));
+  personNames.push(...(NAMES_BY_COUNTRY[countryId].male || []).slice(0, 20));
 
   if (nameParts) {
     let attempts = 0;

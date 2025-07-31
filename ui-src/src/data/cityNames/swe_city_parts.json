@@ -1,0 +1,34 @@
+{
+  "prefixes": [
+    "Stock",
+    "Kung",
+    "Ny",
+    "Gamla",
+    "Lilla",
+    "Stora",
+    "Västra",
+    "Östra",
+    "Södra",
+    "Norra",
+    "Järna",
+    "Berg",
+    "Krona"
+  ],
+  "cores": [
+    "Hamn",
+    "Berg",
+    "Torg",
+    "Gård",
+    "Park",
+    "Källare",
+    "Vägen",
+    "Skola",
+    "Kyrka",
+    "Hamn",
+    "Lund",
+    "Ede",
+    "Viken",
+    "Berg"
+  ],
+  "suffixes": ["stad", "by", "dal", "vik", "gård", "hem"]
+}

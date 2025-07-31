@@ -1,0 +1,38 @@
+{
+  "prefixes": [
+    "Saint",
+    "La",
+    "Le",
+    "Vieux",
+    "Grand",
+    "Beaure",
+    "Château",
+    "Mont",
+    "Puy",
+    "Neu"
+  ],
+  "cores": [
+    "Fontaine",
+    "Ville",
+    "Bourg",
+    "Bois",
+    "Clair",
+    "Belle",
+    "Fleur",
+    "Pont",
+    "Roche",
+    "Val"
+  ],
+  "suffixes": [
+    "ville",
+    "mont",
+    "court",
+    "sur-",
+    "les-",
+    "champs",
+    "bourg",
+    "fort",
+    "nay",
+    "gny"
+  ]
+}

@@ -58,6 +58,8 @@ import "./CampaignSetupScreen.css";
 import RegionPieChart from "../components/charts/RegionPieChart";
 import ArgentinianMap from "../maps/ArgentinianMap";
 import AustralianMap from "../maps/AustraliaMap";
+import AustrianMap from "../maps/AustrianMap";
+import BelgianMap from "../maps/BelgianMap";
 
 function CampaignSetupScreen() {
   const currentTheme = useGameStore(
@@ -1192,11 +1194,46 @@ function CampaignSetupScreen() {
             </div>
           </>
         )}
+        {selectedCountryId === "AUT" && (
+          <>
+            <p className="map-instruction-cs">
+              Click on a state to begin your political career there.
+            </p>
+            <div className="map-render-wrapper">
+              <AustrianMap
+                onSelectState={handleRegionSelectionFromMap}
+                selectedStateGameId={selectedRegionId}
+              />
+            </div>
+          </>
+        )}
+        {selectedCountryId === "BEL" && (
+          <>
+            <p className="map-instruction-cs">
+              Click on a region to begin your political career there.
+            </p>
+            <div className="map-render-wrapper">
+              <BelgianMap
+                onSelectRegion={handleRegionSelectionFromMap}
+                selectedRegionGameId={selectedRegionId}
+              />
+            </div>
+          </>
+        )}
         {/* Fallback for countries without maps */}
         {currentSelectedCountryData &&
-          !["JPN", "PHL", "USA", "KOR", "GER", "CAN", "ARG", "AUS"].includes(
-            selectedCountryId
-          ) && (
+          ![
+            "JPN",
+            "PHL",
+            "USA",
+            "KOR",
+            "GER",
+            "CAN",
+            "ARG",
+            "AUS",
+            "AUT",
+            "BEL",
+          ].includes(selectedCountryId) && (
             <div className="map-placeholder">
               <p>
                 Map for{" "}
