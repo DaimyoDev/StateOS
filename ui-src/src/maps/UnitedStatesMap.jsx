@@ -268,6 +268,7 @@ function UnitedStatesMap({
       viewBox="0 0 1000 589"
       preserveAspectRatio="xMidYMid meet"
       onMouseLeave={() => setHoveredStateId(null)}
+      className="interactive-japan-map"
     >
       <g id="usa-states-group">
         {stateOrderFromSVG.map((svgId) => {

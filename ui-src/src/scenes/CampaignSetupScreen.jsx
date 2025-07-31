@@ -46,12 +46,18 @@ import TennesseeMap from "../maps/usaCounties/TennesseeMap";
 import TexasMap from "../maps/usaCounties/TexasMap";
 import UtahMap from "../maps/usaCounties/UtahMap";
 import VermontMap from "../maps/usaCounties/VermontMap";
+import VirginiaMap from "../maps/usaCounties/VirginiaMap";
+import WashingtonMap from "../maps/usaCounties/WashingtonMap";
+import WestVirginiaMap from "../maps/usaCounties/WestVirginiaMap";
+import WisconsinMap from "../maps/usaCounties/WisconsinMap";
 import SouthKoreaMap from "../maps/SouthKoreaMap";
 import GermanyMap from "../maps/GermanyMap";
 import CanadaMap from "../maps/CanadaMap";
 import { BASE_COUNTRIES_DATA } from "../data/countriesData";
 import "./CampaignSetupScreen.css";
 import RegionPieChart from "../components/charts/RegionPieChart";
+import ArgentinianMap from "../maps/ArgentinianMap";
+import AustralianMap from "../maps/AustraliaMap";
 
 function CampaignSetupScreen() {
   const currentTheme = useGameStore(
@@ -1007,6 +1013,118 @@ function CampaignSetupScreen() {
                 </div>
               </>
             )}
+
+            {selectedRegionId === "USA_VA" && (
+              <>
+                <p className="map-instruction-cs">
+                  Now, select a starting county in Virginia.
+                </p>
+                <div className="map-render-wrapper">
+                  <VirginiaMap
+                    onSelectCounty={(countyId) =>
+                      actions.setSelectedSecondAdminRegion(countyId)
+                    }
+                    selectedCountyGameId={selectedSecondAdminRegionId}
+                  />
+                </div>
+              </>
+            )}
+
+            {selectedRegionId === "USA_WA" && (
+              <>
+                <p className="map-instruction-cs">
+                  Now, select a starting county in Washington.
+                </p>
+                <div className="map-render-wrapper">
+                  <WashingtonMap
+                    onSelectCounty={(countyId) =>
+                      actions.setSelectedSecondAdminRegion(countyId)
+                    }
+                    selectedCountyGameId={selectedSecondAdminRegionId}
+                  />
+                </div>
+              </>
+            )}
+
+            {selectedRegionId === "USA_WV" && (
+              <>
+                <p className="map-instruction-cs">
+                  Now, select a starting county in West Virginia.
+                </p>
+                <div className="map-render-wrapper">
+                  <WestVirginiaMap
+                    onSelectCounty={(countyId) =>
+                      actions.setSelectedSecondAdminRegion(countyId)
+                    }
+                    selectedCountyGameId={selectedSecondAdminRegionId}
+                  />
+                </div>
+              </>
+            )}
+
+            {selectedRegionId === "USA_WI" && (
+              <>
+                <p className="map-instruction-cs">
+                  Now, select a starting county in Wisconsin.
+                </p>
+                <div className="map-render-wrapper">
+                  <WisconsinMap
+                    onSelectCounty={(countyId) =>
+                      actions.setSelectedSecondAdminRegion(countyId)
+                    }
+                    selectedCountyGameId={selectedSecondAdminRegionId}
+                  />
+                </div>
+              </>
+            )}
+
+            {selectedRegionId === "USA_VT" && (
+              <>
+                <p className="map-instruction-cs">
+                  Now, select a starting county in Vermont.
+                </p>
+                <div className="map-render-wrapper">
+                  <VermontMap
+                    onSelectCounty={(countyId) =>
+                      actions.setSelectedSecondAdminRegion(countyId)
+                    }
+                    selectedCountyGameId={selectedSecondAdminRegionId}
+                  />
+                </div>
+              </>
+            )}
+
+            {selectedRegionId === "USA_VT" && (
+              <>
+                <p className="map-instruction-cs">
+                  Now, select a starting county in Vermont.
+                </p>
+                <div className="map-render-wrapper">
+                  <VermontMap
+                    onSelectCounty={(countyId) =>
+                      actions.setSelectedSecondAdminRegion(countyId)
+                    }
+                    selectedCountyGameId={selectedSecondAdminRegionId}
+                  />
+                </div>
+              </>
+            )}
+
+            {selectedRegionId === "USA_VT" && (
+              <>
+                <p className="map-instruction-cs">
+                  Now, select a starting county in Vermont.
+                </p>
+                <div className="map-render-wrapper">
+                  <VermontMap
+                    onSelectCounty={(countyId) =>
+                      actions.setSelectedSecondAdminRegion(countyId)
+                    }
+                    selectedCountyGameId={selectedSecondAdminRegionId}
+                  />
+                </div>
+              </>
+            )}
           </>
         )}
         {selectedCountryId === "KOR" && (
@@ -1048,9 +1166,35 @@ function CampaignSetupScreen() {
             </div>
           </>
         )}
+        {selectedCountryId === "ARG" && (
+          <>
+            <p className="map-instruction-cs">
+              Click on a state to begin your political career there.
+            </p>
+            <div className="map-render-wrapper">
+              <ArgentinianMap
+                onSelectState={handleRegionSelectionFromMap}
+                selectedStateGameId={selectedRegionId}
+              />
+            </div>
+          </>
+        )}
+        {selectedCountryId === "AUS" && (
+          <>
+            <p className="map-instruction-cs">
+              Click on a state to begin your political career there.
+            </p>
+            <div className="map-render-wrapper">
+              <AustralianMap
+                onSelectState={handleRegionSelectionFromMap}
+                selectedStateGameId={selectedRegionId}
+              />
+            </div>
+          </>
+        )}
         {/* Fallback for countries without maps */}
         {currentSelectedCountryData &&
-          !["JPN", "PHL", "USA", "KOR", "GER", "CAN"].includes(
+          !["JPN", "PHL", "USA", "KOR", "GER", "CAN", "ARG", "AUS"].includes(
             selectedCountryId
           ) && (
             <div className="map-placeholder">

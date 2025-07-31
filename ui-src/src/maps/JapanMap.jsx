@@ -1,8 +1,8 @@
-import React from "react";
-import "./JapanMap.css"; // Your CSS for styling paths
+import { React, useState, useMemo } from "react";
+import "./JapanMap.css";
+import useGameStore from "../store";
+import { parseColor } from "../utils/core";
 
-// Comprehensive Prefecture Data based on your SVG comment
-// Please verify names against your SVG's "title" attributes if possible.
 const PREFECTURE_DATA = {
   "JP-01": { gameId: "JPN_HOK", name: "Hokkaido" },
   "JP-02": { gameId: "JPN_AOM", name: "Aomori" },
@@ -53,43 +53,102 @@ const PREFECTURE_DATA = {
   "JP-47": { gameId: "JPN_OKN", name: "Okinawa" },
 };
 
-function JapanMap({ onSelectPrefecture, selectedPrefectureGameId }) {
+function JapanMap({
+  onSelectPrefecture,
+  selectedPrefectureGameId,
+  heatmapData,
+  viewType,
+}) {
+  const [hoveredPrefectureId, setHoveredPrefectureId] = useState(null);
+  const currentTheme = useGameStore(
+    (state) => state.availableThemes[state.activeThemeName]
+  );
+
+  // --- FIX: Access the dedicated mapStyles object from the theme ---
+  const mapTheme = currentTheme.colors || {};
+
+  // --- FIX: Define map colors based on the mapStyles variables ---
+  const landColor = mapTheme["--map-region-default-fill"] || "#cccccc";
+  const borderColor = mapTheme["--map-region-border"] || "#ffffff";
+  const hoverColor = mapTheme["--map-region-hover-fill"] || "#FFD700";
+  const selectedColor = mapTheme["--accent-color"] || "yellow";
+  const actionColor = mapTheme["--button-action-bg"] || "#e74c3c";
+
+  // Heatmap gradient from land to action color
+  const heatMapStartColor = parseColor(landColor);
+  const heatMapEndColor = parseColor(actionColor);
+
   const handlePrefectureClick = (svgId) => {
-    const prefecture = PREFECTURE_DATA[svgId];
-    if (prefecture && onSelectPrefecture) {
-      onSelectPrefecture(prefecture.gameId, prefecture.name);
-    } else {
-      console.warn(`No game data found for SVG ID: ${svgId}`);
+    if (onSelectPrefecture) {
+      const prefecture = PREFECTURE_DATA[svgId];
+      if (prefecture) {
+        onSelectPrefecture(prefecture.gameId, prefecture.name);
+      }
     }
   };
 
-  // Helper function to generate path elements to avoid too much repetition in JSX
-  // This assumes your SVG paths are all within a single <g>
-  const renderPrefecturePath = (svgId) => {
+  const { min, max } = useMemo(() => {
+    if (!heatmapData || viewType === "party_popularity")
+      return { min: 0, max: 1 };
+    const values = heatmapData
+      .map((d) => d.value)
+      .filter((v) => typeof v === "number");
+    if (values.length === 0) return { min: 0, max: 1 };
+    return { min: Math.min(...values), max: Math.max(...values) };
+  }, [heatmapData, viewType]);
+
+  const getPrefectureStyle = (svgId) => {
     const prefectureInfo = PREFECTURE_DATA[svgId];
-    if (!prefectureInfo) return null; // Should not happen if PREFECTURE_DATA is complete
+    if (!prefectureInfo) return {};
 
-    // Placeholder for the actual 'd' attribute from your SVG.
-    // You will need to get this from your SVG file for each ID.
-    const pathD = yourSvgPathData[svgId]; // YOU NEED TO CREATE/ACCESS THIS OBJECT
+    const style = {
+      stroke: borderColor,
+      strokeWidth: "1px",
+      fill: landColor,
+      cursor: onSelectPrefecture ? "pointer" : "default",
+      transition: "fill 0.2s ease-in-out, stroke 0.2s ease-in-out",
+    };
 
-    if (!pathD) {
-      console.warn(`Path data (d attribute) missing for ${svgId}`);
-      return null;
+    const isSelected =
+      onSelectPrefecture && selectedPrefectureGameId === prefectureInfo.gameId;
+
+    if (hoveredPrefectureId === prefectureInfo.gameId) {
+      style.fill = hoverColor;
+    } else if (isSelected) {
+      style.fill = selectedColor;
+    } else {
+      const data = heatmapData?.find((d) => d.id === prefectureInfo.gameId);
+      if (data) {
+        if (viewType === "party_popularity") {
+          style.fill = data.color || landColor;
+        } else if (typeof data.value === "number") {
+          const ratio = max > min ? (data.value - min) / (max - min) : 0;
+          const r = Math.round(
+            heatMapStartColor.r +
+              (heatMapEndColor.r - heatMapStartColor.r) * ratio
+          );
+          const g = Math.round(
+            heatMapStartColor.g +
+              (heatMapEndColor.g - heatMapStartColor.g) * ratio
+          );
+          const b = Math.round(
+            heatMapStartColor.b +
+              (heatMapEndColor.b - heatMapStartColor.b) * ratio
+          );
+          style.fill = `rgb(${r}, ${g}, ${b})`;
+        }
+      }
     }
 
-    return (
-      <path
-        key={svgId} // React key
-        id={svgId}
-        title={prefectureInfo.name}
-        className={`prefecture-path ${
-          selectedPrefectureGameId === prefectureInfo.gameId ? "selected" : ""
-        }`}
-        onClick={() => handlePrefectureClick(svgId)}
-        d={pathD}
-      />
-    );
+    if (
+      onSelectPrefecture &&
+      selectedPrefectureGameId === prefectureInfo.gameId
+    ) {
+      style.stroke = selectedColor;
+      style.strokeWidth = "3px";
+    }
+
+    return style;
   };
 
   // You need an object that maps SVG IDs to their 'd' path data strings
@@ -248,14 +307,28 @@ function JapanMap({ onSelectPrefecture, selectedPrefectureGameId }) {
     <svg
       version="1.0"
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 750 750" // **** IMPORTANT: REPLACE WITH YOUR SVG's ACTUAL viewBox ****
-      className="interactive-japan-map"
+      viewBox="0 0 1000 800"
       preserveAspectRatio="xMidYMid meet"
+      onMouseLeave={() => setHoveredPrefectureId(null)}
+      className="interactive-japan-map"
     >
-      <g id="japan-prefectures-group">
-        {" "}
-        {/* Changed group ID to be more specific */}
-        {prefectureOrderFromSVG.map((svgId) => renderPrefecturePath(svgId))}
+      <g id="japan-states-group">
+        {prefectureOrderFromSVG.map((svgId) => {
+          const prefectureInfo = PREFECTURE_DATA[svgId];
+          const pathD = yourSvgPathData[svgId];
+          if (!prefectureInfo || !pathD) return null;
+          return (
+            <path
+              key={svgId}
+              id={svgId}
+              title={prefectureInfo.name}
+              style={getPrefectureStyle(svgId)}
+              onClick={() => handlePrefectureClick(svgId)}
+              onMouseEnter={() => setHoveredPrefectureId(prefectureInfo.gameId)}
+              d={pathD}
+            />
+          );
+        })}
       </g>
     </svg>
   );

@@ -163,7 +163,12 @@ function UtahMap({ onSelectCounty, selectedCountyGameId }) {
       className="interactive-japan-map"
       preserveAspectRatio="xMidYMid meet"
     >
-      <g id="Texas" transform="translate(5,5)" stroke="white" strokeWidth="1">
+      <g
+        id="utah-counties-group"
+        transform="translate(5,5)"
+        stroke="white"
+        strokeWidth="1"
+      >
         {countyOrderFromSVG.map((svgId) => renderCountyPath(svgId))}
       </g>
     </svg>

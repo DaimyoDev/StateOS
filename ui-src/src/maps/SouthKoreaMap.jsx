@@ -1,5 +1,7 @@
-import React from "react";
+import { React, useState, useMemo } from "react";
 import "./JapanMap.css";
+import useGameStore from "../store";
+import { parseColor } from "../utils/core";
 
 const STATE_DATA = {
   KR42: { gameId: "KOR_GW", name: "Gangwon" },
@@ -21,39 +23,99 @@ const STATE_DATA = {
   KR27: { gameId: "KOR_DGU", name: "Daegu" },
 };
 
-function SouthKoreaMap({ onSelectState, selectedStateGameId }) {
+function SouthKoreaMap({
+  onSelectState,
+  selectedStateGameId,
+  heatmapData,
+  viewType,
+}) {
+  const [hoveredStateId, setHoveredStateId] = useState(null);
+  const currentTheme = useGameStore(
+    (state) => state.availableThemes[state.activeThemeName]
+  );
+
+  // --- FIX: Access the dedicated mapStyles object from the theme ---
+  const mapTheme = currentTheme.colors || {};
+
+  // --- FIX: Define map colors based on the mapStyles variables ---
+  const landColor = mapTheme["--map-region-default-fill"] || "#cccccc";
+  const borderColor = mapTheme["--map-region-border"] || "#ffffff";
+  const hoverColor = mapTheme["--map-region-hover-fill"] || "#FFD000";
+  const selectedColor = mapTheme["--accent-color"] || "yellow";
+  const actionColor = mapTheme["--button-action-bg"] || "#e74c3c";
+
+  // Heatmap gradient from land to action color
+  const heatMapStartColor = parseColor(landColor);
+  const heatMapEndColor = parseColor(actionColor);
+
   const handleStateClick = (svgId) => {
-    const state = STATE_DATA[svgId];
-    if (state && onSelectState) {
-      onSelectState(state.gameId, state.name);
-    } else {
-      console.warn(`No game data found for SVG ID: ${svgId}`);
+    if (onSelectState) {
+      const state = STATE_DATA[svgId];
+      if (state) {
+        onSelectState(state.gameId, state.name);
+      }
     }
   };
 
-  const renderStatePath = (svgId) => {
+  const { min, max } = useMemo(() => {
+    if (!heatmapData || viewType === "party_popularity")
+      return { min: 0, max: 1 };
+    const values = heatmapData
+      .map((d) => d.value)
+      .filter((v) => typeof v === "number");
+    if (values.length === 0) return { min: 0, max: 1 };
+    return { min: Math.min(...values), max: Math.max(...values) };
+  }, [heatmapData, viewType]);
+
+  const getStateStyle = (svgId) => {
     const stateInfo = STATE_DATA[svgId];
-    if (!stateInfo) return null;
+    if (!stateInfo) return {};
 
-    const pathD = southKoreaSvgPathData[svgId];
+    const style = {
+      stroke: borderColor,
+      strokeWidth: "1px",
+      fill: landColor,
+      cursor: onSelectState ? "pointer" : "default",
+      transition: "fill 0.2s ease-in-out, stroke 0.2s ease-in-out",
+    };
 
-    if (!pathD) {
-      console.warn(`Path data (d attribute) missing for ${svgId}`);
-      return null;
+    const isSelected =
+      onSelectState && selectedStateGameId === stateInfo.gameId;
+
+    if (hoveredStateId === stateInfo.gameId) {
+      style.fill = hoverColor;
+    } else if (isSelected) {
+      style.fill = selectedColor;
+    } else {
+      const data = heatmapData?.find((d) => d.id === stateInfo.gameId);
+      if (data) {
+        if (viewType === "party_popularity") {
+          style.fill = data.color || landColor;
+        } else if (typeof data.value === "number") {
+          const ratio = max > min ? (data.value - min) / (max - min) : 0;
+          const r = Math.round(
+            heatMapStartColor.r +
+              (heatMapEndColor.r - heatMapStartColor.r) * ratio
+          );
+          const g = Math.round(
+            heatMapStartColor.g +
+              (heatMapEndColor.g - heatMapStartColor.g) * ratio
+          );
+          const b = Math.round(
+            heatMapStartColor.b +
+              (heatMapEndColor.b - heatMapStartColor.b) * ratio
+          );
+          style.fill = `rgb(${r}, ${g}, ${b})`;
+        }
+      }
     }
 
-    return (
-      <path
-        key={svgId} // React key
-        id={svgId}
-        title={stateInfo.name}
-        className={`prefecture-path ${
-          selectedStateGameId === stateInfo.gameId ? "selected" : ""
-        }`}
-        onClick={() => handleStateClick(svgId)}
-        d={pathD}
-      />
-    );
+    if (onSelectState && selectedStateGameId === stateInfo.gameId) {
+      style.stroke = selectedColor;
+      style.strokeWidth = "3px";
+    }
+
+    return style;
   };
 
   const southKoreaSvgPathData = {
@@ -100,12 +162,28 @@ function SouthKoreaMap({ onSelectState, selectedStateGameId }) {
     <svg
       version="1.0"
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 1000 1000" // Updated viewBox
-      className="interactive-japan-map" // Updated class name
+      viewBox="0 0 1000 1000"
       preserveAspectRatio="xMidYMid meet"
+      onMouseLeave={() => setHoveredStateId(null)}
+      className="interactive-japan-map"
     >
       <g id="south-korea-states-group">
-        {stateOrderFromSVG.map((svgId) => renderStatePath(svgId))}
+        {stateOrderFromSVG.map((svgId) => {
+          const stateInfo = STATE_DATA[svgId];
+          const pathD = southKoreaSvgPathData[svgId];
+          if (!stateInfo || !pathD) return null;
+          return (
+            <path
+              key={svgId}
+              id={svgId}
+              title={stateInfo.name}
+              style={getStateStyle(svgId)}
+              onClick={() => handleStateClick(svgId)}
+              onMouseEnter={() => setHoveredStateId(stateInfo.gameId)}
+              d={pathD}
+            />
+          );
+        })}
       </g>
     </svg>
   );

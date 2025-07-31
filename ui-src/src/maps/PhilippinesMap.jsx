@@ -1,5 +1,7 @@
-import React from "react";
+import React, { useMemo, useState } from "react";
 import "./JapanMap.css"; // Your CSS for styling paths
+import useGameStore from "../store";
+import { parseColor } from "../utils/core";
 
 // Comprehensive Prefecture Data based on your SVG comment
 // Please verify names against your SVG's "title" attributes if possible.
@@ -23,43 +25,99 @@ const PROVINCE_DATA = {
   PH15: { gameId: "PHL_CAR", name: "Cordillera Administrative Region" },
 };
 
-function PhilippinesMap({ onSelectProvince, selectedProvinceGameId }) {
+function PhilippinesMap({
+  onSelectProvince,
+  selectedProvinceGameId,
+  heatmapData,
+  viewType,
+}) {
+  const [hoveredProvinceId, setHoveredProvinceId] = useState(null);
+  const currentTheme = useGameStore(
+    (state) => state.availableThemes[state.activeThemeName]
+  );
+
+  // --- FIX: Access the dedicated mapStyles object from the theme ---
+  const mapTheme = currentTheme.colors || {};
+
+  // --- FIX: Define map colors based on the mapStyles variables ---
+  const landColor = mapTheme["--map-region-default-fill"] || "#cccccc";
+  const borderColor = mapTheme["--map-region-border"] || "#ffffff";
+  const hoverColor = mapTheme["--map-region-hover-fill"] || "#FFD000";
+  const selectedColor = mapTheme["--accent-color"] || "yellow";
+  const actionColor = mapTheme["--button-action-bg"] || "#e74c3c";
+
+  // Heatmap gradient from land to action color
+  const heatMapStartColor = parseColor(landColor);
+  const heatMapEndColor = parseColor(actionColor);
+
   const handleProvinceClick = (svgId) => {
-    const province = PROVINCE_DATA[svgId];
-    if (province && onSelectProvince) {
-      onSelectProvince(province.gameId, province.name);
-    } else {
-      console.warn(`No game data found for SVG ID: ${svgId}`);
+    if (onSelectProvince) {
+      const province = PROVINCE_DATA[svgId];
+      if (province) {
+        onSelectProvince(province.gameId, province.name);
+      }
     }
   };
 
-  // Helper function to generate path elements to avoid too much repetition in JSX
-  // This assumes your SVG paths are all within a single <g>
-  const renderProvincePath = (svgId) => {
+  const { min, max } = useMemo(() => {
+    if (!heatmapData || viewType === "party_popularity")
+      return { min: 0, max: 1 };
+    const values = heatmapData
+      .map((d) => d.value)
+      .filter((v) => typeof v === "number");
+    if (values.length === 0) return { min: 0, max: 1 };
+    return { min: Math.min(...values), max: Math.max(...values) };
+  }, [heatmapData, viewType]);
+
+  const getProvinceStyle = (svgId) => {
     const provinceInfo = PROVINCE_DATA[svgId];
-    if (!provinceInfo) return null; // Should not happen if PREFECTURE_DATA is complete
+    if (!provinceInfo) return {};
 
-    // Placeholder for the actual 'd' attribute from your SVG.
-    // You will need to get this from your SVG file for each ID.
-    const pathD = yourSvgPathData[svgId]; // YOU NEED TO CREATE/ACCESS THIS OBJECT
+    const style = {
+      stroke: borderColor,
+      strokeWidth: "1px",
+      fill: landColor,
+      cursor: onSelectProvince ? "pointer" : "default",
+      transition: "fill 0.2s ease-in-out, stroke 0.2s ease-in-out",
+    };
 
-    if (!pathD) {
-      console.warn(`Path data (d attribute) missing for ${svgId}`);
-      return null;
+    const isSelected =
+      onSelectProvince && selectedProvinceGameId === provinceInfo.gameId;
+
+    if (hoveredProvinceId === provinceInfo.gameId) {
+      style.fill = hoverColor;
+    } else if (isSelected) {
+      style.fill = selectedColor;
+    } else {
+      const data = heatmapData?.find((d) => d.id === provinceInfo.gameId);
+      if (data) {
+        if (viewType === "party_popularity") {
+          style.fill = data.color || landColor;
+        } else if (typeof data.value === "number") {
+          const ratio = max > min ? (data.value - min) / (max - min) : 0;
+          const r = Math.round(
+            heatMapStartColor.r +
+              (heatMapEndColor.r - heatMapStartColor.r) * ratio
+          );
+          const g = Math.round(
+            heatMapStartColor.g +
+              (heatMapEndColor.g - heatMapStartColor.g) * ratio
+          );
+          const b = Math.round(
+            heatMapStartColor.b +
+              (heatMapEndColor.b - heatMapStartColor.b) * ratio
+          );
+          style.fill = `rgb(${r}, ${g}, ${b})`;
+        }
+      }
     }
 
-    return (
-      <path
-        key={svgId} // React key
-        id={svgId}
-        title={provinceInfo.name}
-        className={`prefecture-path ${
-          selectedProvinceGameId === provinceInfo.gameId ? "selected" : ""
-        }`}
-        onClick={() => handleProvinceClick(svgId)}
-        d={pathD}
-      />
-    );
+    if (onSelectProvince && selectedProvinceGameId === provinceInfo.gameId) {
+      style.stroke = selectedColor;
+      style.strokeWidth = "3px";
+    }
+
+    return style;
   };
 
   // You need an object that maps SVG IDs to their 'd' path data strings
@@ -109,14 +167,28 @@ function PhilippinesMap({ onSelectProvince, selectedProvinceGameId }) {
     <svg
       version="1.0"
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="100 30 850 950" // **** IMPORTANT: REPLACE WITH YOUR SVG's ACTUAL viewBox ****
-      className="interactive-japan-map"
+      viewBox="0 0 1000 1000"
       preserveAspectRatio="xMidYMid meet"
+      onMouseLeave={() => setHoveredProvinceId(null)}
+      className="interactive-japan-map" // ✅ Applied class
     >
-      <g id="japan-prefectures-group">
-        {" "}
-        {/* Changed group ID to be more specific */}
-        {provinceOrderFromSVG.map((svgId) => renderProvincePath(svgId))}
+      <g id="philippines-states-group">
+        {provinceOrderFromSVG.map((svgId) => {
+          const provinceInfo = PROVINCE_DATA[svgId];
+          const pathD = yourSvgPathData[svgId];
+          if (!provinceInfo || !pathD) return null;
+          return (
+            <path
+              key={svgId}
+              id={svgId}
+              title={provinceInfo.name}
+              style={getProvinceStyle(svgId)}
+              onClick={() => handleProvinceClick(svgId)}
+              onMouseEnter={() => setHoveredProvinceId(provinceInfo.gameId)}
+              d={pathD}
+            />
+          );
+        })}
       </g>
     </svg>
   );
