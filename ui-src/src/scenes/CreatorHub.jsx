@@ -25,9 +25,8 @@ function CreatorHub() {
 
   const handleSaveGeneratedParty = React.useCallback(() => {
     if (generatedParty) {
-      // When saving a generated party, we now use the addCustomParty action directly
       actions.addCustomParty(generatedParty);
-      setGeneratedParty(null); // Clear the display after saving
+      setGeneratedParty(null);
     }
   }, [generatedParty, actions]);
 
@@ -60,7 +59,6 @@ function CreatorHub() {
         <div className="hub-column">
           <h2 className="hub-column-title">Custom Parties</h2>
           <div className="hub-column-actions">
-            {/* This button now calls the action to navigate to the new screen */}
             <button
               className="action-button"
               onClick={actions.startCreatingNewParty}
@@ -71,32 +69,43 @@ function CreatorHub() {
           <div className="custom-parties-list">
             {allCustomParties.length > 0 ? (
               allCustomParties.map((party) => (
-                <div key={party.id} className="custom-party-item">
-                  <div className="party-logo-preview">
-                    {party.logoDataUrl ? (
-                      <img src={party.logoDataUrl} alt={`${party.name} logo`} />
-                    ) : (
-                      <div className="logo-placeholder"></div>
-                    )}
+                <div key={party.id} className="custom-party-card">
+                  <div className="party-card-header">
+                    <div className="party-logo-preview">
+                      {party.logoDataUrl ? (
+                        <img
+                          src={party.logoDataUrl}
+                          alt={`${party.name} logo`}
+                        />
+                      ) : (
+                        <div className="logo-placeholder"></div>
+                      )}
+                    </div>
+                    <div className="party-card-details">
+                      <span className="party-card-name">{party.name}</span>
+                      <span className="party-card-ideology">
+                        {party.ideology}
+                      </span>
+                    </div>
+                    <span
+                      className="party-color-swatch"
+                      style={{ backgroundColor: party.color }}
+                    ></span>
                   </div>
-                  <span
-                    className="party-color-swatch"
-                    style={{ backgroundColor: party.color }}
-                  ></span>
-                  <span className="party-item-name">{party.name}</span>
-                  <span className="party-item-ideology">
-                    ({party.ideology})
-                  </span>
-                  <div className="party-item-actions">
-                    {/* This button now calls the action to load the party for editing on the new screen */}
+
+                  <div className="party-card-body">
+                    {/* This middle section provides the vertical space */}
+                  </div>
+
+                  <div className="party-card-actions">
                     <button
-                      className="menu-button small-button"
+                      className="menu-button"
                       onClick={() => actions.loadPartyForEditing(party.id)}
                     >
                       Edit
                     </button>
                     <button
-                      className="button-delete small-button"
+                      className="button-delete"
                       onClick={() => openDeleteConfirmModal(party)}
                     >
                       Delete
@@ -105,7 +114,9 @@ function CreatorHub() {
                 </div>
               ))
             ) : (
-              <p>No custom parties created yet.</p>
+              <p className="no-parties-message">
+                No custom parties created yet.
+              </p>
             )}
           </div>
         </div>

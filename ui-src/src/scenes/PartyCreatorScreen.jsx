@@ -53,24 +53,39 @@ const PolicyQuestionCard = React.memo(
 const PixelCanvas = ({ onLogoChange, initialLogo }) => {
   const canvasRef = useRef(null);
   const [selectedColor, setSelectedColor] = useState("#FF0000");
-  const PIXEL_SIZE = 20;
-  const GRID_SIZE = 16;
+  const [isDrawing, setIsDrawing] = useState(false);
 
-  const palette = [
-    "#FFFFFF",
-    "#000000",
-    "#FF0000",
-    "#00FF00",
-    "#0000FF",
-    "#FFFF00",
-    "#FF00FF",
-    "#00FFFF",
-  ];
+  const defaultPalette = useMemo(
+    () => [
+      "#FFFFFF",
+      "#000000",
+      "#FF0000",
+      "#00FF00",
+      "#0000FF",
+      "#FFFF00",
+      "#FF00FF",
+      "#00FFFF",
+      "#C0C0C0",
+      "#808080",
+      "#800000",
+      "#008000",
+      "#000080",
+      "#808000",
+      "#800080",
+      "#008080",
+    ],
+    []
+  );
+
+  const [palette, setPalette] = useState(defaultPalette);
+  const [newColor, setNewColor] = useState("#CCCCCC");
+
+  const PIXEL_SIZE = 16; // 16x16 grid = 256px canvas
+  const GRID_SIZE = 16;
 
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
-    // Draw initial logo if it exists
     if (initialLogo) {
       const img = new Image();
       img.onload = () => {
@@ -78,10 +93,25 @@ const PixelCanvas = ({ onLogoChange, initialLogo }) => {
       };
       img.src = initialLogo;
     } else {
-      // Draw grid on mount
       drawGrid(ctx);
     }
   }, [initialLogo]);
+
+  const addColorToPalette = () => {
+    if (newColor && !palette.includes(newColor)) {
+      setPalette([...palette, newColor]);
+    }
+  };
+
+  const deleteFromPalette = (colorToDelete) => {
+    if (palette.length <= 1) return; // Don't delete the last color
+    // If deleting the selected color, select another one
+    if (selectedColor === colorToDelete) {
+      const newSelected = palette.find((c) => c !== colorToDelete);
+      setSelectedColor(newSelected || "#000000");
+    }
+    setPalette(palette.filter((c) => c !== colorToDelete));
+  };
 
   const drawGrid = (ctx) => {
     ctx.fillStyle = "#FFFFFF";
@@ -99,19 +129,55 @@ const PixelCanvas = ({ onLogoChange, initialLogo }) => {
     ctx.stroke();
   };
 
-  const handleCanvasClick = (e) => {
+  const drawPixel = useCallback(
+    (event) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext("2d");
+      const rect = canvas.getBoundingClientRect();
+
+      const x = Math.floor((event.clientX - rect.left) / PIXEL_SIZE);
+      const y = Math.floor((event.clientY - rect.top) / PIXEL_SIZE);
+
+      if (x < 0 || x >= GRID_SIZE || y < 0 || y >= GRID_SIZE) return;
+
+      ctx.fillStyle = selectedColor;
+      ctx.fillRect(x * PIXEL_SIZE, y * PIXEL_SIZE, PIXEL_SIZE, PIXEL_SIZE);
+    },
+    [selectedColor]
+  );
+
+  const handleMouseDown = useCallback(
+    (e) => {
+      setIsDrawing(true);
+      drawPixel(e);
+    },
+    [drawPixel]
+  );
+
+  const handleMouseMove = useCallback(
+    (e) => {
+      if (!isDrawing) return;
+      drawPixel(e);
+    },
+    [isDrawing, drawPixel]
+  );
+
+  const handleMouseUp = useCallback(() => {
+    if (!isDrawing) return;
+    setIsDrawing(false);
     const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
-    const rect = canvas.getBoundingClientRect();
-    const x = Math.floor((e.clientX - rect.left) / PIXEL_SIZE);
-    const y = Math.floor((e.clientY - rect.top) / PIXEL_SIZE);
+    if (canvas) {
+      const dataUrl = canvas.toDataURL();
+      onLogoChange(dataUrl);
+    }
+  }, [isDrawing, onLogoChange]);
 
-    ctx.fillStyle = selectedColor;
-    ctx.fillRect(x * PIXEL_SIZE, y * PIXEL_SIZE, PIXEL_SIZE, PIXEL_SIZE);
-
-    const dataUrl = canvas.toDataURL();
-    onLogoChange(dataUrl);
-  };
+  const handleMouseLeave = useCallback(() => {
+    if (isDrawing) {
+      handleMouseUp();
+    }
+  }, [isDrawing, handleMouseUp]);
 
   const clearCanvas = () => {
     const canvas = canvasRef.current;
@@ -126,29 +192,56 @@ const PixelCanvas = ({ onLogoChange, initialLogo }) => {
         ref={canvasRef}
         width={GRID_SIZE * PIXEL_SIZE}
         height={GRID_SIZE * PIXEL_SIZE}
-        onClick={handleCanvasClick}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
         className="pixel-canvas"
       />
       <div className="palette-controls">
         <div className="color-palette">
           {palette.map((color) => (
-            <button
-              key={color}
-              className={`palette-color ${
-                selectedColor === color ? "selected" : ""
-              }`}
-              style={{ backgroundColor: color }}
-              onClick={() => setSelectedColor(color)}
-            />
+            <div key={color} className="palette-color-container">
+              <button
+                type="button"
+                className={`palette-color ${
+                  selectedColor === color ? "selected" : ""
+                }`}
+                style={{ backgroundColor: color }}
+                onClick={() => setSelectedColor(color)}
+              />
+              <button
+                type="button"
+                className="delete-color-button"
+                onClick={() => deleteFromPalette(color)}
+                aria-label={`Delete ${color}`}
+              >
+                &times;
+              </button>
+            </div>
           ))}
         </div>
-        <input
-          type="color"
-          value={selectedColor}
-          onChange={(e) => setSelectedColor(e.target.value)}
-          className="color-picker-input"
-        />
-        <button onClick={clearCanvas} className="menu-button small-button">
+        <div className="color-adder">
+          <input
+            type="color"
+            value={newColor}
+            onChange={(e) => setNewColor(e.target.value)}
+            className="color-picker-input"
+          />
+          <button
+            type="button"
+            onClick={addColorToPalette}
+            className="menu-button small-button"
+          >
+            Add
+          </button>
+        </div>
+
+        <button
+          type="button"
+          onClick={clearCanvas}
+          className="menu-button small-button"
+        >
           Clear
         </button>
       </div>
@@ -256,7 +349,7 @@ function PartyCreatorScreen() {
                 />
               </div>
               <h2>Party Logo</h2>
-              <p>Click on the canvas to draw your party's logo.</p>
+              <p>Click and drag on the canvas to draw your party's logo.</p>
               <PixelCanvas
                 onLogoChange={handleLogoChange}
                 initialLogo={creatingParty.logoDataUrl}

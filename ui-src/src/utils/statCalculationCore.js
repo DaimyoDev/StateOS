@@ -159,7 +159,6 @@ export const calculatePovertyRate = ({
  * @param {number} params.population - The total population.
  * @param {object} params.economicProfile - Contains unemploymentRate.
  * @param {number} params.budgetAllocationForPublicSafety - Annual budget for public safety services.
- * @param {number} params.publicSafetyRating - Current public safety rating (e.g., "Average", "Good").
  * @param {number} params.povertyRate - The current poverty rate (calculated separately).
  * @param {string} params.educationQuality - Current education quality rating.
  * @param {object} params.activePolicies - Object mapping policy IDs to their chosen values.
@@ -171,7 +170,6 @@ export const calculateCrimeRate = ({
   population,
   economicProfile,
   budgetAllocationForPublicSafety,
-  publicSafetyRating,
   povertyRate,
   educationQuality,
   activePolicies = {},
@@ -183,7 +181,7 @@ export const calculateCrimeRate = ({
   // Base crime rate per 1000 population
   let crimeRate = 35.0; // Starting point, e.g., 35 crimes per 1000
 
-  // --- Public Safety Spending & Rating ---
+  // --- Public Safety Spending ---
   const effectivePublicSafetySpendingPerCapita =
     (budgetAllocationForPublicSafety / population) * governmentEfficiency;
   const TARGET_PS_SPENDING_PER_CAPITA = 100; // Assumed target for significant impact
@@ -200,11 +198,6 @@ export const calculateCrimeRate = ({
       (TARGET_PS_SPENDING_PER_CAPITA - effectivePublicSafetySpendingPerCapita) /
         10
     );
-  }
-
-  const publicSafetyRatingIndex = RATING_LEVELS.indexOf(publicSafetyRating);
-  if (publicSafetyRatingIndex !== -1) {
-    crimeRate += [-5.0, -2.5, 0.0, 2.5, 5.0][publicSafetyRatingIndex] * -1; // Excellent = -5, Very Poor = +5
   }
 
   // --- Socioeconomic Factors ---
@@ -226,7 +219,7 @@ export const calculateCrimeRate = ({
   }
 
   // --- Policy Influence ---
-  // Iterate through relevant policies and apply effects
+  // ... (policy influence logic remains the same)
   const findPolicyOption = (policyId) => {
     const policy = POLICY_QUESTIONS.find((q) => q.id === policyId);
     if (policy && activePolicies[policyId]) {

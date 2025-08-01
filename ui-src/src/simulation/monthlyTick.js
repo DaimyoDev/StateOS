@@ -94,6 +94,7 @@ export const runMonthlyBudgetUpdate = (campaign) => {
  * @returns {object} { statUpdates: object, newsItems: Array }
  */
 export const runMonthlyStatUpdate = (campaign) => {
+  // ... (initial setup remains the same) ...
   const statUpdates = {};
   const newsItems = [];
   const city = campaign.startingCity;
@@ -107,6 +108,7 @@ export const runMonthlyStatUpdate = (campaign) => {
   Object.assign(statUpdates, calculatedStats);
 
   // --- STEP 2: Use new stats to influence qualitative ratings and mood ---
+  // ... (economic outlook and citizen mood logic remains the same) ...
   const cityStatsWithUpdates = { ...city.stats, ...statUpdates };
 
   // Economic Outlook is influenced by unemployment.
@@ -145,12 +147,7 @@ export const runMonthlyStatUpdate = (campaign) => {
   }
 
   // --- STEP 3: Derive qualitative ratings from the new numerical stats for UI display ---
-  // These are now CONSEQUENCES of the simulation, not drivers.
-  statUpdates.publicSafetyRating = deriveRatingFromValue(
-    cityStatsWithUpdates.crimeRatePer1000,
-    [20, 35, 50, 70],
-    RATING_LEVELS.slice().reverse()
-  );
+  // publicSafetyRating is now removed. educationQuality remains placeholder logic.
   statUpdates.educationQuality = deriveRatingFromValue(
     cityStatsWithUpdates.povertyRate,
     [10, 15, 22, 30],

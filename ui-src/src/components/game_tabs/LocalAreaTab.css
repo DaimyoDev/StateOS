@@ -67,15 +67,30 @@
 }
 
 .landscape-card {
-  padding: 10px;
+  padding: 15px;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  width: 100%;
+  overflow: visible; /* Allow content to expand */
 }
 
 .pie-chart-wrapper-local-tab {
   width: 100%;
   display: flex;
-  justify-content: center;
-  align-items: center;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.info-card {
+  /* Add this to ensure consistent padding */
+  padding: 15px 20px;
+}
+
+/* Add this new rule */
+.chart-container-wrapper {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }

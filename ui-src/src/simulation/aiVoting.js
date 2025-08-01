@@ -162,6 +162,26 @@ const calculateCityIssueAddressingScore = (cityStats, policyDef) => {
       else if (serviceInfo.ratingIndex === 1) score += 0.4; // "Poor" service
     }
   }
+  const { crimeRatePer1000, povertyRate } = cityStats;
+  const pDetails = policyDef.parameterDetails;
+
+  const isPolicePolicy =
+    policyDef.tags?.includes("public_safety") ||
+    pDetails?.targetBudgetLine === "policeDepartment";
+  if (isPolicePolicy && crimeRatePer1000 > 55) {
+    score += 0.8;
+  } else if (isPolicePolicy && crimeRatePer1000 > 40) {
+    score += 0.5;
+  }
+
+  const isWelfarePolicy =
+    policyDef.tags?.includes("social_welfare") ||
+    pDetails?.targetBudgetLine === "socialWelfarePrograms";
+  if (isWelfarePolicy && povertyRate > 25) {
+    score += 0.8;
+  } else if (isWelfarePolicy && povertyRate > 18) {
+    score += 0.5;
+  }
   // Boost for healthcare if coverage is low and policy is healthcare related
   if (cityStats.healthcareCoverage != null) {
     const isHealthcarePolicy =

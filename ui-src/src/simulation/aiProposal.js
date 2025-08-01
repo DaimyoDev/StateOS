@@ -663,6 +663,22 @@ function scorePolicyForAI(policy, aiPolitician, cityStats, financialState) {
         score += financialState.hasDireFinances ? 0.3 : 1.2;
     }
   }
+  if (cityStats.crimeRatePer1000 > 60) {
+    if (
+      policy.tags?.includes("public_safety") ||
+      pDetails?.targetBudgetLine === "policeDepartment"
+    ) {
+      score += financialState.hasDireFinances ? 1.2 : 2.2;
+    }
+  }
+  if (cityStats.povertyRate > 25) {
+    if (
+      policy.tags?.includes("social_welfare") ||
+      pDetails?.targetBudgetLine === "socialWelfarePrograms"
+    ) {
+      score += financialState.hasDireFinances ? 1.2 : 2.2;
+    }
+  }
   if (
     cityStats.healthcareCoverage != null &&
     (policy.tags?.includes("healthcare") ||

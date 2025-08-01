@@ -92,11 +92,12 @@ const CityOverviewTab = () => {
     wealth,
     mainIssues = [],
     economicOutlook,
-    publicSafetyRating,
     educationQuality,
     infrastructureState,
     overallCitizenMood,
     unemploymentRate,
+    povertyRate, // <-- ADD
+    crimeRatePer1000,
     budget,
     environmentRating,
     cultureArtsRating,
@@ -616,15 +617,15 @@ const CityOverviewTab = () => {
             <h4>Public Services & Infrastructure Ratings</h4>
             <div className="city-stats-grid three-col">
               <div className="stat-item">
-                <strong>Public Safety:</strong>{" "}
-                <span
-                  className={`stat-descriptor rating-${(
-                    publicSafetyRating || "average"
-                  )
-                    .toLowerCase()
-                    .replace(/\s+/g, "-")}`}
-                >
-                  {getRatingDescriptor(publicSafetyRating)}
+                <strong>Crime Rate:</strong>{" "}
+                <span className="stat-descriptor">
+                  {crimeRatePer1000?.toFixed(1) || "N/A"} per 1,000 residents
+                </span>
+              </div>
+              <div className="stat-item">
+                <strong>Poverty Rate:</strong>{" "}
+                <span className="stat-descriptor">
+                  {formatPercentage(povertyRate, 1)}
                 </span>
               </div>
               <div className="stat-item">

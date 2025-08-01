@@ -60,12 +60,19 @@
 .palette-controls {
   display: flex;
   align-items: center;
+  flex-wrap: wrap; /* Allows controls to wrap on smaller screens */
   gap: 1rem;
 }
 
 .color-palette {
   display: flex;
+  flex-wrap: wrap; /* Allows palette to wrap if many colors are added */
   gap: 0.5rem;
+}
+
+/* Container for a color swatch and its delete button */
+.palette-color-container {
+  position: relative;
 }
 
 .palette-color {
@@ -74,7 +81,40 @@
   border: 2px solid var(--color-border-light);
   border-radius: 4px;
   cursor: pointer;
-  transition: transform 0.1s ease-in-out;
+  transition: transform 0.1s ease-in-out, box-shadow 0.1s ease-in-out;
+  display: block;
+}
+
+/* Delete button for palette colors */
+.delete-color-button {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background-color: var(--button-delete-bg);
+  color: var(--button-delete-text);
+  border: 1px solid var(--color-border);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0;
+  opacity: 0; /* Hidden by default */
+  transition: opacity 0.2s ease;
+  z-index: 10; /* Ensure it's on top */
+}
+
+.palette-color-container:hover .delete-color-button {
+  opacity: 1; /* Show on hover */
+}
+
+.delete-color-button:hover {
+  transform: scale(1.1);
+  background-color: var(--button-delete-hover-bg);
 }
 
 .palette-color.selected {
@@ -83,12 +123,23 @@
   box-shadow: 0 0 8px var(--color-accent);
 }
 
+/* Container for the color input and add button */
+.color-adder {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-left: 1px solid var(--color-border);
+  padding-left: 1rem;
+}
+
 .color-picker-input {
   width: 50px;
   height: 35px;
-  border: none;
+  border: 1px solid var(--color-border-light);
+  padding: 2px;
   background: none;
   cursor: pointer;
+  border-radius: 4px;
 }
 
 /* Re-using styles from PoliticianCreator.css */

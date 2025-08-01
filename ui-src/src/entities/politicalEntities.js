@@ -11,7 +11,11 @@ import {
   RATING_LEVELS,
 } from "../data/governmentData";
 import { POLICY_QUESTIONS } from "../data/policyData";
-import { calculateHealthcareMetrics } from "../utils/statCalculationCore";
+import {
+  calculateHealthcareMetrics,
+  calculateCrimeRate,
+  calculatePovertyRate,
+} from "../utils/statCalculationCore";
 import { calculateNumberOfSeats } from "../utils/electionUtils";
 import {
   initializePartyIdeologyScores,
@@ -484,7 +488,7 @@ export const generateInitialCityStats = (
   demographics,
   economicProfile
 ) => {
-  // ... implementation from governmentUtils.js ...
+  // ... (initial setup code for cityType, wealth, mainIssues, etc. remains the same) ...
   let cityType = "City";
   if (population < 50000) cityType = "Village/Town";
   else if (population >= 250000) cityType = "Metropolis";
@@ -544,17 +548,39 @@ export const generateInitialCityStats = (
       demographics,
       economicProfile,
     });
+
+  const educationQuality = getRandomElement(RATING_LEVELS);
+
+  const povertyRate = calculatePovertyRate({
+    population,
+    economicProfile,
+    budgetAllocationForSocialWelfare:
+      budget.expenseAllocations.socialWelfarePrograms,
+    educationQuality: educationQuality,
+    demographics,
+  });
+
+  const crimeRatePer1000 = calculateCrimeRate({
+    population,
+    economicProfile,
+    budgetAllocationForPublicSafety: budget.expenseAllocations.policeDepartment,
+    povertyRate,
+    educationQuality: educationQuality,
+    cityType: cityType,
+  });
+
   return {
     type: cityType,
     wealth,
     mainIssues,
     economicOutlook: getRandomElement(ECONOMIC_OUTLOOK_LEVELS),
-    publicSafetyRating: getRandomElement(RATING_LEVELS),
-    educationQuality: getRandomElement(RATING_LEVELS),
+    educationQuality: educationQuality,
     infrastructureState: getRandomElement(RATING_LEVELS),
     overallCitizenMood: getRandomElement(MOOD_LEVELS),
     healthcareCoverage,
     healthcareCostPerPerson,
+    povertyRate,
+    crimeRatePer1000,
     unemploymentRate: parseFloat(getRandomInt(30, 120) / 10).toFixed(1),
     environmentRating: getRandomElement(RATING_LEVELS),
     cultureArtsRating: getRandomElement(RATING_LEVELS),
