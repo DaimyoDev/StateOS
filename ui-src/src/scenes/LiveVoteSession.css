@@ -1,0 +1,160 @@
+/* src/scenes/LiveVoteSession.css */
+
+/* The main overlay that darkens the background screen */
+.live-vote-session-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(20, 22, 26, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(5px);
+  animation: fadeInOverlay 0.3s ease-out;
+}
+
+@keyframes fadeInOverlay {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* The main panel containing all the voting information */
+.live-vote-panel {
+  width: 90vw;
+  max-width: 850px; /* INCREASED from 650px to make the panel much bigger */
+  background-color: var(--primary-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--element-radius);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  padding: 25px 30px;
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+}
+
+.live-vote-panel h2 {
+  font-family: var(--font-heading);
+  color: var(--accent-color);
+  text-align: center;
+  margin: 0 0 10px 0;
+  font-size: 1.8em;
+  letter-spacing: 1px;
+}
+
+.live-vote-panel h3 {
+  text-align: center;
+  margin: 0 0 5px 0;
+  font-size: 1.2em;
+}
+
+.live-vote-panel > p {
+  text-align: center;
+  color: var(--secondary-text);
+  margin: 0 0 20px 0;
+  font-style: italic;
+}
+
+/* The running Yea/Nay tally */
+.vote-tally {
+  text-align: center;
+  font-size: 1.6em;
+  font-weight: bold;
+  margin-bottom: 20px;
+  padding: 15px 0;
+  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: center;
+  gap: 40px;
+}
+
+.tally-yea {
+  color: var(--success-text, green);
+}
+.tally-nay {
+  color: var(--error-text, red);
+}
+
+.tally-abstain {
+  color: var(--secondary-text, grey);
+}
+
+/* The scrollable list of council members */
+.council-voter-list {
+  list-style: none;
+  padding: 10px;
+  margin: 0 0 20px 0;
+  overflow-y: auto;
+  max-height: 300px; /* Adjust as needed */
+  background-color: var(--secondary-bg);
+  border-radius: var(--element-radius);
+  border: 1px solid var(--border-color);
+}
+
+.council-voter-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 15px;
+  border-radius: 4px;
+  margin-bottom: 5px;
+  background-color: var(--primary-bg);
+  transition: background-color 0.3s ease;
+}
+
+.council-voter-list li > span:last-child {
+  font-weight: bold;
+  font-size: 0.9em;
+}
+
+/* Styling for each voter's status */
+.voter-status-pending {
+  color: var(--secondary-text);
+}
+.voter-status-yea {
+  background-color: rgba(var(--rgb-success-text, 0, 128, 0), 0.1);
+}
+.voter-status-yea > span:last-child {
+  color: var(--success-text);
+}
+.voter-status-nay {
+  background-color: rgba(var(--rgb-error-text, 255, 0, 0), 0.1);
+}
+.voter-status-nay > span:last-child {
+  color: var(--error-text);
+}
+.voter-status-abstain {
+  background-color: rgba(var(--rgb-secondary-text, 128, 128, 128), 0.1);
+}
+.voter-status-abstain > span:last-child {
+  color: var(--secondary-text);
+}
+
+/* Containers for the action buttons at the bottom */
+.player-vote-actions,
+.session-controls {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-color);
+  flex-wrap: wrap; /* Add this line */
+}
+
+.player-vote-actions {
+  margin-bottom: 15px;
+  flex-wrap: wrap; /* And this line */
+}
+
+/* Use existing button styles or create specific ones */
+.player-vote-actions button,
+.session-controls button {
+  padding: 10px 20px;
+}

@@ -1,31 +1,47 @@
 import React, { useMemo } from "react";
-import useGameStore from "../../../store"; // Assuming store is 3 levels up
+import useGameStore from "../../../store";
 import "./GovernmentSubTabStyles.css";
-import "./LegislationSubTab.css"; // Ensure this is created and imported
+import "./LegislationSubTab.css";
+import { areDatesEqual } from "../../../utils/core";
 
-// Corrected areDatesEqual to compare JavaScript Date objects
-const areDatesEqualJS = (date1, date2) => {
-  if (!date1 || !date2) return false;
-  return (
-    date1.getFullYear() === date2.getFullYear() &&
-    date1.getMonth() === date2.getMonth() &&
-    date1.getDate() === date2.getDate()
-  );
-};
+const EMPTY_ARRAY = [];
 
 const LegislationSubTab = ({ campaignData }) => {
-  const proposedLegislation = useGameStore(
-    (state) => state.proposedLegislation || []
+  const proposedBills = useGameStore(
+    (state) => state.proposedBills || EMPTY_ARRAY
   );
   const activeLegislation = useGameStore(
-    (state) => state.activeLegislation || []
+    (state) => state.activeLegislation || EMPTY_ARRAY
   );
-  const { openPolicyVoteDetailsModal, addToast } = useGameStore(
+  const { openPolicyVoteDetailsModal, openBillDetailsModal } = useGameStore(
     (state) => state.actions
   );
 
-  const currentDate = campaignData?.currentDate; // This is your game's {year, month, day} object
+  const currentDate = campaignData?.currentDate;
   const activeCampaign = campaignData;
+
+  // CORRECTED: This function now correctly handles date comparisons.
+  const calculateDaysRemaining = (endDate) => {
+    if (!currentDate || !endDate) return "N/A";
+
+    // Use your custom areDatesEqual function with your custom date objects first.
+    if (areDatesEqual(currentDate, endDate)) return "Today";
+
+    // Now, create JS Date objects for calculating the difference.
+    const todayObj = new Date(
+      currentDate.year,
+      currentDate.month - 1,
+      currentDate.day
+    );
+    const endObj = new Date(endDate.year, endDate.month - 1, endDate.day);
+
+    if (todayObj > endObj) return "Overdue";
+
+    const diffTime = endObj.getTime() - todayObj.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    return `in ${diffDays} day${diffDays !== 1 ? "s" : ""}`;
+  };
 
   const getPoliticianNameById = (politicianId) => {
     if (!activeCampaign || !politicianId)
@@ -62,43 +78,18 @@ const LegislationSubTab = ({ campaignData }) => {
     return `Politician ID ${politicianId}`;
   };
 
-  const handlePolicyItemClick = (proposal) => {
-    const isClickableForDetails =
-      proposal.status === "voting_period_open" ||
-      proposal.status === "voting_closed" ||
-      proposal.status === "passed" ||
-      proposal.status === "failed";
-
-    if (isClickableForDetails) {
-      if (openPolicyVoteDetailsModal) {
-        openPolicyVoteDetailsModal(proposal);
-      } else {
-        console.warn("openPolicyVoteDetailsModal action is not available.");
-      }
-    } else if (proposal.status === "proposed") {
-      if (addToast) {
-        addToast({
-          message:
-            "Voting for this proposal has not started yet. Check back later.",
-          type: "info",
-          duration: 3000,
-        });
-      }
+  const handleBillItemClick = (bill) => {
+    if (bill.status === "passed" || bill.status === "failed") {
+      openPolicyVoteDetailsModal?.(bill); // For past votes
+    } else if (bill.status === "pending_vote") {
+      openBillDetailsModal?.(bill); // For pending votes
     }
   };
 
-  const sortedProposedLegislation = useMemo(() => {
-    return [...proposedLegislation].sort((a, b) => {
-      if (
-        a.status === "voting_period_open" &&
-        b.status !== "voting_period_open"
-      )
-        return -1;
-      if (
-        b.status === "voting_period_open" &&
-        a.status !== "voting_period_open"
-      )
-        return 1;
+  const sortedProposedBills = useMemo(() => {
+    return [...proposedBills].sort((a, b) => {
+      if (a.status === "pending_vote" && b.status !== "pending_vote") return -1;
+      if (b.status === "pending_vote" && a.status !== "pending_vote") return 1;
       if (!a.dateProposed?.year || !b.dateProposed?.year) return 0;
       return (
         new Date(
@@ -113,7 +104,7 @@ const LegislationSubTab = ({ campaignData }) => {
         )
       );
     });
-  }, [proposedLegislation]);
+  }, [proposedBills]);
 
   const sortedActiveLegislation = useMemo(() => {
     return [...activeLegislation].sort((a, b) => {
@@ -129,167 +120,65 @@ const LegislationSubTab = ({ campaignData }) => {
     });
   }, [activeLegislation]);
 
-  const calculateDaysRemaining = (endDate) => {
-    // endDate is your game's {year, month, day} object
-    if (
-      !currentDate ||
-      !endDate ||
-      !endDate.year ||
-      !endDate.month ||
-      !endDate.day
-    )
-      return "N/A";
-
-    const todayObj = new Date(
-      currentDate.year,
-      currentDate.month - 1,
-      currentDate.day
-    );
-    const endObj = new Date(endDate.year, endDate.month - 1, endDate.day);
-
-    // Use the corrected areDatesEqualJS for JS Date objects
-    if (areDatesEqualJS(todayObj, endObj)) return "Ending Today";
-    if (todayObj > endObj) return "Ended";
-
-    const diffTime = endObj.getTime() - todayObj.getTime();
-    // Ensure diffDays is at least 0 if not caught by earlier checks
-    const diffDays = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
-
-    // If, after all checks, diffDays is 0, it means it's effectively ending today or already passed but wasn't caught.
-    // The areDatesEqualJS should catch the "Ending Today" case.
-    // The todayObj > endObj should catch "Ended".
-    // So, if diffDays is 0 here, it implies they are the same day and should have been "Ending Today".
-    // However, to be safe and handle potential floating point issues with ceil on very small diffTime:
-    if (diffDays === 0 && !areDatesEqualJS(todayObj, endObj)) {
-      // If they are not exactly equal but diff is 0 (e.g. few hours left)
-      return "Ending Today";
-    }
-
-    return `${diffDays} day${diffDays !== 1 ? "s" : ""}`;
-  };
-
   return (
     <div className="legislation-sub-tab">
       <section className="legislation-section proposed-legislation">
         <h4>Proposed & Voting Legislation</h4>
-        {sortedProposedLegislation.length > 0 ? (
+        {sortedProposedBills.length > 0 ? (
           <ul className="legislation-list">
-            {sortedProposedLegislation.map((proposal) => {
-              const relevantCouncilOffices =
-                campaignData?.governmentOffices?.filter(
-                  (off) =>
-                    off.officeNameTemplateId.includes("council") &&
-                    off.level === "local_city" &&
-                    campaignData.startingCity?.name &&
-                    off.officeName.includes(campaignData.startingCity.name) &&
-                    (off.holder || (off.members && off.members.length > 0))
-                ) || [];
-
-              // Flatten the list of members from all relevant council offices
-              const councilMembers = relevantCouncilOffices.flatMap(
-                (office) => {
-                  if (office.holder) {
-                    return [office.holder];
-                  }
-                  if (office.members) {
-                    return office.members;
-                  }
-                  return [];
-                }
-              );
-
-              const totalCouncilVotesPossible = councilMembers.length;
-              const yeaVotes = proposal.votes?.yea?.length || 0;
-              const nayVotes = proposal.votes?.nay?.length || 0;
-              const abstainVotes = proposal.votes?.abstain?.length || 0;
-
-              const isItemClickable =
-                proposal.status === "voting_period_open" ||
-                proposal.status === "voting_closed" ||
-                proposal.status === "passed" ||
-                proposal.status === "failed";
-
-              const proposerName = getPoliticianNameById(proposal.proposerId);
-
-              let parameterDisplay = null;
-              if (
-                proposal.isParameterized &&
-                proposal.chosenParameters &&
-                proposal.parameterDetails
-              ) {
-                const paramKey = proposal.parameterDetails.key || "amount";
-                const amount = proposal.chosenParameters[paramKey];
-                const unit = proposal.parameterDetails.unit || "";
-                const targetLine =
-                  proposal.parameterDetails.targetBudgetLine ||
-                  proposal.parameterDetails.targetTaxRate ||
-                  "funding";
-                const targetLineFormatted = targetLine
-                  .replace(/([A-Z])/g, " $1")
-                  .toLowerCase();
-
-                if (amount !== undefined) {
-                  const changeDesc =
-                    amount >= 0
-                      ? `Increase ${targetLineFormatted} by ${unit}${Math.abs(
-                          amount
-                        ).toLocaleString()}`
-                      : `Decrease ${targetLineFormatted} by ${unit}${Math.abs(
-                          amount
-                        ).toLocaleString()}`;
-                  parameterDisplay = (
-                    <p className="parameter-info">
-                      <strong>Proposed Change:</strong> {changeDesc}
-                    </p>
-                  );
-                }
-              }
+            {sortedProposedBills.map((bill) => {
+              const isItemClickable = true;
+              const proposerName =
+                bill.proposerName || getPoliticianNameById(bill.proposerId);
+              const yeaVotes = bill.votes?.yea?.length || 0;
+              const nayVotes = bill.votes?.nay?.length || 0;
+              const abstainVotes = bill.votes?.abstain?.length || 0;
 
               return (
                 <li
-                  key={proposal.id}
-                  className={`legislation-item status-${proposal.status
+                  key={bill.id}
+                  className={`legislation-item status-${bill.status
                     ?.replace(/\s+/g, "-")
                     .toLowerCase()} ${isItemClickable ? "clickable" : ""}`}
-                  onClick={() => handlePolicyItemClick(proposal)}
+                  onClick={() => handleBillItemClick(bill)}
                   title={
-                    isItemClickable
-                      ? "View vote details or enact policy"
-                      : "Voting not yet open"
+                    bill.status === "pending_vote"
+                      ? "View details and council opinions"
+                      : "View vote results"
                   }
                 >
                   <div className="legislation-header">
-                    <strong className="policy-name">
-                      {proposal.policyName || "Unknown Policy"}
-                    </strong>
+                    <strong className="policy-name">{bill.name}</strong>
                     <span className="policy-status">
-                      Status: {proposal.status?.replace(/_/g, " ") || "N/A"}
+                      Status: {bill.status?.replace(/_/g, " ") || "N/A"}
                     </span>
                   </div>
-                  <p className="policy-description">
-                    <em>
-                      {proposal.description || "No description available."}
-                    </em>
-                  </p>
-                  {parameterDisplay}
+
+                  <div className="bill-contents">
+                    <strong>Policies in this bill:</strong>
+                    <ul>
+                      {bill.policies.map((policy, index) => (
+                        <li key={`${policy.policyId}-${index}`}>
+                          {policy.policyName}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
                   <p className="proposer-info">
                     Proposed by: <strong>{proposerName}</strong> on{" "}
-                    {proposal.dateProposed?.month}/{proposal.dateProposed?.day}/
-                    {proposal.dateProposed?.year}
+                    {bill.dateProposed?.month}/{bill.dateProposed?.day}/
+                    {bill.dateProposed?.year}
                   </p>
-                  {proposal.status === "voting_period_open" &&
-                    proposal.votingClosesDate && (
-                      <p className="voting-info">
-                        Voting closes in:{" "}
-                        {calculateDaysRemaining(proposal.votingClosesDate)} |
-                        Current Tally: <strong>Yea:</strong> {yeaVotes},{" "}
-                        <strong>Nay:</strong> {nayVotes}, <strong>Abs:</strong>{" "}
-                        {abstainVotes} (of {totalCouncilVotesPossible})
-                      </p>
-                    )}
-                  {(proposal.status === "passed" ||
-                    proposal.status === "failed" ||
-                    proposal.status === "voting_closed") && (
+
+                  {bill.status === "pending_vote" && bill.voteScheduledFor && (
+                    <p className="voting-info">
+                      Vote scheduled for {bill.voteScheduledFor.month}/
+                      {bill.voteScheduledFor.day}/{bill.voteScheduledFor.year} (
+                      {calculateDaysRemaining(bill.voteScheduledFor)})
+                    </p>
+                  )}
+                  {(bill.status === "passed" || bill.status === "failed") && (
                     <p className="voting-info final-tally">
                       Final Tally: <strong>Yea:</strong> {yeaVotes},{" "}
                       <strong>Nay:</strong> {nayVotes}, <strong>Abs:</strong>{" "}
@@ -301,7 +190,7 @@ const LegislationSubTab = ({ campaignData }) => {
             })}
           </ul>
         ) : (
-          <p>No policies currently proposed or under voting.</p>
+          <p>No bills currently proposed or under voting.</p>
         )}
       </section>
 
@@ -352,7 +241,7 @@ const LegislationSubTab = ({ campaignData }) => {
                 <li
                   key={policy.id}
                   className="legislation-item status-passed clickable"
-                  onClick={() => handlePolicyItemClick(policy)}
+                  onClick={() => handleBillItemClick(policy)}
                   title="View enactment details"
                 >
                   <div className="legislation-header">

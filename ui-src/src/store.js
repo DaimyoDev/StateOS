@@ -59,6 +59,17 @@ const useGameStore = create(
         availablePoliciesForProposal:
           legislationSlice.availablePoliciesForProposal,
 
+        isVotingSessionActive: uiSliceData.isVotingSessionActive,
+        activeVotingSessionBillId: uiSliceData.activeVotingSessionBillId,
+        viewingBillDetails: uiSliceData.viewingBillDetails,
+        isBillDetailsModalOpen: uiSliceData.isBillDetailsModalOpen,
+        isAdvancingToNextElection: uiSliceData.isAdvancingToNextElection,
+        showElectionDayModal: uiSliceData.showElectionDayModal,
+        electionsForModal: uiSliceData.electionsForModal,
+        viewingPolitician: uiSliceData.viewingPolitician,
+        isViewPoliticianModalOpen: uiSliceData.isViewPoliticianModalOpen,
+        voteQueue: uiSliceData.voteQueue,
+
         availableCountries: [],
         toasts: [],
         availableThemes: uiSliceData.availableThemes, // Themes now managed by uiSlice
@@ -88,65 +99,36 @@ const useGameStore = create(
 
           improveSkillOratory: () => {
             set((state) => {
-              if (!state.activeCampaign || !state.activeCampaign.politician) {
-                console.warn(
-                  "[Action] Improve Oratory: No active campaign or politician."
-                );
-                // TODO: UI Feedback: "No active campaign."
-                return {};
-              }
+              if (!state.activeCampaign?.politician) return {};
+              const cost = 500;
+              const currentPolitician = state.activeCampaign.politician;
+              const currentTreasury = currentPolitician.treasury || 0;
+              const currentOratory = currentPolitician.attributes?.oratory || 0;
+              const MAX_ATTRIBUTE_LEVEL = 10;
 
-              const cost = 500; // Cost for the oratory training
-              const currentTreasury = state.activeCampaign.treasury || 0;
-              const currentAttributes =
-                state.activeCampaign.politician.attributes;
-              const currentOratory = currentAttributes?.oratory || 0;
-              const MAX_ATTRIBUTE_LEVEL = 10; // Define a max level for attributes
+              if (currentOratory >= MAX_ATTRIBUTE_LEVEL) return {}; // Already maxed
+              if (currentTreasury < cost) return {}; // Not enough funds
 
-              if (currentOratory >= MAX_ATTRIBUTE_LEVEL) {
-                console.log(
-                  "[Action] Improve Oratory: Oratory skill is already at maximum."
-                );
-                // TODO: UI Feedback: "Your Oratory skill is already maxed out!"
-                return {}; // No change if already maxed
-              }
-
-              if (currentTreasury < cost) {
-                console.warn(
-                  `[Action] Improve Oratory: Not enough personal funds. Need $${cost}, have $${currentTreasury}`
-                );
-                // TODO: UI Feedback: "Not enough funds for oratory training."
-                return {};
-              }
-
-              // Simulate training: ~70% chance of success for a +1 increase
               const didImprove = Math.random() < 0.7;
-              let newOratory = currentOratory;
-              //let feedbackMessage = `You spent $${cost} on oratory coaching. `;
+              const newOratory = didImprove
+                ? Math.min(MAX_ATTRIBUTE_LEVEL, currentOratory + 1)
+                : currentOratory;
 
-              if (didImprove) {
-                newOratory = Math.min(MAX_ATTRIBUTE_LEVEL, currentOratory + 1);
-                //feedbackMessage += `Your Oratory skill increased to ${newOratory}!`;
-                console.log(
-                  `[Action] Oratory skill improved from ${currentOratory} to ${newOratory}.`
-                );
-              } else {
-                //feedbackMessage +=
-                ("You didn't feel much improvement this time.");
-                console.log(
-                  `[Action] Oratory skill training had no effect this time.`
-                );
-              }
-              // TODO: Show feedbackMessage in the UI
+              get().actions.addToast?.({
+                message: didImprove
+                  ? `Your Oratory skill increased to ${newOratory}!`
+                  : `You spent $${cost} on coaching, but didn't feel much improvement.`,
+                type: didImprove ? "success" : "info",
+              });
 
               return {
                 activeCampaign: {
                   ...state.activeCampaign,
-                  treasury: currentTreasury - cost,
                   politician: {
-                    ...state.activeCampaign.politician,
+                    ...currentPolitician,
+                    treasury: currentTreasury - cost,
                     attributes: {
-                      ...currentAttributes,
+                      ...currentPolitician.attributes,
                       oratory: newOratory,
                     },
                   },
@@ -188,37 +170,47 @@ const useGameStore = create(
 
           makePublicAppearance: () => {
             set((state) => {
-              if (!state.activeCampaign) {
-                console.warn("Make Public Appearance: No active campaign.");
+              if (!state.activeCampaign?.politician) return {};
+              const cost = 100;
+              const currentPolitician = state.activeCampaign.politician;
+              const currentTreasury = currentPolitician.treasury || 0;
+              const campaignActionToday = currentPolitician.campaignActionToday;
+
+              if (campaignActionToday) {
+                get().actions.addToast?.({
+                  message: "You have already taken a major action today.",
+                  type: "info",
+                });
                 return {};
               }
-              const cost = 100; // Small cost for logistics, travel etc.
-              const currentTreasury = state.activeCampaign.treasury || 0;
-
               if (currentTreasury < cost) {
-                console.warn(
-                  `Make Public Appearance: Not enough personal funds. Need $${cost}, have $${currentTreasury}`
-                );
-                // TODO: UI Feedback
+                get().actions.addToast?.({
+                  message: `Not enough funds. Need $${cost}.`,
+                  type: "error",
+                });
                 return {};
               }
 
-              // For now, just log. Later, this could give a small, temporary local approval boost.
-              const approvalBoost = getRandomInt(0, 1); // 0 to +1% approval
+              const approvalBoost = getRandomInt(0, 1);
               const newApproval = Math.min(
                 100,
-                (state.activeCampaign.playerApproval || 0) + approvalBoost
+                (currentPolitician.approvalRating || 0) + approvalBoost
               );
 
-              console.log(
-                `[Career Action] Made a public appearance. Cost: $${cost}. Approval change: +${approvalBoost}%`
-              );
-              // TODO: UI Feedback: "Your recent public appearance was well-received!"
+              get().actions.addToast?.({
+                message: `Your public appearance was well-received, costing $${cost}.`,
+                type: "success",
+              });
+
               return {
                 activeCampaign: {
                   ...state.activeCampaign,
-                  treasury: currentTreasury - cost,
-                  playerApproval: newApproval,
+                  politician: {
+                    ...currentPolitician,
+                    treasury: currentTreasury - cost,
+                    approvalRating: newApproval,
+                    campaignActionToday: true, // Mark that an action was taken
+                  },
                 },
               };
             });

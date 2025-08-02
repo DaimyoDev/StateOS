@@ -1,0 +1,61 @@
+/* src/components/ui/VoteAlert.css */
+
+/* This is the main container that positions the alert on the screen */
+.vote-alert {
+  position: fixed; /* Positions the alert relative to the viewport */
+  bottom: 20px; /* 20px from the bottom */
+  right: 20px; /* 20px from the right */
+  z-index: 999; /* Ensures it's above most UI but below modals */
+  animation: slideInUp 0.4s ease-out;
+}
+
+/* The visual box of the alert */
+.vote-alert-content {
+  width: 100%;
+  max-width: 380px; /* Prevents the alert from being too wide */
+  background-color: var(--secondary-bg);
+  border: 1px solid var(--accent-color); /* Highlight with accent color */
+  border-radius: var(--element-radius);
+  box-shadow: var(--panel-shadow);
+  padding: 15px 20px;
+  color: var(--primary-text);
+}
+
+.vote-alert-content p {
+  margin: 0 0 15px 0; /* Space between text and buttons */
+  line-height: 1.5;
+  font-size: 0.95em;
+}
+
+.vote-alert-content p strong {
+  color: var(--accent-color);
+  font-family: var(--font-heading);
+  margin-right: 5px;
+}
+
+/* Container for the action buttons */
+.vote-alert-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end; /* Aligns buttons to the right */
+}
+
+/* The .small-button class should already exist from other components */
+/* If not, you can add this: */
+.action-button.small-button,
+.menu-button.small-button {
+  padding: 6px 12px;
+  font-size: 0.85em;
+}
+
+/* A simple animation for the alert appearing */
+@keyframes slideInUp {
+  from {
+    transform: translateY(40px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}

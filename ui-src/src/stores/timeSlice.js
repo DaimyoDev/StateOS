@@ -4,8 +4,8 @@ import {
   runMonthlyBudgetUpdate,
   runMonthlyStatUpdate,
   runMonthlyPlayerApprovalUpdate,
-  runAIPolicyProposals,
   runMonthlyPartyPopularityUpdate,
+  runAIBillProposals,
 } from "../simulation/monthlyTick.js";
 import { simulateAICampaignDayForPolitician } from "../utils/aiUtils.js";
 
@@ -19,6 +19,15 @@ const _updateCityStatsPure = (campaign, statUpdates) => {
       stats: { ...campaign.startingCity.stats, ...statUpdates },
     },
   };
+};
+
+const areGameDatesEqual = (date1, date2) => {
+  if (!date1 || !date2) return false;
+  return (
+    date1.year === date2.year &&
+    date1.month === date2.month &&
+    date1.day === date2.day
+  );
 };
 
 const _updateBudgetFiguresPure = (campaign, budgetUpdates) => {
@@ -102,13 +111,15 @@ export const createTimeSlice = (set, get) => {
           );
 
           // 5. AI Policy Proposals
-          const aiProposals = runAIPolicyProposals(currentCampaign, get);
-          if (aiProposals.length > 0) {
-            aiProposals.forEach((proposal) => {
-              get().actions.proposePolicy?.(
-                proposal.policyId,
-                proposal.proposerId,
-                proposal.chosenParameters
+          const authoredBills = runAIBillProposals(currentCampaign, get);
+          if (authoredBills.length > 0) {
+            authoredBills.forEach((bill) => {
+              // Call the correct "proposeBill" action with the correct bill data
+              get().actions.proposeBill?.(
+                bill.name,
+                bill.policies,
+                bill.proposerId,
+                bill.proposerName
               );
             });
           }
@@ -239,13 +250,24 @@ export const createTimeSlice = (set, get) => {
             };
           }
 
+          const newPoliticianState = {
+            ...state.activeCampaign.politician,
+            workingHours: state.activeCampaign.politician.maxWorkingHours, // Reset hours
+            campaignActionToday: false, // Reset this too
+          };
+
           // Update modal-related viewing flags
           updatedCampaign.viewingElectionNightForDate =
             electionDayInfo.shouldShowModal
               ? electionDayInfo.electionDayContextForModal
               : updatedCampaign.viewingElectionNightForDate;
 
-          return { activeCampaign: updatedCampaign }; // Return the fully updated campaign
+          return {
+            activeCampaign: {
+              ...updatedCampaign,
+              politician: newPoliticianState,
+            },
+          };
         });
 
         get().actions.processDailyCampaignEffects();
@@ -260,6 +282,22 @@ export const createTimeSlice = (set, get) => {
           return;
         }
         const effectiveDate = campaignAfterDateAdvance.currentDate;
+
+        const billsToVoteOnToday = get()
+          .proposedBills.filter(
+            (b) =>
+              b.status === "pending_vote" &&
+              b.voteScheduledFor &&
+              areGameDatesEqual(effectiveDate, b.voteScheduledFor)
+          )
+          .map((b) => b.id);
+
+        if (billsToVoteOnToday.length > 0) {
+          // Add all of today's bills to the queue instead of starting the session directly
+          get().actions.startVotingQueue?.(billsToVoteOnToday);
+        }
+
+        get().actions.processDailyBillCommentary?.();
 
         // Monthly updates
         if (effectiveDate.day === 1) {

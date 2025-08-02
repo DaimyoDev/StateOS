@@ -5,11 +5,11 @@ import {
   RATING_LEVELS,
   MOOD_LEVELS,
 } from "../data/governmentData";
-import { decideAIPolicyProposal } from "../simulation/aiProposal.js";
 import { calculateDetailedIncomeSources } from "../entities/politicalEntities.js";
 import { CITY_POLICIES } from "../data/policyDefinitions";
 import { calculateAllCityStats } from "../utils/statCalculationCore.js";
 import { normalizePartyPopularities } from "../utils/electionUtils.js";
+import { decideAndAuthorAIBill } from "./aiProposal.js";
 
 /**
  * Derives a qualitative rating (e.g., "Good", "Poor") from a numerical stat.
@@ -157,20 +157,28 @@ export const runMonthlyStatUpdate = (campaign) => {
   return { statUpdates, newsItems };
 };
 
-/**
- * Simulates AI policy proposals for the month.
- * @param {object} campaign - The current activeCampaign object.
- * @param {Function} getFromStore - The Zustand store's get function.
- * @returns {Array<object>} Array of new proposal objects to be added to the store.
- */
-export const runAIPolicyProposals = (campaign, getFromStore) => {
-  const proposalsToDispatch = [];
+const generateAIBillName = (theme, currentYear) => {
+  const prefixes = [
+    "The",
+    "A Bill Regarding",
+    "An Act for",
+    "The Comprehensive",
+  ];
+  const suffixes = ["Act", "Initiative", "Bill", "Ordinance", "Reform Package"];
+  // Use the passed-in theme directly instead of a random topic
+  return `${prefixes[Math.floor(Math.random() * prefixes.length)]} ${theme} ${
+    suffixes[Math.floor(Math.random() * suffixes.length)]
+  } of ${currentYear}`;
+};
+
+export const runAIBillProposals = (campaign, getFromStore) => {
+  const billsToDispatch = [];
   if (
     !campaign?.governmentOffices ||
     !campaign.startingCity?.stats ||
     !campaign.currentDate
   ) {
-    return proposalsToDispatch;
+    return billsToDispatch;
   }
 
   const councilMembers = campaign.governmentOffices
@@ -178,48 +186,48 @@ export const runAIPolicyProposals = (campaign, getFromStore) => {
       (office) => office.members || (office.holder ? [office.holder] : [])
     )
     .filter((m) => !m.isPlayer);
+
   const availablePolicyIds = (
     getFromStore().availablePoliciesForProposal || []
   ).map((p) => p.id);
-  let proposedLegislationThisTick = [
-    ...(getFromStore().proposedLegislation || []),
-  ];
+
+  // This now tracks full bill objects for the current tick
+  let proposedBillsThisTick = [...(getFromStore().proposedBills || [])];
 
   councilMembers.forEach((aiPolitician) => {
     if (Math.random() < 0.15) {
-      // Chance for an AI to propose something
-      const proposalDetails = decideAIPolicyProposal(
+      // CHANGED: Expect an object with { policies, theme }
+      const authoredBillObject = decideAndAuthorAIBill(
         aiPolitician,
         availablePolicyIds,
         campaign.startingCity.stats,
         getFromStore().activeLegislation || [],
-        proposedLegislationThisTick
+        proposedBillsThisTick
       );
 
-      if (proposalDetails?.policyId) {
-        const policyDef = CITY_POLICIES.find(
-          (p) => p.id === proposalDetails.policyId
-        );
-        if (policyDef) {
-          const newProposal = {
-            id: `prop_${Date.now()}_${Math.random()}`,
-            policyId: proposalDetails.policyId,
-            proposerId: aiPolitician.id,
-            chosenParameters: proposalDetails.chosenParameters,
-            policyName: policyDef.name,
-            proposerName: aiPolitician.name,
-            status: "proposed",
-            dateProposed: { ...campaign.currentDate },
-            councilVotesCast: {},
-          };
-          proposalsToDispatch.push(newProposal);
-          proposedLegislationThisTick.push(newProposal); // Update for subsequent AIs in the same tick
-        }
+      // Check if the AI successfully created a bill
+      if (authoredBillObject && authoredBillObject.policies.length > 0) {
+        const { policies, theme } = authoredBillObject; // Destructure the object
+
+        const newBill = {
+          id: `bill_${Date.now()}_${Math.random()}`,
+          // CHANGED: Pass the specific theme to the naming function
+          name: generateAIBillName(theme, campaign.currentDate.year),
+          proposerId: aiPolitician.id,
+          proposerName: `${aiPolitician.firstName} ${aiPolitician.lastName}`,
+          policies: policies, // Use the policies array from the authored object
+          status: "pending_vote",
+          dateProposed: { ...campaign.currentDate },
+          votes: { yea: [], nay: [], abstain: [] },
+          councilVotesCast: {},
+        };
+        billsToDispatch.push(newBill);
+        proposedBillsThisTick.push(newBill);
       }
     }
   });
 
-  return proposalsToDispatch;
+  return billsToDispatch;
 };
 
 /**

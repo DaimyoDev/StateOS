@@ -4,7 +4,7 @@ import useGameStore from "../../store";
 import "./TabStyles.css";
 import "./CareerActionsTab.css";
 import { getTimeUntil, createDateObj } from "../../utils/generalUtils";
-import ProposePolicyModal from "../modals/ProposePolicyModal";
+import BillAuthoringModal from "../modals/BillAuthoringModal";
 
 // Updated helper function
 const formatTimeUntil = (currentDateObj, futureDateObj, outcomeStatus) => {
@@ -34,6 +34,12 @@ const ElectionsSubTab = ({
   currentDate,
   playerIsCurrentlyCandidate,
 }) => {
+  const activePlayerElection = useGameStore((state) =>
+    state.activeCampaign.elections.find(
+      (e) => e.playerIsCandidate && e.outcome?.status === "upcoming"
+    )
+  );
+
   return (
     <div className="sub-tab-content">
       <section className="info-card available-offices-card">
@@ -89,19 +95,11 @@ const ElectionsSubTab = ({
       {playerIsCurrentlyCandidate && (
         <section className="info-card current-campaign-info">
           <h4>Your Current Campaign</h4>
-          {(() => {
-            const activePlayerElection = useGameStore
-              .getState()
-              .activeCampaign.elections.find(
-                (e) => e.playerIsCandidate && e.outcome?.status === "upcoming"
-              );
-            return activePlayerElection ? (
-              <p>You are running for: {activePlayerElection.officeName}</p>
-            ) : (
-              // This state should ideally not be reached if playerIsCurrentlyCandidate is true and derived correctly
-              <p>You are not currently registered in an upcoming election.</p>
-            );
-          })()}
+          {activePlayerElection ? (
+            <p>You are running for: {activePlayerElection.officeName}</p>
+          ) : (
+            <p>You are not currently registered in an upcoming election.</p>
+          )}
         </section>
       )}
     </div>
@@ -131,13 +129,14 @@ const OfficeSubTab = ({
   canPerformMajorAction,
   selectedIssueToAddress,
   setSelectedIssueToAddress,
-  setIsProposePolicyModalOpen,
-  addressIssueCost,
+  setIsBillModalOpen,
 }) => {
   const playerPolitician = campaignData?.politician;
   const playerCurrentOfficeName = playerPolitician?.currentOffice;
   const treasury = playerPolitician?.treasury;
   const startingCity = campaignData?.startingCity;
+  const addressIssueCost = 250;
+  const addressIssueTimeCost = 4; // Takes 4 hours
   const { addressKeyCityIssue } = actions;
 
   if (!playerCurrentOfficeName) {
@@ -186,12 +185,7 @@ const OfficeSubTab = ({
             id="issueSelect"
             value={selectedIssueToAddress}
             onChange={(e) => setSelectedIssueToAddress(e.target.value)}
-            disabled={
-              !canPerformMajorAction ||
-              (treasury || 0) < addressIssueCost ||
-              !startingCity?.stats?.mainIssues ||
-              startingCity.stats.mainIssues.length === 0
-            }
+            disabled={playerPolitician.workingHours < addressIssueTimeCost}
           >
             {startingCity?.stats?.mainIssues &&
             startingCity.stats.mainIssues.length > 0 ? (
@@ -207,6 +201,13 @@ const OfficeSubTab = ({
           <button
             className="action-button"
             onClick={() => {
+              if (playerPolitician.workingHours < addressIssueTimeCost) {
+                actions.addToast({
+                  message: "Not enough time left today to do this.",
+                  type: "info",
+                });
+                return;
+              }
               if (
                 selectedIssueToAddress &&
                 startingCity?.stats?.mainIssues?.includes(
@@ -222,13 +223,13 @@ const OfficeSubTab = ({
               }
             }}
             disabled={
-              !canPerformMajorAction ||
               !selectedIssueToAddress ||
               (treasury || 0) < addressIssueCost ||
-              !(
+              (!(
                 startingCity?.stats?.mainIssues &&
                 startingCity.stats.mainIssues.length > 0
-              )
+              ) &&
+                playerPolitician.workingHours < addressIssueTimeCost)
             }
             title={
               // REINTRODUCED TITLE
@@ -251,16 +252,15 @@ const OfficeSubTab = ({
         <div className="action-sub-group">
           <button
             className="action-button"
-            onClick={() => setIsProposePolicyModalOpen(true)}
+            onClick={() => setIsBillModalOpen(true)} // Change this onClick
             disabled={!canPerformMajorAction}
             title={
-              // REINTRODUCED TITLE
               !canPerformMajorAction
                 ? "Major action already taken today"
-                : "Propose a new city policy or ordinance"
+                : "Author a new bill"
             }
           >
-            Propose Policy / Ordinance
+            Author & Propose Bill
           </button>
         </div>
         <div className="action-button-group">
@@ -472,13 +472,13 @@ const StaffSubTab = () => {
 
 function CareerActionsTab({ campaignData }) {
   const [activeSubTab, setActiveSubTab] = useState("Elections");
-  const [isProposePolicyModalOpen, setIsProposePolicyModalOpen] =
-    useState(false);
   const [selectedIssueToAddress, setSelectedIssueToAddress] = useState("");
 
   const store = useGameStore();
   const storeActions = store.actions;
   const allElectionsFromStore = store.activeCampaign.elections;
+  const [isBillModalOpen, setIsBillModalOpen] = useState(false);
+  const addressIssueCost = 250;
 
   const {
     politician: playerPolitician,
@@ -492,7 +492,7 @@ function CareerActionsTab({ campaignData }) {
     governmentOffices,
   } = campaignData || {};
 
-  const politicalCapital = playerPolitician?.politicalCapital;
+  //const politicalCapital = playerPolitician?.politicalCapital;
 
   useEffect(() => {
     if (
@@ -663,28 +663,8 @@ function CareerActionsTab({ campaignData }) {
 
   const oratorySkillCost = 500;
   const publicAppearanceCost = 100;
-  const addressIssueCost = 250;
 
   const canPerformMajorAction = !playerPolitician?.campaignActionToday;
-
-  const handleProposePolicy = (selectedPolicyId, chosenParameters = null) => {
-    if (!selectedPolicyId) {
-      if (storeActions.addToast)
-        storeActions.addToast({
-          message: "No policy selected.",
-          type: "error",
-        });
-      return;
-    }
-    if (storeActions.proposePolicy && playerPolitician?.id) {
-      storeActions.proposePolicy(
-        selectedPolicyId,
-        playerPolitician.id,
-        chosenParameters
-      );
-    }
-    setIsProposePolicyModalOpen(false);
-  };
 
   const renderSubTabContent = () => {
     const subTabProps = {
@@ -711,7 +691,7 @@ function CareerActionsTab({ campaignData }) {
             {...subTabProps}
             selectedIssueToAddress={selectedIssueToAddress}
             setSelectedIssueToAddress={setSelectedIssueToAddress}
-            setIsProposePolicyModalOpen={setIsProposePolicyModalOpen}
+            setIsBillModalOpen={setIsBillModalOpen}
             addressIssueCost={addressIssueCost}
           />
         );
@@ -839,12 +819,9 @@ function CareerActionsTab({ campaignData }) {
         <div className="sub-tab-content-area">{renderSubTabContent()}</div>
       </div>
 
-      <ProposePolicyModal
-        isOpen={isProposePolicyModalOpen}
-        onClose={() => setIsProposePolicyModalOpen(false)}
-        onPropose={handleProposePolicy}
-        cityStats={startingCity?.stats}
-        playerPoliticalCapital={politicalCapital}
+      <BillAuthoringModal
+        isOpen={isBillModalOpen}
+        onClose={() => setIsBillModalOpen(false)}
       />
     </>
   );

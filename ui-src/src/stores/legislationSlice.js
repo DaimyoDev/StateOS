@@ -3,16 +3,49 @@
 // It contains the full logic for AI voting and applying policy effects to the campaign state.
 
 import { generateId } from "../utils/core.js";
-import { isDateSameOrBefore } from "../utils/generalUtils.js";
 import { CITY_POLICIES } from "../data/policyDefinitions";
-import { decideAIVote } from "../simulation/aiVoting.js";
 import { applyPolicyEffect } from "../simulation/applyPolicyEffects.js";
+import { decideAndAuthorAIBill } from "../simulation/aiProposal.js";
+import { decideAIVote } from "../simulation/aiVoting.js";
 
 const getInitialLegislationState = () => ({
-  proposedLegislation: [],
+  proposedBills: [],
   activeLegislation: [],
   availablePoliciesForProposal: [...CITY_POLICIES],
+  savedBillTemplates: [],
 });
+
+const addDaysToDate = (date, days) => {
+  const newDate = new Date(date.year, date.month - 1, date.day);
+  newDate.setDate(newDate.getDate() + days);
+  return {
+    year: newDate.getFullYear(),
+    month: newDate.getMonth() + 1,
+    day: newDate.getDate(),
+  };
+};
+
+const generateAIBillName = (currentYear) => {
+  const prefixes = ["The", "A Bill Regarding", "An Act for", "The Charter for"];
+  const topics = [
+    "Urban Development",
+    "Public Safety",
+    "Economic Growth",
+    "Community Support",
+    "Fiscal Responsibility",
+    "Infrastructure",
+  ];
+  const suffixes = [
+    "Act",
+    "Initiative",
+    "Bill",
+    "Charter Amendment",
+    "Ordinance",
+  ];
+  return `${prefixes[Math.floor(Math.random() * prefixes.length)]} ${
+    topics[Math.floor(Math.random() * topics.length)]
+  } ${suffixes[Math.floor(Math.random() * suffixes.length)]} of ${currentYear}`;
+};
 
 export const createLegislationSlice = (set, get) => ({
   ...getInitialLegislationState(),
@@ -20,215 +53,203 @@ export const createLegislationSlice = (set, get) => ({
   actions: {
     resetLegislationState: () => set(getInitialLegislationState()),
 
-    proposePolicy: (policyId, proposerId, chosenParameters) => {
+    proposeBill: (billName, policies, proposerId, proposerName) => {
       set((state) => {
-        const policyDef = CITY_POLICIES.find((p) => p.id === policyId); //
-        if (!policyDef) {
-          console.error(`[Legislation] Policy ID "${policyId}" not found.`);
-          return state;
-        }
+        const dateProposed = { ...state.activeCampaign.currentDate };
+        // Schedule the vote for 10 days from when it was proposed
+        const voteScheduledFor = addDaysToDate(dateProposed, 10);
 
-        const newProposal = {
-          id: `prop_${generateId()}`,
-          policyId,
+        const newBill = {
+          id: `bill_${generateId()}`,
+          name:
+            billName ||
+            generateAIBillName(state.activeCampaign.currentDate.year),
           proposerId,
-          chosenParameters,
-          policyName: policyDef.name, //
-          description: policyDef.description, //
-          isParameterized: policyDef.isParameterized, //
-          parameterDetails: policyDef.parameterDetails, //
-          status: "proposed",
-          dateProposed: { ...state.activeCampaign.currentDate },
-          councilVotesCast: {},
+          proposerName,
+          policies: policies.map((p) => {
+            const def = CITY_POLICIES.find((def) => def.id === p.policyId);
+            return {
+              ...p,
+              policyName: def?.name,
+              description: def?.description,
+              parameterDetails: def?.parameterDetails,
+            };
+          }),
+          status: "pending_vote",
+          dateProposed: dateProposed,
+          voteScheduledFor: voteScheduledFor, // Add the new property
           votes: { yea: [], nay: [], abstain: [] },
+          councilVotesCast: {},
         };
 
         get().actions.addToast?.({
-          message: `Policy Proposed: "${policyDef.name}"`, //
+          message: `Bill Proposed: "${newBill.name}"`,
           type: "info",
         });
         return {
-          proposedLegislation: [...state.proposedLegislation, newProposal],
+          proposedBills: [...state.proposedBills, newBill],
         };
       });
     },
 
-    recordCouncilVote: (proposalId, councilMemberId, voteChoice) => {
+    // NEW: Save a bill template
+    saveBillTemplate: (templateName, policies) => {
       set((state) => {
-        const updatedProposals = state.proposedLegislation.map((p) => {
-          if (p.id === proposalId && p.status === "voting_period_open") {
+        const newTemplate = {
+          templateId: `bill_template_${generateId()}`,
+          name: templateName,
+          policies: policies,
+        };
+        get().actions.addToast?.({
+          message: `Bill template "${templateName}" saved.`,
+          type: "success",
+        });
+        return {
+          savedBillTemplates: [...state.savedBillTemplates, newTemplate],
+        };
+      });
+    },
+
+    // NEW: This action now finalizes a BILL vote
+    finalizeBillVote: (billId) => {
+      set((state) => {
+        const bill = state.proposedBills.find((b) => b.id === billId);
+        if (!bill) return state;
+
+        const councilSize = get().actions.getCityCouncilSize?.() || 1; // Assumes a helper action
+        const majorityNeeded = Math.floor(councilSize / 2) + 1;
+        const yeaVotes = bill.votes.yea?.length || 0;
+        const billDidPass = yeaVotes >= majorityNeeded;
+
+        let newActiveLegislationList = [...state.activeLegislation];
+        if (billDidPass) {
+          // Add ALL policies from the bill to the active legislation list
+          bill.policies.forEach((policyInBill) => {
+            const policyDef = CITY_POLICIES.find(
+              (p) => p.id === policyInBill.policyId
+            );
+            if (policyDef) {
+              newActiveLegislationList.push({
+                id: `active_${policyInBill.policyId}_${generateId()}`,
+                policyId: policyInBill.policyId,
+                policyName: policyDef.name,
+                description: policyDef.description,
+                dateEnacted: { ...state.activeCampaign.currentDate },
+                monthsUntilEffective: policyDef.durationToImplement || 0,
+                effectsApplied: false,
+                effects: policyDef.effects,
+                proposerId: bill.proposerId,
+                isParameterized: policyDef.isParameterized,
+                parameterDetails: policyDef.parameterDetails,
+                chosenParameters: policyInBill.chosenParameters,
+              });
+            }
+          });
+        }
+
+        get().actions.addToast?.({
+          message: `Vote on "${bill.name}" has concluded. The bill has ${
+            billDidPass ? "passed" : "failed"
+          }.`,
+          type: billDidPass ? "success" : "error",
+        });
+
+        // Update the bill's status instead of removing it immediately, so it can be viewed in the "past votes" list
+        const updatedBills = state.proposedBills.map((b) =>
+          b.id === billId
+            ? { ...b, status: billDidPass ? "passed" : "failed" }
+            : b
+        );
+
+        return {
+          proposedBills: updatedBills,
+          activeLegislation: newActiveLegislationList,
+        };
+      });
+    },
+
+    processAIDailyActions: () => {
+      const { activeCampaign, proposedBills } = get();
+      if (!activeCampaign?.governmentOffices) return;
+
+      // Find all AI council members
+      const councilOffice = activeCampaign.governmentOffices.find((o) =>
+        o.officeNameTemplateId.includes("council")
+      );
+      const aiCouncilMembers =
+        councilOffice?.members.filter((m) => !m.isPlayer) || [];
+
+      aiCouncilMembers.forEach((ai) => {
+        // Give each AI a chance to propose something if they haven't already
+        const hasProposedBillThisTurn = proposedBills.some(
+          (b) => b.proposerId === ai.id && b.status === "pending_vote"
+        );
+        if (hasProposedBillThisTurn) return;
+
+        // Use a random chance to prevent every AI from proposing a bill every day
+        if (Math.random() > 0.1) {
+          // 10% chance per day
+          return;
+        }
+
+        // Call the NEW AI bill authoring logic
+        const authoredPolicies = get().actions.decideAndAuthorAIBill(
+          ai,
+          get().availablePoliciesForProposal.map((p) => p.id), // Pass all available policy IDs
+          activeCampaign.startingCity.stats,
+          get().activeLegislation,
+          proposedBills
+        );
+
+        if (authoredPolicies && authoredPolicies.length > 0) {
+          // If the AI authored a valid bill, propose it
+          const proposerName = `${ai.firstName} ${ai.lastName}`;
+          get().actions.proposeBill(
+            null,
+            authoredPolicies,
+            ai.id,
+            proposerName
+          ); // Pass null for name to have one generated
+        }
+      });
+    },
+
+    decideAndAuthorAIBill,
+
+    recordCouncilVote: (billId, councilMemberId, voteChoice) => {
+      set((state) => {
+        const updatedBills = state.proposedBills.map((bill) => {
+          // Find the correct bill by its ID
+          if (bill.id === billId) {
+            // Create a new votes object, removing any previous vote from this member
             const newVotes = {
-              yea: p.votes.yea.filter((id) => id !== councilMemberId),
-              nay: p.votes.nay.filter((id) => id !== councilMemberId),
-              abstain: p.votes.abstain.filter((id) => id !== councilMemberId),
+              yea: bill.votes.yea.filter((id) => id !== councilMemberId),
+              nay: bill.votes.nay.filter((id) => id !== councilMemberId),
+              abstain: bill.votes.abstain.filter(
+                (id) => id !== councilMemberId
+              ),
             };
+
+            // Add the member's ID to the correct new vote array
             if (newVotes[voteChoice]) {
               newVotes[voteChoice].push(councilMemberId);
             }
+
+            // Return the updated bill object
             return {
-              ...p,
+              ...bill,
               votes: newVotes,
               councilVotesCast: {
-                ...p.councilVotesCast,
+                ...bill.councilVotesCast,
                 [councilMemberId]: voteChoice,
               },
             };
           }
-          return p;
-        });
-        return { proposedLegislation: updatedProposals };
-      });
-    },
-
-    finalizePolicyVote: (proposalId) => {
-      set((state) => {
-        const proposal = state.proposedLegislation.find(
-          (p) => p.id === proposalId
-        );
-        if (!proposal) return state;
-
-        const councilOffice = state.activeCampaign.governmentOffices.find((o) =>
-          o.officeNameTemplateId?.includes("council")
-        );
-        const councilSize = councilOffice?.members?.length || 1;
-        const majorityNeeded = Math.floor(councilSize / 2) + 1;
-        const yeaVotes = proposal.votes.yea?.length || 0;
-        const nayVotes = proposal.votes.nay?.length || 0;
-        const policyDidPass = yeaVotes >= majorityNeeded;
-
-        let newActiveList = [...state.activeLegislation];
-        if (policyDidPass) {
-          const policyDef = CITY_POLICIES.find(
-            (p) => p.id === proposal.policyId
-          );
-          newActiveList.push({
-            id: `active_${proposal.id}`,
-            policyId: proposal.policyId,
-            policyName: proposal.policyName,
-            dateEnacted: { ...state.activeCampaign.currentDate },
-            monthsUntilEffective: policyDef.durationToImplement || 0,
-            effectsApplied: false,
-            effects: policyDef.effects,
-            proposerId: proposal.proposerId,
-            isParameterized: proposal.isParameterized,
-            parameterDetails: proposal.parameterDetails,
-            chosenParameters: proposal.chosenParameters,
-          });
-        }
-
-        // --- NEW: Generate news from all outlets about this vote ---
-        const newsEvent = {
-          type: "policy_vote",
-          context: {
-            policyId: proposal.policyId,
-            policyName: proposal.policyName,
-            didPass: policyDidPass,
-            yeaVotes: yeaVotes,
-            nayVotes: nayVotes,
-          },
-        };
-        get().actions.generateAndAddNewsForAllOutlets(newsEvent);
-        // --- END NEW ---
-
-        get().actions.addToast?.({
-          message: `Vote Finalized: "${proposal.policyName}" has ${
-            policyDidPass ? "passed" : "failed"
-          } (${yeaVotes}/${councilSize}).`,
-          type: policyDidPass ? "success" : "error",
+          return bill; // Return other bills unchanged
         });
 
-        return {
-          proposedLegislation: state.proposedLegislation.filter(
-            (p) => p.id !== proposalId
-          ),
-          activeLegislation: newActiveList,
-        };
-      });
-    },
-
-    processDailyProposalActivity: (currentDate) => {
-      const { proposedLegislation, activeCampaign } = get(); //
-      if (!activeCampaign) return; //
-
-      const councilOffice = activeCampaign.governmentOffices.find(
-        (
-          o //
-        ) => o.officeNameTemplateId?.includes("council")
-      );
-      const councilMembers = councilOffice?.members || []; //
-      const cityStats = activeCampaign.startingCity.stats; //
-      const allActiveLegislation = get().activeLegislation;
-      const allProposedLegislation = get().proposedLegislation;
-      const governmentOffices = activeCampaign.governmentOffices; //
-
-      proposedLegislation.forEach((proposal) => {
-        if (proposal.status === "proposed") {
-          const proposalDate = new Date(
-            proposal.dateProposed.year,
-            proposal.dateProposed.month - 1,
-            proposal.dateProposed.day
-          );
-          const today = new Date(
-            currentDate.year,
-            currentDate.month - 1,
-            currentDate.day
-          );
-          const daysSinceProposed =
-            (today - proposalDate) / (1000 * 60 * 60 * 24);
-
-          if (daysSinceProposed >= 3) {
-            // Debate period ends
-            const votingEndObj = new Date(today);
-            votingEndObj.setDate(votingEndObj.getDate() + 7); // 7-day voting period
-            const votingClosesDate = {
-              year: votingEndObj.getFullYear(),
-              month: votingEndObj.getMonth() + 1,
-              day: votingEndObj.getDate(),
-            };
-
-            set((state) => ({
-              proposedLegislation: state.proposedLegislation.map((p) =>
-                p.id === proposal.id
-                  ? { ...p, status: "voting_period_open", votingClosesDate }
-                  : p
-              ),
-            }));
-            get().actions.addNewsEvent?.({
-              headline: `Voting Opens: "${proposal.policyName}"`,
-              summary: `The council has begun its voting period for the proposed policy.`,
-            });
-          }
-        } else if (proposal.status === "voting_period_open") {
-          // Simulate AI Votes
-          councilMembers.forEach((member) => {
-            if (
-              !member.isPlayer &&
-              !proposal.councilVotesCast[member.id] &&
-              Math.random() < 0.33 // AI has a chance to vote each day during the voting period
-            ) {
-              const aiVoteChoice = decideAIVote(
-                //
-                member,
-                proposal,
-                cityStats,
-                allActiveLegislation,
-                allProposedLegislation,
-                governmentOffices
-              );
-              get().actions.recordCouncilVote(
-                proposal.id,
-                member.id,
-                aiVoteChoice
-              );
-            }
-          });
-
-          // Check if voting period is over
-          if (isDateSameOrBefore(proposal.votingClosesDate, currentDate)) {
-            //
-            get().actions.finalizePolicyVote(proposal.id);
-          }
-        }
+        // Update the state with the new array of bills
+        return { proposedBills: updatedBills };
       });
     },
 
@@ -336,6 +357,89 @@ export const createLegislationSlice = (set, get) => ({
           return newState;
         }
         return state;
+      });
+    },
+    processDailyBillCommentary: () => {
+      set((state) => {
+        const { activeCampaign, proposedBills, activeLegislation } = state;
+        const councilMembers = state.actions.getCityCouncilMembers?.() || [];
+
+        const updatedBills = proposedBills.map((bill) => {
+          if (bill.status !== "pending_vote") return bill;
+
+          const newStances = [...(bill.publicStances || [])];
+
+          councilMembers.forEach((ai) => {
+            if (ai.isPlayer) return; // Skip player
+
+            // Check if this AI already has a public stance
+            const hasStance = newStances.some((s) => s.politicianId === ai.id);
+            if (hasStance) return;
+
+            // Give AI a chance to comment each day
+            if (Math.random() < 0.25) {
+              // 25% chance per day to form an opinion
+              // Use decideAIVote to get a preliminary opinion
+              const voteLeaning = decideAIVote(
+                ai,
+                bill,
+                activeCampaign.startingCity.stats,
+                activeLegislation,
+                proposedBills,
+                activeCampaign.governmentOffices
+              );
+
+              let stance = "undecided";
+              if (voteLeaning === "yea") stance = "leaning_yea";
+              if (voteLeaning === "nay") stance = "leaning_nay";
+
+              newStances.push({
+                politicianId: ai.id,
+                politicianName: `${ai.firstName} ${ai.lastName}`,
+                stance: stance,
+              });
+            }
+          });
+          return { ...bill, publicStances: newStances };
+        });
+
+        return { proposedBills: updatedBills };
+      });
+    },
+    runAllAIVotesForBill: (billId) => {
+      const { activeCampaign, proposedBills, activeLegislation } = get();
+      const bill = proposedBills.find((b) => b.id === billId);
+
+      if (!bill) {
+        console.warn(
+          `[runAllAIVotesForBill] Could not find bill with ID: ${billId}`
+        );
+        return;
+      }
+
+      const councilMembers = get().actions.getCityCouncilMembers?.() || [];
+
+      councilMembers.forEach((ai) => {
+        // Skip the player and anyone who has already voted
+        if (
+          ai.isPlayer ||
+          (bill.councilVotesCast && bill.councilVotesCast[ai.id])
+        ) {
+          return;
+        }
+
+        // Run the voting simulation for this AI member
+        const voteChoice = decideAIVote(
+          ai,
+          bill,
+          activeCampaign.startingCity.stats,
+          activeLegislation,
+          proposedBills,
+          activeCampaign.governmentOffices
+        );
+
+        // Record the vote using the existing action
+        get().actions.recordCouncilVote(billId, ai.id, voteChoice);
       });
     },
   },

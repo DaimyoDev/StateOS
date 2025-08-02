@@ -33,12 +33,15 @@ export const createUISlice = (set, get) => ({
   toasts: [],
   viewingPolitician: null,
   isViewPoliticianModalOpen: false,
-  isPolicyVoteDetailsModalOpen: false,
-  policyVoteDetailsData: null,
   themeToEdit: null,
   viewingCountryId: null,
   isLoadingGame: false,
   loadingMessage: "",
+  isVotingSessionActive: false,
+  activeVotingSessionBillId: null,
+  viewingBillDetails: null,
+  isBillDetailsModalOpen: false,
+  voteQueue: [],
 
   // --- ACTIONS ---
   actions: {
@@ -175,17 +178,75 @@ export const createUISlice = (set, get) => ({
       set((state) => ({
         toasts: state.toasts.filter((t) => t.id !== toastId),
       })),
-
-    openPolicyVoteDetailsModal: (proposalData) =>
-      set({
-        isPolicyVoteDetailsModalOpen: true,
-        policyVoteDetailsData: proposalData,
-      }),
-    closePolicyVoteDetailsModal: () =>
-      set({ isPolicyVoteDetailsModalOpen: false, policyVoteDetailsData: null }),
     setViewedEntity: (id, type) => set({ viewedEntity: { id, type } }),
     clearViewedEntity: () => set({ viewedEntity: { id: null, type: null } }),
     setLoadingGame: (isLoading, message = "") =>
       set({ isLoadingGame: isLoading, loadingMessage: message }),
+    startVotingQueue: (billIds) => {
+      if (!billIds || billIds.length === 0) return;
+
+      // Instead of forcing the session open, we just populate the queue
+      // The UI will show an alert based on the queue having items.
+      set({ voteQueue: billIds });
+      // We can also trigger a toast notification here
+      get().actions.addToast({
+        message: `Legislative session has begun. ${billIds.length} bill(s) are up for a vote.`,
+        type: "info",
+      });
+    },
+
+    // UPDATED: This now specifically opens the LiveVoteSession overlay
+    startVotingSession: () => {
+      const queue = get().voteQueue;
+      if (queue.length > 0) {
+        set({
+          isVotingSessionActive: true,
+          activeVotingSessionBillId: queue[0], // Vote on the first bill in the queue
+        });
+      }
+    },
+
+    // UPDATED: This now processes the queue
+    endVotingSession: () => {
+      const currentBillId = get().activeVotingSessionBillId;
+      get().actions.finalizeBillVote(currentBillId);
+
+      const remainingQueue = get().voteQueue.filter(
+        (id) => id !== currentBillId
+      );
+
+      if (remainingQueue.length > 0) {
+        // There's another bill to vote on. Keep the alert up, but close the session view.
+        set({
+          isVotingSessionActive: false, // Close the current session view
+          activeVotingSessionBillId: null,
+          voteQueue: remainingQueue,
+        });
+        // You could automatically start the next vote here, or let the player initiate
+      } else {
+        // No more bills, end everything.
+        set({
+          isVotingSessionActive: false,
+          activeVotingSessionBillId: null,
+          voteQueue: [],
+        });
+      }
+    },
+
+    // NEW: Action for when the player chooses to skip viewing the vote
+    skipAndProcessVote: (billIdToSkip) => {
+      console.log(billIdToSkip);
+      // This requires a helper function to run all AI votes instantly
+      get().actions.runAllAIVotesForBill(billIdToSkip);
+      get().actions.finalizeBillVote(billIdToSkip);
+
+      set((state) => ({
+        voteQueue: state.voteQueue.filter((id) => id !== billIdToSkip),
+      }));
+    },
+    openBillDetailsModal: (bill) =>
+      set({ viewingBillDetails: bill, isBillDetailsModalOpen: true }),
+    closeBillDetailsModal: () =>
+      set({ viewingBillDetails: null, isBillDetailsModalOpen: false }),
   },
 });

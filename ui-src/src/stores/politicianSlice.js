@@ -15,6 +15,8 @@ const getInitialCreatingPoliticianState = () => ({
   nameRecognition: 5000,
   treasury: 10000,
   campaignFunds: 5000,
+  workingHours: 8, // Add this
+  maxWorkingHours: 8, // Add this
   attributes: {
     charisma: 5,
     integrity: 5,

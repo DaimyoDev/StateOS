@@ -1,0 +1,90 @@
+.bill-authoring-content {
+  display: flex;
+  flex-direction: column;
+  height: 75vh;
+  padding: 10px 20px;
+}
+.bill-setup-area {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 15px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid var(--border-color);
+}
+.bill-name-input,
+.bill-template-select {
+  padding: 10px;
+  border: 1px solid var(--border-color);
+  background-color: var(--input-bg);
+  color: var(--input-text);
+  border-radius: var(--element-radius);
+  font-size: 1.1em;
+}
+.bill-name-input {
+  flex-grow: 1;
+}
+
+.bill-columns {
+  display: flex;
+  gap: 20px;
+  flex-grow: 1;
+  overflow-y: hidden;
+}
+.policy-list-column,
+.current-bill-column {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--secondary-bg);
+  padding: 15px;
+  border-radius: var(--element-radius);
+  overflow-y: auto;
+}
+.policy-list-column h4,
+.current-bill-column h4 {
+  margin-top: 0;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 10px;
+}
+.policy-list-column input {
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 10px;
+}
+.policy-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.policy-list li {
+  padding: 10px;
+  border-bottom: 1px solid var(--border-color);
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.policy-list li:hover {
+  background-color: var(--highlight-bg);
+}
+.policy-list li strong {
+  font-size: 0.95em;
+}
+.policy-list li span {
+  font-size: 0.8em;
+  color: var(--secondary-text);
+  font-style: italic;
+}
+.empty-bill-text {
+  text-align: center;
+  color: var(--secondary-text);
+  margin-top: 30px;
+}
+.bill-authoring-content .modal-actions {
+  margin-top: auto;
+  padding-top: 15px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: flex-end;
+  gap: 15px;
+}

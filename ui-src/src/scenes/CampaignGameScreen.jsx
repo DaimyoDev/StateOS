@@ -4,9 +4,10 @@ import useGameStore from "../store";
 import "./CampaignGameScreen.css";
 import Modal from "../components/modals/Modal";
 import ViewPoliticianModal from "../components/modals/ViewPoliticianModal";
-import PolicyVoteDetailsModal from "../components/modals/PolicyVoteDetailsModal";
+import VoteAlert from "../components/ui/VoteAlert";
+import LiveVoteSession from "./LiveVoteSession";
 import { isDateBefore } from "../utils/core";
-// Import your tab content components
+import BillDetailsModal from "../components/modals/BillDetailsModal";
 import DashboardTab from "../components/game_tabs/DashboardTab";
 import LocalAreaTab from "../components/game_tabs/LocalAreaTab";
 import ElectionsTab from "../components/game_tabs/ElectionsTab";
@@ -34,6 +35,14 @@ function CampaignGameScreen() {
   const activeMainGameTab = useGameStore((state) => state.activeMainGameTab);
   const activeCampaign = useGameStore((state) => state.activeCampaign);
 
+  const isBillDetailsModalOpen = useGameStore(
+    (state) => state.isBillDetailsModalOpen
+  );
+  const viewingBillDetails = useGameStore((state) => state.viewingBillDetails);
+  const closeBillDetailsModal = useGameStore(
+    (state) => state.actions.closeBillDetailsModal
+  );
+
   const showElectionDayModal = useGameStore(
     (state) => state.showElectionDayModal
   );
@@ -44,6 +53,10 @@ function CampaignGameScreen() {
   const viewingPolitician = useGameStore((state) => state.viewingPolitician); // Subscribes to changes in viewingPolitician object reference
   const isViewPoliticianModalOpen = useGameStore(
     (state) => state.isViewPoliticianModalOpen
+  );
+
+  const isVotingSessionActive = useGameStore(
+    (state) => state.isVotingSessionActive
   );
 
   const navigateTo = useGameStore((state) => state.actions.navigateTo);
@@ -65,16 +78,6 @@ function CampaignGameScreen() {
   );
   const advanceToNextYear = useGameStore(
     (state) => state.actions.advanceToNextYear
-  );
-
-  const isPolicyVoteDetailsModalOpen = useGameStore(
-    (state) => state.isPolicyVoteDetailsModalOpen
-  );
-  const policyVoteDetailsData = useGameStore(
-    (state) => state.policyVoteDetailsData
-  );
-  const closePolicyVoteDetailsModal = useGameStore(
-    (state) => state.actions.closePolicyVoteDetailsModal
   );
 
   const hasUpcomingElections = React.useMemo(() => {
@@ -169,6 +172,10 @@ function CampaignGameScreen() {
             <p>{playerFirstName}</p>
             <p>
               Date: {currentDate?.month}/{currentDate?.day}/{currentDate?.year}
+            </p>
+            <p>
+              Time Remaining: {activeCampaign.politician.workingHours} /{" "}
+              {activeCampaign.politician.maxWorkingHours} hrs
             </p>
           </div>
           <nav className="tab-navigation">
@@ -285,10 +292,12 @@ function CampaignGameScreen() {
           onClose={closeViewPoliticianModal}
           politician={viewingPolitician}
         />
-        <PolicyVoteDetailsModal
-          isOpen={isPolicyVoteDetailsModalOpen}
-          onClose={closePolicyVoteDetailsModal}
-          proposalData={policyVoteDetailsData}
+        <VoteAlert />
+        {isVotingSessionActive && <LiveVoteSession />}
+        <BillDetailsModal
+          isOpen={isBillDetailsModalOpen}
+          onClose={closeBillDetailsModal}
+          bill={viewingBillDetails}
         />
       </div>
     </>

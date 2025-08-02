@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import useGameStore from "../store";
-// import { shallow } from 'zustand/shallow'; // No longer needed for this component
 
 import "./ElectionSimulatorScreen.css";
 
@@ -22,6 +21,7 @@ import {
 
 // Reusable UI components
 import Modal from "../components/modals/Modal";
+import { generateFullCityData } from "../entities/politicalEntities";
 
 const getInitialSetupState = () => ({
   id: `setup-${generateId()}`,
@@ -30,10 +30,11 @@ const getInitialSetupState = () => ({
   selectedRegionId: "",
   selectedCityId: "",
   totalPopulation: 1000000,
-  electionType: "",
+  electionType: [],
   electionYear: 2024,
   parties: [],
-  candidates: [], // Add candidates to the core setup state
+  candidatesByElection: {}, // New structure for candidates
+  customCity: null,
   voterTurnout: 60,
   electorateIdeologyCenter: Object.fromEntries(
     Object.keys(IDEOLOGY_DEFINITIONS.centrist.idealPoint).map((axis) => [
@@ -63,6 +64,8 @@ const ElectionSimulatorScreen = () => {
 
   const [currentSetup, setCurrentSetup] = useState(getInitialSetupState());
   const [activeSetupTab, setActiveSetupTab] = useState("general");
+  const [activeElectionInCandidateTab, setActiveElectionInCandidateTab] =
+    useState("");
 
   // Modals State
   const [isPartyEditorModalOpen, setIsPartyEditorModalOpen] = useState(false);
@@ -71,6 +74,7 @@ const ElectionSimulatorScreen = () => {
   const [setupToDelete, setSetupToDelete] = useState(null);
   const [isAddPoliticianModalOpen, setIsAddPoliticianModalOpen] =
     useState(false);
+  const [isCityCreatorModalOpen, setIsCityCreatorModalOpen] = useState(false);
 
   // Derived state for dynamic dropdowns
   const selectedCountry = useMemo(
@@ -101,52 +105,103 @@ const ElectionSimulatorScreen = () => {
     [currentSetup.selectedCountryId]
   );
 
+  const selectedElectionTypesDetails = useMemo(() => {
+    return currentSetup.electionType
+      .map((id) => availableElectionTypes.find((t) => t.id === id))
+      .filter(Boolean);
+  }, [currentSetup.electionType, availableElectionTypes]);
+
   const updateCurrentSetup = useCallback((field, value) => {
     setCurrentSetup((prev) => ({ ...prev, [field]: value }));
   }, []);
 
   useEffect(() => {
-    if (
-      availableElectionTypes.length > 0 &&
-      !availableElectionTypes.some(
-        (type) => type.id === currentSetup.electionType
+    const validSelectedTypes = currentSetup.electionType.filter((selectedId) =>
+      availableElectionTypes.some(
+        (availableType) => availableType.id === selectedId
       )
-    ) {
-      updateCurrentSetup("electionType", availableElectionTypes[0].id);
-    } else if (
-      availableElectionTypes.length === 0 &&
-      currentSetup.electionType !== ""
-    ) {
-      updateCurrentSetup("electionType", "");
+    );
+    if (validSelectedTypes.length !== currentSetup.electionType.length) {
+      updateCurrentSetup("electionType", validSelectedTypes);
     }
-  }, [availableElectionTypes, currentSetup.electionType, updateCurrentSetup]);
+
+    if (!validSelectedTypes.includes(activeElectionInCandidateTab)) {
+      setActiveElectionInCandidateTab(validSelectedTypes[0] || "");
+    }
+  }, [
+    availableElectionTypes,
+    currentSetup.electionType,
+    updateCurrentSetup,
+    activeElectionInCandidateTab,
+  ]);
 
   const handleSetupFieldChange = (e) => {
-    const { name, value, type } = e.target;
+    const { name, value, type, options } = e.target;
+
+    if (name === "electionType" && e.target.multiple) {
+      const selectedValues = Array.from(options)
+        .filter((option) => option.selected)
+        .map((option) => option.value);
+      updateCurrentSetup(name, selectedValues);
+      return;
+    }
+
+    if (name === "selectedCityId" && value === "_CREATE_NEW_") {
+      setIsCityCreatorModalOpen(true);
+      updateCurrentSetup("selectedCityId", "");
+      return;
+    }
+
     const finalValue = type === "number" ? parseInt(value, 10) || 0 : value;
     updateCurrentSetup(name, finalValue);
 
     if (name === "selectedCountryId") {
       updateCurrentSetup("selectedRegionId", "");
       updateCurrentSetup("selectedCityId", "");
+      updateCurrentSetup("customCity", null);
+      updateCurrentSetup("electionType", []);
+      updateCurrentSetup("candidatesByElection", {});
     }
     if (name === "selectedRegionId") {
       updateCurrentSetup("selectedCityId", "");
+      updateCurrentSetup("customCity", null);
+    }
+    if (name === "selectedCityId" && value !== "") {
+      updateCurrentSetup("customCity", null);
     }
   };
 
-  // --- Setup Management ---
-  const handleNewSetup = () => setCurrentSetup(getInitialSetupState());
+  const handleCreateCity = (cityName) => {
+    if (!cityName) {
+      actions.addToast({
+        id: `city-name-req-${Date.now()}`,
+        message: "City name cannot be empty.",
+        type: "error",
+      });
+      return;
+    }
+    const newCity = generateFullCityData({
+      playerDefinedCityName: cityName,
+      countryId: currentSetup.selectedCountryId,
+      regionId: currentSetup.selectedRegionId,
+      populationHint: currentSetup.totalPopulation,
+    });
+    updateCurrentSetup("customCity", newCity);
+    updateCurrentSetup("selectedCityId", "");
+    setIsCityCreatorModalOpen(false);
+  };
+
+  const handleNewSetup = () => {
+    setCurrentSetup(getInitialSetupState());
+    setActiveElectionInCandidateTab("");
+  };
 
   const handleSaveSetup = () => {
     const existingSetup = savedElectionSetups.find(
       (s) => s.id === currentSetup.id
     );
-    if (existingSetup) {
-      actions.updateElectionSetup(currentSetup);
-    } else {
-      actions.saveElectionSetup(currentSetup);
-    }
+    if (existingSetup) actions.updateElectionSetup(currentSetup);
+    else actions.saveElectionSetup(currentSetup);
     actions.addToast({
       id: `save-success-${Date.now()}`,
       message: `Scenario "${currentSetup.name}" saved!`,
@@ -160,8 +215,12 @@ const ElectionSimulatorScreen = () => {
       setCurrentSetup({
         ...getInitialSetupState(),
         ...setupToLoad,
-        candidates: setupToLoad.candidates || [],
+        electionType: Array.isArray(setupToLoad.electionType)
+          ? setupToLoad.electionType
+          : [],
+        candidatesByElection: setupToLoad.candidatesByElection || {},
       });
+      setActiveElectionInCandidateTab(setupToLoad.electionType?.[0] || "");
     }
   };
 
@@ -179,13 +238,11 @@ const ElectionSimulatorScreen = () => {
     setSetupToDelete(null);
   };
 
-  // --- Party Management ---
   const handleRandomlyGenerateParties = useCallback(() => {
     const numParties = getRandomInt(3, 7);
     const generated = Array.from({ length: numParties }, () => {
       const randomBaseIdeology = getRandomElement([...BASE_IDEOLOGIES]);
       if (!randomBaseIdeology) return null;
-
       const fullIdeologyDefinition =
         IDEOLOGY_DEFINITIONS[randomBaseIdeology.id];
       const newPartyName = generateNewPartyName(randomBaseIdeology.name);
@@ -197,7 +254,6 @@ const ElectionSimulatorScreen = () => {
         IDEOLOGY_DEFINITIONS,
         ideologyScores
       );
-
       return {
         id: `party-${generateId()}`,
         name: newPartyName,
@@ -205,12 +261,11 @@ const ElectionSimulatorScreen = () => {
         ideology: ideologyName,
         ideologyId: randomBaseIdeology.id,
         ideologyScores,
-        popularity: getRandomInt(5, 25),
+        popularity: getRandomInt(5, 45),
       };
     }).filter(Boolean);
-
     updateCurrentSetup("parties", generated);
-    updateCurrentSetup("candidates", []);
+    updateCurrentSetup("candidatesByElection", {});
   }, [updateCurrentSetup]);
 
   const handleCreateNewParty = () => {
@@ -228,10 +283,13 @@ const ElectionSimulatorScreen = () => {
       "parties",
       currentSetup.parties.filter((p) => p.id !== partyId)
     );
-    updateCurrentSetup(
-      "candidates",
-      currentSetup.candidates.filter((c) => c.partyId !== partyId)
-    );
+    const newCandidatesByElection = { ...currentSetup.candidatesByElection };
+    Object.keys(newCandidatesByElection).forEach((electionId) => {
+      newCandidatesByElection[electionId] = newCandidatesByElection[
+        electionId
+      ].filter((c) => c.partyId !== partyId);
+    });
+    updateCurrentSetup("candidatesByElection", newCandidatesByElection);
   };
 
   const handleSaveParty = (partyData) => {
@@ -263,109 +321,6 @@ const ElectionSimulatorScreen = () => {
     setEditingParty(null);
   };
 
-  // --- Candidate Management ---
-  const handleGenerateCandidates = useCallback(() => {
-    if (currentSetup.parties.length === 0) {
-      actions.addToast({
-        id: `no-parties-${Date.now()}`,
-        message: "Please generate or create parties first.",
-        type: "error",
-      });
-      return;
-    }
-    const newCandidates = currentSetup.parties
-      .map((party) => {
-        const pol = generateFullAIPolitician(
-          currentSetup.selectedCountryId,
-          currentSetup.parties,
-          POLICY_QUESTIONS,
-          IDEOLOGY_DEFINITIONS,
-          party.id,
-          null,
-          null,
-          false,
-          currentSetup.electorateIdeologyCenter,
-          currentSetup.electorateIdeologySpread,
-          currentSetup.electorateIssueStances
-        );
-        if (!pol || !pol.firstName) return null;
-        return {
-          ...pol,
-          name: `${pol.firstName} ${pol.lastName}`,
-          baseScore: pol.polling,
-        };
-      })
-      .filter(Boolean);
-
-    if (newCandidates.length === 0) {
-      actions.addToast({
-        id: `gen-fail-${Date.now()}`,
-        message: "Candidate generation failed. Please try again.",
-        type: "error",
-      });
-      return;
-    }
-
-    const normalizedCandidatesMap = normalizePolling(
-      newCandidates,
-      currentSetup.totalPopulation,
-      true
-    );
-
-    // --- FIX START ---
-    // The previous code was checking `normalized.length`, but `normalizePolling` returns a Map.
-    // The correct property to check is `.size`.
-    // We also need to convert the Map back to an Array for the component's state.
-    if (normalizedCandidatesMap && normalizedCandidatesMap.size > 0) {
-      updateCurrentSetup(
-        "candidates",
-        Array.from(normalizedCandidatesMap.values())
-      );
-    } else {
-      // Fallback in case normalization fails, ensuring candidates are still displayed.
-      updateCurrentSetup(
-        "candidates",
-        newCandidates.map((c) => ({ ...c, polling: c.baseScore || 5 }))
-      );
-    }
-    // --- FIX END ---
-  }, [currentSetup, actions, updateCurrentSetup]);
-
-  const handleAddPoliticians = (politiciansToAdd) => {
-    const newCandidates = [...currentSetup.candidates];
-    politiciansToAdd.forEach((p) => {
-      if (!newCandidates.some((c) => c.id === p.id)) {
-        const party = currentSetup.parties.find(
-          (party) => party.id === p.partyId
-        );
-        newCandidates.push({
-          ...p,
-          name: `${p.firstName} ${p.lastName}`,
-          partyName: party?.name || "Independent",
-          partyColor: party?.color || "#888888",
-          baseScore: 5,
-        });
-      }
-    });
-    const normalized = normalizePolling(
-      newCandidates,
-      currentSetup.totalPopulation,
-      true
-    );
-    if (normalized && normalized.size > 0) {
-      updateCurrentSetup("candidates", Array.from(normalized.values()));
-    }
-    setIsAddPoliticianModalOpen(false);
-  };
-
-  const handleRemoveCandidate = (candidateId) => {
-    updateCurrentSetup(
-      "candidates",
-      currentSetup.candidates.filter((c) => c.id !== candidateId)
-    );
-  };
-
-  // --- Electorate ---
   const handleRandomizeElectorateProfile = useCallback(() => {
     const newCenter = {};
     const newSpread = {};
@@ -384,65 +339,229 @@ const ElectionSimulatorScreen = () => {
     updateCurrentSetup("electorateIssueStances", newIssueStances);
   }, [updateCurrentSetup]);
 
-  // --- Run Simulation ---
+  const handleGenerateCandidatesForRace = useCallback(() => {
+    if (!activeElectionInCandidateTab || currentSetup.parties.length === 0) {
+      actions.addToast({
+        id: `gen-cand-fail-${Date.now()}`,
+        message: "Select a race and create parties first.",
+        type: "error",
+      });
+      return;
+    }
+    const newCandidates = currentSetup.parties
+      .map((party) => {
+        const pol = generateFullAIPolitician(
+          currentSetup.selectedCountryId,
+          currentSetup.parties,
+          POLICY_QUESTIONS,
+          IDEOLOGY_DEFINITIONS,
+          party.id
+        );
+        return pol
+          ? {
+              ...pol,
+              name: `${pol.firstName} ${pol.lastName}`,
+              baseScore: pol.polling,
+            }
+          : null;
+      })
+      .filter(Boolean);
+
+    const normalizedCandidatesMap = normalizePolling(
+      newCandidates,
+      currentSetup.totalPopulation,
+      true
+    );
+    const finalCandidates = Array.from(normalizedCandidatesMap.values());
+
+    updateCurrentSetup("candidatesByElection", {
+      ...currentSetup.candidatesByElection,
+      [activeElectionInCandidateTab]: finalCandidates,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    activeElectionInCandidateTab,
+    currentSetup.selectedCountryId,
+    currentSetup.parties,
+    currentSetup.totalPopulation,
+    actions,
+    updateCurrentSetup,
+  ]);
+
+  const handleAddPoliticiansToRace = (politiciansToAdd) => {
+    if (!activeElectionInCandidateTab) {
+      actions.addToast({
+        id: `add-cand-fail-${Date.now()}`,
+        message: "Select a race to add candidates to.",
+        type: "error",
+      });
+      return;
+    }
+    const currentRaceCandidates =
+      currentSetup.candidatesByElection[activeElectionInCandidateTab] || [];
+    const newCandidatesForRace = [...currentRaceCandidates];
+    politiciansToAdd.forEach((p) => {
+      if (!newCandidatesForRace.some((c) => c.id === p.id)) {
+        const party = currentSetup.parties.find(
+          (party) => party.id === p.partyId
+        );
+        newCandidatesForRace.push({
+          ...p,
+          name: `${p.firstName} ${p.lastName}`,
+          partyName: party?.name || "Independent",
+          partyColor: party?.color || "#888888",
+          baseScore: 5,
+        });
+      }
+    });
+    const normalized = normalizePolling(
+      newCandidatesForRace,
+      currentSetup.totalPopulation,
+      true
+    );
+    const finalCandidates = Array.from(normalized.values());
+
+    updateCurrentSetup("candidatesByElection", {
+      ...currentSetup.candidatesByElection,
+      [activeElectionInCandidateTab]: finalCandidates,
+    });
+    setIsAddPoliticianModalOpen(false);
+  };
+
+  const handleRemoveCandidateFromRace = (candidateId) => {
+    if (!activeElectionInCandidateTab) return;
+    const currentRaceCandidates =
+      currentSetup.candidatesByElection[activeElectionInCandidateTab] || [];
+    const updatedCandidates = currentRaceCandidates.filter(
+      (c) => c.id !== candidateId
+    );
+    updateCurrentSetup("candidatesByElection", {
+      ...currentSetup.candidatesByElection,
+      [activeElectionInCandidateTab]: updatedCandidates,
+    });
+  };
+
   const runSimulation = useCallback(() => {
     if (
       !currentSetup.electionType ||
-      currentSetup.parties.length === 0 ||
-      currentSetup.candidates.length === 0
+      currentSetup.electionType.length === 0 ||
+      currentSetup.parties.length === 0
     ) {
       actions.addToast({
         id: `incomplete-setup-${Date.now()}`,
-        message: "Please configure an election type, parties, and candidates.",
+        message: "Please select election types and configure parties.",
         type: "error",
       });
       return;
     }
 
-    const selectedElectionTypeDetails = availableElectionTypes.find(
-      (type) => type.id === currentSetup.electionType
-    );
-    if (!selectedElectionTypeDetails) return;
+    let electionCity;
+    if (currentSetup.customCity) {
+      electionCity = currentSetup.customCity;
+    } else if (currentSetup.selectedCityId) {
+      const region = availableRegions.find(
+        (r) => r.id === currentSetup.selectedRegionId
+      );
+      electionCity = region?.cities?.find(
+        (c) => c.id === currentSetup.selectedCityId
+      );
+    }
 
-    let officeName = selectedElectionTypeDetails.officeNameTemplate
-      .replace(
-        "{cityName}",
-        availableCities.find((c) => c.id === currentSetup.selectedCityId)
-          ?.name || "City"
-      )
-      .replace(
-        "{stateName}",
-        availableRegions.find((r) => r.id === currentSetup.selectedRegionId)
-          ?.name || "Region"
-      )
-      .replace("{countryName}", selectedCountry?.name || "Country")
-      .replace(/{.*?}/g, "")
-      .trim();
+    if (!electionCity) {
+      const hasOnlyNonLocal = currentSetup.electionType.every((etId) => {
+        const typeDetails = availableElectionTypes.find((t) => t.id === etId);
+        return typeDetails && !typeDetails.level.startsWith("local_");
+      });
+      if (hasOnlyNonLocal) {
+        electionCity = {
+          name: "N/A",
+          population: currentSetup.totalPopulation,
+        };
+      } else {
+        actions.addToast({
+          id: `city-error-${Date.now()}`,
+          message: "Please select or create a city for local elections.",
+          type: "error",
+        });
+        return;
+      }
+    }
 
-    const candidatesMap = new Map(
-      currentSetup.candidates.map((c) => [c.id, c])
-    );
+    const populationForSim =
+      electionCity.population || currentSetup.totalPopulation;
+    const allSimulations = [];
+    const electionRegionName =
+      availableRegions.find((r) => r.id === currentSetup.selectedRegionId)
+        ?.name || "Region";
+    const electionCountryName = selectedCountry?.name || "Country";
 
-    const simulatedElection = {
-      id: `sim_election_${generateId()}`,
-      officeName,
-      electoralSystem: selectedElectionTypeDetails.electoralSystem,
-      electionDate: { year: currentSetup.electionYear, month: 11, day: 5 },
-      candidates: candidatesMap,
-      totalEligibleVoters: currentSetup.totalPopulation,
-      voterTurnoutPercentage: currentSetup.voterTurnout,
-      numberOfSeatsToFill: selectedElectionTypeDetails.seatsToFill || 1,
-      outcome: { status: "upcoming" },
-    };
+    for (const electionTypeId of currentSetup.electionType) {
+      const selectedElectionTypeDetails = availableElectionTypes.find(
+        (type) => type.id === electionTypeId
+      );
+      if (!selectedElectionTypeDetails) continue;
+
+      const raceCandidates =
+        currentSetup.candidatesByElection[electionTypeId] || [];
+      if (raceCandidates.length === 0) {
+        actions.addToast({
+          id: `no-cands-${electionTypeId}`,
+          message: `Skipping "${selectedElectionTypeDetails.displayName}" race: No candidates assigned.`,
+          type: "warning",
+        });
+        continue;
+      }
+
+      const normalizedRaceCandidates = normalizePolling(
+        raceCandidates,
+        populationForSim,
+        true
+      );
+      const candidatesMap = new Map(
+        Array.from(normalizedRaceCandidates.values()).map((c) => [c.id, c])
+      );
+
+      let officeName = selectedElectionTypeDetails.officeNameTemplate
+        .replace(/{cityName}|{cityNameOrMunicipalityName}/g, electionCity.name)
+        .replace(
+          /{stateName}|{regionName}|{prefectureName}|{provinceName}/g,
+          electionRegionName
+        )
+        .replace("{countryName}", electionCountryName)
+        .replace(/{.*?}/g, "")
+        .trim();
+
+      const simulatedElection = {
+        id: `sim_election_${generateId()}`,
+        officeName,
+        electoralSystem: selectedElectionTypeDetails.electoralSystem,
+        electionDate: { year: currentSetup.electionYear, month: 11, day: 5 },
+        candidates: candidatesMap,
+        totalEligibleVoters: populationForSim,
+        voterTurnoutPercentage: currentSetup.voterTurnout,
+        numberOfSeatsToFill: selectedElectionTypeDetails.seatsToFill || 1,
+        outcome: { status: "upcoming" },
+      };
+      allSimulations.push(simulatedElection);
+    }
+
+    if (allSimulations.length === 0) {
+      actions.addToast({
+        id: `no-valid-elections-${Date.now()}`,
+        message:
+          "No valid elections were created. Check your candidate assignments.",
+        type: "error",
+      });
+      return;
+    }
 
     actions.setIsSimulationMode(true);
-    actions.setSimulatedElections([simulatedElection]);
+    actions.setSimulatedElections(allSimulations);
     actions.navigateTo("ElectionNightScreen");
   }, [
     currentSetup,
     actions,
     availableElectionTypes,
-    availableCities,
     availableRegions,
     selectedCountry,
   ]);
@@ -551,6 +670,7 @@ const ElectionSimulatorScreen = () => {
                       onChange={handleSetupFieldChange}
                     />
                   </div>
+
                   <div className="config-group">
                     <label>Country:</label>
                     <select
@@ -587,15 +707,24 @@ const ElectionSimulatorScreen = () => {
                       name="selectedCityId"
                       value={currentSetup.selectedCityId}
                       onChange={handleSetupFieldChange}
-                      disabled={!availableCities.length}
+                      disabled={!!currentSetup.customCity}
                     >
                       <option value="">Select City</option>
+                      <option value="_CREATE_NEW_">
+                        -- Create New City --
+                      </option>
                       {availableCities.map((c) => (
                         <option key={c.id} value={c.id}>
                           {c.name}
                         </option>
                       ))}
                     </select>
+                    {currentSetup.customCity && (
+                      <span className="custom-city-display">
+                        Using custom city:{" "}
+                        <strong>{currentSetup.customCity.name}</strong>
+                      </span>
+                    )}
                   </div>
                   <div className="config-group">
                     <label>Population:</label>
@@ -608,14 +737,15 @@ const ElectionSimulatorScreen = () => {
                     />
                   </div>
                   <div className="config-group">
-                    <label>Election Type:</label>
+                    <label>Election Type(s) (Ctrl+Click for multiple):</label>
                     <select
                       name="electionType"
+                      multiple={true}
                       value={currentSetup.electionType}
                       onChange={handleSetupFieldChange}
                       disabled={!availableElectionTypes.length}
+                      className="multiselect-listbox"
                     >
-                      <option value="">Select Type</option>
                       {availableElectionTypes.map((t) => (
                         <option key={t.id} value={t.id}>
                           {t.displayName || t.id}
@@ -639,32 +769,46 @@ const ElectionSimulatorScreen = () => {
             )}
             {activeSetupTab === "parties" && (
               <div className="tab-pane parties-tab">
-                {currentSetup.parties.length > 0 && (
+                <h3>Party Configuration</h3>
+                {currentSetup.parties.length > 0 ? (
                   <ul className="party-list">
                     {currentSetup.parties.map((p) => (
                       <li key={p.id} className="party-list-item">
-                        <span
-                          className="party-color-swatch"
-                          style={{ backgroundColor: p.color }}
-                        ></span>
-                        {p.name} ({p.ideology})
-                        <div className="party-actions">
-                          <button
-                            className="action-button small-button"
-                            onClick={() => handleEditParty(p)}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            className="button-delete small-button"
-                            onClick={() => handleDeleteParty(p.id)}
-                          >
-                            Del
-                          </button>
+                        <div className="party-bar-background">
+                          <div
+                            className="party-bar-foreground"
+                            style={{
+                              width: `${p.popularity || 10}%`,
+                              backgroundColor: p.color,
+                            }}
+                          ></div>
+                          <div className="party-bar-content">
+                            <span className="party-bar-text">
+                              {p.name} ({p.ideology})
+                            </span>
+                            <div className="party-actions">
+                              <button
+                                className="action-button small-button"
+                                onClick={() => handleEditParty(p)}
+                              >
+                                Edit
+                              </button>
+                              <button
+                                className="button-delete small-button"
+                                onClick={() => handleDeleteParty(p.id)}
+                              >
+                                Del
+                              </button>
+                            </div>
+                          </div>
                         </div>
                       </li>
                     ))}
                   </ul>
+                ) : (
+                  <p className="help-text">
+                    No parties configured. Generate or create parties to begin.
+                  </p>
                 )}
                 <div className="party-controls">
                   <button
@@ -684,45 +828,93 @@ const ElectionSimulatorScreen = () => {
             )}
             {activeSetupTab === "candidates" && (
               <div className="tab-pane candidates-tab">
-                <h4>Simulated Candidates</h4>
-                {currentSetup.candidates.length > 0 && (
-                  <ul className="candidate-list">
-                    {currentSetup.candidates.map((c) => (
-                      <li key={c.id} className="candidate-list-item">
-                        <span className="candidate-name">{c.name}</span> (
-                        {c.partyName}) - Poll: {c.polling?.toFixed(1)}%{" "}
-                        <button
-                          className="button-delete small-button"
-                          onClick={() => handleRemoveCandidate(c.id)}
-                        >
-                          X
-                        </button>
-                      </li>
+                <h3>Candidate Assignment</h3>
+                <div className="candidate-race-selector">
+                  <label>Manage Candidates For Race:</label>
+                  <select
+                    value={activeElectionInCandidateTab}
+                    onChange={(e) =>
+                      setActiveElectionInCandidateTab(e.target.value)
+                    }
+                    disabled={selectedElectionTypesDetails.length === 0}
+                  >
+                    <option value="" disabled>
+                      -- Select a Race --
+                    </option>
+                    {selectedElectionTypesDetails.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.displayName || t.id}
+                      </option>
                     ))}
-                  </ul>
-                )}
-                <div className="candidate-controls">
-                  <button
-                    className="action-button"
-                    onClick={handleGenerateCandidates}
-                    disabled={currentSetup.parties.length === 0}
-                  >
-                    Generate AI Candidates
-                  </button>
-                  <button
-                    className="action-button"
-                    onClick={() => setIsAddPoliticianModalOpen(true)}
-                    disabled={currentSetup.parties.length === 0}
-                  >
-                    Add Saved Politician
-                  </button>
-                  <button
-                    className="menu-button"
-                    onClick={() => actions.navigateTo("PoliticianCreator")}
-                  >
-                    Create New Politician
-                  </button>
+                  </select>
                 </div>
+
+                {activeElectionInCandidateTab ? (
+                  <>
+                    {(
+                      currentSetup.candidatesByElection[
+                        activeElectionInCandidateTab
+                      ] || []
+                    ).length > 0 ? (
+                      <ul className="candidate-list">
+                        {(
+                          currentSetup.candidatesByElection[
+                            activeElectionInCandidateTab
+                          ] || []
+                        ).map((c) => (
+                          <li key={c.id} className="candidate-list-item">
+                            <span
+                              className="candidate-party-swatch"
+                              style={{
+                                backgroundColor: c.partyColor || "#888",
+                              }}
+                            ></span>
+                            <span className="candidate-name">{c.name}</span>
+                            <span className="candidate-party-name">
+                              ({c.partyName})
+                            </span>
+                            <span className="candidate-poll-score">
+                              Poll: {c.polling?.toFixed(1)}%
+                            </span>
+                            <button
+                              className="button-delete small-button"
+                              onClick={() =>
+                                handleRemoveCandidateFromRace(c.id)
+                              }
+                            >
+                              X
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="help-text">
+                        No candidates assigned to this race yet.
+                      </p>
+                    )}
+                    <div className="candidate-controls">
+                      <button
+                        className="action-button"
+                        onClick={handleGenerateCandidatesForRace}
+                        disabled={currentSetup.parties.length === 0}
+                      >
+                        Generate AI Candidates
+                      </button>
+                      <button
+                        className="action-button"
+                        onClick={() => setIsAddPoliticianModalOpen(true)}
+                        disabled={currentSetup.parties.length === 0}
+                      >
+                        Add Saved Politician
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <p className="help-text">
+                    Select one or more election types in the "General" tab, then
+                    select a race from the dropdown above to assign candidates.
+                  </p>
+                )}
               </div>
             )}
             {activeSetupTab === "electorate" && (
@@ -825,6 +1017,16 @@ const ElectionSimulatorScreen = () => {
       </div>
 
       <Modal
+        isOpen={isCityCreatorModalOpen}
+        onClose={() => setIsCityCreatorModalOpen(false)}
+        title="Create a New City"
+      >
+        <CityCreatorModalContent
+          onSave={handleCreateCity}
+          onCancel={() => setIsCityCreatorModalOpen(false)}
+        />
+      </Modal>
+      <Modal
         isOpen={isPartyEditorModalOpen}
         onClose={() => setIsPartyEditorModalOpen(false)}
         title={editingParty ? `Edit ${editingParty.name}` : "Create New Party"}
@@ -838,13 +1040,16 @@ const ElectionSimulatorScreen = () => {
       <Modal
         isOpen={isAddPoliticianModalOpen}
         onClose={() => setIsAddPoliticianModalOpen(false)}
-        title="Add Saved Politician"
+        title="Add Saved Politician to Race"
       >
         <AddPoliticianModalContent
           savedPoliticians={savedPoliticians}
-          currentCandidates={currentSetup.candidates}
+          currentCandidates={
+            currentSetup.candidatesByElection[activeElectionInCandidateTab] ||
+            []
+          }
           parties={currentSetup.parties}
-          onAdd={handleAddPoliticians}
+          onAdd={handleAddPoliticiansToRace}
         />
       </Modal>
       <Modal
@@ -867,6 +1072,36 @@ const ElectionSimulatorScreen = () => {
 };
 
 // --- MODAL COMPONENTS ---
+
+const CityCreatorModalContent = ({ onSave, onCancel }) => {
+  const [cityName, setCityName] = useState("");
+
+  const handleSave = () => {
+    onSave(cityName);
+  };
+
+  return (
+    <div className="city-creator-modal-content">
+      <div className="form-group">
+        <label>New City Name:</label>
+        <input
+          type="text"
+          value={cityName}
+          onChange={(e) => setCityName(e.target.value)}
+          placeholder="e.g., Springfield"
+        />
+      </div>
+      <div className="modal-actions-override">
+        <button className="action-button" onClick={handleSave}>
+          Create and Use City
+        </button>
+        <button className="menu-button" onClick={onCancel}>
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+};
 
 const PartyEditorModalContent = ({ party, onSave, onCancel }) => {
   const [name, setName] = useState(party?.name || "");
@@ -959,7 +1194,9 @@ const AddPoliticianModalContent = ({
   const [selectedPoliticians, setSelectedPoliticians] = useState({});
 
   const availablePoliticians = useMemo(() => {
-    const currentCandidateIds = new Set(currentCandidates.map((c) => c.id));
+    const currentCandidateIds = new Set(
+      (currentCandidates || []).map((c) => c.id)
+    );
     return savedPoliticians.filter((p) => !currentCandidateIds.has(p.id));
   }, [savedPoliticians, currentCandidates]);
 

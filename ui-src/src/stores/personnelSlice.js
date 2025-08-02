@@ -239,5 +239,23 @@ export const createPersonnelSlice = (set, get) => ({
         type: "info",
       });
     },
+    getCityCouncilMembers: () => {
+      const { activeCampaign } = get();
+      if (
+        !activeCampaign?.governmentOffices ||
+        !activeCampaign?.startingCity?.name
+      ) {
+        return [];
+      }
+
+      const councilOffice = activeCampaign.governmentOffices.find(
+        (office) =>
+          office.level === "local_city" &&
+          office.officeNameTemplateId.includes("council") &&
+          office.officeName.includes(activeCampaign.startingCity.name)
+      );
+
+      return councilOffice?.members || [];
+    },
   },
 });

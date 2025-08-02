@@ -11,11 +11,7 @@ const PolicyVoteDetailsModal = ({ isOpen, onClose, proposalData }) => {
 
   // Memoize processed vote data to avoid re-calculation on every render
   const voteBreakdown = useMemo(() => {
-    if (
-      !proposalData ||
-      !proposalData.votes ||
-      !proposalData.councilVotesCast
-    ) {
+    if (!proposalData || !proposalData.councilVotesCast) {
       return { yea: [], nay: [], abstain: [], byParty: {} };
     }
 
@@ -57,6 +53,27 @@ const PolicyVoteDetailsModal = ({ isOpen, onClose, proposalData }) => {
           }
         }
       }
+
+      const byParty = {};
+      Object.entries(proposalData.councilVotesCast).forEach(
+        ([memberId, vote]) => {
+          const details = getCouncilMemberDetails(memberId);
+          if (!details.partyName) return;
+
+          if (!byParty[details.partyName]) {
+            byParty[details.partyName] = {
+              name: details.partyName,
+              color: details.partyColor,
+              yea: 0,
+              nay: 0,
+              abstain: 0,
+            };
+          }
+          if (vote === "yea") byParty[details.partyName].yea++;
+          else if (vote === "nay") byParty[details.partyName].nay++;
+          else if (vote === "abstain") byParty[details.partyName].abstain++;
+        }
+      );
 
       // If no matching member/holder is found after checking all offices
       return {

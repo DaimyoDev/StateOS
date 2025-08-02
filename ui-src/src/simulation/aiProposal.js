@@ -302,18 +302,25 @@ const calculateDetailedFiscalScore = (
 const getLockedTargets = (proposedLegislationThisCycle, currentAiId) => {
   const budgetLines = new Set();
   const taxRates = new Set();
-  const proposalsByOthers = (proposedLegislationThisCycle || []).filter(
-    (p) => p.proposerId !== currentAiId
+
+  // Filter out bills proposed by the current AI
+  const billsByOthers = (proposedLegislationThisCycle || []).filter(
+    (b) => b.proposerId !== currentAiId
   );
 
-  proposalsByOthers.forEach((leg) => {
-    const policyDef = CITY_POLICIES.find((p) => p.id === leg.policyId);
+  // Flatten the list of all policies from all other bills
+  const policiesByOthers = billsByOthers.flatMap((b) => b.policies);
+
+  policiesByOthers.forEach((policyInBill) => {
+    // We need the full policy definition to check its details
+    const policyDef = CITY_POLICIES.find((p) => p.id === policyInBill.policyId);
     if (policyDef?.isParameterized && policyDef.parameterDetails) {
       const pDetails = policyDef.parameterDetails;
       if (pDetails.targetBudgetLine) budgetLines.add(pDetails.targetBudgetLine);
       if (pDetails.targetTaxRate) taxRates.add(pDetails.targetTaxRate);
     }
   });
+
   return { budgetLines, taxRates };
 };
 
@@ -327,7 +334,7 @@ function getValidPolicyCandidates(
   aiPolitician,
   allPolicyDefs,
   activeLegislation,
-  proposedLegislationThisCycle
+  proposedLegislationThisCycle // This is now an array of BILLS
 ) {
   const trulyBlockingActivePolicyIds = new Set(
     (activeLegislation || [])
@@ -353,15 +360,19 @@ function getValidPolicyCandidates(
     aiPolitician.id
   );
 
-  const validPolicies = allPolicyDefs.filter((policy) => {
-    // Filter 1: Is already active or proposed this cycle?
-    if (trulyBlockingActivePolicyIds.has(policy.id)) return false;
-    if (
-      (proposedLegislationThisCycle || []).some((p) => p.policyId === policy.id)
+  const proposedPolicyIdsInBills = new Set(
+    (proposedLegislationThisCycle || []).flatMap((bill) =>
+      bill.policies.map((p) => p.policyId)
     )
-      return false;
+  );
 
-    // Filter 2: Is its specific target already locked by another proposal this cycle?
+  const validPolicies = allPolicyDefs.filter((policy) => {
+    if (trulyBlockingActivePolicyIds.has(policy.id)) return false;
+
+    // Check if this policy ID is already in a proposed bill
+    if (proposedPolicyIdsInBills.has(policy.id)) return false;
+
+    // ... (the rest of the function for checking locked targets remains the same)
     if (policy.isParameterized && policy.parameterDetails) {
       const pDetails = policy.parameterDetails;
       if (
@@ -778,7 +789,7 @@ function selectOptimalParameter(
  * The primary decision-making function for an AI politician deciding which policy to propose.
  * This is the refactored, high-level orchestrator.
  */
-export const decideAIPolicyProposal = (
+export const decideAndAuthorAIBill = (
   aiPolitician,
   availablePolicyIds,
   cityStats,
@@ -786,22 +797,20 @@ export const decideAIPolicyProposal = (
   proposedLegislation
 ) => {
   if (!aiPolitician || !availablePolicyIds?.length || !cityStats?.budget) {
-    console.warn("[AI Propose] Missing critical data.");
-    return null;
+    return null; // Not enough data to make a decision
   }
 
-  // **PHASE 1: FILTERING**
+  // --- PHASE 1: FILTERING & SCORING (Re-uses existing logic) ---
   const candidatePolicies = getValidPolicyCandidates(
     aiPolitician,
     CITY_POLICIES.filter((p) => availablePolicyIds.includes(p.id)),
     activeLegislation,
     proposedLegislation
   );
-  if (candidatePolicies.length === 0) return null;
+  if (candidatePolicies.length === 0) return null; // No valid policies to choose from
 
-  // **PHASE 2: SCORING**
   const financialState = getFinancialState(cityStats);
-  const contextualPendingBudgetAdjustments = new Map(); // You would calculate this from proposedLegislation
+  const contextualPendingBudgetAdjustments = new Map(); // This can be enhanced later
 
   const scoredPolicies = candidatePolicies
     .map((policy) => ({
@@ -817,35 +826,56 @@ export const decideAIPolicyProposal = (
     .sort((a, b) => b.proposalScore - a.proposalScore);
 
   const bestPolicy = scoredPolicies[0];
-  // Set a dynamic threshold to prevent AIs from proposing bad policies, especially in bad financial times
-  const proposalThreshold = financialState.hasDireFinances ? 0.1 : 0.8;
-  if (bestPolicy.proposalScore < proposalThreshold) return null;
-
-  // **PHASE 3: PARAMETER SELECTION**
-  let chosenParameters = null;
-  if (bestPolicy.isParameterized) {
-    chosenParameters = selectOptimalParameter(
-      bestPolicy,
-      aiPolitician,
-      cityStats,
-      financialState,
-      contextualPendingBudgetAdjustments
-    );
+  const proposalThreshold = financialState.hasDireFinances ? 0.1 : 1.2; // Adjusted threshold
+  if (!bestPolicy || bestPolicy.proposalScore < proposalThreshold) {
+    return null; // No single policy is good enough to even start a bill
   }
 
+  // --- PHASE 2: BILL AUTHORING ---
+  const billPolicies = [bestPolicy]; // The best policy is always the cornerstone of the bill
+  const billTheme = bestPolicy.area; // The policy area of the best policy sets the bill's theme
+
+  // Determine how many additional policies to try and add (e.g., 0 to 2)
+  const additionalPoliciesCount = Math.floor(Math.random() * 3);
+
+  // Find other high-scoring policies that match the bill's theme
+  if (additionalPoliciesCount > 0) {
+    const compatiblePolicies = scoredPolicies
+      .filter(
+        (p) =>
+          p.id !== bestPolicy.id && // Not the one we already have
+          p.area === billTheme && // Must match the theme
+          p.proposalScore > proposalThreshold * 0.75 // Must still be a decent policy
+      )
+      .slice(0, additionalPoliciesCount); // Take the best compatible ones
+
+    billPolicies.push(...compatiblePolicies);
+  }
+
+  // --- PHASE 3: PARAMETER SELECTION FOR THE WHOLE BILL ---
+  const finalBillPolicies = billPolicies.map((policy) => {
+    let chosenParameters = null;
+    if (policy.isParameterized) {
+      chosenParameters = selectOptimalParameter(
+        policy,
+        aiPolitician,
+        cityStats,
+        financialState,
+        contextualPendingBudgetAdjustments
+      );
+    }
+    return {
+      policyId: policy.id,
+      chosenParameters: chosenParameters,
+    };
+  });
+
+  if (finalBillPolicies.length === 0) return null;
+
+  // Return the array of policies ready to be put into a bill
   return {
-    policyId: bestPolicy.id,
-    chosenParameters: chosenParameters,
-    debug: {
-      // Keeping debug info is helpful
-      score: bestPolicy.proposalScore,
-      financialState: {
-        hasDireFinances: financialState.hasDireFinances,
-        isStrainedFinances: financialState.isStrainedFinances,
-        hasLargeSurplus: financialState.hasLargeSurplus,
-        isComfortableFinancially: financialState.isComfortableFinancially,
-      },
-    },
+    policies: finalBillPolicies,
+    theme: billTheme,
   };
 };
 

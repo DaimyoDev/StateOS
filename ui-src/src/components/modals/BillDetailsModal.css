@@ -1,0 +1,87 @@
+.bill-details-content {
+  padding: 10px 25px 25px 25px;
+  font-family: var(--font-main);
+  max-height: 75vh;
+  overflow-y: auto;
+}
+
+.bill-details-content h3 {
+  font-family: var(--font-heading);
+  color: var(--accent-color);
+  text-align: center;
+  font-size: 1.5em;
+  margin-bottom: 5px;
+}
+
+.bill-details-content .proposer-info {
+  text-align: center;
+  font-style: italic;
+  color: var(--secondary-text);
+  margin-top: 0;
+  margin-bottom: 25px;
+}
+
+.details-section {
+  margin-bottom: 25px;
+}
+
+.details-section h4 {
+  font-size: 1.2em;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.policy-list-briefing {
+  list-style: disc;
+  padding-left: 20px;
+  margin: 0;
+}
+
+.policy-list-briefing li {
+  margin-bottom: 8px;
+  font-size: 0.95em;
+}
+
+.opinion-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.opinion-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px dashed var(--border-color);
+}
+
+.opinion-list li:last-child {
+  border-bottom: none;
+}
+
+.opinion-politician {
+  font-weight: 500;
+}
+
+.opinion-stance {
+  font-weight: bold;
+  font-size: 0.9em;
+}
+
+/* Classes for stance colors */
+.stance-yea {
+  color: var(--success-text);
+}
+.stance-nay {
+  color: var(--error-text);
+}
+.stance-undecided {
+  color: var(--secondary-text);
+}
+
+.bill-details-content .action-button {
+  display: block;
+  margin: 20px auto 0 auto;
+}

@@ -318,61 +318,73 @@ const calculateProposerRelationshipScore = (
 
 export const decideAIVote = (
   aiPolitician,
-  proposal,
+  bill, // The argument is now a 'bill' object
   cityStats,
+  activeLegislation,
+  proposedLegislation,
   governmentOffices
 ) => {
-  // Find the full policy definition
-  const policyDef = CITY_POLICIES.find((p) => p.id === proposal.policyId); //
-  if (!policyDef) {
-    console.warn(
-      `[AI Voting] Policy definition not found for ID: ${proposal.policyId}`
-    );
+  if (!bill || !bill.policies || bill.policies.length === 0) {
+    console.warn(`[AI Voting] Bill object is invalid or has no policies.`);
     return "abstain";
   }
 
-  let voteScore = 0;
-
-  // 1. Ideological Alignment
-  voteScore += voteScore +=
-    calculateIdeologicalAlignmentScore(aiPolitician, policyDef, proposal) * 2.0; // High weight // High weight
-
-  // 2. Policy Focus Alignment
-  voteScore +=
-    calculatePolicyFocusAlignmentScore(aiPolitician, policyDef) * 1.0; // Medium weight
-
-  // 3. Addressing City Issues
-  voteScore += calculateCityIssueAddressingScore(cityStats, policyDef) * 1.8; // High weight
-
-  // 4. Financial Impact
+  let totalVoteScore = 0;
   const financialState = getFinancialState(cityStats);
-  voteScore +=
-    calculateFinancialImpactScore(
-      aiPolitician,
-      policyDef,
-      proposal.chosenParameters,
-      cityStats,
-      financialState
-    ) * 1.5; // High weight
 
-  // 5. Proposer Relationship (optional, currently minimal)
-  voteScore +=
-    calculateProposerRelationshipScore(
-      aiPolitician,
-      proposal,
-      governmentOffices
-    ) * 0.2; // Low weight
+  // Iterate over each policy within the bill and aggregate the scores
+  for (const policyInBill of bill.policies) {
+    const policyDef = CITY_POLICIES.find((p) => p.id === policyInBill.policyId);
 
-  // Add a small random factor to introduce variability
-  voteScore += (Math.random() - 0.5) * 0.1; // -0.05 to +0.05
+    if (!policyDef) {
+      console.warn(
+        `[AI Voting] Policy definition not found for ID: ${policyInBill.policyId} within bill "${bill.name}"`
+      );
+      continue; // Skip this policy and move to the next one
+    }
 
-  // Decision thresholds
-  const YEA_THRESHOLD = 0.8; // Policies with score above this will be voted 'yea'
-  const NAY_THRESHOLD = -0.3; // Policies with score below this will be voted 'nay'
+    let policyScore = 0;
+    // 1. Ideological Alignment
+    policyScore +=
+      calculateIdeologicalAlignmentScore(
+        aiPolitician,
+        policyDef,
+        policyInBill
+      ) * 2.0;
+    // 2. Policy Focus
+    policyScore +=
+      calculatePolicyFocusAlignmentScore(aiPolitician, policyDef) * 1.0;
+    // 3. City Issues
+    policyScore +=
+      calculateCityIssueAddressingScore(cityStats, policyDef) * 1.8;
+    // 4. Financial Impact
+    policyScore +=
+      calculateFinancialImpactScore(
+        aiPolitician,
+        policyDef,
+        policyInBill.chosenParameters,
+        cityStats,
+        financialState
+      ) * 1.5;
 
-  if (voteScore >= YEA_THRESHOLD) {
+    totalVoteScore += policyScore;
+  }
+
+  // 5. Proposer Relationship (calculated once for the whole bill)
+  totalVoteScore +=
+    calculateProposerRelationshipScore(aiPolitician, bill, governmentOffices) *
+    0.2;
+
+  // Add a small random factor to the final bill score
+  totalVoteScore += (Math.random() - 0.5) * 0.1;
+
+  // Decision thresholds - may need tweaking now that scores are aggregated
+  const YEA_THRESHOLD = 1.0 * bill.policies.length; // Scale threshold by number of policies
+  const NAY_THRESHOLD = -0.5 * bill.policies.length;
+
+  if (totalVoteScore >= YEA_THRESHOLD) {
     return "yea";
-  } else if (voteScore <= NAY_THRESHOLD) {
+  } else if (totalVoteScore <= NAY_THRESHOLD) {
     return "nay";
   } else {
     return "abstain";

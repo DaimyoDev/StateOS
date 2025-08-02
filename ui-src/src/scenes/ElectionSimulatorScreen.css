@@ -193,8 +193,7 @@
 
 /* --- Party Management Styling (within 'parties-tab') --- */
 .party-management {
-  /* No border needed here as it's within a tab-pane already */
-  padding: 0; /* Remove previous padding if it had one */
+  padding: 0;
 }
 
 .party-management h4 {
@@ -210,27 +209,84 @@
   list-style: none;
   padding: 0;
   margin: 10px 0;
-}
-
-.party-list-item {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  gap: 8px; /* Add space between party bars */
+}
+
+/* New styles for the party popularity bar */
+.party-list-item {
+  width: 100%;
+}
+
+.party-bar-background {
+  position: relative;
+  width: 100%;
+  height: 36px; /* Set a fixed height for the bar */
+  background-color: var(--progress-track-bg, #e0e0e0);
+  border-radius: var(--element-radius);
+  overflow: hidden; /* Keep foreground bar contained */
+  border: 1px solid var(--border-color-light);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.party-bar-foreground {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  border-radius: var(--element-radius);
+  transition: width 0.3s ease-in-out;
+  opacity: 0.7; /* Make it slightly transparent to see text better */
+}
+
+.party-bar-content {
+  position: relative; /* Sit on top of the foreground/background */
+  z-index: 2;
+  display: flex;
   justify-content: space-between;
-  padding: 8px 0;
-  border-bottom: 1px dotted var(--border-color-light);
+  align-items: center;
+  padding: 0 12px;
+  height: 100%;
+  color: var(--primary-text); /* Ensure text is readable */
 }
 
-.party-list-item:last-child {
-  border-bottom: none;
+.party-bar-text {
+  font-weight: bold;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2); /* Add shadow for readability */
 }
 
-.party-color-swatch {
-  width: 20px;
-  height: 20px;
-  border-radius: 4px;
-  margin-right: 10px;
-  border: 1px solid var(--border-color-dark);
-  flex-shrink: 0; /* Prevent it from shrinking */
+/* Ensure party actions (edit/del buttons) are aligned */
+.party-actions {
+  display: flex;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+/* --- Other CSS --- */
+
+/* Add display for the custom city text */
+.custom-city-display {
+  display: block;
+  margin-top: 8px;
+  padding: 6px 10px;
+  background-color: var(--highlight-bg);
+  border-radius: var(--element-radius);
+  font-size: 0.9em;
+  color: var(--accent-color);
+  border: 1px solid var(--accent-border-color);
+}
+
+/* Add some styles for the candidate pool help text */
+.help-text {
+  font-size: 0.9em;
+  font-style: italic;
+  color: var(--secondary-text);
+  background-color: var(--secondary-bg);
+  padding: 10px;
+  border-radius: var(--element-radius);
+  margin-bottom: 15px;
+  border-left: 3px solid var(--accent-color);
 }
 
 .party-list-item > span {
@@ -322,4 +378,17 @@
   margin-top: 20px;
   padding-top: 15px;
   border-top: 1px solid var(--border-color-light);
+}
+
+.multiselect-listbox {
+  height: 150px; /* Give the multi-select a decent height */
+  background-color: var(
+    --input-bg,
+    #fdfdfd
+  ) !important; /* Ensure bg color is applied */
+}
+
+.config-group input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
 }
