@@ -248,5 +248,6 @@ export const createUISlice = (set, get) => ({
       set({ viewingBillDetails: bill, isBillDetailsModalOpen: true }),
     closeBillDetailsModal: () =>
       set({ viewingBillDetails: null, isBillDetailsModalOpen: false }),
+    clearVoteQueue: () => set({ voteQueue: [] }),
   },
 });

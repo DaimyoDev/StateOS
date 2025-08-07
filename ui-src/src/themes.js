@@ -18,47 +18,47 @@ export const themes = {
   modernKyoto: {
     name: "Modern Kyoto",
     colors: {
-      "--primary-bg": "#FBF6F0", // Very Light Cream/Warm Off-White (Washi paper)
-      "--secondary-bg": "#F2EAE0", // Slightly darker, textured cream
-      "--ui-panel-bg": "#FFFFFF", // Clean white panels
+      "--primary-bg": "#FBF6F0",
+      "--secondary-bg": "#F2EAE0",
+      "--ui-panel-bg": "#FFFFFF",
 
-      "--button-bg": "#5A6A8C", // Muted Indigo/Slate Blue
+      "--button-bg": "#5A6A8C",
       "--button-hover-bg": "#435273",
       "--button-active-bg": "#303D59",
       "--button-text": "#FFFFFF",
 
-      "--primary-text": "#333333", // Dark Charcoal Grey (Sumi ink)
-      "--secondary-text": "#767676", // Medium Grey
-      "--accent-color": "#E6A3AD", // Muted Sakura Pink
-      "--accent-text": "#FFFFFF", // White on pink
+      "--primary-text": "#333333",
+      "--secondary-text": "#767676",
+      "--accent-color": "#E6A3AD",
+      "--accent-text": "#FFFFFF",
       "--rgb-accent-color": "230, 163, 173",
 
-      "--highlight-bg": "rgba(230, 163, 173, 0.15)", // Faint pink highlight
-      "--border-color": "#D8CFC4", // Light Bamboo/Wood tone border
-      "--accent-border-color": "#E6A3AD", // Pink for focus
+      "--highlight-bg": "rgba(230, 163, 173, 0.15)",
+      "--border-color": "#D8CFC4",
+      "--accent-border-color": "#E6A3AD",
 
       "--error-text": "#D9534F",
       "--success-text": "#5CB85C",
       "--disabled-bg": "#E0E0E0",
       "--disabled-text": "#A0A0A0",
 
-      "--button-action-bg": "#E6A3AD", // Sakura Pink for primary actions
+      "--button-action-bg": "#E6A3AD",
       "--button-action-hover-bg": "#D98794",
       "--button-action-text": "#FFFFFF",
 
-      "--button-delete-bg": "#767676", // Medium Grey for delete
+      "--button-delete-bg": "#767676",
       "--button-delete-hover-bg": "#5E5E5E",
       "--button-delete-text": "#FFFFFF",
 
-      "--input-bg": "#F2EAE0", // Light cream inputs
+      "--input-bg": "#F2EAE0",
       "--input-text": "#333333",
       "--input-placeholder-text": "#A0A0A0",
       "--progress-track-bg": "#D8CFC4",
 
-      "--map-background-color": "#F0F4F8", // Light cool grey for map contrast
-      "--map-region-default-fill": "#B0C4DE", // Light steel blue
+      "--map-background-color": "#F0F4F8",
+      "--map-region-default-fill": "#B0C4DE",
       "--map-region-border": "#FFFFFF",
-      "--map-region-hover-fill": "rgba(230, 163, 173, 0.4)", // Pink hover
+      "--map-region-hover-fill": "rgba(230, 163, 173, 0.4)",
     },
     fonts: {
       "--font-main": fontInter, // Inter for readability

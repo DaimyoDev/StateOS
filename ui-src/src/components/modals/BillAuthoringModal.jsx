@@ -1,17 +1,14 @@
 import React, { useState, useMemo } from "react";
 import Modal from "./Modal";
 import useGameStore from "../../store";
-import { POLICY_AREAS } from "../../data/policyDefinitions";
-import "./BillAuthoringModal.css"; // Create this new CSS file
-import { shallow } from "zustand/shallow"; // 1. Import shallow
+import "./BillAuthoringModal.css";
 
 const BillAuthoringModal = ({ isOpen, onClose }) => {
-  const { availablePoliciesForProposal, savedBillTemplates } = useGameStore(
-    (state) => ({
-      availablePoliciesForProposal: state.availablePoliciesForProposal,
-      savedBillTemplates: state.savedBillTemplates,
-    }),
-    shallow // This tells Zustand to only re-render if the values inside the object change
+  const availablePoliciesForProposal = useGameStore(
+    (state) => state.availablePoliciesForProposal
+  );
+  const savedBillTemplates = useGameStore(
+    (state) => state.savedBillTemplates || []
   );
   const { proposeBill, saveBillTemplate, addToast } = useGameStore(
     (state) => state.actions

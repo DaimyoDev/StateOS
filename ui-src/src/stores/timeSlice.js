@@ -209,6 +209,18 @@ export const createTimeSlice = (set, get) => {
           }
         }
 
+        const pendingVoteQueue = get().voteQueue;
+        if (pendingVoteQueue && pendingVoteQueue.length > 0) {
+          const billsToProcess = [...pendingVoteQueue]; // Process a copy
+          billsToProcess.forEach((billId) => {
+            // Instantly run all AI votes and finalize the result for each bill
+            get().actions.runAllAIVotesForBill?.(billId);
+            get().actions.finalizeBillVote?.(billId); // This action already creates a toast
+          });
+          // Clear the queue now that all votes have been processed
+          get().actions.clearVoteQueue?.();
+        }
+
         // --- PHASE 2: Perform the primary state update for date advancement & player politician ---
         set((state) => {
           let updatedCampaign = { ...state.activeCampaign }; // Start update with current state

@@ -11,7 +11,6 @@ import { decideAIVote } from "../simulation/aiVoting.js";
 const getInitialLegislationState = () => ({
   proposedBills: [],
   activeLegislation: [],
-  availablePoliciesForProposal: [...CITY_POLICIES],
   savedBillTemplates: [],
 });
 
@@ -49,6 +48,7 @@ const generateAIBillName = (currentYear) => {
 
 export const createLegislationSlice = (set, get) => ({
   ...getInitialLegislationState(),
+  availablePoliciesForProposal: CITY_POLICIES,
 
   actions: {
     resetLegislationState: () => set(getInitialLegislationState()),

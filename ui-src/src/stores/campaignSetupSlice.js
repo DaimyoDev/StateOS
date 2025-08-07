@@ -89,8 +89,6 @@ export const createCampaignSetupSlice = (set, get) => {
           currentYear: 2025,
         });
 
-        playerPoliticianData.campaignFunds = 10000;
-
         setLoadingGame(true, "Setting up media and special interests...");
         await pause(20);
         const regionalLocationName = currentRegionData
