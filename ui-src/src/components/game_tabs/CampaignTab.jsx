@@ -7,6 +7,7 @@ import {
   calculateAdultPopulation,
 } from "../../utils/generalUtils";
 import { STAFF_ROLES_INFO } from "../../data/campaignStaffData";
+import { POLICY_QUESTIONS } from "../../data/policyData";
 
 // --- SUB-TAB COMPONENTS ---
 
@@ -131,84 +132,91 @@ const CampaignOverviewSubTab = ({ campaignData, openViewPoliticianModal }) => {
   );
 };
 
-const StaffSubTab = ({ campaignData, actions }) => {
-  const politician = campaignData.politician || {};
-  const hiredStaff = politician.hiredStaff || [];
-  const campaignFunds = politician.campaignFunds || 0;
+const StaffSubTab = () => {
+  // This now reads the CORRECT list of hired staff from the unified personnelSlice!
+  const hiredStaff = useGameStore((state) => state.hiredStaff || []);
+  const { setStaffDelegatedTask } = useGameStore((state) => state.actions);
 
-  const availableRolesToHire = Object.values(STAFF_ROLES_INFO).filter(
-    (roleInfo) => !hiredStaff.some((staff) => staff.roleId === roleInfo.id)
-  );
+  const getTaskOptionsForRole = (role) => {
+    const commonTasks = [{ value: "idle", label: "Idle (Assist Player)" }];
+    switch (role) {
+      case "Campaign Manager":
+        return [
+          ...commonTasks,
+          { value: "oversee_operations", label: "Oversee Operations" },
+        ];
+      case "Communications Director":
+        return [
+          ...commonTasks,
+          { value: "run_advertising", label: "Run Advertising" },
+          { value: "media_outreach", label: "Media Outreach" },
+        ];
+      case "Fundraising Manager":
+        return [
+          ...commonTasks,
+          { value: "manage_donors", label: "Manage Donors" },
+        ];
+      case "Policy Advisor":
+        return [
+          ...commonTasks,
+          { value: "research_issues", label: "Research Issues" },
+        ];
+      default:
+        return commonTasks;
+    }
+  };
 
   return (
     <div className="sub-tab-content">
       <section className="info-card">
-        <h3>Campaign Staff</h3>
+        <h3>Campaign Staff Management</h3>
+        <p>
+          Your hired team. Assign their primary focus here. Staff assigned to a
+          task can perform related major actions without costing you time. Idle
+          staff provide boosts to your manual actions.
+        </p>
         {hiredStaff.length > 0 ? (
           <ul className="staff-list">
             {hiredStaff.map((staff) => (
               <li key={staff.id} className="staff-list-item">
-                <span>
-                  <strong>
-                    {staff.roleName || STAFF_ROLES_INFO[staff.roleId]?.name}
-                  </strong>
-                  (Cost: $
-                  {(
-                    staff.costPerWeek ||
-                    STAFF_ROLES_INFO[staff.roleId]?.costPerWeek
-                  )?.toLocaleString()}
-                  /week)
-                </span>
-                <button
-                  className="action-button critical small-button"
-                  onClick={() => actions.fireStaff?.(staff.id)}
-                >
-                  Dismiss
-                </button>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p>You have not hired any campaign staff yet.</p>
-        )}
-      </section>
-      <section className="info-card">
-        <h3>Hire Staff</h3>
-        {availableRolesToHire.length > 0 ? (
-          <ul className="staff-list hire-list">
-            {" "}
-            {/* Added hire-list for potential distinct styling */}
-            {availableRolesToHire.map((roleInfo) => (
-              <li key={roleInfo.id} className="staff-list-item">
-                <div className="staff-hire-info">
-                  <strong>{roleInfo.name}</strong>
-                  <p className="staff-description">{roleInfo.description}</p>
-                  <p className="staff-cost">
-                    Cost: ${roleInfo.costPerWeek?.toLocaleString()}/week
-                  </p>
+                <div className="staff-info">
+                  <span className="staff-name">
+                    {staff.name}{" "}
+                    <span className="staff-role">({staff.role})</span>
+                  </span>
+                  <span className="staff-details">
+                    STR: {staff.attributes.strategy} | COM:{" "}
+                    {staff.attributes.communication} | FUN:{" "}
+                    {staff.attributes.fundraising} | LOY:{" "}
+                    {staff.attributes.loyalty}
+                  </span>
+                  <span className="staff-salary">
+                    Salary: ${staff.salary.toLocaleString()}/month
+                  </span>
                 </div>
-                <button
-                  className="action-button positive small-button"
-                  onClick={() => actions.hireStaff?.(roleInfo.id)}
-                  disabled={
-                    campaignFunds < roleInfo.costPerWeek ||
-                    !politician.isInCampaign
-                  }
-                  title={
-                    campaignFunds < roleInfo.costPerWeek
-                      ? "Not enough funds for first week's salary"
-                      : `Hire ${roleInfo.name}`
-                  }
-                >
-                  {" "}
-                  Hire
-                </button>
+                <div className="staff-delegation-controls">
+                  <label htmlFor={`task-${staff.id}`}>Focus:</label>
+                  <select
+                    id={`task-${staff.id}`}
+                    value={staff.delegatedTask || "idle"}
+                    onChange={(e) =>
+                      setStaffDelegatedTask(staff.id, e.target.value)
+                    }
+                  >
+                    {getTaskOptionsForRole(staff.role).map((task) => (
+                      <option key={task.value} value={task.value}>
+                        {task.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </li>
             ))}
           </ul>
         ) : (
           <p>
-            All key staff roles are currently filled or no candidates available.
+            You have not hired any staff. Visit the "Career & Actions" tab to
+            scout and hire candidates.
           </p>
         )}
       </section>
@@ -930,6 +938,143 @@ const FundraisingSubTab = ({ campaignData, actions }) => {
   );
 };
 
+const PollingSubTab = ({ campaignData, actions }) => {
+  const POLLING_COST = 5000;
+  const POLLING_HOURS = 8;
+
+  const { politician, pollResults } = campaignData;
+  const [stanceSelections, setStanceSelections] = useState({});
+
+  const handleStanceSelectionChange = (questionId, value) => {
+    setStanceSelections((prev) => ({ ...prev, [questionId]: value }));
+  };
+
+  const handleUpdateStance = (questionId) => {
+    const newValue = stanceSelections[questionId];
+    if (newValue !== undefined) {
+      actions.updatePlayerPolicyStance?.(questionId, newValue);
+    }
+  };
+
+  const isCommissionButtonDisabled =
+    !politician.isInCampaign ||
+    politician.campaignFunds < POLLING_COST ||
+    politician.campaignHoursRemainingToday < POLLING_HOURS;
+
+  const commissionButtonTitle = !politician.isInCampaign
+    ? "You must be in an active campaign to commission polls."
+    : politician.campaignFunds < POLLING_COST
+    ? `Not enough funds. Requires $${POLLING_COST.toLocaleString()}.`
+    : politician.campaignHoursRemainingToday < POLLING_HOURS
+    ? `Not enough time. Requires ${POLLING_HOURS} hours.`
+    : `Commission Poll ($${POLLING_COST.toLocaleString()}, ${POLLING_HOURS}hr)`;
+
+  return (
+    <div className="sub-tab-content">
+      <section className="info-card">
+        <h3>Electorate Polling</h3>
+        <p>
+          Commission a detailed poll of the electorate in your starting city to
+          understand their views on key policy issues. This is a powerful tool
+          for shaping your platform.
+        </p>
+        <div className="action-item-block">
+          <h4>Commission New Poll</h4>
+          <div className="action-controls">
+            <button
+              className="action-button"
+              onClick={() => actions.commissionElectoratePoll?.()}
+              disabled={isCommissionButtonDisabled}
+              title={commissionButtonTitle}
+            >
+              Commission Poll ({POLLING_HOURS}hr - $
+              {POLLING_COST.toLocaleString()})
+            </button>
+            {pollResults && (
+              <button
+                className="action-button critical small-button"
+                onClick={() => actions.clearPollResults?.()}
+                title="Clear current poll results from view"
+              >
+                Clear Results
+              </button>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {pollResults && (
+        <section className="info-card">
+          <h3>Polling Results & Platform</h3>
+          <div className="action-item-block">
+            <h4>Platform Actions</h4>
+            <div className="action-controls">
+              <button
+                className="action-button"
+                onClick={() => actions.matchElectorateStances?.()}
+                title="Update all your policy stances to match the most popular view from the latest poll."
+              >
+                Align Platform with Poll
+              </button>
+            </div>
+          </div>
+          <ul className="polling-results-list">
+            {Object.values(pollResults).map((q) => {
+              const playerStanceValue = politician.policyStances[q.questionId];
+              const playerStance = q.options.find(
+                (opt) => opt.value === playerStanceValue
+              );
+
+              return (
+                <li key={q.questionId} className="polling-result-item">
+                  <h5>{q.questionText}</h5>
+                  <div className="stance-display">
+                    <strong>Electorate's View:</strong>{" "}
+                    {q.polledStanceText || "N/A"}
+                  </div>
+                  <div className="stance-display">
+                    <strong>Your Current Stance:</strong>{" "}
+                    {playerStance?.text || "Not Set"}
+                  </div>
+                  <div className="stance-actions">
+                    <select
+                      value={
+                        stanceSelections[q.questionId] ?? playerStanceValue
+                      }
+                      onChange={(e) =>
+                        handleStanceSelectionChange(
+                          q.questionId,
+                          e.target.value
+                        )
+                      }
+                    >
+                      {(q.options || []).map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.text}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      className="action-button positive small-button"
+                      onClick={() => handleUpdateStance(q.questionId)}
+                      disabled={
+                        stanceSelections[q.questionId] === undefined ||
+                        stanceSelections[q.questionId] === playerStanceValue
+                      }
+                    >
+                      Update Stance
+                    </button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+    </div>
+  );
+};
+
 // --- MAIN CAMPAIGN TAB COMPONENT ---
 function CampaignTab({ campaignData }) {
   const [activeSubTab, setActiveSubTab] = useState("Overview");
@@ -991,6 +1136,8 @@ function CampaignTab({ campaignData }) {
         return <CommsAdsSubTab {...subTabProps} />;
       case "Fundraising":
         return <FundraisingSubTab {...subTabProps} />;
+      case "Polling":
+        return <PollingSubTab {...subTabProps} />;
       default:
         return (
           <CampaignOverviewSubTab
@@ -1065,6 +1212,12 @@ function CampaignTab({ campaignData }) {
               className={activeSubTab === "Fundraising" ? "active" : ""}
             >
               Fundraising
+            </button>
+            <button
+              onClick={() => setActiveSubTab("Polling")}
+              className={activeSubTab === "Polling" ? "active" : ""}
+            >
+              Polling
             </button>
           </div>
 

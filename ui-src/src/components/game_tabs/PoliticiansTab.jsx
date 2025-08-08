@@ -7,7 +7,7 @@ import "./PoliticiansTab.css";
  * and provides intelligence-gathering actions.
  */
 const RelationshipCard = React.memo(
-  ({ politician, relationship, onGatherIntel }) => {
+  ({ politician, relationship, intel, onGatherIntel, onPraise }) => {
     const getRelationshipText = (score) => {
       if (score <= -8) return "Arch Rival";
       if (score <= -4) return "Rival";
@@ -23,6 +23,9 @@ const RelationshipCard = React.memo(
         : relationship >= 4
         ? "var(--success-text)"
         : "var(--secondary-text)";
+
+    // Check if attributes have been revealed
+    const attributesRevealed = !!intel?.attributes;
 
     return (
       <div className="politician-card">
@@ -50,18 +53,36 @@ const RelationshipCard = React.memo(
           <p className="politician-office">
             {politician.currentOffice || "No current office"}
           </p>
-          {/* Placeholder for Fog of War stats */}
           <div className="fog-of-war-stats">
-            <span>Charisma: ???</span>
-            <span>Integrity: ???</span>
-            <span>Key Stance: ???</span>
+            <span className={attributesRevealed ? "revealed-stat" : ""}>
+              Charisma: {intel?.attributes?.charisma ?? "???"}
+            </span>
+            <span className={attributesRevealed ? "revealed-stat" : ""}>
+              Integrity: {intel?.attributes?.integrity ?? "???"}
+            </span>
+            <span className={attributesRevealed ? "revealed-stat" : ""}>
+              Oratory: {intel?.attributes?.oratory ?? "???"}
+            </span>
+            {/* Stances would be revealed here in a future step */}
           </div>
         </div>
         <div className="politician-card-actions">
-          <button className="menu-button" onClick={onGatherIntel}>
-            Gather Intel (500 Treasury)
+          <button
+            className="menu-button"
+            onClick={onPraise}
+            title="Spend $100 to issue a public statement praising this politician, improving your relationship."
+          >
+            Praise Politician
           </button>
-          {/* Add more interaction buttons here later */}
+          {!attributesRevealed && (
+            <button
+              className="menu-button"
+              onClick={onGatherIntel}
+              title="Spend $500 from your personal treasury to hire an investigator to uncover this politician's core attributes."
+            >
+              Gather Intel
+            </button>
+          )}
         </div>
       </div>
     );
@@ -76,18 +97,26 @@ function PoliticiansTab() {
     (state) => state.activeCampaign.governmentOffices
   );
   const relationships = useGameStore((state) => state.politicianRelationships);
+  // ADDED: Subscribing to the politicianIntel state
+  const politicianIntel = useGameStore((state) => state.politicianIntel);
   const actions = useGameStore((state) => state.actions);
 
-  // useMemo will prevent re-calculating this list on every render
+  // CHANGED: This logic is now more robust and prevents duplicate politicians
   const aiPoliticians = useMemo(() => {
     if (!governmentOffices) return [];
-    const allPoliticians = governmentOffices.flatMap(
-      (office) => office.members || (office.holder ? [office.holder] : [])
+    const politicianMap = new Map();
+    // Use a Map to ensure each politician appears only once, even if they hold multiple offices
+    governmentOffices.forEach((office) => {
+      const members = office.members || (office.holder ? [office.holder] : []);
+      members.forEach((p) => {
+        if (p && !p.isPlayer && !politicianMap.has(p.id)) {
+          politicianMap.set(p.id, p);
+        }
+      });
+    });
+    return Array.from(politicianMap.values()).sort((a, b) =>
+      a.name.localeCompare(b.name)
     );
-    // Filter out player and any null/undefined entries, then sort by name
-    return allPoliticians
-      .filter((p) => p && !p.isPlayer)
-      .sort((a, b) => a.name.localeCompare(b.name));
   }, [governmentOffices]);
 
   return (
@@ -104,7 +133,10 @@ function PoliticiansTab() {
               key={pol.id}
               politician={pol}
               relationship={relationships[pol.id]?.relationship ?? 0}
+              // ADDED: Passing the intel and onPraise props down to the card
+              intel={politicianIntel[pol.id]}
               onGatherIntel={() => actions.gatherIntelOnPolitician(pol.id)}
+              onPraise={() => actions.praisePolitician(pol.id)}
             />
           ))
         ) : (

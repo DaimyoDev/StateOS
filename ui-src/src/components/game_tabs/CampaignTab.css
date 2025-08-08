@@ -350,3 +350,54 @@
   min-width: 80px; /* But not too small */
   max-width: 150px; /* Prevent from getting too large in flex contexts */
 }
+
+.polling-results-list {
+  list-style-type: none;
+  padding: 0;
+  margin-top: 20px;
+}
+
+.polling-result-item {
+  background-color: var(--secondary-bg-tint, rgba(0, 0, 0, 0.1));
+  padding: 15px;
+  border-radius: var(--element-radius);
+  margin-bottom: 15px;
+  border-left: 4px solid var(--accent-color);
+}
+
+.polling-result-item h5 {
+  margin: 0 0 12px 0;
+  font-family: var(--font-heading);
+  color: var(--primary-text);
+  font-size: 1.1em;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.stance-display {
+  margin-bottom: 12px;
+  font-size: 0.95em;
+  line-height: 1.5;
+}
+
+.stance-display strong {
+  color: var(--accent-text);
+  font-weight: 600;
+}
+
+.stance-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.stance-actions select {
+  flex-grow: 1;
+  max-width: 300px;
+}
+
+.stance-actions .action-button {
+  margin: 0; /* Override default margins for this context */
+  flex-shrink: 0;
+}

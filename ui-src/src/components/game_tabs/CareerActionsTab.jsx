@@ -374,9 +374,14 @@ const EMPTY_ARRAY = [];
 const StaffSubTab = () => {
   const talentPool = useGameStore((state) => state.talentPool || EMPTY_ARRAY);
   const hiredStaff = useGameStore((state) => state.hiredStaff || EMPTY_ARRAY);
-  const { scoutStaffCandidate, hireStaff, fireStaff } = useGameStore(
-    (state) => state.actions
-  );
+  // Correctly import the new actions from the store
+  const {
+    scoutStaffCandidate,
+    hireStaff,
+    fireStaff,
+    reviewResume,
+    conductInterview,
+  } = useGameStore((state) => state.actions);
 
   return (
     <div className="sub-tab-content">
@@ -426,39 +431,82 @@ const StaffSubTab = () => {
                     {staff.name}{" "}
                     <span className="staff-role">({staff.role})</span>
                   </span>
-                  {staff.isScouted ? (
-                    <>
-                      <span className="staff-details">
-                        STR: {staff.attributes.strategy} | COM:{" "}
-                        {staff.attributes.communication} | FUN:{" "}
-                        {staff.attributes.fundraising} | LOY:{" "}
-                        {staff.attributes.loyalty}
-                      </span>
-                      <span className="staff-salary">
-                        Salary: ${staff.salary.toLocaleString()}/month
-                      </span>
-                    </>
+                  {staff.scoutingLevel !== "unscouted" && (
+                    <span className="staff-details">
+                      Currently Employed:{" "}
+                      {staff.isCurrentlyEmployed ? "Yes" : "No"}
+                    </span>
+                  )}
+                  {staff.revealedAttributes &&
+                  Object.keys(staff.revealedAttributes).length > 0 ? (
+                    <span className="staff-details">
+                      Known Skills:
+                      {Object.entries(staff.revealedAttributes)
+                        .map(
+                          ([key, value]) =>
+                            ` ${key.substring(0, 3).toUpperCase()}: ${value}`
+                        )
+                        .join(" | ")}
+                    </span>
                   ) : (
                     <span className="staff-details-hidden">
-                      Stats and salary are unknown. Scout to reveal.
+                      {staff.scoutingLevel === "unscouted"
+                        ? "Candidate is unknown. Scout to reveal basic info."
+                        : "No specific skills confirmed. Further vetting required."}
                     </span>
                   )}
                 </div>
-                {staff.isScouted ? (
-                  <button
-                    className="action-button small-button"
-                    onClick={() => hireStaff(staff.id)}
-                  >
-                    Hire
-                  </button>
-                ) : (
-                  <button
-                    className="menu-button small-button"
-                    onClick={() => scoutStaffCandidate(staff.id)}
-                  >
-                    Scout ($250)
-                  </button>
-                )}
+
+                <div className="staff-actions">
+                  {staff.scoutingLevel === "unscouted" && (
+                    <button
+                      className="menu-button small-button"
+                      onClick={() => scoutStaffCandidate(staff.id)}
+                      title="Pay to get a basic dossier and resume on this candidate."
+                    >
+                      Scout ($250)
+                    </button>
+                  )}
+
+                  {staff.scoutingLevel === "scouted" && (
+                    <>
+                      <button
+                        className="action-button small-button"
+                        onClick={() => reviewResume(staff.id)}
+                        title="Review their resume to uncover key skills."
+                      >
+                        Review Resume
+                      </button>
+                      <button
+                        className="action-button small-button"
+                        onClick={() => conductInterview(staff.id)}
+                        title="Conduct a formal interview to reveal all skills and traits."
+                      >
+                        Interview
+                      </button>
+                    </>
+                  )}
+
+                  {staff.scoutingLevel === "resume_reviewed" && (
+                    <button
+                      className="action-button small-button"
+                      onClick={() => conductInterview(staff.id)}
+                      title="Conduct a formal interview to reveal all skills and traits."
+                    >
+                      Interview
+                    </button>
+                  )}
+
+                  {staff.scoutingLevel === "interviewed" && (
+                    <button
+                      className="action-button small-button success-button"
+                      onClick={() => hireStaff(staff.id)}
+                      title="Hire this person. Their salary will be added to your monthly expenses."
+                    >
+                      Offer Job
+                    </button>
+                  )}
+                </div>
               </li>
             ))}
           </ul>

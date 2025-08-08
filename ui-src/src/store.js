@@ -2,6 +2,9 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 // Util imports
 import { getRandomInt } from "./utils/core.js";
+import { POLICY_QUESTIONS } from "./data/policyData.js";
+import { IDEOLOGY_DEFINITIONS } from "./data/ideologiesData.js";
+import { calculateIdeologyFromStances } from "./entities/personnel.js";
 
 // --- Slice Creators ---
 import { createUISlice } from "./stores/uiStateSlice.js";
@@ -79,6 +82,7 @@ const useGameStore = create(
         allCustomParties: customEntitySlice.allCustomParties,
         savedElectionSetups: customEntitySlice.savedElectionSetups,
         politicianRelationships: personnelSlice.politicianRelationships,
+        politicianIntel: personnelSlice.politicianIntel,
 
         currentCampaignSetup: getInitialCampaignSetupState(),
 
@@ -343,6 +347,156 @@ const useGameStore = create(
               activeCampaign: state.activeCampaign
                 ? { ...state.activeCampaign, viewingElectionNightForDate: null }
                 : null,
+            }));
+          },
+          commissionElectoratePoll: () => {
+            const POLLING_COST = 5000;
+            const POLLING_HOURS = 8;
+            const { activeCampaign } = get();
+            const { addToast } = get().actions;
+
+            if (
+              activeCampaign.politician.campaignHoursRemainingToday <
+              POLLING_HOURS
+            ) {
+              addToast({
+                message: `Not enough time. Requires ${POLLING_HOURS} hours.`,
+                type: "warning",
+              });
+              return;
+            }
+            if (activeCampaign.politician.campaignFunds < POLLING_COST) {
+              addToast({
+                message: `Not enough funds. Requires $${POLLING_COST.toLocaleString()}.`,
+                type: "warning",
+              });
+              return;
+            }
+
+            const cityElectorateProfile =
+              activeCampaign.startingCity.stats.electoratePolicyProfile;
+            const results = {};
+            POLICY_QUESTIONS.forEach((q) => {
+              if (q.options?.length > 0) {
+                const trueStance = cityElectorateProfile[q.id];
+                const polledOption = q.options.find(
+                  (opt) => opt.value === trueStance
+                );
+                results[q.id] = {
+                  questionId: q.id,
+                  questionText: q.question,
+                  polledStanceValue: trueStance,
+                  polledStanceText: polledOption ? polledOption.text : "N/A",
+                  options: q.options, // FIX: Added the options array to the results
+                };
+              }
+            });
+
+            addToast({
+              message: `Poll commissioned for $${POLLING_COST.toLocaleString()}. Results are in!`,
+              type: "success",
+            });
+
+            set((state) => ({
+              activeCampaign: {
+                ...state.activeCampaign,
+                politician: {
+                  ...state.activeCampaign.politician,
+                  campaignFunds:
+                    state.activeCampaign.politician.campaignFunds -
+                    POLLING_COST,
+                  campaignHoursRemainingToday:
+                    state.activeCampaign.politician
+                      .campaignHoursRemainingToday - POLLING_HOURS,
+                },
+                pollResults: results,
+              },
+            }));
+          },
+
+          updatePlayerPolicyStance: (questionId, newValue) => {
+            const { addToast } = get().actions;
+            const politician = get().activeCampaign.politician;
+
+            const newStances = {
+              ...politician.policyStances,
+              [questionId]: newValue,
+            };
+
+            const { ideologyName, scores } = calculateIdeologyFromStances(
+              newStances,
+              POLICY_QUESTIONS,
+              IDEOLOGY_DEFINITIONS
+            );
+
+            addToast({
+              message: "Your public stance on the issue has been updated.",
+              type: "info",
+            });
+
+            set((state) => ({
+              activeCampaign: {
+                ...state.activeCampaign,
+                politician: {
+                  ...politician,
+                  policyStances: newStances,
+                  calculatedIdeology: ideologyName,
+                  ideologyScores: scores,
+                },
+              },
+            }));
+          },
+
+          clearPollResults: () => {
+            set((state) => ({
+              activeCampaign: {
+                ...state.activeCampaign,
+                pollResults: null,
+              },
+            }));
+          },
+          matchElectorateStances: () => {
+            const { activeCampaign, actions } = get();
+            const { addToast } = actions;
+            const { politician, pollResults } = activeCampaign;
+
+            if (!pollResults) {
+              addToast({
+                message: "No poll results available to match.",
+                type: "warning",
+              });
+              return;
+            }
+
+            const newStances = { ...politician.policyStances };
+
+            Object.values(pollResults).forEach((polledQuestion) => {
+              newStances[polledQuestion.questionId] =
+                polledQuestion.polledStanceValue;
+            });
+
+            const { ideologyName, scores } = calculateIdeologyFromStances(
+              newStances,
+              POLICY_QUESTIONS,
+              IDEOLOGY_DEFINITIONS
+            );
+
+            addToast({
+              message:
+                "Your platform has been updated to align with the latest polling data.",
+              type: "success",
+            });
+
+            set((state) => ({
+              activeCampaign: {
+                ...state.activeCampaign,
+                politician: {
+                  ...state.activeCampaign.politician,
+                  policyStances: newStances,
+                  calculatedIdeology: ideologyName,
+                  ideologyScores: scores,
+                },
+              },
             }));
           },
         },

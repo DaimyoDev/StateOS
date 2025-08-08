@@ -42,6 +42,8 @@ export const createUISlice = (set, get) => ({
   viewingBillDetails: null,
   isBillDetailsModalOpen: false,
   voteQueue: [],
+  isPolicyVoteDetailsModalOpen: false,
+  viewingVoteDetailsForBill: null,
 
   // --- ACTIONS ---
   actions: {
@@ -248,6 +250,16 @@ export const createUISlice = (set, get) => ({
       set({ viewingBillDetails: bill, isBillDetailsModalOpen: true }),
     closeBillDetailsModal: () =>
       set({ viewingBillDetails: null, isBillDetailsModalOpen: false }),
+    openPolicyVoteDetailsModal: (bill) =>
+      set({
+        viewingVoteDetailsForBill: bill,
+        isPolicyVoteDetailsModalOpen: true,
+      }),
+    closePolicyVoteDetailsModal: () =>
+      set({
+        viewingVoteDetailsForBill: null,
+        isPolicyVoteDetailsModalOpen: false,
+      }),
     clearVoteQueue: () => set({ voteQueue: [] }),
   },
 });

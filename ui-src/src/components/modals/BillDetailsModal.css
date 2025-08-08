@@ -43,6 +43,25 @@
   font-size: 0.95em;
 }
 
+.policy-list-briefing li {
+  margin-bottom: 12px;
+  font-size: 0.95em;
+}
+
+.policy-list-briefing li strong {
+  font-size: 1.05em;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.policy-detail-text {
+  margin: 0;
+  padding-left: 10px;
+  font-size: 0.9em;
+  color: var(--secondary-text);
+  border-left: 2px solid var(--border-color);
+}
+
 .opinion-list {
   list-style: none;
   padding: 0;

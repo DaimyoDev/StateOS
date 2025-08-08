@@ -62,19 +62,61 @@
   cursor: pointer;
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
+  cursor: default; /* Change cursor for items in the bill */
 }
 .policy-list li:hover {
   background-color: var(--highlight-bg);
 }
-.policy-list li strong {
-  font-size: 0.95em;
+
+.policy-list-column .policy-list li:hover {
+  background-color: var(--accent-color-translucent);
+  cursor: pointer;
 }
-.policy-list li span {
-  font-size: 0.8em;
+
+.policy-list .policy-item-in-bill {
+  flex-direction: column;
+  align-items: stretch;
+  cursor: default;
+}
+
+.policy-list .policy-item-in-bill:hover {
+  background-color: transparent;
+}
+
+.policy-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.policy-parameter-config {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  background-color: var(--secondary-bg-tint, rgba(0, 0, 0, 0.1));
+  padding: 10px;
+  border-radius: var(--element-radius);
+  margin-top: 5px;
+}
+
+.policy-parameter-config label {
+  font-size: 0.85em;
   color: var(--secondary-text);
-  font-style: italic;
 }
+
+.parameter-input {
+  width: 100%;
+  padding: 8px;
+  background-color: var(--input-bg);
+  color: var(--input-text);
+  border: 1px solid var(--border-color);
+  border-radius: var(--element-radius);
+}
+
 .empty-bill-text {
   text-align: center;
   color: var(--secondary-text);
@@ -87,4 +129,22 @@
   display: flex;
   justify-content: flex-end;
   gap: 15px;
+}
+
+.save-template-content {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.save-template-content label {
+  font-family: var(--font-heading);
+  font-size: 1.1em;
+  margin-bottom: -5px;
+}
+
+.save-template-content .modal-actions {
+  border-top: none;
+  padding-top: 5px;
 }

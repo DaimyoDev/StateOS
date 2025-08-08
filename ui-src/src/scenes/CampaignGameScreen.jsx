@@ -4,6 +4,7 @@ import useGameStore from "../store";
 import "./CampaignGameScreen.css";
 import Modal from "../components/modals/Modal";
 import ViewPoliticianModal from "../components/modals/ViewPoliticianModal";
+import PolicyVoteDetailsModal from "../components/modals/PolicyVoteDetailsModal";
 import VoteAlert from "../components/ui/VoteAlert";
 import LiveVoteSession from "./LiveVoteSession";
 import { isDateBefore } from "../utils/core";
@@ -57,6 +58,16 @@ function CampaignGameScreen() {
 
   const isVotingSessionActive = useGameStore(
     (state) => state.isVotingSessionActive
+  );
+
+  const isPolicyVoteDetailsModalOpen = useGameStore(
+    (state) => state.isPolicyVoteDetailsModalOpen
+  );
+  const viewingVoteDetailsForBill = useGameStore(
+    (state) => state.viewingVoteDetailsForBill
+  );
+  const closePolicyVoteDetailsModal = useGameStore(
+    (state) => state.actions.closePolicyVoteDetailsModal
   );
 
   const navigateTo = useGameStore((state) => state.actions.navigateTo);
@@ -298,6 +309,11 @@ function CampaignGameScreen() {
           isOpen={isBillDetailsModalOpen}
           onClose={closeBillDetailsModal}
           bill={viewingBillDetails}
+        />
+        <PolicyVoteDetailsModal
+          isOpen={isPolicyVoteDetailsModalOpen}
+          onClose={closePolicyVoteDetailsModal}
+          proposalData={viewingVoteDetailsForBill}
         />
       </div>
     </>

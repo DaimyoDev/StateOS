@@ -2,116 +2,100 @@ import React, { useMemo } from "react";
 import Modal from "./Modal";
 import useGameStore from "../../store";
 import "./PolicyVoteDetailsModal.css";
+import { CITY_POLICIES } from "../../data/policyDefinitions";
+
+const getPolicyDetailsText = (policyInBill) => {
+  const fullPolicyData = CITY_POLICIES.find(
+    (p) => p.id === policyInBill.policyId
+  );
+  if (!fullPolicyData) return "Policy data not found.";
+
+  if (!fullPolicyData.isParameterized || !policyInBill.chosenParameters) {
+    return fullPolicyData.description;
+  }
+
+  const details = fullPolicyData.parameterDetails;
+  const value = policyInBill.chosenParameters[details.key];
+  const formattedValue = Math.abs(value).toLocaleString();
+  const unit = details.unit === "$" ? "$" : "";
+  const unitSuffix = details.unit !== "$" ? ` ${details.unit}` : "";
+
+  if (details.adjustmentType === "increase_or_decrease") {
+    if (value > 0) {
+      return `Increases the ${
+        details.targetBudgetLine || "budget"
+      } by ${unit}${formattedValue}${unitSuffix}.`;
+    } else if (value < 0) {
+      return `Decreases the ${
+        details.targetBudgetLine || "budget"
+      } by ${unit}${formattedValue}${unitSuffix}.`;
+    } else {
+      return `Proposes no change to the ${
+        details.targetBudgetLine || "budget"
+      }.`;
+    }
+  } else {
+    return `Funds this initiative with ${unit}${formattedValue}${unitSuffix}.`;
+  }
+};
 
 const PolicyVoteDetailsModal = ({ isOpen, onClose, proposalData }) => {
-  const activeCampaign = useGameStore((state) => state.activeCampaign);
+  const governmentOffices = useGameStore(
+    (state) => state.activeCampaign.governmentOffices
+  );
 
-  const { governmentOffices = [], startingCity } = activeCampaign;
-  const startingCityName = startingCity?.name || "";
-
-  // Memoize processed vote data to avoid re-calculation on every render
   const voteBreakdown = useMemo(() => {
-    if (!proposalData || !proposalData.councilVotesCast) {
-      return { yea: [], nay: [], abstain: [], byParty: {} };
+    if (!proposalData || !proposalData.councilVotesCast || !governmentOffices) {
+      return { yea: [], nay: [], abstain: [], byParty: [] };
     }
 
-    const getCouncilMemberDetails = (memberId) => {
-      // Iterate through all government offices to find the specific memberId
-      for (const office of governmentOffices) {
-        // Check if it's a council office at the relevant level (local_city) and city
-        if (
-          office.officeNameTemplateId.includes("council") &&
-          office.level === "local_city" &&
-          office.officeName.includes(startingCityName)
-        ) {
-          // Case 1: The memberId is the single holder of this office (e.g., Mayor, but could apply to single-member council districts)
-          if (office.holder?.id === memberId) {
-            return {
-              name:
-                office.holder.name ||
-                `${office.holder.firstName} ${office.holder.lastName}`,
-              partyName: office.holder.partyName,
-              partyColor: office.holder.partyColor,
-            };
-          }
+    // 1. Create a quick-lookup map of all council members
+    const councilMembersMap = new Map();
+    const councilOffice = governmentOffices.find((o) =>
+      o.officeNameTemplateId.includes("council")
+    );
+    if (councilOffice && councilOffice.members) {
+      councilOffice.members.forEach((member) => {
+        councilMembersMap.set(member.id, {
+          name: `${member.firstName} ${member.lastName}`,
+          partyName: member.partyName || "Independent",
+          partyColor: member.partyColor || "#888",
+        });
+      });
+    }
 
-          // Case 2: The office has a list of members (common for councils)
-          if (office.members && office.members.length > 0) {
-            const foundMember = office.members.find(
-              (member) => member.id === memberId // CORRECTED: Directly check member.id
-            );
-
-            if (foundMember) {
-              return {
-                name:
-                  foundMember.name ||
-                  `${foundMember.firstName} ${foundMember.lastName}`,
-                partyName: foundMember.partyName,
-                partyColor: foundMember.partyColor,
-              };
-            }
-          }
-        }
-      }
-
-      const byParty = {};
-      Object.entries(proposalData.councilVotesCast).forEach(
-        ([memberId, vote]) => {
-          const details = getCouncilMemberDetails(memberId);
-          if (!details.partyName) return;
-
-          if (!byParty[details.partyName]) {
-            byParty[details.partyName] = {
-              name: details.partyName,
-              color: details.partyColor,
-              yea: 0,
-              nay: 0,
-              abstain: 0,
-            };
-          }
-          if (vote === "yea") byParty[details.partyName].yea++;
-          else if (vote === "nay") byParty[details.partyName].nay++;
-          else if (vote === "abstain") byParty[details.partyName].abstain++;
-        }
-      );
-
-      // If no matching member/holder is found after checking all offices
-      return {
+    // 2. Resolve voter names using the map
+    const resolveVoter = (memberId) =>
+      councilMembersMap.get(memberId) || {
         name: `ID: ${memberId}`,
-        partyName: "Unknown Party",
-        partyColor: "#888",
+        partyName: "Unknown",
       };
-    };
 
-    const yeaVoters = (proposalData.votes.yea || []).map(
-      getCouncilMemberDetails
-    );
-    const nayVoters = (proposalData.votes.nay || []).map(
-      getCouncilMemberDetails
-    );
-    const abstainVoters = (proposalData.votes.abstain || []).map(
-      getCouncilMemberDetails
-    );
+    const yeaVoters = (proposalData.votes.yea || []).map(resolveVoter);
+    const nayVoters = (proposalData.votes.nay || []).map(resolveVoter);
+    const abstainVoters = (proposalData.votes.abstain || []).map(resolveVoter);
 
-    // Aggregate votes by party
-    const byParty = {};
+    // 3. Aggregate votes by party
+    const byParty = new Map();
     Object.entries(proposalData.councilVotesCast).forEach(
       ([memberId, vote]) => {
-        const details = getCouncilMemberDetails(memberId);
-        if (!details.partyName) return; // Skip if no party info
+        const details = councilMembersMap.get(memberId);
+        if (!details) return;
 
-        if (!byParty[details.partyName]) {
-          byParty[details.partyName] = {
+        if (!byParty.has(details.partyName)) {
+          byParty.set(details.partyName, {
             name: details.partyName,
             color: details.partyColor,
             yea: 0,
             nay: 0,
             abstain: 0,
-          };
+          });
         }
-        if (vote === "yea") byParty[details.partyName].yea++;
-        else if (vote === "nay") byParty[details.partyName].nay++;
-        else if (vote === "abstain") byParty[details.partyName].abstain++;
+
+        const partyVote = byParty.get(details.partyName);
+        if (vote === "yea") partyVote.yea++;
+        else if (vote === "nay") partyVote.nay++;
+        else if (vote === "abstain") partyVote.abstain++;
       }
     );
 
@@ -119,15 +103,15 @@ const PolicyVoteDetailsModal = ({ isOpen, onClose, proposalData }) => {
       yea: yeaVoters,
       nay: nayVoters,
       abstain: abstainVoters,
-      byParty: Object.values(byParty),
+      byParty: Array.from(byParty.values()),
     };
-  }, [proposalData, governmentOffices, startingCityName]);
+  }, [proposalData, governmentOffices]);
 
   if (!isOpen || !proposalData) {
     return null;
   }
 
-  const { policyName, description, votes } = proposalData;
+  const { name, votes, policies } = proposalData;
   const totalYea = votes?.yea?.length || 0;
   const totalNay = votes?.nay?.length || 0;
   const totalAbstain = votes?.abstain?.length || 0;
@@ -136,14 +120,23 @@ const PolicyVoteDetailsModal = ({ isOpen, onClose, proposalData }) => {
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={`Vote Details: ${policyName}`}
+      title={`Vote Results: ${name}`}
       isLarge={true}
     >
       <div className="policy-vote-details-modal-content">
-        <h3>{policyName}</h3>
-        <p className="policy-description-summary">
-          <em>{description}</em>
-        </p>
+        <h3>{name}</h3>
+
+        <div className="details-section">
+          <h4>Bill Contents</h4>
+          <ul className="policy-list-briefing">
+            {policies.map((p) => (
+              <li key={p.policyId}>
+                <strong>{p.policyName}</strong>
+                <p className="policy-detail-text">{getPolicyDetailsText(p)}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
 
         <div className="vote-summary-tally">
           <h4>Overall Tally</h4>
@@ -158,30 +151,24 @@ const PolicyVoteDetailsModal = ({ isOpen, onClose, proposalData }) => {
           <div className="vote-column">
             <h4>Voted Yea ({totalYea})</h4>
             <ul>
-              {voteBreakdown.yea.map((v, index) => (
-                <li key={`${v.name}-${index}`}>
-                  {v.name} ({v.partyName})
-                </li>
+              {voteBreakdown.yea.map((v, i) => (
+                <li key={i}>{v.name}</li>
               ))}
             </ul>
           </div>
           <div className="vote-column">
             <h4>Voted Nay ({totalNay})</h4>
             <ul>
-              {voteBreakdown.nay.map((v, index) => (
-                <li key={`${v.name}-${index}`}>
-                  {v.name} ({v.partyName})
-                </li>
+              {voteBreakdown.nay.map((v, i) => (
+                <li key={i}>{v.name}</li>
               ))}
             </ul>
           </div>
           <div className="vote-column">
             <h4>Abstained ({totalAbstain})</h4>
             <ul>
-              {voteBreakdown.abstain.map((v, index) => (
-                <li key={`${v.name}-${index}`}>
-                  {v.name} ({v.partyName})
-                </li>
+              {voteBreakdown.abstain.map((v, i) => (
+                <li key={i}>{v.name}</li>
               ))}
             </ul>
           </div>
@@ -191,26 +178,26 @@ const PolicyVoteDetailsModal = ({ isOpen, onClose, proposalData }) => {
           <h4>Vote Breakdown by Party</h4>
           {voteBreakdown.byParty.length > 0 ? (
             <div className="party-vote-chart-container">
-              {/* Placeholder for chart - a stacked bar chart per party would be ideal */}
-              {/* <VoteBreakdownChart data={voteBreakdown.byParty} /> */}
               <ul className="party-vote-list">
                 {voteBreakdown.byParty.map((party) => (
                   <li
                     key={party.name}
                     style={{ borderLeftColor: party.color || "#ccc" }}
                   >
-                    <strong>{party.name}:</strong>
-                    <span className="party-vote-yea">Yea: {party.yea}</span>
-                    <span className="party-vote-nay">Nay: {party.nay}</span>
-                    <span className="party-vote-abstain">
-                      Abs: {party.abstain}
-                    </span>
+                    <strong>{party.name}</strong>
+                    <div>
+                      <span className="party-vote-yea">Yea: {party.yea}</span>
+                      <span className="party-vote-nay">Nay: {party.nay}</span>
+                      <span className="party-vote-abstain">
+                        Abs: {party.abstain}
+                      </span>
+                    </div>
                   </li>
                 ))}
               </ul>
             </div>
           ) : (
-            <p>No party voting data available or all voters are independent.</p>
+            <p>No party voting data available.</p>
           )}
         </div>
 

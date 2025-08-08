@@ -20,26 +20,18 @@ const LegislationSubTab = ({ campaignData }) => {
   const currentDate = campaignData?.currentDate;
   const activeCampaign = campaignData;
 
-  // CORRECTED: This function now correctly handles date comparisons.
   const calculateDaysRemaining = (endDate) => {
     if (!currentDate || !endDate) return "N/A";
-
-    // Use your custom areDatesEqual function with your custom date objects first.
     if (areDatesEqual(currentDate, endDate)) return "Today";
-
-    // Now, create JS Date objects for calculating the difference.
     const todayObj = new Date(
       currentDate.year,
       currentDate.month - 1,
       currentDate.day
     );
     const endObj = new Date(endDate.year, endDate.month - 1, endDate.day);
-
     if (todayObj > endObj) return "Overdue";
-
     const diffTime = endObj.getTime() - todayObj.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
     return `in ${diffDays} day${diffDays !== 1 ? "s" : ""}`;
   };
 
@@ -62,7 +54,6 @@ const LegislationSubTab = ({ campaignData }) => {
             }`.trim()
           );
         }
-
         if (office.members) {
           for (const member of office.members) {
             if (member.id === politicianId) {
@@ -80,9 +71,9 @@ const LegislationSubTab = ({ campaignData }) => {
 
   const handleBillItemClick = (bill) => {
     if (bill.status === "passed" || bill.status === "failed") {
-      openPolicyVoteDetailsModal?.(bill); // For past votes
+      openPolicyVoteDetailsModal?.(bill);
     } else if (bill.status === "pending_vote") {
-      openBillDetailsModal?.(bill); // For pending votes
+      openBillDetailsModal?.(bill);
     }
   };
 
@@ -127,7 +118,10 @@ const LegislationSubTab = ({ campaignData }) => {
         {sortedProposedBills.length > 0 ? (
           <ul className="legislation-list">
             {sortedProposedBills.map((bill) => {
-              const isItemClickable = true;
+              const isItemClickable =
+                bill.status === "passed" ||
+                bill.status === "failed" ||
+                bill.status === "pending_vote";
               const proposerName =
                 bill.proposerName || getPoliticianNameById(bill.proposerId);
               const yeaVotes = bill.votes?.yea?.length || 0;
@@ -140,11 +134,13 @@ const LegislationSubTab = ({ campaignData }) => {
                   className={`legislation-item status-${bill.status
                     ?.replace(/\s+/g, "-")
                     .toLowerCase()} ${isItemClickable ? "clickable" : ""}`}
-                  onClick={() => handleBillItemClick(bill)}
+                  onClick={() => isItemClickable && handleBillItemClick(bill)}
                   title={
-                    bill.status === "pending_vote"
-                      ? "View details and council opinions"
-                      : "View vote results"
+                    isItemClickable
+                      ? bill.status === "pending_vote"
+                        ? "View details and council opinions"
+                        : "View final vote results"
+                      : "This item cannot be inspected further."
                   }
                 >
                   <div className="legislation-header">
@@ -153,7 +149,6 @@ const LegislationSubTab = ({ campaignData }) => {
                       Status: {bill.status?.replace(/_/g, " ") || "N/A"}
                     </span>
                   </div>
-
                   <div className="bill-contents">
                     <strong>Policies in this bill:</strong>
                     <ul>
@@ -164,13 +159,11 @@ const LegislationSubTab = ({ campaignData }) => {
                       ))}
                     </ul>
                   </div>
-
                   <p className="proposer-info">
                     Proposed by: <strong>{proposerName}</strong> on{" "}
                     {bill.dateProposed?.month}/{bill.dateProposed?.day}/
                     {bill.dateProposed?.year}
                   </p>
-
                   {bill.status === "pending_vote" && bill.voteScheduledFor && (
                     <p className="voting-info">
                       Vote scheduled for {bill.voteScheduledFor.month}/
@@ -202,7 +195,6 @@ const LegislationSubTab = ({ campaignData }) => {
               const enactingProposerName = getPoliticianNameById(
                 policy.proposerId
               );
-
               let activeParameterDisplay = null;
               if (
                 policy.isParameterized &&
@@ -219,7 +211,6 @@ const LegislationSubTab = ({ campaignData }) => {
                 const targetLineFormatted = targetLine
                   .replace(/([A-Z])/g, " $1")
                   .toLowerCase();
-
                 if (amount !== undefined) {
                   const changeDesc =
                     amount >= 0
@@ -240,9 +231,8 @@ const LegislationSubTab = ({ campaignData }) => {
               return (
                 <li
                   key={policy.id}
-                  className="legislation-item status-passed clickable"
-                  onClick={() => handleBillItemClick(policy)}
-                  title="View enactment details"
+                  className="legislation-item status-passed"
+                  title="This is an active law. Its effects are being applied."
                 >
                   <div className="legislation-header">
                     <strong className="policy-name">{policy.policyName}</strong>

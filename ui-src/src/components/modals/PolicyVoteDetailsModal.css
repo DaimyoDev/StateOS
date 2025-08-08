@@ -147,3 +147,31 @@
   display: block;
   margin: 30px auto 0 auto; /* Center and space from content */
 }
+
+.details-section {
+  margin-bottom: 25px;
+}
+.details-section h4 {
+  font-size: 1.2em;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-color);
+}
+.policy-list-briefing li {
+  margin-bottom: 12px;
+  font-size: 0.95em;
+  list-style: none;
+}
+.policy-list-briefing li strong {
+  font-size: 1.05em;
+  display: block;
+  margin-bottom: 4px;
+  color: var(--primary-text);
+}
+.policy-detail-text {
+  margin: 0;
+  padding-left: 10px;
+  font-size: 0.9em;
+  color: var(--secondary-text);
+  border-left: 2px solid var(--border-color);
+}

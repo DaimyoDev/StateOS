@@ -110,3 +110,18 @@
   padding: 6px 12px;
   font-size: 0.85em;
 }
+
+.revealed-stat {
+  color: var(
+    --primary-text
+  ) !important; /* Use !important to override the secondary-text color */
+  font-weight: 500;
+}
+
+/* A small adjustment to the actions to ensure they wrap nicely */
+.politician-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap; /* Allow buttons to wrap on smaller screens */
+  gap: 10px;
+}

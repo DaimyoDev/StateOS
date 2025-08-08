@@ -158,3 +158,53 @@
 .session-controls button {
   padding: 10px 20px;
 }
+
+.council-voter-list li > span.vote-status-indicator {
+  font-weight: bold;
+  font-size: 0.9em;
+}
+
+.player-vote-actions {
+  margin-bottom: 15px;
+  flex-wrap: wrap;
+  align-items: center; /* Center the message vertically */
+  min-height: 40px; /* Give it some height so layout doesn't jump */
+}
+
+.player-voted-message {
+  font-style: italic;
+  color: var(--secondary-text);
+  font-size: 1.1em;
+}
+
+.session-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center; /* Align items vertically */
+  gap: 10px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-color);
+  flex-wrap: wrap;
+}
+
+.session-controls > span {
+  font-size: 0.9em;
+  color: var(--secondary-text);
+}
+
+.action-button.positive {
+  background-color: var(--success-text);
+  border-color: var(--success-text);
+}
+.action-button.positive:hover {
+  background-color: var(--success-text-hover);
+  border-color: var(--success-text-hover);
+}
+.action-button.critical {
+  background-color: var(--error-text);
+  border-color: var(--error-text);
+}
+.action-button.critical:hover {
+  background-color: var(--error-text-hover);
+  border-color: var(--error-text-hover);
+}

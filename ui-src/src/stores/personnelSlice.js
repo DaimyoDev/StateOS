@@ -1,6 +1,5 @@
 // src/stores/personnelSlice.js
-import { generateId, getRandomElement, getRandomInt } from "../utils/core";
-import { generateAICandidateNameForElection } from "../entities/personnel"; // For generating names
+import { generateId, getRandomInt } from "../utils/core";
 
 export const createStaffObject = (params = {}) => ({
   id: `staff_${generateId()}`,
@@ -12,17 +11,28 @@ export const createStaffObject = (params = {}) => ({
     fundraising: params.fundraising || getRandomInt(1, 10),
     loyalty: params.loyalty || getRandomInt(1, 10),
   },
-  salary: params.salary || getRandomInt(2000, 8000), // Monthly salary
-  isScouted: params.isScouted || false, // Determines if stats are visible to the player
+  salary: params.salary || getRandomInt(2000, 8000), // Base expected salary, can be negotiated
+  isCurrentlyEmployed: params.isCurrentlyEmployed || Math.random() > 0.5,
+  interestInJoining: params.interestInJoining || getRandomInt(3, 10), // Player's initial interest is hidden
+
+  // New Scouting-related fields
+  scoutingLevel: "unscouted", // Possible values: 'unscouted', 'scouted', 'resume_reviewed', 'interviewed'
+  revealedAttributes: {}, // Attributes revealed to the player
+  resume:
+    params.resume ||
+    "A detailed professional history will be available upon initial scouting.",
+  delegatedTask: "idle",
+
+  // To be implemented later
+  quizScore: null,
 });
 
 // --- Initial State ---
 const getInitialPersonnelState = () => ({
   politicianRelationships: {},
-  // The pool of potential hires available in the game world
   talentPool: [],
-  // The player's currently hired staff members
   hiredStaff: [],
+  politicianIntel: {},
 });
 
 export const createPersonnelSlice = (set, get) => ({
@@ -70,65 +80,62 @@ export const createPersonnelSlice = (set, get) => ({
       });
     },
 
-    /**
-     * Action to spend resources to learn more about a politician.
-     * Currently a placeholder that deducts cost and shows a notification.
-     * @param {string} politicianId - The ID of the politician to investigate.
-     */
-    gatherIntelOnPolitician: () => {
-      const cost = 500; // Cost in personal treasury
-      const playerPolitician = get().activeCampaign.politician;
-      const currentTreasury = playerPolitician.treasury;
+    gatherIntelOnPolitician: (politicianId) => {
+      set((state) => {
+        const cost = 500;
+        const playerPolitician = state.activeCampaign.politician;
 
-      if (currentTreasury < cost) {
+        // Find the target politician from the comprehensive governmentOffices list
+        const targetPolitician = state.activeCampaign.governmentOffices
+          .flatMap((o) => o.members || (o.holder ? [o.holder] : []))
+          .find((p) => p && p.id === politicianId);
+
+        if (!targetPolitician) {
+          console.error("Target politician for intel gathering not found.");
+          return state;
+        }
+
+        if (playerPolitician.treasury < cost) {
+          get().actions.addToast({
+            message: `Not enough money in your personal treasury. Need $${cost}.`,
+            type: "error",
+          });
+          return state; // Exit early
+        }
+
+        // 1. Prepare the intel update
+        const newIntelState = {
+          ...state.politicianIntel,
+          [politicianId]: {
+            ...state.politicianIntel[politicianId],
+            attributes: targetPolitician.attributes,
+          },
+        };
+
+        // 2. Prepare the player treasury update
+        const newPlayerState = {
+          ...playerPolitician,
+          treasury: playerPolitician.treasury - cost,
+        };
+
         get().actions.addToast({
-          message:
-            "Not enough money in your personal treasury to hire an investigator.",
-          type: "error",
+          message: `Your investigator's report on ${targetPolitician.name} is in. Their core attributes are now known.`,
+          type: "success",
         });
-        return;
-      }
 
-      // --- BUG FIX & REFACTOR ---
-      // Deduct cost by calling the correct action from campaignSlice
-      get().actions.updatePlayerPolitician({
-        treasury: currentTreasury - cost,
+        // 3. Return both state changes at once
+        return {
+          politicianIntel: newIntelState,
+          activeCampaign: {
+            ...state.activeCampaign,
+            politician: newPlayerState,
+          },
+        };
       });
-
-      get().actions.addToast({
-        message: `Hired an investigator for $${cost}. An intelligence report will be ready in a few days.`,
-        type: "info",
-      });
-
-      // FUTURE TODO: Add the politicianId to a "scouting_in_progress" list.
-      // The daily tick would check this list, count down days, and then reveal the info.
-    },
-    generateTalentPool: (countryId) => {
-      const roles = [
-        "Campaign Manager",
-        "Communications Director",
-        "Fundraising Manager",
-        "Policy Advisor",
-      ];
-      const newTalentPool = [];
-      for (let i = 0; i < 15; i++) {
-        // Generate 15 initial candidates
-        newTalentPool.push(
-          createStaffObject({
-            name: generateAICandidateNameForElection(countryId),
-            role: getRandomElement(roles),
-          })
-        );
-      }
-      set({ talentPool: newTalentPool, hiredStaff: [] });
     },
 
-    /**
-     * Scouts a staff candidate, revealing their stats at a cost.
-     * @param {string} staffId - The ID of the staff member to scout.
-     */
     scoutStaffCandidate: (staffId) => {
-      const cost = 250; // Cost from personal treasury
+      const cost = 250;
       const playerPolitician = get().activeCampaign.politician;
       const currentTreasury = playerPolitician.treasury;
 
@@ -140,34 +147,135 @@ export const createPersonnelSlice = (set, get) => ({
         return;
       }
 
-      // Deduct cost
       get().actions.updatePlayerPolitician({
         treasury: currentTreasury - cost,
       });
 
-      // Reveal the candidate's stats
       set((state) => ({
         talentPool: state.talentPool.map((staff) =>
-          staff.id === staffId ? { ...staff, isScouted: true } : staff
+          staff.id === staffId
+            ? {
+                ...staff,
+                scoutingLevel: "scouted", // Update scouting level
+                revealedAttributes: {}, // Ensure revealed attributes is initialized and empty
+              }
+            : staff
         ),
       }));
 
       get().actions.addToast({
-        message: `Scouting report complete. You can now see the candidate's full details.`,
+        message: `Scouting report purchased for $${cost}. You can now review the candidate's resume.`,
         type: "success",
       });
     },
 
     /**
-     * Hires a scouted staff member.
-     * @param {string} staffId - The ID of the staff member to hire.
+     * NEW: Reviews a resume to uncover some key skills.
+     */
+    reviewResume: (staffId) => {
+      const staffMember = get().talentPool.find((s) => s.id === staffId);
+      if (!staffMember || staffMember.scoutingLevel !== "scouted") return;
+
+      const attributesToReveal = {};
+      // Reveal different key skills based on the role
+      switch (staffMember.role) {
+        case "Campaign Manager":
+          attributesToReveal.strategy = staffMember.attributes.strategy;
+          attributesToReveal.loyalty = staffMember.attributes.loyalty;
+          break;
+        case "Communications Director":
+          attributesToReveal.communication =
+            staffMember.attributes.communication;
+          break;
+        case "Fundraising Manager":
+          attributesToReveal.fundraising = staffMember.attributes.fundraising;
+          break;
+        case "Policy Advisor":
+          attributesToReveal.strategy = staffMember.attributes.strategy;
+          break;
+        default:
+          attributesToReveal.communication =
+            staffMember.attributes.communication;
+      }
+
+      set((state) => ({
+        talentPool: state.talentPool.map((staff) =>
+          staff.id === staffId
+            ? {
+                ...staff,
+                scoutingLevel: "resume_reviewed",
+                revealedAttributes: {
+                  ...staff.revealedAttributes,
+                  ...attributesToReveal,
+                },
+              }
+            : staff
+        ),
+      }));
+
+      get().actions.addToast({
+        message: `After reviewing ${staffMember.name}'s resume, you've learned more about their key skills.`,
+        type: "info",
+      });
+    },
+
+    /**
+     * NEW: Conducts an interview to reveal all remaining attributes.
+     */
+    conductInterview: (staffId) => {
+      const cost = 150; // Cost for time and resources for the interview
+      const playerPolitician = get().activeCampaign.politician;
+      const currentTreasury = playerPolitician.treasury;
+      const staffMember = get().talentPool.find((s) => s.id === staffId);
+
+      if (
+        !staffMember ||
+        !["scouted", "resume_reviewed"].includes(staffMember.scoutingLevel)
+      )
+        return;
+
+      if (currentTreasury < cost) {
+        get().actions.addToast({
+          message: `Not enough funds for the interview. Need $${cost}.`,
+          type: "error",
+        });
+        return;
+      }
+
+      get().actions.updatePlayerPolitician({
+        treasury: currentTreasury - cost,
+      });
+
+      set((state) => ({
+        talentPool: state.talentPool.map((staff) =>
+          staff.id === staffId
+            ? {
+                ...staff,
+                scoutingLevel: "interviewed",
+                revealedAttributes: staff.attributes, // Reveal ALL attributes
+              }
+            : staff
+        ),
+      }));
+
+      get().actions.addToast({
+        message: `The interview with ${staffMember.name} was insightful. You now have a complete picture of their abilities.`,
+        type: "success",
+      });
+    },
+
+    /**
+     * MODIFIED: Hires a staff member after they have been fully vetted.
      */
     hireStaff: (staffId) => {
       const staffToHire = get().talentPool.find((s) => s.id === staffId);
       if (!staffToHire) return;
-      if (!staffToHire.isScouted) {
+
+      // Gate the hiring action based on the final interview stage
+      if (staffToHire.scoutingLevel !== "interviewed") {
         get().actions.addToast({
-          message: "You must scout a candidate before hiring them.",
+          message:
+            "You must fully interview a candidate before offering them a job.",
           type: "info",
         });
         return;
@@ -196,7 +304,7 @@ export const createPersonnelSlice = (set, get) => ({
       }));
 
       get().actions.addToast({
-        message: `${staffToHire.name} has been hired!`,
+        message: `${staffToHire.name} has accepted your offer and has been hired!`,
         type: "success",
       });
     },
@@ -239,6 +347,7 @@ export const createPersonnelSlice = (set, get) => ({
         type: "info",
       });
     },
+
     getCityCouncilMembers: () => {
       const { activeCampaign } = get();
       if (
@@ -256,6 +365,76 @@ export const createPersonnelSlice = (set, get) => ({
       );
 
       return councilOffice?.members || [];
+    },
+    setStaffDelegatedTask: (staffId, task) => {
+      set((state) => ({
+        hiredStaff: state.hiredStaff.map((staff) =>
+          staff.id === staffId ? { ...staff, delegatedTask: task } : staff
+        ),
+      }));
+      const staffer = get().hiredStaff.find((s) => s.id === staffId);
+      if (staffer) {
+        get().actions.addToast({
+          message: `${staffer.name}'s focus is now set to: ${task.replace(
+            /_/g,
+            " "
+          )}.`,
+          type: "info",
+        });
+      }
+    },
+    praisePolitician: (politicianId) => {
+      set((state) => {
+        const cost = 100;
+        const playerPolitician = state.activeCampaign.politician;
+
+        const targetPolitician = state.activeCampaign.governmentOffices
+          .flatMap((o) => o.members || (o.holder ? [o.holder] : []))
+          .find((p) => p && p.id === politicianId);
+
+        if (!targetPolitician) return state;
+
+        if (playerPolitician.treasury < cost) {
+          get().actions.addToast({
+            message: `Not enough funds for a press release. Need $${cost}.`,
+            type: "error",
+          });
+          return state;
+        }
+
+        // 1. Prepare the relationship update
+        const currentScore =
+          state.politicianRelationships[politicianId]?.relationship || 0;
+        const newScore = Math.max(-10, Math.min(10, currentScore + 1));
+        const newRelationshipsState = {
+          ...state.politicianRelationships,
+          [politicianId]: {
+            ...state.politicianRelationships[politicianId],
+            relationship: newScore,
+          },
+        };
+
+        // 2. Prepare the player treasury update
+        const newPlayerState = {
+          ...playerPolitician,
+          treasury: playerPolitician.treasury - cost,
+        };
+
+        // 3. IMPROVED FEEDBACK in the toast message
+        get().actions.addToast({
+          message: `Your relationship with ${targetPolitician.name} has improved to ${newScore}.`,
+          type: "info",
+        });
+
+        // 4. Return both state changes at once
+        return {
+          politicianRelationships: newRelationshipsState,
+          activeCampaign: {
+            ...state.activeCampaign,
+            politician: newPlayerState,
+          },
+        };
+      });
     },
   },
 });

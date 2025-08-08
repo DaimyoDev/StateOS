@@ -114,34 +114,28 @@ export const createCampaignSlice = (set, get) => ({
       });
     },
 
-    // --- CORE HOUR MANAGEMENT ---
-    spendCampaignHours: (hoursToSpend, politicianId = null) => {
-      let success = false;
+    spendCampaignHours: (hoursToSpend) => {
+      // This is now a more direct helper, as delegation logic is in the actions themselves.
       set((state) => {
-        const newActiveCampaign = updateTargetPolitician(
-          state,
-          politicianId,
-          (politician) => {
-            const hoursAvailable = politician.campaignHoursRemainingToday || 0;
-            if (hoursAvailable >= hoursToSpend) {
-              success = true;
-              return {
-                ...politician,
-                campaignHoursRemainingToday: hoursAvailable - hoursToSpend,
-              };
-            }
-            if (!politicianId) {
-              get().actions.addToast?.({
-                message: `Not enough campaign hours (need ${hoursToSpend}, have ${hoursAvailable}).`,
-                type: "warning",
-              });
-            }
-            return politician;
-          }
-        );
-        return { activeCampaign: newActiveCampaign };
+        const player = state.activeCampaign.politician;
+        const hoursAvailable = player.campaignHoursRemainingToday || 0;
+        if (hoursAvailable < hoursToSpend) {
+          get().actions.addToast?.({
+            message: `Not enough time. Need ${hoursToSpend}hr, have ${hoursAvailable}hr.`,
+            type: "warning",
+          });
+          return state;
+        }
+        return {
+          activeCampaign: {
+            ...state.activeCampaign,
+            politician: {
+              ...player,
+              campaignHoursRemainingToday: hoursAvailable - hoursToSpend,
+            },
+          },
+        };
       });
-      return success;
     },
 
     resetDailyCampaignHours: (politicianId = null) => {
@@ -157,50 +151,93 @@ export const createCampaignSlice = (set, get) => ({
       }));
     },
 
-    // --- CAMPAIGN ACTIONS ---
+    processDailyStaffActions: () => {
+      set((state) => {
+        const { activeCampaign } = state;
+        const hiredStaff = get().hiredStaff || [];
+
+        if (!activeCampaign || hiredStaff.length === 0) {
+          return state;
+        }
+
+        let playerUpdates = {};
+        let totalDailySalary = 0;
+        let currentFunds = activeCampaign.politician.campaignFunds || 0;
+        let currentBuzz = activeCampaign.politician.mediaBuzz || 0;
+
+        hiredStaff.forEach((staff) => {
+          totalDailySalary += Math.round(staff.salary / 30);
+          switch (staff.role) {
+            case "Communications Director": {
+              const buzzGain = Math.round(staff.attributes.communication / 4);
+              currentBuzz = Math.min(100, currentBuzz + buzzGain);
+              break;
+            }
+            case "Fundraising Manager": {
+              const passiveFunds = Math.round(
+                staff.attributes.fundraising * 25
+              );
+              currentFunds += passiveFunds;
+              break;
+            }
+          }
+        });
+
+        playerUpdates.campaignFunds = currentFunds - totalDailySalary;
+        playerUpdates.mediaBuzz = currentBuzz;
+
+        get().actions.addToast?.({
+          message: `Daily staff salaries deducted: $${totalDailySalary.toLocaleString()}`,
+          type: "info",
+        });
+
+        // Perform a single, safe update using the helper function.
+        return {
+          activeCampaign: updateTargetPolitician(state, null, (p) => ({
+            ...p,
+            ...playerUpdates,
+          })),
+        };
+      });
+    },
+
     personalFundraisingActivity: (hoursToSpend = 2) => {
       set((state) => {
         const { activeCampaign } = state;
         const player = activeCampaign.politician;
 
-        const hoursAvailable = player.campaignHoursRemainingToday || 0;
-        if (hoursAvailable < hoursToSpend) {
+        if ((player.campaignHoursRemainingToday || 0) < hoursToSpend) {
           get().actions.addToast?.({
-            message: `Not enough campaign hours (need ${hoursToSpend}, have ${hoursAvailable}).`,
+            message: `Not enough time. Need ${hoursToSpend}hrs.`,
             type: "warning",
           });
           return state;
         }
 
-        const fundraisingSkill = player.attributes?.fundraising || 5;
-        const nameRec = player.nameRecognition || 0;
-        const nameRecMultiplier = 0.5 + nameRec / 200000;
-        const fundsRaised = Math.round(
+        const hiredStaff = get().hiredStaff || [];
+        const fundraiser = hiredStaff.find(
+          (s) => s.role === "Fundraising Manager"
+        );
+        let fundsRaised = Math.round(
           getRandomInt(500, 1500) *
             hoursToSpend *
-            (fundraisingSkill / 4) *
-            nameRecMultiplier
+            (player.attributes.fundraising / 4)
         );
 
-        const updates = {
-          campaignHoursRemainingToday: hoursAvailable - hoursToSpend,
+        if (fundraiser) {
+          const boostMultiplier = 1 + fundraiser.attributes.fundraising * 0.1;
+          fundsRaised = Math.round(fundsRaised * boostMultiplier);
+          get().actions.addToast?.({
+            message: `${fundraiser.name}'s connections amplified your fundraising efforts!`,
+            type: "info",
+          });
+        }
+
+        const politicianUpdates = {
+          campaignHoursRemainingToday:
+            player.campaignHoursRemainingToday - hoursToSpend,
           campaignFunds: (player.campaignFunds || 0) + fundsRaised,
         };
-
-        const updatedPolitician = { ...player, ...updates };
-
-        const updatedElections = activeCampaign.elections.map((election) => {
-          if (election.candidates.has(player.id)) {
-            const newCandidatesMap = new Map(election.candidates);
-            const oldCandidateData = newCandidatesMap.get(player.id);
-            newCandidatesMap.set(player.id, {
-              ...oldCandidateData,
-              ...updates,
-            });
-            return { ...election, candidates: newCandidatesMap };
-          }
-          return election;
-        });
 
         get().actions.addToast?.({
           message: `Spent ${hoursToSpend}hr(s) fundraising. Raised $${fundsRaised.toLocaleString()}!`,
@@ -208,11 +245,10 @@ export const createCampaignSlice = (set, get) => ({
         });
 
         return {
-          activeCampaign: {
-            ...activeCampaign,
-            politician: updatedPolitician,
-            elections: updatedElections,
-          },
+          activeCampaign: updateTargetPolitician(state, null, (p) => ({
+            ...p,
+            ...politicianUpdates,
+          })),
         };
       });
     },
@@ -483,53 +519,46 @@ export const createCampaignSlice = (set, get) => ({
       set((state) => {
         const { activeCampaign } = state;
         const player = activeCampaign.politician;
+        const hiredStaff = get().hiredStaff || [];
 
-        const hoursAvailable = player.campaignHoursRemainingToday || 0;
-        if (hoursAvailable < hoursToSpend) {
+        const manager = hiredStaff.find((s) => s.role === "Campaign Manager");
+        const wasDelegated = !!manager;
+        const hoursCost = wasDelegated ? 0 : hoursToSpend;
+
+        if ((player.campaignHoursRemainingToday || 0) < hoursCost) {
           get().actions.addToast?.({
-            message: `Not enough campaign hours (need ${hoursToSpend}, have ${hoursAvailable}).`,
+            message: `Not enough time to recruit. Need ${hoursCost}hrs.`,
             type: "warning",
           });
           return state;
         }
 
-        const charismaFactor =
-          1 + ((player.attributes?.charisma || 5) - 5) * 0.1;
+        const effectiveCharisma = wasDelegated
+          ? manager.attributes.charisma
+          : player.attributes.charisma;
+        const charismaFactor = 1 + ((effectiveCharisma || 5) - 5) * 0.1;
         const newVolunteers = Math.round(
           getRandomInt(3, 8) * hoursToSpend * charismaFactor
         );
 
-        const updates = {
-          campaignHoursRemainingToday: hoursAvailable - hoursToSpend,
+        const politicianUpdates = {
+          campaignHoursRemainingToday:
+            player.campaignHoursRemainingToday - hoursCost,
           volunteerCount: (player.volunteerCount || 0) + newVolunteers,
         };
 
-        const updatedPolitician = { ...player, ...updates };
-
-        const updatedElections = activeCampaign.elections.map((election) => {
-          if (election.candidates.has(player.id)) {
-            const newCandidatesMap = new Map(election.candidates);
-            const oldCandidateData = newCandidatesMap.get(player.id);
-            newCandidatesMap.set(player.id, {
-              ...oldCandidateData,
-              ...updates,
-            });
-            return { ...election, candidates: newCandidatesMap };
-          }
-          return election;
-        });
-
         get().actions.addToast?.({
-          message: `Recruiting: Gained ${newVolunteers} new volunteers!`,
+          message: wasDelegated
+            ? `${manager.name} recruited ${newVolunteers} new volunteers for the campaign!`
+            : `You spent ${hoursToSpend}hrs and recruited ${newVolunteers} new volunteers!`,
           type: "success",
         });
 
         return {
-          activeCampaign: {
-            ...activeCampaign,
-            politician: updatedPolitician,
-            elections: updatedElections,
-          },
+          activeCampaign: updateTargetPolitician(state, null, (p) => ({
+            ...p,
+            ...politicianUpdates,
+          })),
         };
       });
     },
@@ -642,161 +671,100 @@ export const createCampaignSlice = (set, get) => ({
     },
 
     launchManualAdBlitz: (params) => {
-      const { adType, targetId, spendAmount, hoursSpent } = params;
-
       set((state) => {
+        const { spendAmount, hoursSpent } = params;
         const { activeCampaign } = state;
         const player = activeCampaign.politician;
-        const city = activeCampaign.startingCity;
+        const hiredStaff = get().hiredStaff || [];
 
-        const electionDetails =
-          getPlayerActiveElectionDetailsForCampaignActions(
-            activeCampaign,
-            player.id
-          );
-        if (!electionDetails) {
+        // First, find if the relevant staffer exists at all
+        const commsDirector = hiredStaff.find(
+          (s) => s.role === "Communications Director"
+        );
+
+        // Then, check if their task is specifically delegated
+        const isDelegated = commsDirector?.delegatedTask === "run_advertising";
+
+        const hoursCost = isDelegated ? 0 : hoursSpent;
+
+        // Standard checks for funds and player time
+        if ((player.campaignFunds || 0) < spendAmount) {
           get().actions.addToast?.({
-            message:
-              "Could not launch blitz: You are not in an active election.",
+            message: `Not enough funds. Need $${spendAmount.toLocaleString()}`,
             type: "error",
           });
           return state;
         }
-
-        const hoursAvailable = player.campaignHoursRemainingToday || 0;
-        const fundsAvailable = player.campaignFunds || 0;
-
-        if (hoursAvailable < hoursSpent) {
+        if ((player.campaignHoursRemainingToday || 0) < hoursCost) {
           get().actions.addToast?.({
-            message: `Not enough campaign hours (need ${hoursSpent}, have ${hoursAvailable}).`,
+            message: `Not enough time for an ad blitz. Need ${hoursCost}hrs.`,
             type: "warning",
           });
           return state;
         }
-        if (fundsAvailable < spendAmount) {
+
+        let effectiveSkill;
+        let toastMessage;
+
+        if (isDelegated) {
+          // SCENARIO 1: FULLY DELEGATED
+          effectiveSkill = commsDirector.attributes.communication;
+          toastMessage = `${
+            commsDirector.name
+          } launched the ad blitz for $${spendAmount.toLocaleString()}!`;
+        } else if (commsDirector) {
+          // SCENARIO 2: THE BOOST! Staff is idle/assisting.
+          effectiveSkill =
+            player.attributes.charisma +
+            commsDirector.attributes.communication / 2; // Player skill + half of staffer's skill as a bonus
           get().actions.addToast?.({
-            message: `Not enough funds (Need $${spendAmount.toLocaleString()}).`,
-            type: "error",
+            message: `${commsDirector.name} advised on the ad campaign, improving its quality.`,
+            type: "info",
           });
-          return state;
+          toastMessage = `You launched a ${hoursSpent}hr ad blitz for $${spendAmount.toLocaleString()}!`;
+        } else {
+          // SCENARIO 3: NO STAFF
+          effectiveSkill = player.attributes.charisma;
+          toastMessage = `You launched a ${hoursSpent}hr ad blitz for $${spendAmount.toLocaleString()}!`;
         }
 
-        let baseScoreChangePlayer = 0;
-        let baseScoreChangeOpponent = 0;
-        let opponentToTargetObj = null;
-        let mediaBuzzEffect = 0;
-        let nameRecEffect = 0;
-
-        const {
-          charisma = 5,
-          integrity = 5,
-          intelligence = 5,
-        } = player.attributes;
-        const adultPop =
-          calculateAdultPopulation(
-            city.population,
-            city.demographics?.ageDistribution
-          ) || 1;
+        // Calculate final results based on the determined effective skill
         const effectivenessFactor =
           (spendAmount / 1000) *
           (hoursSpent / 3) *
-          (1 + ((intelligence + charisma) / 2 - 5) * 0.1);
+          (1 + ((effectiveSkill || 5) - 5) * 0.1);
+        const mediaBuzzEffect = Math.round(
+          getRandomInt(3, 6) * effectivenessFactor
+        );
+        const nameRecEffect = Math.round(
+          getRandomInt(50, 200) * effectivenessFactor
+        );
 
-        if (adType === "positive") {
-          baseScoreChangePlayer = getRandomInt(1, 2) * effectivenessFactor;
-          mediaBuzzEffect = getRandomInt(3, 6) * effectivenessFactor;
-          nameRecEffect = getRandomInt(50, 200) * effectivenessFactor;
-        } else if (adType === "attack" && targetId) {
-          opponentToTargetObj =
-            electionDetails.playerElection.candidates.get(targetId);
-          if (opponentToTargetObj) {
-            const backlashChance = 0.15 + Math.max(0, (5 - integrity) * 0.05);
-            if (Math.random() < backlashChance) {
-              baseScoreChangePlayer =
-                getRandomInt(0, 1) * effectivenessFactor * -1;
-              mediaBuzzEffect = getRandomInt(2, 4) * effectivenessFactor;
-              get().actions.addToast?.({
-                message: "Your attack ad backfired slightly!",
-                type: "warning",
-              });
-            } else {
-              baseScoreChangeOpponent =
-                getRandomInt(1, 3) * effectivenessFactor * -1;
-              mediaBuzzEffect = getRandomInt(4, 8) * effectivenessFactor;
-            }
-          }
-        } else if (adType === "issue") {
-          baseScoreChangePlayer = getRandomInt(0, 2) * effectivenessFactor;
-          mediaBuzzEffect = getRandomInt(2, 5) * effectivenessFactor;
-          nameRecEffect = getRandomInt(30, 150) * effectivenessFactor;
-        }
-
-        const playerUpdates = {
-          campaignHoursRemainingToday: hoursAvailable - hoursSpent,
-          campaignFunds: fundsAvailable - spendAmount,
-          nameRecognition: Math.min(
-            adultPop,
-            (player.nameRecognition || 0) + Math.round(nameRecEffect)
-          ),
-          mediaBuzz: Math.min(
-            100,
-            (player.mediaBuzz || 0) + Math.round(mediaBuzzEffect)
-          ),
-          baseScore:
-            (player.baseScore || 10) + Math.round(baseScoreChangePlayer),
+        const politicianUpdates = {
+          campaignHoursRemainingToday:
+            player.campaignHoursRemainingToday - hoursCost,
+          campaignFunds: player.campaignFunds - spendAmount,
+          mediaBuzz: Math.min(100, (player.mediaBuzz || 0) + mediaBuzzEffect),
+          nameRecognition: (player.nameRecognition || 0) + nameRecEffect,
         };
 
-        const updatedPolitician = { ...player, ...playerUpdates };
+        get().actions.addToast?.({ message: toastMessage, type: "success" });
 
-        const updatedElections = activeCampaign.elections.map((e) => {
-          if (e.id === electionDetails.playerElection.id) {
-            const newCandidatesMap = new Map(e.candidates);
-
-            // Update player in the map
-            const oldPlayerData = newCandidatesMap.get(player.id);
-            newCandidatesMap.set(player.id, {
-              ...oldPlayerData,
-              ...playerUpdates,
-            });
-
-            // Update opponent in the map if necessary
-            if (opponentToTargetObj && baseScoreChangeOpponent !== 0) {
-              const opponent = newCandidatesMap.get(opponentToTargetObj.id);
-              if (opponent) {
-                newCandidatesMap.set(opponentToTargetObj.id, {
-                  ...opponent,
-                  baseScore: Math.max(
-                    1,
-                    (opponent.baseScore || 10) +
-                      Math.round(baseScoreChangeOpponent)
-                  ),
-                });
-              }
-            }
-            return {
-              ...e,
-              candidates: normalizePolling(newCandidatesMap, adultPop),
-            };
-          }
-          return e;
-        });
-
-        get().actions.addToast?.({
-          message: `Launched ${hoursSpent}hr Ad Blitz for $${spendAmount.toLocaleString()}! Effects applied.`,
-          type: "success",
-        });
-
+        // Single, safe update
         return {
-          activeCampaign: {
-            ...activeCampaign,
-            politician: updatedPolitician,
-            elections: updatedElections,
-          },
+          activeCampaign: updateTargetPolitician(state, null, (p) => ({
+            ...p,
+            ...politicianUpdates,
+          })),
         };
       });
     },
 
     applyDailyAICampaignResults: (allAIResults) => {
+      // eslint-disable-next-line no-constant-condition
+      if (true) {
+        return;
+      }
       set((state) => {
         if (!state.activeCampaign?.elections) return state;
 
