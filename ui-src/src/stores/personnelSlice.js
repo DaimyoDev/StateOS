@@ -1,31 +1,99 @@
 // src/stores/personnelSlice.js
-import { generateId, getRandomInt } from "../utils/core";
+import { generateAICandidateNameForElection } from "../entities/personnel";
+import { generateResume } from "../simulation/resumeGenerator";
+import { generateId, getRandomInt, getRandomElement } from "../utils/core";
 
-export const createStaffObject = (params = {}) => ({
-  id: `staff_${generateId()}`,
-  name: params.name || "Unnamed Staffer",
-  role: params.role || "Campaign Aide",
-  attributes: {
+export const createStaffObject = (params = {}) => {
+  const baseAttributes = {
     strategy: params.strategy || getRandomInt(1, 10),
     communication: params.communication || getRandomInt(1, 10),
     fundraising: params.fundraising || getRandomInt(1, 10),
     loyalty: params.loyalty || getRandomInt(1, 10),
-  },
-  salary: params.salary || getRandomInt(2000, 8000), // Base expected salary, can be negotiated
-  isCurrentlyEmployed: params.isCurrentlyEmployed || Math.random() > 0.5,
-  interestInJoining: params.interestInJoining || getRandomInt(3, 10), // Player's initial interest is hidden
+    judgement: params.judgement || getRandomInt(1, 10), // For HR Directors
+  };
 
-  // New Scouting-related fields
-  scoutingLevel: "unscouted", // Possible values: 'unscouted', 'scouted', 'resume_reviewed', 'interviewed'
-  revealedAttributes: {}, // Attributes revealed to the player
-  resume:
-    params.resume ||
-    "A detailed professional history will be available upon initial scouting.",
-  delegatedTask: "idle",
+  // --- NEW: Gem & Bust Potential System ---
+  let potential = "normal";
+  let displayedAttributes = { ...baseAttributes };
+  const potentialRoll = Math.random();
+  if (potentialRoll < 0.1) {
+    // 10% chance of being a Gem
+    potential = "gem";
+    // Displayed attributes are slightly lower than their true potential
+    Object.keys(displayedAttributes).forEach((key) => {
+      displayedAttributes[key] = Math.max(
+        1,
+        baseAttributes[key] - getRandomInt(1, 2)
+      );
+    });
+  } else if (potentialRoll < 0.2) {
+    // 10% chance of being a Bust
+    potential = "bust";
+    // Displayed attributes are slightly higher than their true potential
+    Object.keys(displayedAttributes).forEach((key) => {
+      displayedAttributes[key] = Math.min(
+        10,
+        baseAttributes[key] + getRandomInt(1, 2)
+      );
+    });
+  }
 
-  // To be implemented later
-  quizScore: null,
-});
+  const priorities = [
+    "salary",
+    "ideology_alignment",
+    "work_life_balance",
+    "location",
+  ];
+  const shuffledPriorities = priorities.sort(() => 0.5 - Math.random());
+  const resumeData = generateResume(params.role);
+
+  return {
+    id: `staff_${generateId()}`,
+    name: params.name || "Unnamed Staffer",
+    role: params.role || "Campaign Aide",
+
+    // --- MODIFIED: Attribute System ---
+    attributes: displayedAttributes, // What the player sees initially
+    trueAttributes: baseAttributes, // The staffer's actual, hidden attributes
+    potential: potential, // 'gem', 'bust', or 'normal'
+
+    // --- NEW: Negotiation System ---
+    salary: params.salary || getRandomInt(2000, 8000), // This is now their minimum acceptable salary
+    expectedSalary: Math.round(
+      (params.salary || 4000) * (1 + getRandomInt(5, 25) / 100)
+    ), // What they ask for initially
+    negotiationFlexibility: Math.random(), // Hidden value from 0 to 1 for how much they'll bend
+
+    isCurrentlyEmployed: params.isCurrentlyEmployed || Math.random() > 0.5,
+    interestInJoining: params.interestInJoining || getRandomInt(3, 10),
+
+    scoutingLevel: "unscouted",
+    revealedAttributes: {},
+    revealedPriorities: [],
+    revealedPotential: null,
+
+    resume: resumeData,
+    resumeClueAttribute: resumeData.clueAttribute,
+
+    biases: {
+      ideologicalLean: getRandomElement([
+        "pragmatist",
+        "ideologue",
+        "populist",
+      ]),
+      strategicFocus: getRandomElement([
+        "aggressive",
+        "grassroots",
+        "data_driven",
+        "positive_messaging",
+      ]),
+      priorities: shuffledPriorities.slice(0, 2),
+    },
+
+    delegatedTask: "idle",
+    quizScore: null,
+  };
+};
 
 // --- Initial State ---
 const getInitialPersonnelState = () => ({
@@ -133,7 +201,26 @@ export const createPersonnelSlice = (set, get) => ({
         };
       });
     },
-
+    generateTalentPool: (countryId) => {
+      const roles = [
+        "Campaign Manager",
+        "Communications Director",
+        "Fundraising Manager",
+        "Policy Advisor",
+        "HR Director",
+      ];
+      const newTalentPool = [];
+      for (let i = 0; i < 15; i++) {
+        // Generate 15 initial candidates
+        newTalentPool.push(
+          createStaffObject({
+            name: generateAICandidateNameForElection(countryId),
+            role: getRandomElement(roles),
+          })
+        );
+      }
+      set({ talentPool: newTalentPool, hiredStaff: [] });
+    },
     scoutStaffCandidate: (staffId) => {
       const cost = 250;
       const playerPolitician = get().activeCampaign.politician;
@@ -176,63 +263,33 @@ export const createPersonnelSlice = (set, get) => ({
       const staffMember = get().talentPool.find((s) => s.id === staffId);
       if (!staffMember || staffMember.scoutingLevel !== "scouted") return;
 
-      const attributesToReveal = {};
-      // Reveal different key skills based on the role
-      switch (staffMember.role) {
-        case "Campaign Manager":
-          attributesToReveal.strategy = staffMember.attributes.strategy;
-          attributesToReveal.loyalty = staffMember.attributes.loyalty;
-          break;
-        case "Communications Director":
-          attributesToReveal.communication =
-            staffMember.attributes.communication;
-          break;
-        case "Fundraising Manager":
-          attributesToReveal.fundraising = staffMember.attributes.fundraising;
-          break;
-        case "Policy Advisor":
-          attributesToReveal.strategy = staffMember.attributes.strategy;
-          break;
-        default:
-          attributesToReveal.communication =
-            staffMember.attributes.communication;
-      }
-
       set((state) => ({
         talentPool: state.talentPool.map((staff) =>
           staff.id === staffId
             ? {
                 ...staff,
                 scoutingLevel: "resume_reviewed",
-                revealedAttributes: {
-                  ...staff.revealedAttributes,
-                  ...attributesToReveal,
-                },
               }
             : staff
         ),
       }));
-
-      get().actions.addToast({
-        message: `After reviewing ${staffMember.name}'s resume, you've learned more about their key skills.`,
-        type: "info",
-      });
     },
 
     /**
      * NEW: Conducts an interview to reveal all remaining attributes.
      */
     conductInterview: (staffId) => {
-      const cost = 150; // Cost for time and resources for the interview
+      const cost = 150;
       const playerPolitician = get().activeCampaign.politician;
       const currentTreasury = playerPolitician.treasury;
       const staffMember = get().talentPool.find((s) => s.id === staffId);
 
       if (
         !staffMember ||
-        !["scouted", "resume_reviewed"].includes(staffMember.scoutingLevel)
-      )
-        return;
+        !["resume_reviewed"].includes(staffMember.scoutingLevel)
+      ) {
+        return; // Can only interview after reviewing resume
+      }
 
       if (currentTreasury < cost) {
         get().actions.addToast({
@@ -246,65 +303,67 @@ export const createPersonnelSlice = (set, get) => ({
         treasury: currentTreasury - cost,
       });
 
+      // --- NEW LOGIC: Reveal priorities and give attribute hints ---
+      const highAttribute = Object.keys(staffMember.trueAttributes).reduce(
+        (a, b) =>
+          staffMember.trueAttributes[a] > staffMember.trueAttributes[b] ? a : b
+      );
+
+      const hintText = `They emphasized the importance of '${staffMember.biases.priorities[0].replace(
+        "_",
+        " "
+      )}' and spoke confidently about their experience with ${highAttribute}.`;
+
       set((state) => ({
         talentPool: state.talentPool.map((staff) =>
           staff.id === staffId
             ? {
                 ...staff,
                 scoutingLevel: "interviewed",
-                revealedAttributes: staff.attributes, // Reveal ALL attributes
+                revealedPriorities: staff.biases.priorities, // Reveal priorities
+                // Optionally add the hint to the staff object if you want to display it
               }
             : staff
         ),
       }));
 
       get().actions.addToast({
-        message: `The interview with ${staffMember.name} was insightful. You now have a complete picture of their abilities.`,
+        message: `Interview with ${staffMember.name} complete. ${hintText}`,
         type: "success",
       });
     },
 
-    /**
-     * MODIFIED: Hires a staff member after they have been fully vetted.
-     */
-    hireStaff: (staffId) => {
+    hireStaff: (staffId, finalSalary) => {
       const staffToHire = get().talentPool.find((s) => s.id === staffId);
       if (!staffToHire) return;
 
-      // Gate the hiring action based on the final interview stage
-      if (staffToHire.scoutingLevel !== "interviewed") {
+      if (
+        !["interviewed", "quizzed", "vetted"].includes(
+          staffToHire.scoutingLevel
+        )
+      ) {
         get().actions.addToast({
           message:
-            "You must fully interview a candidate before offering them a job.",
+            "You must fully interview or vet a candidate before offering them a job.",
           type: "info",
         });
         return;
       }
 
-      // Add their salary to the monthly campaign expenses
-      const currentExpenses =
-        get().activeCampaign.startingCity.stats.budget.monthlyExpenses || 0;
-      get().actions.updateActiveCampaign({
-        startingCity: {
-          ...get().activeCampaign.startingCity,
-          stats: {
-            ...get().activeCampaign.startingCity.stats,
-            budget: {
-              ...get().activeCampaign.startingCity.stats.budget,
-              monthlyExpenses: currentExpenses + staffToHire.salary,
-            },
-          },
-        },
-      });
+      const hiredStaffMember = {
+        ...staffToHire,
+        salary: finalSalary,
+      };
 
-      // Move from talent pool to hired staff
       set((state) => ({
         talentPool: state.talentPool.filter((s) => s.id !== staffId),
-        hiredStaff: [...state.hiredStaff, staffToHire],
+        hiredStaff: [...state.hiredStaff, hiredStaffMember],
       }));
 
       get().actions.addToast({
-        message: `${staffToHire.name} has accepted your offer and has been hired!`,
+        message: `${
+          staffToHire.name
+        } has been hired for $${finalSalary.toLocaleString()}/month!`,
         type: "success",
       });
     },
@@ -435,6 +494,215 @@ export const createPersonnelSlice = (set, get) => ({
           },
         };
       });
+    },
+    beginNegotiation: (staffId) => {
+      const staffMember = get().talentPool.find((s) => s.id === staffId);
+      if (!staffMember || staffMember.scoutingLevel !== "interviewed") {
+        get().actions.addToast({
+          message:
+            "You must fully interview a candidate before making an offer.",
+          type: "warning",
+        });
+        return;
+      }
+      // This action would set state in a UI slice to open the negotiation modal
+      // e.g., get().actions.openNegotiationModal(staffId);
+      console.log(`Opening negotiation panel for ${staffMember.name}`);
+      get().actions.addToast({
+        message: `Prepare your offer for ${staffMember.name}.`,
+        type: "info",
+      });
+    },
+
+    /**
+     * NEW: The core logic for handling a player's salary offer.
+     */
+    makeHiringOffer: (staffId, offerAmount) => {
+      const staff = get().talentPool.find((s) => s.id === staffId);
+      if (!staff) return;
+
+      const acceptanceThreshold =
+        staff.salary +
+        (staff.expectedSalary - staff.salary) *
+          (1 - staff.negotiationFlexibility);
+
+      if (offerAmount >= staff.expectedSalary) {
+        // Offer meets or exceeds expectations: INSTANT HIRE
+        get().actions.addToast({
+          message: `${staff.name} is thrilled with the offer and accepts immediately!`,
+          type: "success",
+        });
+        get().actions.hireStaff(staffId, offerAmount);
+      } else if (offerAmount >= acceptanceThreshold) {
+        // Offer is within their flexible range: HIRE
+        get().actions.addToast({
+          message: `After some consideration, ${staff.name} accepts your offer.`,
+          type: "success",
+        });
+        get().actions.hireStaff(staffId, offerAmount);
+      } else if (offerAmount > staff.salary * 0.9) {
+        // Offer is too low but not insulting: COUNTER-OFFER
+        const counterOffer = Math.round(acceptanceThreshold * 1.05);
+        // In a real implementation, you'd set state to show this counter-offer in the UI
+        get().actions.addToast({
+          message: `${staff.name} counters your offer. They are asking for $${counterOffer}.`,
+          type: "info",
+        });
+      } else {
+        // Offer is insultingly low: REJECTION
+        get().actions.addToast({
+          message: `${staff.name} has rejected your offer and is no longer interested.`,
+          type: "error",
+        });
+        // Remove from talent pool for a while
+        set((state) => ({
+          talentPool: state.talentPool.filter((s) => s.id !== staffId),
+        }));
+      }
+    },
+    completeStaffQuiz: (staffId, answers) => {
+      const staffMember = get().talentPool.find((s) => s.id === staffId);
+      if (!staffMember) return;
+
+      let score = 0;
+      // The first question's answer is in the resume
+      if (answers["resume_clue"] === staffMember.resumeClueAttribute) {
+        score++;
+      }
+      // The second question's answer is based on their strategic focus
+      if (answers["strategic_focus"] === staffMember.biases.strategicFocus) {
+        score++;
+      }
+
+      const passingGrade = score >= 1; // Require at least 1 of 2 correct for a pass
+
+      if (passingGrade) {
+        get().actions.addToast({
+          message: `Quiz Passed! Your analysis of ${staffMember.name} was correct. Their attributes and potential are now revealed.`,
+          type: "success",
+        });
+        set((state) => ({
+          talentPool: state.talentPool.map((staff) =>
+            staff.id === staffId
+              ? {
+                  ...staff,
+                  scoutingLevel: "quizzed",
+                  revealedAttributes: staff.attributes,
+                  revealedPotential: staff.potential,
+                }
+              : staff
+          ),
+        }));
+      } else {
+        get().actions.addToast({
+          message: `Quiz Failed. Your deductions were incorrect. You'll need an HR Director to learn more about ${staffMember.name}.`,
+          type: "warning",
+        });
+        set((state) => ({
+          talentPool: state.talentPool.map((staff) =>
+            staff.id === staffId
+              ? { ...staff, scoutingLevel: "quizzed" }
+              : staff
+          ),
+        }));
+      }
+    },
+
+    vetCandidateWithHR: (staffId) => {
+      const hrDirector = get().hiredStaff.find((s) => s.role === "HR Director");
+      if (!hrDirector) {
+        get().actions.addToast({
+          message: "You need to hire an HR Director to perform final vetting.",
+          type: "warning",
+        });
+        return;
+      }
+
+      const staffMember = get().talentPool.find((s) => s.id === staffId);
+      if (!staffMember) return;
+
+      // Simulate vetting process, accuracy depends on HR Director's 'judgement'
+      const discoveryChance = hrDirector.attributes.judgement / 10;
+      let toastMessage = `Your HR Director has finished vetting ${staffMember.name}. Their full attributes have been confirmed.`;
+
+      if (Math.random() < discoveryChance) {
+        if (staffMember.potential === "gem") {
+          toastMessage = `HR Report: ${staffMember.name} is a potential GEM! Their true abilities are likely higher than they appear.`;
+        } else if (staffMember.potential === "bust") {
+          toastMessage = `HR Report: Your team has red-flagged ${staffMember.name} as a potential BUST. Be cautious.`;
+        }
+      }
+
+      set((state) => ({
+        talentPool: state.talentPool.map((staff) =>
+          staff.id === staffId
+            ? {
+                ...staff,
+                scoutingLevel: "vetted",
+                revealedAttributes: staff.trueAttributes, // HR reveals the TRUE attributes
+              }
+            : staff
+        ),
+      }));
+      get().actions.addToast({ message: toastMessage, type: "success" });
+    },
+    askInterviewQuestion: (staffId, questionKey) => {
+      set((state) => {
+        const talentPool = state.talentPool;
+        const staffIndex = talentPool.findIndex((s) => s.id === staffId);
+        if (staffIndex === -1) return state;
+
+        const staffMember = talentPool[staffIndex];
+        let note = "Their answer was non-committal."; // Default response
+
+        // Generate a hint based on the question and the staffer's true attributes
+        switch (questionKey) {
+          case "biggest_success": {
+            const bestSkill = Object.keys(staffMember.trueAttributes).reduce(
+              (a, b) =>
+                staffMember.trueAttributes[a] > staffMember.trueAttributes[b]
+                  ? a
+                  : b
+            );
+            note = `When asked about their biggest success, their story clearly highlighted their strength in **${bestSkill}**.`;
+            break;
+          }
+          case "work_style":
+            note = `They described their work style as **${staffMember.biases.strategicFocus.replace(
+              "_",
+              " "
+            )}**.`;
+            break;
+          case "motivation":
+            note = `Their primary motivation seems to be **${staffMember.biases.priorities[0].replace(
+              "_",
+              " "
+            )}**.`;
+            break;
+        }
+
+        const newStaffMember = {
+          ...staffMember,
+          interviewNotes: {
+            ...staffMember.interviewNotes,
+            [questionKey]: note,
+          },
+        };
+
+        const newTalentPool = [...talentPool];
+        newTalentPool[staffIndex] = newStaffMember;
+
+        return { talentPool: newTalentPool };
+      });
+    },
+    finishInterview: (staffId) => {
+      set((state) => ({
+        talentPool: state.talentPool.map((staff) =>
+          staff.id === staffId
+            ? { ...staff, scoutingLevel: "interviewed" }
+            : staff
+        ),
+      }));
     },
   },
 });

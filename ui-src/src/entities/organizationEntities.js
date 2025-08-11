@@ -4,15 +4,6 @@ import { NEWS_NAME_COMPONENTS } from "../data/newsOutletNames";
 import { generateId, getRandomElement, getRandomInt } from "../utils/core";
 import { generateAICandidateNameForElection } from "./personnel";
 
-/**
- * A comprehensive list of archetypes for generating diverse lobbying groups.
- * - focus: The primary goal or interest area of the group.
- * - keywords: Terms used to match the group to relevant policy questions.
- * - financialPower: The base financial strength (1-100).
- * - policyDirection: Determines stance on issues.
- * 'anti-regulation' tends to support the first option (less government, pro-business/liberty).
- * 'pro-regulation' tends to support the last option (more government, social/environmental protection).
- */
 const LOBBYING_ARCHETYPES = [
   // Economic
   {
@@ -304,7 +295,10 @@ export const createLobbyingGroupObject = (params = {}) => ({
  * @param {object} params - The parameters for the article.
  * @param {string} params.headline - The title of the article or broadcast.
  * @param {string} params.summary - A short summary or teaser.
- * @param {string} [params.body] - The full text for newspapers/online, or a transcript for TV/Radio.
+ * @param {object} [params.fullBody] - A structured object containing the article's full content.
+ * @param {Array<string>} [params.fullBody.paragraphs] - The main paragraphs of the article text.
+ * @param {Array<object>} [params.fullBody.quotes] - Featured quotes within the article.
+ * @param {string} [params.tone] - The overall tone ('positive', 'negative', 'neutral', 'sensationalist').
  * @param {string} params.outletId - The ID of the NewsOutlet that published this.
  * @param {string} [params.authorId] - The ID of the Journalist who wrote it.
  * @param {object} params.date - The date of publication.
@@ -316,7 +310,13 @@ export const createNewsArticleObject = (params = {}) => ({
   id: `news_article_${generateId()}`,
   headline: params.headline || "News Occurs",
   summary: params.summary || "Something happened in the city today.",
-  body: params.body || "",
+  // DEPRECATED: body is replaced by fullBody
+  body: params.summary || "Further details were not immediately available.",
+  fullBody: params.fullBody || {
+    paragraphs: [params.summary || "No further details available."],
+    quotes: [],
+  },
+  tone: params.tone || "neutral",
   outletId: params.outletId,
   authorId: params.authorId || null,
   date: params.date,

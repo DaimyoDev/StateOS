@@ -5,6 +5,10 @@ import "./TabStyles.css";
 import "./CareerActionsTab.css";
 import { getTimeUntil, createDateObj } from "../../utils/generalUtils";
 import BillAuthoringModal from "../modals/BillAuthoringModal";
+import ResumeViewerModal from "../modals/ResumeViewerModal";
+import NegotiationModal from "../modals/NegotiationModal";
+import StaffQuizModal from "../modals/StaffQuizModal";
+import StaffInterviewModal from "../modals/StaffInterviewModal";
 
 // Updated helper function
 const formatTimeUntil = (currentDateObj, futureDateObj, outcomeStatus) => {
@@ -372,149 +376,287 @@ const ActionsSubTab = ({
 const EMPTY_ARRAY = [];
 
 const StaffSubTab = () => {
+  // State to control modal visibility
+  const [viewingResumeId, setViewingResumeId] = useState(null);
+  const [negotiatingId, setNegotiatingId] = useState(null);
+  const [quizzingId, setQuizzingId] = useState(null);
+  const [interviewingId, setInterviewingId] = useState(null);
+
+  // Select state from the store individually for performance
   const talentPool = useGameStore((state) => state.talentPool || EMPTY_ARRAY);
   const hiredStaff = useGameStore((state) => state.hiredStaff || EMPTY_ARRAY);
-  // Correctly import the new actions from the store
-  const {
-    scoutStaffCandidate,
-    hireStaff,
-    fireStaff,
-    reviewResume,
-    conductInterview,
-  } = useGameStore((state) => state.actions);
+  const actions = useGameStore((state) => state.actions);
+
+  // Memoized check to see if an HR Director is currently hired
+  const hasHRDirector = useMemo(
+    () => hiredStaff.some((s) => s.role === "HR Director"),
+    [hiredStaff]
+  );
+
+  const { scoutStaffCandidate, reviewResume, fireStaff, vetCandidateWithHR } =
+    actions;
+
+  // Renders the correct sequence of action buttons based on scouting progress
+  const getScoutingActions = (staff) => {
+    switch (staff.scoutingLevel) {
+      case "unscouted":
+        return (
+          <button
+            className="menu-button small-button"
+            onClick={() => scoutStaffCandidate(staff.id)}
+          >
+            Scout ($250)
+          </button>
+        );
+      case "scouted":
+        return (
+          <button
+            className="action-button small-button"
+            onClick={() => {
+              reviewResume(staff.id);
+              setViewingResumeId(staff.id);
+            }}
+          >
+            Review Resume
+          </button>
+        );
+      case "resume_reviewed":
+        return (
+          <>
+            <button
+              className="action-button small-button"
+              onClick={() => setViewingResumeId(staff.id)}
+            >
+              View Resume
+            </button>
+            <button
+              className="action-button small-button"
+              onClick={() => setInterviewingId(staff.id)}
+            >
+              Conduct Interview
+            </button>
+            <button
+              className="action-button small-button"
+              onClick={() => setQuizzingId(staff.id)}
+            >
+              Take Quiz
+            </button>
+          </>
+        );
+      case "interviewed":
+        return (
+          <>
+            <button
+              className="action-button small-button"
+              onClick={() => setViewingResumeId(staff.id)}
+            >
+              View Resume
+            </button>
+            {staff.quizScore === null && (
+              <button
+                className="action-button small-button"
+                onClick={() => setQuizzingId(staff.id)}
+              >
+                Take Quiz
+              </button>
+            )}
+            {hasHRDirector && (
+              <button
+                className="action-button small-button"
+                onClick={() => vetCandidateWithHR(staff.id)}
+              >
+                Vet with HR
+              </button>
+            )}
+            <button
+              className="action-button small-button success-button"
+              onClick={() => setNegotiatingId(staff.id)}
+            >
+              Negotiate
+            </button>
+          </>
+        );
+      case "quizzed":
+        return (
+          <>
+            <button
+              className="action-button small-button"
+              onClick={() => setViewingResumeId(staff.id)}
+            >
+              View Resume
+            </button>
+            {!staff.revealedPriorities.length && (
+              <button
+                className="action-button small-button"
+                onClick={() => setInterviewingId(staff.id)}
+              >
+                Conduct Interview
+              </button>
+            )}
+            {hasHRDirector && (
+              <button
+                className="action-button small-button"
+                onClick={() => vetCandidateWithHR(staff.id)}
+              >
+                Vet with HR
+              </button>
+            )}
+            <button
+              className="action-button small-button success-button"
+              onClick={() => setNegotiatingId(staff.id)}
+            >
+              Negotiate
+            </button>
+          </>
+        );
+      case "vetted":
+        return (
+          <>
+            <button
+              className="action-button small-button"
+              onClick={() => setViewingResumeId(staff.id)}
+            >
+              View Resume
+            </button>
+            <button
+              className="action-button small-button success-button"
+              onClick={() => setNegotiatingId(staff.id)}
+            >
+              Offer Job
+            </button>
+          </>
+        );
+      default:
+        return null;
+    }
+  };
 
   return (
-    <div className="sub-tab-content">
-      <section className="info-card hired-staff-card">
-        <h3>My Staff</h3>
-        {hiredStaff.length > 0 ? (
-          <ul className="staff-list">
-            {hiredStaff.map((staff) => (
-              <li key={staff.id} className="staff-list-item">
-                <div className="staff-info">
-                  <span className="staff-name">
-                    {staff.name}{" "}
-                    <span className="staff-role">({staff.role})</span>
-                  </span>
-                  <span className="staff-details">
-                    STR: {staff.attributes.strategy} | COM:{" "}
-                    {staff.attributes.communication} | FUN:{" "}
-                    {staff.attributes.fundraising} | LOY:{" "}
-                    {staff.attributes.loyalty}
-                  </span>
-                  <span className="staff-salary">
-                    Salary: ${staff.salary.toLocaleString()}/month
-                  </span>
-                </div>
-                <button
-                  className="button-delete small-button"
-                  onClick={() => fireStaff(staff.id)}
-                >
-                  Fire
-                </button>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p>You have not hired any staff.</p>
-        )}
-      </section>
+    <>
+      {/* Render modals conditionally based on state */}
+      {viewingResumeId && (
+        <ResumeViewerModal
+          staffId={viewingResumeId}
+          onClose={() => setViewingResumeId(null)}
+        />
+      )}
+      {negotiatingId && (
+        <NegotiationModal
+          staffId={negotiatingId}
+          onClose={() => setNegotiatingId(null)}
+        />
+      )}
+      {quizzingId && (
+        <StaffQuizModal
+          staffId={quizzingId}
+          onClose={() => setQuizzingId(null)}
+        />
+      )}
+      {interviewingId && (
+        <StaffInterviewModal
+          staffId={interviewingId}
+          onClose={() => setInterviewingId(null)}
+        />
+      )}
 
-      <section className="info-card scouting-pool-card">
-        <h3>Scouting Pool</h3>
-        {talentPool.length > 0 ? (
-          <ul className="staff-list">
-            {talentPool.map((staff) => (
-              <li key={staff.id} className="staff-list-item">
-                <div className="staff-info">
-                  <span className="staff-name">
-                    {staff.name}{" "}
-                    <span className="staff-role">({staff.role})</span>
-                  </span>
-                  {staff.scoutingLevel !== "unscouted" && (
+      <div className="sub-tab-content">
+        <section className="info-card hired-staff-card">
+          <h3>My Staff</h3>
+          {hiredStaff.length > 0 ? (
+            <ul className="staff-list">
+              {hiredStaff.map((staff) => (
+                <li key={staff.id} className="staff-list-item">
+                  <div className="staff-info">
+                    <span className="staff-name">
+                      {staff.name}{" "}
+                      <span className="staff-role">({staff.role})</span>
+                    </span>
                     <span className="staff-details">
-                      Currently Employed:{" "}
-                      {staff.isCurrentlyEmployed ? "Yes" : "No"}
+                      STR: {staff.trueAttributes.strategy} | COM:{" "}
+                      {staff.trueAttributes.communication} | FUN:{" "}
+                      {staff.trueAttributes.fundraising} | LOY:{" "}
+                      {staff.trueAttributes.loyalty}
                     </span>
-                  )}
-                  {staff.revealedAttributes &&
-                  Object.keys(staff.revealedAttributes).length > 0 ? (
-                    <span className="staff-details">
-                      Known Skills:
-                      {Object.entries(staff.revealedAttributes)
-                        .map(
-                          ([key, value]) =>
-                            ` ${key.substring(0, 3).toUpperCase()}: ${value}`
-                        )
-                        .join(" | ")}
+                    <span className="staff-salary">
+                      Salary: ${staff.salary.toLocaleString()}/month
                     </span>
-                  ) : (
-                    <span className="staff-details-hidden">
-                      {staff.scoutingLevel === "unscouted"
-                        ? "Candidate is unknown. Scout to reveal basic info."
-                        : "No specific skills confirmed. Further vetting required."}
+                  </div>
+                  <button
+                    className="button-delete small-button"
+                    onClick={() => fireStaff(staff.id)}
+                  >
+                    Fire
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p>You have not hired any staff.</p>
+          )}
+        </section>
+
+        <section className="info-card scouting-pool-card">
+          <h3>Scouting Pool</h3>
+          {!hasHRDirector && (
+            <p className="hr-warning">
+              Hire an HR Director to unlock final vetting and discover hidden
+              gems or busts.
+            </p>
+          )}
+          {talentPool.length > 0 ? (
+            <ul className="staff-list">
+              {talentPool.map((staff) => (
+                <li key={staff.id} className="staff-list-item">
+                  <div className="staff-info">
+                    <span className="staff-name">
+                      {staff.name}{" "}
+                      <span className="staff-role">({staff.role})</span>
                     </span>
-                  )}
-                </div>
-
-                <div className="staff-actions">
-                  {staff.scoutingLevel === "unscouted" && (
-                    <button
-                      className="menu-button small-button"
-                      onClick={() => scoutStaffCandidate(staff.id)}
-                      title="Pay to get a basic dossier and resume on this candidate."
-                    >
-                      Scout ($250)
-                    </button>
-                  )}
-
-                  {staff.scoutingLevel === "scouted" && (
-                    <>
-                      <button
-                        className="action-button small-button"
-                        onClick={() => reviewResume(staff.id)}
-                        title="Review their resume to uncover key skills."
-                      >
-                        Review Resume
-                      </button>
-                      <button
-                        className="action-button small-button"
-                        onClick={() => conductInterview(staff.id)}
-                        title="Conduct a formal interview to reveal all skills and traits."
-                      >
-                        Interview
-                      </button>
-                    </>
-                  )}
-
-                  {staff.scoutingLevel === "resume_reviewed" && (
-                    <button
-                      className="action-button small-button"
-                      onClick={() => conductInterview(staff.id)}
-                      title="Conduct a formal interview to reveal all skills and traits."
-                    >
-                      Interview
-                    </button>
-                  )}
-
-                  {staff.scoutingLevel === "interviewed" && (
-                    <button
-                      className="action-button small-button success-button"
-                      onClick={() => hireStaff(staff.id)}
-                      title="Hire this person. Their salary will be added to your monthly expenses."
-                    >
-                      Offer Job
-                    </button>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p>No candidates currently available for scouting.</p>
-        )}
-      </section>
-    </div>
+                    {Object.keys(staff.revealedAttributes).length > 0 ? (
+                      <span className="staff-details">
+                        Known Skills:
+                        {Object.entries(staff.revealedAttributes)
+                          .map(
+                            ([key, value]) =>
+                              ` ${key.substring(0, 3).toUpperCase()}: ${value}`
+                          )
+                          .join(" | ")}
+                      </span>
+                    ) : (
+                      <span className="staff-details-hidden">
+                        {staff.scoutingLevel === "unscouted"
+                          ? "Unknown Candidate. Scout to reveal info."
+                          : "Skills unconfirmed. Further vetting required."}
+                      </span>
+                    )}
+                    <span className="staff-details biases">
+                      Focus: {staff.biases.strategicFocus.replace("_", " ")} |
+                      Lean: {staff.biases.ideologicalLean}
+                    </span>
+                    {staff.revealedPriorities &&
+                      staff.revealedPriorities.length > 0 && (
+                        <div className="staff-priorities">
+                          <span>
+                            <strong>Priorities:</strong>{" "}
+                            {staff.revealedPriorities
+                              .map((p) => p.replace(/_/g, " "))
+                              .join(", ")}
+                          </span>
+                        </div>
+                      )}
+                  </div>
+                  <div className="staff-actions">
+                    {getScoutingActions(staff)}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p>No candidates currently available for scouting.</p>
+          )}
+        </section>
+      </div>
+    </>
   );
 };
 

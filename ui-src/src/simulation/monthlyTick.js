@@ -1,15 +1,19 @@
 // src/simulation/monthlyTick.js
-import { getRandomInt, adjustStatLevel } from "../utils/core.js";
+import {
+  getRandomInt,
+  adjustStatLevel,
+  getRandomElement,
+} from "../utils/core.js";
 import {
   ECONOMIC_OUTLOOK_LEVELS,
   RATING_LEVELS,
   MOOD_LEVELS,
 } from "../data/governmentData";
 import { calculateDetailedIncomeSources } from "../entities/politicalEntities.js";
-import { CITY_POLICIES } from "../data/policyDefinitions";
 import { calculateAllCityStats } from "../utils/statCalculationCore.js";
 import { normalizePartyPopularities } from "../utils/electionUtils.js";
 import { decideAndAuthorAIBill } from "./aiProposal.js";
+import { generateNewsForEvent } from "./newsGenerator.js";
 
 /**
  * Derives a qualitative rating (e.g., "Good", "Poor") from a numerical stat.
@@ -94,18 +98,42 @@ export const runMonthlyBudgetUpdate = (campaign) => {
  * @returns {object} { statUpdates: object, newsItems: Array }
  */
 export const runMonthlyStatUpdate = (campaign) => {
-  // ... (initial setup remains the same) ...
   const statUpdates = {};
-  const newsItems = [];
+  let newsItems = []; // Changed to let
   const city = campaign.startingCity;
+  const allOutlets = campaign.newsOutlets || [];
 
   if (!city?.stats) {
     return { statUpdates, newsItems };
   }
 
-  // --- STEP 1: Calculate all core, numerical stats ---
+  const oldStats = { ...city.stats };
   const calculatedStats = calculateAllCityStats(city);
   Object.assign(statUpdates, calculatedStats);
+  const newStats = { ...oldStats, ...statUpdates };
+
+  // Check for significant unemployment change
+  if (Math.abs(newStats.unemploymentRate - oldStats.unemploymentRate) > 0.5) {
+    const event = {
+      type: "economic_update",
+      context: {
+        stat: "unemployment rate",
+        oldValue: oldStats.unemploymentRate.toFixed(1),
+        newValue: newStats.unemploymentRate.toFixed(1),
+        direction:
+          newStats.unemploymentRate < oldStats.unemploymentRate
+            ? "positive"
+            : "negative",
+      },
+    };
+    // Generate a story from a random outlet
+    if (allOutlets.length > 0) {
+      const reportingOutlet = getRandomElement(allOutlets);
+      newsItems.push(
+        generateNewsForEvent(event, reportingOutlet, campaign.currentDate)
+      );
+    }
+  }
 
   // --- STEP 2: Use new stats to influence qualitative ratings and mood ---
   // ... (economic outlook and citizen mood logic remains the same) ...

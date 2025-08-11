@@ -1,0 +1,72 @@
+.article-viewer-content {
+  /* Use theme variables for background and text color */
+  background-color: var(--ui-panel-bg);
+  color: var(--primary-text);
+
+  padding: 15px 25px;
+  max-height: 75vh;
+  overflow-y: auto;
+  text-align: left;
+
+  /* Add a subtle scrollbar for dark themes */
+  scrollbar-width: thin;
+  scrollbar-color: var(--secondary-text) var(--secondary-bg);
+}
+
+.article-viewer-content h2 {
+  /* Use the heading font from the theme */
+  font-family: var(--font-heading, "Merriweather", serif);
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+  line-height: 1.2;
+  color: var(--primary-text); /* Ensure headline uses primary text color */
+}
+
+.article-byline {
+  font-family: var(--font-main, "Inter", sans-serif);
+  font-size: 0.9rem;
+  /* Use the theme's secondary text color for less emphasis */
+  color: var(--secondary-text);
+  margin-top: 0;
+  margin-bottom: 20px;
+  /* Use the theme's border color */
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 15px;
+}
+
+.article-body p {
+  /* Serif fonts are great for readability in articles */
+  font-family: var(--font-heading, "Merriweather", serif);
+  font-size: 1.1rem;
+  line-height: 1.7;
+  margin-bottom: 1.5em;
+  color: var(--primary-text);
+}
+
+.article-body blockquote {
+  /* Use theme variables for a distinct but fitting look */
+  background-color: var(--secondary-bg);
+  border-left: 4px solid var(--accent-color);
+
+  padding: 15px 20px;
+  margin: 25px 5px; /* Added horizontal margin */
+  font-style: italic;
+  color: var(--primary-text);
+  border-radius: var(--element-radius, 4px);
+}
+
+.article-body blockquote p {
+  margin-bottom: 10px;
+  font-size: 1.1rem;
+}
+
+.article-body blockquote footer {
+  text-align: right;
+  font-style: normal;
+  font-weight: bold;
+  font-size: 0.9rem;
+  /* Use secondary text color for the quote source */
+  color: var(--secondary-text);
+  opacity: 0.9;
+}

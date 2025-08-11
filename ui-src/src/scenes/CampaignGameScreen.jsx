@@ -18,6 +18,7 @@ import CampaignTab from "../components/game_tabs/CampaignTab";
 import NewsEventsTab from "../components/game_tabs/NewsEventsTab";
 import PoliticalEntitiesTab from "../components/game_tabs/PoliticalEntitiesTab";
 import PoliticiansTab from "../components/game_tabs/PoliticiansTab";
+import ArticleViewerModal from "../components/modals/ArticleViewerModal";
 
 const TABS = [
   { id: "Dashboard", label: "Dashboard" },
@@ -69,6 +70,7 @@ function CampaignGameScreen() {
   const closePolicyVoteDetailsModal = useGameStore(
     (state) => state.actions.closePolicyVoteDetailsModal
   );
+  const isArticleModalOpen = useGameStore((state) => state.isArticleModalOpen);
 
   const navigateTo = useGameStore((state) => state.actions.navigateTo);
   const advanceDay = useGameStore((state) => state.actions.advanceDay);
@@ -118,7 +120,7 @@ function CampaignGameScreen() {
     return <div>Loading campaign data or redirecting...</div>;
   }
 
-  const { currentDate } = activeCampaign; // Safe to destructure now
+  const { currentDate } = activeCampaign;
 
   const handleNextDay = () => {
     if (advanceDay && !showElectionDayModal && !isAdvancingToNextElection) {
@@ -137,7 +139,6 @@ function CampaignGameScreen() {
   };
 
   const handleNextYear = () => {
-    // <<<< NEW HANDLER
     if (
       advanceToNextYear &&
       !showElectionDayModal &&
@@ -315,6 +316,7 @@ function CampaignGameScreen() {
           onClose={closePolicyVoteDetailsModal}
           proposalData={viewingVoteDetailsForBill}
         />
+        {isArticleModalOpen && <ArticleViewerModal />}
       </div>
     </>
   );

@@ -332,7 +332,7 @@ const LobbyingGroupDetail = ({ group }) => {
 // --- News Outlet Detail View ---
 const NewsOutletDetail = ({ outlet }) => {
   const allNewsItems = useGameStore((state) => state.newsItems);
-  const actions = useGameStore((state) => state.actions);
+  const actions = useGameStore((state) => state.actions); // Actions are already here
   const outletArticles = useMemo(() => {
     return allNewsItems.filter((item) => item.outletId === outlet.id);
   }, [allNewsItems, outlet.id]);
@@ -358,7 +358,13 @@ const NewsOutletDetail = ({ outlet }) => {
         <div className="news-feed-detail">
           {outletArticles.length > 0 ? (
             outletArticles.map((article) => (
-              <div key={article.id} className="news-article-card">
+              // MODIFIED: Added onClick, a 'clickable' class, and a title attribute
+              <div
+                key={article.id}
+                className="news-article-card clickable"
+                onClick={() => actions.viewArticle(article.id)}
+                title="Click to read full article"
+              >
                 <h4>{article.headline}</h4>
                 <p className="article-summary">{article.summary}</p>
                 <div className="article-meta">

@@ -346,3 +346,25 @@
   margin-left: 10px;
   flex-shrink: 0;
 }
+
+.hr-warning {
+  font-style: italic;
+  color: var(--secondary-text);
+  background-color: var(--secondary-bg);
+  padding: 10px;
+  border-radius: var(--element-radius);
+  margin-bottom: 15px;
+  text-align: center;
+}
+.staff-details.biases {
+  font-size: 0.8em;
+  text-transform: capitalize;
+}
+
+.staff-priorities {
+  font-size: 0.8em;
+  color: var(--secondary-text);
+  text-transform: capitalize;
+  width: 100%;
+  margin-top: 4px;
+}

@@ -119,7 +119,22 @@ export const createLegislationSlice = (set, get) => ({
         const councilSize = get().actions.getCityCouncilSize?.() || 1; // Assumes a helper action
         const majorityNeeded = Math.floor(councilSize / 2) + 1;
         const yeaVotes = bill.votes.yea?.length || 0;
+        const nayVotes = bill.votes.nay?.length || 0;
         const billDidPass = yeaVotes >= majorityNeeded;
+
+        const voteEvent = {
+          type: "policy_vote",
+          context: {
+            policyName: bill.name,
+            didPass: billDidPass,
+            // Use the first policy ID for the generator's bias check
+            policyId: bill.policies[0]?.policyId,
+            yeaVotes: yeaVotes,
+            nayVotes: nayVotes,
+          },
+        };
+        // This action, defined in newsSlice, will create an article from every outlet
+        get().actions.generateAndAddNewsForAllOutlets?.(voteEvent);
 
         let newActiveLegislationList = [...state.activeLegislation];
         if (billDidPass) {

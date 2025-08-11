@@ -44,6 +44,8 @@ export const createUISlice = (set, get) => ({
   voteQueue: [],
   isPolicyVoteDetailsModalOpen: false,
   viewingVoteDetailsForBill: null,
+  viewingArticleId: null,
+  isArticleModalOpen: false,
 
   // --- ACTIONS ---
   actions: {
@@ -261,5 +263,17 @@ export const createUISlice = (set, get) => ({
         isPolicyVoteDetailsModalOpen: false,
       }),
     clearVoteQueue: () => set({ voteQueue: [] }),
+    viewArticle: (articleId) => {
+      const article = get().newsItems.find((n) => n.id === articleId);
+      if (article) {
+        set({ viewingArticleId: articleId, isArticleModalOpen: true });
+      } else {
+        console.warn(`Article with ID ${articleId} not found.`);
+      }
+    },
+
+    closeArticleModal: () => {
+      set({ viewingArticleId: null, isArticleModalOpen: false });
+    },
   },
 });

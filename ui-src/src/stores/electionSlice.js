@@ -13,6 +13,7 @@ import {
   getElectionInstances,
   initializeElectionObject,
 } from "../utils/electionUtils.js";
+import { generateNewsForEvent } from "../simulation/newsGenerator.js";
 
 // --- Local Helper Functions (To be moved to electionManager.js later) ---
 
@@ -224,8 +225,6 @@ export const createElectionSlice = (set, get) => ({
           simulatedElectionData
         );
 
-        console.log(outcome);
-
         const updatedElection = {
           ...electionToEnd,
           outcome: {
@@ -336,6 +335,41 @@ export const createElectionSlice = (set, get) => ({
           }
         }
 
+        // --- NEW: NEWS GENERATION LOGIC ---
+        const { newsContext } = outcome;
+        const allOutlets = state.activeCampaign.newsOutlets || [];
+        const currentDate = state.activeCampaign.currentDate;
+        let newNewsItems = [...state.newsItems];
+
+        if (
+          newsContext &&
+          newsContext.winners &&
+          newsContext.winners.length > 0 &&
+          allOutlets.length > 0
+        ) {
+          const winner = newsContext.winners[0];
+          const event = {
+            type: "election_results",
+            context: {
+              officeName: newsContext.officeName,
+              winnerName: winner.name,
+              winnerPartyName: winner.partyName,
+              // You could expand context to include losers for more detailed articles
+              losers: [],
+            },
+          };
+
+          // Generate news from up to 3 random outlets to show different perspectives
+          const outletsToReport = allOutlets
+            .sort(() => 0.5 - Math.random())
+            .slice(0, 3);
+
+          outletsToReport.forEach((outlet) => {
+            const article = generateNewsForEvent(event, outlet, currentDate);
+            newNewsItems.unshift(article); // Add new article to the top of the list
+          });
+        }
+
         return {
           activeCampaign: {
             ...state.activeCampaign,
@@ -343,6 +377,7 @@ export const createElectionSlice = (set, get) => ({
             governmentOffices: updatedGovernmentOffices,
             politician: updatedPlayerPolitician,
           },
+          newsItems: newNewsItems,
         };
       });
     },

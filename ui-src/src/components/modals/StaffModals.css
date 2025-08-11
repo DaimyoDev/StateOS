@@ -1,0 +1,116 @@
+.staff-modal-content {
+  padding: 10px 20px;
+  max-height: 70vh;
+  overflow-y: auto;
+  text-align: left;
+  background-color: var(--ui-panel-bg);
+  color: var(--primary-text);
+}
+
+.resume-content section {
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 15px;
+}
+
+.resume-content h3 {
+  color: var(--accent-color);
+  margin-bottom: 10px;
+}
+
+.resume-job {
+  margin-bottom: 10px;
+}
+.resume-job p {
+  margin-top: 5px;
+  font-size: 0.9em;
+  color: var(--secondary-text);
+}
+
+.resume-skills {
+  list-style-type: disc;
+  padding-left: 20px;
+}
+
+.negotiation-form {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin: 20px 0;
+}
+
+.negotiation-form input {
+  padding: 8px;
+  font-size: 1.1em;
+  width: 150px;
+  background-color: var(--input-bg);
+  color: var(--input-text);
+  border: 1px solid var(--border-color);
+  border-radius: var(--element-radius);
+}
+
+.negotiation-tip {
+  font-size: 0.85em;
+  color: var(--secondary-text);
+  font-style: italic;
+}
+
+.quiz-content .quiz-question {
+  margin-bottom: 20px;
+}
+.quiz-content .quiz-question p {
+  font-weight: bold;
+}
+.quiz-answers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
+.quiz-answer-btn {
+  background-color: var(--button-bg);
+  color: var(--button-text);
+  border: 1px solid var(--border-color);
+  padding: 8px 12px;
+  cursor: pointer;
+  border-radius: var(--element-radius);
+  transition: background-color 0.2s;
+}
+.quiz-answer-btn:hover {
+  background-color: var(--button-hover-bg);
+}
+.quiz-answer-btn.selected {
+  background-color: var(--accent-color);
+  color: var(--accent-text);
+  border-color: var(--accent-border-color);
+}
+.interview-content {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+.interview-panel {
+  background-color: var(--secondary-bg);
+  padding: 15px;
+  border-radius: var(--element-radius);
+}
+.interview-panel h4 {
+  margin-top: 0;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 5px;
+}
+.interview-questions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.interview-transcript p {
+  margin: 0 0 8px 0;
+  color: var(--secondary-text);
+}
+.interview-transcript strong {
+  color: var(--accent-color);
+}
+.interview-transcript .placeholder-text {
+  font-style: italic;
+}

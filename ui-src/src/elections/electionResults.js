@@ -544,6 +544,15 @@ export const calculateElectionOutcome = (
     voterTurnoutPercentageActual,
     seatsToFill: result.seatsToFill || seatsToFill,
     cityId: electionToEnd.entityDataSnapshot.id,
+    newsContext: {
+      officeName: electionToEnd.officeName,
+      winners: result.determinedWinnersArray.map((w) => ({
+        name: w.name,
+        partyName:
+          allPartiesInGame.find((p) => p.id === w.partyId)?.name ||
+          "Independent",
+      })),
+    },
   };
 
   return finalOutcome;
