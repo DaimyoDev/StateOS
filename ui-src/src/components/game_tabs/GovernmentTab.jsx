@@ -4,6 +4,7 @@ import "./TabStyles.css"; // Or your common tab styles
 import CityOverviewTab from "./government_tabs/CityOverviewTab"; // NEW component
 import LegislationSubTab from "./government_tabs/LegislationSubTab";
 import StateOverviewTab from "./government_tabs/StateOverviewTab";
+import NationalOverviewTab from "./government_tabs/NationalOverviewTab";
 // import FederalOverviewTab from './government_tabs/FederalOverviewTab'; // Future
 
 const GovernmentTab = ({ campaignData }) => {
@@ -17,8 +18,8 @@ const GovernmentTab = ({ campaignData }) => {
         return <LegislationSubTab campaignData={campaignData} />;
       case "state":
         return <StateOverviewTab campaignData={campaignData} />;
-      // case 'federal':
-      //   return <FederalOverviewTab federalData={...} />; // TODO
+      case "federal":
+        return <NationalOverviewTab campaignData={campaignData} />;
       default:
         return (
           <CityOverviewTab startingCityData={campaignData?.startingCity} />
@@ -59,7 +60,6 @@ const GovernmentTab = ({ campaignData }) => {
           className={`sub-tab-button ${
             activeGovSubTab === "federal" ? "active" : ""
           }`}
-          disabled // TODO: Enable when federal level is implemented
         >
           Federal / National
         </button>

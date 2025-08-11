@@ -1,20 +1,13 @@
 // src/elections/electionParticipants.js
-// This file is responsible for determining WHO is running in a specific election instance
-// based on its electoral system (FPTP, PartyListPR, MMP, etc.).
-
-// NOTE: Import paths will need to be updated once the refactoring is complete.
 import {
   BASE_IDEOLOGIES,
   IDEOLOGY_DEFINITIONS,
 } from "../data/ideologiesData.js";
 import { getRandomElement, getRandomInt } from "../utils/core.js";
-import {
-  generateAICandidateNameForElection,
-  generateFullAIPolitician,
-} from "../entities/personnel.js";
-import { calculateBaseCandidateScore } from "../utils/electionUtils.js"; // This will be moved later
+import { generateFullAIPolitician } from "../entities/personnel.js";
+import { calculateBaseCandidateScore } from "../utils/electionUtils.js";
 import { normalizePolling } from "../General Scripts/PollingFunctions.js";
-import { POLICY_QUESTIONS } from "../data/policyData.js";
+import useGameStore from "../store.js";
 
 /**
  * Handles participant generation for First-Past-The-Post (FPTP) style elections.
@@ -25,13 +18,15 @@ export function handleFPTPParticipants({
   partiesInScope,
   incumbentInfo,
   countryId,
-  activeCampaign,
-  electionPropertiesForScoring,
-  entityPopulation,
-  electorateIdeologyCenter,
-  electorateIdeologySpread,
-  electorateIssueStances,
+  ...generationContext
 }) {
+  const {
+    activeCampaign,
+    electionPropertiesForScoring,
+    entityPopulation,
+    electorateDemographics,
+  } = generationContext;
+
   let candidates = [];
   const runningIncumbents = [];
 
@@ -44,7 +39,12 @@ export function handleFPTPParticipants({
         runningIncumbents.push({
           ...inc,
           isIncumbent: true,
-          name: inc.name || generateAICandidateNameForElection(countryId),
+          name:
+            inc.name ||
+            useGameStore.getState().actions.generateDynamicName({
+              countryId,
+              demographics: electorateDemographics,
+            }),
         });
       }
     });
@@ -75,39 +75,29 @@ export function handleFPTPParticipants({
   for (let i = 0; i < numberOfChallengersToGenerate; i++) {
     const newChallenger = generateFullAIPolitician(
       countryId,
-      partiesInScope, // Pass all available parties
-      POLICY_QUESTIONS,
-      IDEOLOGY_DEFINITIONS,
-      null, // <-- SET forcePartyId TO NULL
-      null,
-      null,
-      false,
-      electorateIdeologyCenter,
-      electorateIdeologySpread,
-      electorateIssueStances
+      partiesInScope,
+      generationContext
     );
 
     const isPartyAlreadyRepresented = candidates.some(
       (existingCandidate) => existingCandidate.partyId === newChallenger.partyId
     );
 
-    // 3. If the party is taken AND it's not "independent", make this challenger an Independent.
     if (newChallenger.partyId !== "independent" && isPartyAlreadyRepresented) {
       newChallenger.partyId = `independent_ai_challenger_${i}`;
       newChallenger.partyName = "Independent";
-      newChallenger.partyColor = "#888888"; // Standard independent color
+      newChallenger.partyColor = "#888888";
     }
 
     if (!candidates.find((c) => c.id === newChallenger.id)) {
       candidates.push(newChallenger);
     } else {
-      i--; // Decrement to ensure we generate the target number of unique challengers
+      i--;
     }
   }
 
   const candidatesWithScores = candidates.map((cand) => ({
     ...cand,
-    name: cand.name || generateAICandidateNameForElection(countryId),
     baseScore: calculateBaseCandidateScore(
       cand,
       electionPropertiesForScoring,
@@ -132,16 +122,17 @@ export function handleFPTPParticipants({
  * @returns {object} { type: "party_lists", data: object }
  */
 export function handlePartyListPRParticipants({
-  electionType,
   partiesInScope,
-  numberOfSeatsToFill,
   countryId,
-  activeCampaign,
-  electionPropertiesForScoring,
-  electorateIdeologyCenter,
-  electorateIdeologySpread,
-  electorateIssueStances,
+  ...generationContext
 }) {
+  const {
+    activeCampaign,
+    electionPropertiesForScoring,
+    numberOfSeatsToFill,
+    electionType,
+  } = generationContext;
+
   const partyListsOutput = {};
   partiesInScope.forEach((party) => {
     const blocSeats = electionType.minCouncilSeats || numberOfSeatsToFill;
@@ -154,19 +145,10 @@ export function handlePartyListPRParticipants({
     );
     partyListsOutput[party.id] = [];
     for (let i = 0; i < listSize; i++) {
-      const newCand = generateFullAIPolitician(
-        countryId,
-        partiesInScope,
-        POLICY_QUESTIONS,
-        IDEOLOGY_DEFINITIONS,
-        party.id,
-        null,
-        null,
-        false,
-        electorateIdeologyCenter,
-        electorateIdeologySpread,
-        electorateIssueStances
-      );
+      const newCand = generateFullAIPolitician(countryId, partiesInScope, {
+        ...generationContext,
+        forcePartyId: party.id,
+      });
       partyListsOutput[party.id].push({
         ...newCand,
         name: `${newCand.name} (${party.shortName || party.name} List #${
@@ -174,9 +156,7 @@ export function handlePartyListPRParticipants({
         })`,
         listPosition: i + 1,
         partyAffiliationReadOnly: {
-          partyId: party.id,
-          partyName: party.name,
-          partyColor: party.color,
+          /* ... */
         },
         baseScore: calculateBaseCandidateScore(
           newCand,
@@ -196,17 +176,17 @@ export function handlePartyListPRParticipants({
  * @returns {object} { type: "mmp_participants", data: object }
  */
 export function handleMMPParticipants({
-  electionType,
   partiesInScope,
-  incumbentInfo,
-  numberOfSeatsToFill,
   countryId,
-  activeCampaign,
-  electionPropertiesForScoring,
-  electorateIdeologyCenter,
-  electorateIdeologySpread,
-  electorateIssueStances,
+  ...generationContext
 }) {
+  const {
+    activeCampaign,
+    electionPropertiesForScoring,
+    numberOfSeatsToFill,
+    electionType,
+    incumbentInfo,
+  } = generationContext;
   const partyListsOutput = {};
   const partiesSubmittingLists = partiesInScope.filter((p) => !p.isIndependent);
 
@@ -221,19 +201,10 @@ export function handleMMPParticipants({
     );
     partyListsOutput[party.id] = [];
     for (let i = 0; i < listSize; i++) {
-      const newCand = generateFullAIPolitician(
-        countryId,
-        partiesInScope,
-        POLICY_QUESTIONS,
-        IDEOLOGY_DEFINITIONS,
-        party.id,
-        null,
-        null,
-        false,
-        electorateIdeologyCenter,
-        electorateIdeologySpread,
-        electorateIssueStances
-      );
+      const newCand = generateFullAIPolitician(countryId, partiesInScope, {
+        ...generationContext,
+        forcePartyId: party.id,
+      });
       partyListsOutput[party.id].push({
         ...newCand,
         name: `${newCand.name} (${party.shortName || party.name} List #${
@@ -279,15 +250,7 @@ export function handleMMPParticipants({
         newConstituencyCand = generateFullAIPolitician(
           countryId,
           partiesInScope,
-          POLICY_QUESTIONS,
-          IDEOLOGY_DEFINITIONS,
-          party.id,
-          null,
-          null,
-          false,
-          electorateIdeologyCenter,
-          electorateIdeologySpread,
-          electorateIssueStances
+          { ...generationContext, forcePartyId: party.id }
         );
         attempts++;
       } while (
@@ -325,19 +288,10 @@ export function handleMMPParticipants({
       color: "#888888",
     };
     independentConstituencyCandidates.push(
-      generateFullAIPolitician(
-        countryId,
-        [],
-        POLICY_QUESTIONS,
-        IDEOLOGY_DEFINITIONS,
-        indParty.id,
-        null,
-        null,
-        false,
-        electorateIdeologyCenter,
-        electorateIdeologySpread,
-        electorateIssueStances
-      )
+      generateFullAIPolitician(countryId, [], {
+        ...generationContext,
+        forcePartyId: indParty.id,
+      })
     );
   }
 
@@ -367,16 +321,16 @@ export function handleMMPParticipants({
  */
 export function handleMMDParticipants({
   partiesInScope,
-  incumbentInfo,
-  numberOfSeatsToFill,
   countryId,
-  activeCampaign,
-  electionPropertiesForScoring,
-  entityPopulation,
-  electorateIdeologyCenter,
-  electorateIdeologySpread,
-  electorateIssueStances,
+  ...generationContext
 }) {
+  const {
+    activeCampaign,
+    electionPropertiesForScoring,
+    numberOfSeatsToFill,
+    entityPopulation,
+    incumbentInfo,
+  } = generationContext;
   // This logic is very similar to FPTP but generates more candidates relative to seats.
   let candidates = [];
   const runningIncumbents = [];
@@ -390,7 +344,11 @@ export function handleMMDParticipants({
         runningIncumbents.push({
           ...inc,
           isIncumbent: true,
-          name: inc.name || generateAICandidateNameForElection(countryId),
+          name:
+            inc.name ||
+            useGameStore
+              .getState()
+              .actions.generateDynamicName({ countryId, ...generationContext }),
         });
       }
     });
@@ -412,16 +370,8 @@ export function handleMMDParticipants({
   for (let i = 0; i < numberOfChallengersToGenerate; i++) {
     const newChallenger = generateFullAIPolitician(
       countryId,
-      partiesInScope, // Pass all available parties
-      POLICY_QUESTIONS,
-      IDEOLOGY_DEFINITIONS,
-      null, // <-- SET forcePartyId TO NULL
-      null,
-      null,
-      false,
-      electorateIdeologyCenter,
-      electorateIdeologySpread,
-      electorateIssueStances
+      partiesInScope,
+      generationContext
     );
 
     const isPartyAlreadyRepresented = candidates.some(
@@ -444,7 +394,6 @@ export function handleMMDParticipants({
 
   const candidatesWithScores = candidates.map((cand) => ({
     ...cand,
-    name: cand.name || generateAICandidateNameForElection(countryId),
     baseScore: calculateBaseCandidateScore(
       cand,
       electionPropertiesForScoring,

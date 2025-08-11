@@ -99,12 +99,14 @@ export const createCampaignSetupSlice = (set, get) => {
           parties: setupState.generatedPartiesInCountry,
           locationName: currentCountryData.name,
           countryId: setupState.selectedCountryId,
+          regionId: setupState.selectedRegionId,
         });
         const regionalNews = generateNewsOutlets({
           level: "regional",
           parties: setupState.regionPoliticalLandscape,
           locationName: regionalLocationName,
           countryId: setupState.selectedCountryId,
+          regionId: setupState.selectedRegionId,
         });
         const allNewsOutlets = [...nationalNews, ...regionalNews];
         const allLobbyingGroups = generateInitialLobbyingGroups({
@@ -161,48 +163,63 @@ export const createCampaignSetupSlice = (set, get) => {
         setLoadingGame(false);
       },
       loadCountries: () => set({ availableCountries: BASE_COUNTRIES_DATA }),
-      processAndSelectCountry: (countryId) => {
-        set((state) => {
-          const selectedCountry = state.availableCountries.find(
-            (c) => c.id === countryId
-          );
-          if (!selectedCountry) return state;
+      processAndSelectCountry: async (countryId) => {
+        const { setLoadingGame } = get().actions;
 
-          if (selectedCountry.isProcessed) {
-            return {
-              currentCampaignSetup: {
-                ...state.currentCampaignSetup,
-                selectedCountryId: countryId,
-                selectedRegionId: null,
-                generatedPartiesInCountry:
-                  selectedCountry.nationalParties || [],
-              },
-            };
-          }
+        // --- STEP 1: Show the initial loading screen ---
+        setLoadingGame(true, "Beginning world generation...");
+        await pause(50); // Give React time to render
 
-          let countryToProcess = JSON.parse(JSON.stringify(selectedCountry));
+        const currentCountries = get().availableCountries;
+        const selectedCountry = currentCountries.find(
+          (c) => c.id === countryId
+        );
+        if (!selectedCountry) return;
 
-          let processedCountry = assignPopulationToCountry(
-            { ...countryToProcess },
-            DEFAULT_COUNTRY_POPULATION_RANGES
-          );
-
-          processedCountry = generateDetailedCountryData(processedCountry);
-          processedCountry.isProcessed = true;
-
-          const updatedCountries = state.availableCountries.map((c) =>
-            c.id === countryId ? processedCountry : c
-          );
-
-          return {
-            availableCountries: updatedCountries,
+        // If already processed, just set the ID and hide loading screen
+        if (selectedCountry.isProcessed) {
+          set((state) => ({
             currentCampaignSetup: {
               ...state.currentCampaignSetup,
               selectedCountryId: countryId,
-              generatedPartiesInCountry: processedCountry.nationalParties || [],
+              generatedPartiesInCountry: selectedCountry.nationalParties || [],
             },
-          };
+          }));
+          setLoadingGame(false); // Hide loading screen
+          return;
+        }
+
+        let countryToProcess = JSON.parse(JSON.stringify(selectedCountry));
+
+        setLoadingGame(true, "Calculating population distributions...");
+        await pause(20);
+        let processedCountry = assignPopulationToCountry(
+          countryToProcess,
+          DEFAULT_COUNTRY_POPULATION_RANGES
+        );
+
+        setLoadingGame(true, "Generating detailed regional data...");
+        await pause(20);
+        processedCountry = generateDetailedCountryData(processedCountry);
+        processedCountry.isProcessed = true;
+
+        setLoadingGame(true, "Finalizing country setup...");
+        await pause(20);
+        const updatedCountries = currentCountries.map((c) =>
+          c.id === countryId ? processedCountry : c
+        );
+
+        set({
+          availableCountries: updatedCountries,
+          currentCampaignSetup: {
+            ...get().currentCampaignSetup,
+            selectedCountryId: countryId,
+            generatedPartiesInCountry: processedCountry.nationalParties || [],
+          },
         });
+
+        // --- STEP 2: Hide the loading screen ---
+        setLoadingGame(false);
       },
     },
   };

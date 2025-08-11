@@ -212,9 +212,10 @@ export const createPersonnelSlice = (set, get) => ({
       const newTalentPool = [];
       for (let i = 0; i < 15; i++) {
         // Generate 15 initial candidates
+        const staffName = get().actions.generateDynamicName({ countryId });
         newTalentPool.push(
           createStaffObject({
-            name: generateAICandidateNameForElection(countryId),
+            name: staffName,
             role: getRandomElement(roles),
           })
         );
@@ -703,6 +704,41 @@ export const createPersonnelSlice = (set, get) => ({
             : staff
         ),
       }));
+    },
+    generateDynamicName: (context) => {
+      const { countryId, regionId, cityId } = context;
+      // Get all possible states at once
+      const { activeCampaign, currentCampaignSetup, availableCountries } =
+        get();
+      let demographics = null;
+
+      // Determine which state to look in: active campaign takes precedence, otherwise use setup data
+      const sourceState = activeCampaign || {
+        availableCountries,
+        startingCity: currentCampaignSetup.customCity, // Use custom city if it exists during setup
+      };
+
+      if (cityId && sourceState.startingCity?.id === cityId) {
+        // Use the active/selected city's demographics
+        demographics = sourceState.startingCity.demographics;
+      } else if (regionId) {
+        // Find the specific state/region from the main country list
+        const country = sourceState.availableCountries.find(
+          (c) => c.id === countryId
+        );
+        const region = country?.regions.find((r) => r.id === regionId);
+        demographics = region?.demographics;
+      } else if (countryId) {
+        // Fallback to the national demographics from the main country list
+        const country = sourceState.availableCountries.find(
+          (c) => c.id === countryId
+        );
+        demographics = country?.demographics;
+      }
+
+      // If no demographics were found (e.g., during very early setup), it will gracefully pass null
+      // and the name generator will use its own defaults.
+      return generateAICandidateNameForElection(countryId, demographics);
     },
   },
 });

@@ -71,47 +71,15 @@ const formatLawValue = (key, value) => {
 const getLegislativeChamberMembers = (
   allGovernmentOffices,
   activeState,
-  chamberIdentifier // e.g., '_lower_house' or '_upper_house'
+  chamberIdentifier // e.g., 'local_state_lower_house'
 ) => {
   if (!activeState || !allGovernmentOffices.length) return [];
 
-  let chamberMembers = [];
-
-  allGovernmentOffices.forEach((office) => {
-    // Check if the office belongs to the current state and is the correct chamber type
-    if (
-      office.officeId?.includes(activeState.id) &&
-      office.level?.includes(chamberIdentifier)
-    ) {
-      if (office.holder) {
-        chamberMembers.push({
-          ...office,
-          holder: office.holder,
-          _conceptualSeatNumber: office.officeName.match(/\((\w+\s\d+)\)/)?.[1],
-        });
-      } else if (office.members && office.members.length > 0) {
-        office.members.forEach((member, index) => {
-          chamberMembers.push({
-            ...office,
-            officeId: `${office.officeId}_member_${member.id}`,
-            officeName: member.role || `${office.officeName} Member`,
-            holder: member,
-            _conceptualSeatNumber: index + 1,
-          });
-        });
-      }
-    }
-  });
-
-  // Sort members for consistent display
-  return chamberMembers.sort((a, b) => {
-    const officeNameA = a.officeName || "";
-    const officeNameB = b.officeName || "";
-    const seatNumA = officeNameA.match(/\d+/)?.[0];
-    const seatNumB = officeNameB.match(/\d+/)?.[0];
-    if (seatNumA && seatNumB) return parseInt(seatNumA) - parseInt(seatNumB);
-    return officeNameA.localeCompare(officeNameB);
-  });
+  // This function can be simplified now
+  return allGovernmentOffices.filter(
+    (office) =>
+      office.regionId === activeState.id && office.level === chamberIdentifier
+  );
 };
 
 const StateOverviewTab = ({ campaignData }) => {
@@ -139,12 +107,12 @@ const StateOverviewTab = ({ campaignData }) => {
 
   const allGovernmentOffices = campaignData.governmentOffices;
 
-  // --- CORRECTED: Find executive offices using the correct checks ---
+  // FIXED: Find executive offices by checking the regionId property.
   const governorOffice = useMemo(() => {
     if (!activeState) return null;
     return allGovernmentOffices.find(
       (o) =>
-        o.officeId?.includes(activeState.id) &&
+        o.regionId === activeState.id && // Check the specific property
         o.officeNameTemplateId === "governor" &&
         o.holder
     );
@@ -154,19 +122,19 @@ const StateOverviewTab = ({ campaignData }) => {
     if (!activeState) return null;
     return allGovernmentOffices.find(
       (o) =>
-        o.officeId?.includes(activeState.id) &&
+        o.regionId === activeState.id && // Check the specific property
         o.officeNameTemplateId === "lieutenant_governor" &&
         o.holder
     );
   }, [allGovernmentOffices, activeState]);
 
-  // --- Separate memos for each legislative chamber ---
+  // This memo is now simplified and more accurate.
   const upperChamberOffices = useMemo(
     () =>
       getLegislativeChamberMembers(
         allGovernmentOffices,
         activeState,
-        "_upper_house" // Matches 'local_state_upper_house'
+        "local_state_upper_house"
       ),
     [allGovernmentOffices, activeState]
   );
@@ -176,7 +144,7 @@ const StateOverviewTab = ({ campaignData }) => {
       getLegislativeChamberMembers(
         allGovernmentOffices,
         activeState,
-        "_lower_house"
+        "local_state_lower_house"
       ),
     [allGovernmentOffices, activeState]
   );

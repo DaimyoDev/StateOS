@@ -36,7 +36,7 @@ const getInitialCampaignSetupState = () => ({
 });
 
 // --- ZUSTAND STORE CREATION ---
-const useGameStore = create(
+export const useGameStore = create(
   persist(
     (set, get) => {
       const uiSliceData = createUISlice(set, get);
@@ -85,6 +85,7 @@ const useGameStore = create(
         politicianIntel: personnelSlice.politicianIntel,
 
         currentCampaignSetup: getInitialCampaignSetupState(),
+        hasAcknowledgedDisclaimer: false,
 
         actions: {
           ...electionSliceActions.actions,
@@ -100,6 +101,8 @@ const useGameStore = create(
           ...organizationActions,
           ...customEntitySlice.actions,
           ...personnelSlice.actions,
+
+          acknowledgeDisclaimer: () => set({ hasAcknowledgedDisclaimer: true }),
 
           improveSkillOratory: () => {
             set((state) => {
@@ -508,6 +511,7 @@ const useGameStore = create(
       partialize: (state) => ({
         activeThemeName: state.activeThemeName,
         savedPoliticians: state.savedPoliticians,
+        hasAcknowledgedDisclaimer: state.hasAcknowledgedDisclaimer,
       }),
       onRehydrateStorage: () => {
         return (hydratedState, error) => {

@@ -21,7 +21,8 @@ function CountryDetailsScreen() {
     state.availableCountries.find((c) => c.id === viewingCountryId)
   );
 
-  const [mapView, setMapView] = useState("population"); // 'population', 'party_popularity', 'gdp'
+  const [mapView, setMapView] = useState("population");
+  const [activeDataTab, setActiveDataTab] = useState("regional");
 
   const mapData = useMemo(() => {
     if (!country?.regions) return [];
@@ -117,74 +118,135 @@ function CountryDetailsScreen() {
       </div>
 
       <div className="country-details-content-area">
-        <div className="map-view-container ui-panel">
-          <div className="map-controls">
-            <h3>Map Views</h3>
+        {/* MODIFIED: Map is now conditionally rendered */}
+        {activeDataTab === "regional" && (
+          <div className="map-view-container ui-panel">
+            <div className="map-controls">
+              <h3>Map Views</h3>
+              <button
+                onClick={() => setMapView("population")}
+                className={`menu-button ${
+                  mapView === "population" ? "active" : ""
+                }`}
+              >
+                Population
+              </button>
+              <button
+                onClick={() => setMapView("party_popularity")}
+                className={`menu-button ${
+                  mapView === "party_popularity" ? "active" : ""
+                }`}
+              >
+                Political Leanings
+              </button>
+              <button
+                onClick={() => setMapView("gdp")}
+                className={`menu-button ${mapView === "gdp" ? "active" : ""}`}
+              >
+                GDP per Capita
+              </button>
+            </div>
+            <div className="map-render-wrapper-details">{renderMap()}</div>
+          </div>
+        )}
+
+        {/* MODIFIED: Data container now has tabs */}
+        <div
+          className={`data-table-container ui-panel ${
+            activeDataTab === "national" ? "full-width" : ""
+          }`}
+        >
+          <div className="data-tab-navigation">
             <button
-              onClick={() => setMapView("population")}
-              className={`menu-button ${
-                mapView === "population" ? "active" : ""
-              }`}
+              onClick={() => setActiveDataTab("regional")}
+              className={activeDataTab === "regional" ? "active" : ""}
             >
-              Population
+              Regional Data
             </button>
             <button
-              onClick={() => setMapView("party_popularity")}
-              className={`menu-button ${
-                mapView === "party_popularity" ? "active" : ""
-              }`}
+              onClick={() => setActiveDataTab("national")}
+              className={activeDataTab === "national" ? "active" : ""}
             >
-              Political Leanings
-            </button>
-            <button
-              onClick={() => setMapView("gdp")}
-              className={`menu-button ${mapView === "gdp" ? "active" : ""}`}
-            >
-              GDP per Capita
+              National Data
             </button>
           </div>
-          <div className="map-render-wrapper-details">{renderMap()}</div>
-        </div>
 
-        <div className="data-table-container ui-panel">
-          <h2>Regional Data</h2>
-          <div className="table-wrapper">
-            <table>
-              <thead>
-                <tr>
-                  <th>Region Name</th>
-                  <th>Population</th>
-                  <th>GDP per Capita</th>
-                  <th>Top Party</th>
-                </tr>
-              </thead>
-              <tbody>
-                {country.regions
-                  .sort((a, b) => b.population - a.population)
-                  .map((region) => {
-                    const landscape = region.politicalLandscape || [];
-                    const topParty =
-                      landscape.length > 0
-                        ? landscape.reduce((max, p) =>
-                            p.popularity > max.popularity ? p : max
-                          )
-                        : { name: "N/A" };
+          {activeDataTab === "national" && (
+            <div className="data-tab-content">
+              <h2>{country.name} at a Glance</h2>
+              <div className="national-stats-summary">
+                {/* National data JSX moved here */}
+                <p>
+                  <strong>Total Population:</strong>{" "}
+                  {country.population?.toLocaleString()}
+                </p>
+                <p>
+                  <strong>GDP per Capita:</strong> $
+                  {country.gdpPerCapita?.toLocaleString()}
+                </p>
+                <p>
+                  <strong>Key Issues:</strong>{" "}
+                  {country.stats?.mainIssues?.join(", ")}
+                </p>
+                <div>
+                  <strong>Ethnicities:</strong>
+                  <ul>
+                    {Object.entries(
+                      country.demographics?.ethnicities || {}
+                    ).map(([key, val]) => (
+                      <li key={key}>
+                        {key}: {val.toFixed(1)}%
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
 
-                    return (
-                      <tr key={region.id}>
-                        <td>{region.name}</td>
-                        <td>{region.population.toLocaleString()}</td>
-                        <td>
-                          $
-                          {region.economicProfile.gdpPerCapita.toLocaleString()}
-                        </td>
-                        <td>{topParty.name}</td>
-                      </tr>
-                    );
-                  })}
-              </tbody>
-            </table>
-          </div>
+          {activeDataTab === "regional" && (
+            <div className="data-tab-content">
+              <h2>Regional Data</h2>
+              <div className="table-wrapper">
+                {/* Regional data table JSX moved here */}
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Region Name</th>
+                      <th>Population</th>
+                      <th>GDP per Capita</th>
+                      <th>Top Party</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {country.regions
+                      .sort((a, b) => b.population - a.population)
+                      .map((region) => {
+                        const landscape = region.politicalLandscape || [];
+                        const topParty =
+                          landscape.length > 0
+                            ? landscape.reduce((max, p) =>
+                                p.popularity > max.popularity ? p : max
+                              )
+                            : { name: "N/A" };
+
+                        return (
+                          <tr key={region.id}>
+                            <td>{region.name}</td>
+                            <td>{region.population.toLocaleString()}</td>
+                            <td>
+                              $
+                              {region.economicProfile.gdpPerCapita.toLocaleString()}
+                            </td>
+                            <td>{topParty.name}</td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

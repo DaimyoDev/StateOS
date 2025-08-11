@@ -98,3 +98,65 @@
   top: 0;
   background-color: var(--ui-panel-bg); /* Corrected: Match panel background */
 }
+
+.national-stats-summary {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.national-stats-summary p {
+  margin: 0.5rem 0;
+}
+
+.national-stats-summary ul {
+  list-style-type: none;
+  padding-left: 1rem;
+}
+
+.data-table-container.full-width {
+  flex: 2.5; /* Allows the data container to expand and fill the space of the hidden map */
+}
+
+.data-tab-navigation {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.data-tab-navigation button {
+  padding: 8px 15px;
+  font-size: 0.95em;
+  font-family: var(--font-main);
+  cursor: pointer;
+  background-color: var(--button-bg);
+  color: var(--button-text);
+  border: 1px solid var(--border-color);
+  border-bottom: none;
+  border-radius: var(--element-radius) var(--element-radius) 0 0;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.data-tab-navigation button:hover {
+  background-color: var(--button-hover-bg);
+}
+
+.data-tab-navigation button.active {
+  background-color: var(--accent-color);
+  color: var(--accent-text);
+  border-color: var(--accent-border-color);
+  font-weight: bold;
+}
+
+.data-tab-content {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.data-tab-content h2 {
+  margin-top: 0;
+}

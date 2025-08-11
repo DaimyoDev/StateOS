@@ -1,8 +1,8 @@
 // src/entities/organizationEntities.js
 import { LOBBYING_NAME_COMPONENTS } from "../data/lobbyingNames";
 import { NEWS_NAME_COMPONENTS } from "../data/newsOutletNames";
+import useGameStore from "../store";
 import { generateId, getRandomElement, getRandomInt } from "../utils/core";
-import { generateAICandidateNameForElection } from "./personnel";
 
 const LOBBYING_ARCHETYPES = [
   // Economic
@@ -340,6 +340,7 @@ export const generateNewsOutlets = ({
   parties,
   locationName,
   countryId,
+  regionId,
 }) => {
   const outlets = [];
   const numOutlets = getRandomInt(3, 5); // Generate 3-5 outlets per level
@@ -381,9 +382,15 @@ export const generateNewsOutlets = ({
     const staff = [];
     const numStaff = getRandomInt(2, 4);
     for (let j = 0; j < numStaff; j++) {
+      // CORRECTED: Use the store's name generation service
+      const staffName = useGameStore.getState().actions.generateDynamicName({
+        countryId,
+        regionId: level === "regional" ? regionId : null,
+      });
+
       staff.push(
         createJournalistObject({
-          name: generateAICandidateNameForElection(countryId),
+          name: staffName,
           employerId: newOutlet.id,
           ideologyScores: { ...primaryParty.ideologyScores },
         })
@@ -463,9 +470,13 @@ export const generateInitialLobbyingGroups = ({
     const staff = [];
     const numStaff = getRandomInt(1, 4);
     for (let j = 0; j < numStaff; j++) {
+      // CORRECTED: Use the store's name generation service
+      const staffName = useGameStore
+        .getState()
+        .actions.generateDynamicName({ countryId });
       staff.push(
         createLobbyistObject({
-          name: generateAICandidateNameForElection(countryId),
+          name: staffName,
           employerId: newGroup.id,
         })
       );

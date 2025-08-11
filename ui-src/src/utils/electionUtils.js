@@ -71,128 +71,6 @@ export function calculateNumberOfSeats(electionType, cityPopulation) {
 }
 
 /**
- * Generates AI candidates for an election.
- * @param {number} minChallengers - Minimum number of AI challengers.
- * @param {number} maxChallengers - Maximum number of AI challengers.
- * @param {Array<object>} countryParties - List of available parties in the country.
- * @param {object|null} incumbentDetails - Details of the incumbent, if any.
- * @returns {Array<object>} A list of generated AI candidate objects.
- */
-const getNumericalCampaignFunds = (fundLevelString) => {
-  switch (fundLevelString) {
-    case "High":
-      return getRandomInt(15000, 30000); // Example: Higher range for "High"
-    case "Moderate":
-      return getRandomInt(5000, 14999);
-    case "Low":
-    default:
-      return getRandomInt(1000, 4999);
-  }
-};
-
-export function generateAICandidates(
-  minChallengers,
-  maxChallengers,
-  countryParties = [],
-  incumbentFullDetails = null,
-  countryId
-) {
-  const candidates = [];
-
-  if (
-    incumbentFullDetails &&
-    incumbentFullDetails.isActuallyRunning &&
-    incumbentFullDetails.id &&
-    incumbentFullDetails.name
-  ) {
-    const incumbentFundsStr = getRandomElement(["Moderate", "High", "High"]); // Incumbents tend to have more
-    candidates.push({
-      ...incumbentFullDetails,
-      polling: 0,
-      campaignFunds: getNumericalCampaignFunds(incumbentFundsStr),
-      isIncumbent: true,
-      isPlayer: false,
-    });
-  }
-
-  const numChallengersToGenerate = getRandomInt(minChallengers, maxChallengers);
-  let availablePartiesForChallengers = [...(countryParties || [])];
-  const maxPossibleChallengersWithUniqueParties =
-    (countryParties?.length || 0) + 1;
-  const actualNumChallengers = Math.min(
-    numChallengersToGenerate,
-    maxPossibleChallengersWithUniqueParties * 2 // Cap based on party variety
-  );
-
-  for (
-    let i = 0;
-    candidates.length <
-      actualNumChallengers + (candidates.find((c) => c.isIncumbent) ? 1 : 0) &&
-    i < actualNumChallengers * 3 + 10; // Increased loop guard slightly for safety
-    i++
-  ) {
-    let assignedPartyForChallenger = {
-      /* ... your party selection logic ... */
-    };
-    if (availablePartiesForChallengers.length > 0) {
-      const partyIndex = Math.floor(
-        Math.random() * availablePartiesForChallengers.length
-      );
-      const tempParty = availablePartiesForChallengers.splice(partyIndex, 1)[0];
-      const runningIncumbent = candidates.find((c) => c.isIncumbent);
-      if (
-        runningIncumbent &&
-        tempParty.id === runningIncumbent.partyId &&
-        availablePartiesForChallengers.length > 0
-      ) {
-        availablePartiesForChallengers.push(tempParty);
-        continue;
-      } else {
-        assignedPartyForChallenger = { ...tempParty };
-      }
-    } else if (countryParties && countryParties.length > 0) {
-      assignedPartyForChallenger = { ...getRandomElement(countryParties) };
-    } else {
-      // Fallback to independent if no parties provided
-      assignedPartyForChallenger = {
-        id: `independent_ai_challenger_${generateId()}`,
-        name: "Independent",
-        ideology: getRandomElement(BASE_IDEOLOGIES)?.name || "Centrist",
-        color: "#888888",
-      };
-    }
-
-    const newChallengerPolitician = generateFullAIPolitician(
-      countryId,
-      countryParties,
-      POLICY_QUESTIONS,
-      IDEOLOGY_DEFINITIONS,
-      assignedPartyForChallenger.id,
-      null,
-      null,
-      false,
-      null,
-      null,
-      null
-    );
-
-    if (candidates.some((c) => c.name === newChallengerPolitician.name)) {
-      continue;
-    }
-
-    const challengerFundsStr = getRandomElement(["Low", "Low", "Moderate"]);
-    candidates.push({
-      ...newChallengerPolitician,
-      // baseScore will be calculated later by the caller
-      polling: 0, // Initial polling
-      campaignFunds: getNumericalCampaignFunds(challengerFundsStr), // Assign numerical funds
-      // isIncumbent and isPlayer are already set by generateFullAIPolitician (as false)
-    });
-  }
-  return candidates;
-}
-
-/**
  * Distributes the total population randomly among a number of seats.
  * Ensures the sum of seat populations equals the total population.
  * @param {number} totalPopulation - The total population to distribute.
@@ -952,7 +830,6 @@ export const calculateSeatDetailsForInstance = (
 
 /**
  * DISPATCHER for generating candidates or party lists based on electoral system.
- * Calls your existing generateAICandidates or new specific generators.
  */
 export const generateElectionParticipants = ({
   electionType,
@@ -960,7 +837,7 @@ export const generateElectionParticipants = ({
   incumbentInfo,
   numberOfSeatsToFill,
   countryId,
-  activeCampaign, // This object holds the campaign's current state, including startingCity/electorate data
+  activeCampaign,
   electionPropertiesForScoring,
   entityPopulation,
 }) => {

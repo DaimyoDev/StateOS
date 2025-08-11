@@ -1,8 +1,11 @@
 import {
   generateFullStateData,
   generateFullSecondAdminRegionData,
+  generateNationalDemographics,
+  generateInitialNationalStats,
 } from "../entities/politicalEntities";
 import { chamberTiers } from "./chamberTiers";
+import { getRandomInt } from "../utils/core";
 import { generateLegislativeDistrictsForCountry } from "../entities/districtGeneration";
 import { generateNationalParties } from "../entities/personnel";
 import { japanPrefectures } from "./states/japanPrefectures";
@@ -585,6 +588,7 @@ export const generateDetailedCountryData = (countryToProcess) => {
     countryId: processedCountry.id,
     dominantIdeologies: processedCountry.dominantIdeologies,
     countryName: processedCountry.name,
+    countryData: processedCountry,
   });
 
   // 2. Attach this consistent list to the main country object.
@@ -625,6 +629,7 @@ export const generateDetailedCountryData = (countryToProcess) => {
       });
   }
 
+  // Aggregate population and GDP from regions. This part is crucial.
   if (processedCountry.regions.length > 0) {
     const totalCountryPopulation = processedCountry.regions.reduce(
       (sum, region) => sum + region.population,
@@ -640,7 +645,23 @@ export const generateDetailedCountryData = (countryToProcess) => {
     processedCountry.gdpPerCapita = Math.round(
       totalCountryGDP / totalCountryPopulation
     );
+  } else {
+    // Fallback for countries without regions
+    processedCountry.gdpPerCapita =
+      processedCountry.gdpPerCapita || getRandomInt(15000, 60000);
   }
+
+  processedCountry.demographics = generateNationalDemographics(
+    processedCountry.id,
+    processedCountry.population
+  );
+  processedCountry.economicProfile = {
+    gdpPerCapita: processedCountry.gdpPerCapita,
+    dominantIndustries: processedCountry.dominantIdeologies,
+    keyLocalIssuesFromProfile: [],
+  };
+
+  processedCountry.stats = generateInitialNationalStats(processedCountry);
 
   return processedCountry; // Return the fully processed country
 };

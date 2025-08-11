@@ -23,6 +23,7 @@ import {
 import { calculateInitialPolling } from "../General Scripts/PollingFunctions.js";
 import { generateNuancedColor } from "../utils/generalUtils.js";
 import { generatePartyLogo } from "../utils/logoGenerator.js";
+import { useGameStore } from "../store.js";
 
 /**
  * Creates a new non-elected staff member object.
@@ -354,50 +355,81 @@ export function calculateIdeologyFromStances(
 
 // --- Name Generation ---
 
+const ETHNICITY_TO_NAME_MAPPING = {
+  Hispanic: ["ESP", "MEX"],
+  Asian: ["JPN", "KOR", "PHL"],
+  // "White", "Black", and others will default to the primary country's name set.
+};
+
 /**
- * Generates a random AI candidate name based on country context.
+ * OVERHAULED: Generates a random AI candidate name based on country context and demographics.
+ * This version is fully dynamic and does not hardcode any country IDs.
  * @param {string} countryId - The ID of the country (e.g., "JPN", "USA").
+ * @param {object} [demographics] - Optional demographic data for the region/country, including an 'ethnicities' object.
  * @returns {string} A randomly generated name.
  */
-export const generateAICandidateNameForElection = (countryId) => {
-  const countryNameData = NAMES_BY_COUNTRY[countryId];
-  let firstNamesMale = GENERIC_FIRST_NAMES_MALE;
-  let firstNamesFemale = GENERIC_FIRST_NAMES_FEMALE;
-  let lastNames = GENERIC_LAST_NAMES;
-  let selectedFirstNamePool;
+export const generateAICandidateNameForElection = (countryId, demographics) => {
+  const primaryNameData = NAMES_BY_COUNTRY[countryId];
 
-  if (countryNameData) {
-    firstNamesMale =
-      countryNameData.male?.length > 0
-        ? countryNameData.male
-        : GENERIC_FIRST_NAMES_MALE;
-    firstNamesFemale =
-      countryNameData.female?.length > 0
-        ? countryNameData.female
-        : GENERIC_FIRST_NAMES_FEMALE;
-    lastNames =
-      countryNameData.last?.length > 0
-        ? countryNameData.last
-        : GENERIC_LAST_NAMES;
+  // Fallback if no specific name data exists for the country
+  if (!primaryNameData) {
+    const firstName =
+      Math.random() < 0.5
+        ? getRandomElement(GENERIC_FIRST_NAMES_MALE)
+        : getRandomElement(GENERIC_FIRST_NAMES_FEMALE);
+    const lastName = getRandomElement(GENERIC_LAST_NAMES);
+    return `${firstName} ${lastName}`;
   }
 
-  if (Math.random() < 0.5 && firstNamesMale.length > 0) {
-    selectedFirstNamePool = firstNamesMale;
+  let firstNamePool, lastNamePool;
+  let namePoolCountryId = countryId; // Start with the primary country
+
+  // If demographic data is provided, use it to select a name pool
+  if (demographics?.ethnicities) {
+    const ethnicities = Object.entries(demographics.ethnicities);
+    const roll = Math.random() * 100;
+    let cumulative = 0;
+
+    for (const [ethnicity, percentage] of ethnicities) {
+      if (roll < (cumulative += percentage)) {
+        const mappedNameKeys = ETHNICITY_TO_NAME_MAPPING[ethnicity];
+        if (mappedNameKeys) {
+          namePoolCountryId = getRandomElement(mappedNameKeys);
+        }
+        // If not mapped, it will default to the primary country ID.
+        break;
+      }
+    }
+  }
+
+  const selectedNameData =
+    NAMES_BY_COUNTRY[namePoolCountryId] || primaryNameData;
+  firstNamePool =
+    Math.random() < 0.5 ? selectedNameData.male : selectedNameData.female;
+
+  // Dynamic logic for last names to create mixed-heritage names
+  // If we selected a name pool from a different culture (e.g., a Japanese first name in the USA),
+  // there's a high chance of using a last name from the primary country.
+  if (namePoolCountryId !== countryId && Math.random() < 0.85) {
+    lastNamePool = primaryNameData.last;
   } else {
-    selectedFirstNamePool =
-      firstNamesFemale.length > 0 ? firstNamesFemale : firstNamesMale;
+    lastNamePool = selectedNameData.last;
   }
 
-  if (
-    !selectedFirstNamePool ||
-    selectedFirstNamePool.length === 0 ||
-    lastNames.length === 0
-  ) {
-    return "AI Candidate";
+  // Final check to ensure pools are valid
+  if (!firstNamePool || firstNamePool.length === 0) {
+    firstNamePool =
+      Math.random() < 0.5
+        ? GENERIC_FIRST_NAMES_MALE
+        : GENERIC_FIRST_NAMES_FEMALE;
+  }
+  if (!lastNamePool || lastNamePool.length === 0) {
+    lastNamePool = GENERIC_LAST_NAMES;
   }
 
-  const firstName = getRandomElement(selectedFirstNamePool);
-  const lastName = getRandomElement(lastNames);
+  const firstName = getRandomElement(firstNamePool);
+  const lastName = getRandomElement(lastNamePool);
+
   return `${firstName} ${lastName}`;
 };
 
@@ -463,38 +495,43 @@ export function generateNewPartyName(baseIdeologyName, countryName) {
  */
 export function generateFullAIPolitician(
   countryId,
-  allPartiesInScope, // IMPORTANT: This should be the array AFTER running initializePartyIdeologyScores
-  policyQuestionsData = POLICY_QUESTIONS,
-  ideologyData = IDEOLOGY_DEFINITIONS,
-  forcePartyId = null,
-  forceFirstName = null,
-  forceLastName = null,
-  isIncumbent = false,
-  electorateIdeologyCenter = null,
-  electorateIdeologySpread = null,
-  electorateIssueStances = null
+  allPartiesInScope,
+  options = {}
 ) {
+  const {
+    regionId = null,
+    cityId = null,
+    forcePartyId = null,
+    isIncumbent = false,
+    electorateIdeologyCenter = null,
+    electorateIdeologySpread = null,
+    electorateIssueStances = null,
+  } = options;
+
   // --- STEP 1: Determine a Target Ideology ---
   let targetIdeology;
+  console.log(IDEOLOGY_DEFINITIONS);
   if (forcePartyId) {
     const forcedParty = allPartiesInScope.find((p) => p.id === forcePartyId);
     targetIdeology =
-      ideologyData[forcedParty?.ideologyId] ||
-      getRandomElement(Object.values(ideologyData));
+      IDEOLOGY_DEFINITIONS[forcedParty?.ideologyId] ||
+      getRandomElement(Object.values(IDEOLOGY_DEFINITIONS));
   } else {
     const ideologyWeights = allPartiesInScope
       .map((p) => p.ideologyId)
       .filter(Boolean);
     const randomIdeologyId = getRandomElement(
-      ideologyWeights.length > 0 ? ideologyWeights : Object.keys(ideologyData)
+      ideologyWeights.length > 0
+        ? ideologyWeights
+        : Object.keys(IDEOLOGY_DEFINITIONS)
     );
-    targetIdeology = ideologyData[randomIdeologyId];
+    targetIdeology = IDEOLOGY_DEFINITIONS[randomIdeologyId];
   }
   const targetIdealPoint = targetIdeology.idealPoint;
 
   // --- STEP 2: Generate Coherent Policy Stances with "Smarter" Deviation ---
   const policyStances = {};
-  policyQuestionsData.forEach((question) => {
+  POLICY_QUESTIONS.forEach((question) => {
     if (question.options && question.options.length > 0) {
       const sortedOptions = question.options
         .map((option) => {
@@ -531,8 +568,8 @@ export function generateFullAIPolitician(
   const { ideologyName: calculatedIdeology, scores: ideologyScores } =
     calculateIdeologyFromStances(
       policyStances,
-      policyQuestionsData,
-      ideologyData
+      POLICY_QUESTIONS,
+      IDEOLOGY_DEFINITIONS
     );
 
   // --- STEP 3: Assign Party Based on Ideological Fit ---
@@ -586,10 +623,15 @@ export function generateFullAIPolitician(
     chosenFactionId = bestFactionFit.id;
   }
 
-  const fullName = generateAICandidateNameForElection(countryId);
+  const fullName = useGameStore.getState().actions.generateDynamicName({
+    countryId,
+    regionId,
+    cityId,
+  });
+
   const nameParts = fullName.split(" ");
-  const firstName = forceFirstName || nameParts[0];
-  const lastName = forceLastName || nameParts.slice(1).join(" ");
+  const firstName = nameParts[0];
+  const lastName = nameParts.slice(1).join(" ");
 
   const attributes = {
     charisma: getRandomInt(3, 8),
@@ -662,8 +704,8 @@ export function generateFullAIPolitician(
     newPolitician,
     countryId,
     allPartiesInScope,
-    policyQuestionsData,
-    ideologyData,
+    POLICY_QUESTIONS,
+    IDEOLOGY_DEFINITIONS,
     electorateIdeologyCenter,
     electorateIdeologySpread,
     electorateIssueStances
@@ -682,7 +724,8 @@ export const generateFactionsForParty = (
   partyIdeology,
   partyId,
   countryId,
-  allPartiesInScope
+  allPartiesInScope,
+  countryData
 ) => {
   const factions = [];
   const numFactions = getRandomInt(2, 4);
@@ -712,13 +755,10 @@ export const generateFactionsForParty = (
     name: getRandomElement(factionNameTemplates.moderate),
     ideology: partyIdeology, // Represents the core, moderate view of the party ideology
     influence: getRandomInt(25, 50),
-    leader: generateFullAIPolitician(
-      countryId,
-      allPartiesInScope,
-      POLICY_QUESTIONS,
-      IDEOLOGY_DEFINITIONS,
-      partyId
-    ),
+    leader: generateFullAIPolitician(countryId, allPartiesInScope, {
+      ...countryData,
+      forcePartyId: partyId,
+    }),
   });
   factions.push(moderateFaction);
 
@@ -738,13 +778,10 @@ export const generateFactionsForParty = (
         createFactionObject({
           name,
           ideology,
-          leader: generateFullAIPolitician(
-            countryId,
-            allPartiesInScope,
-            POLICY_QUESTIONS,
-            IDEOLOGY_DEFINITIONS,
-            partyId
-          ),
+          leader: generateFullAIPolitician(countryId, allPartiesInScope, {
+            ...countryData,
+            forcePartyId: partyId,
+          }),
         })
       );
     } else {
@@ -753,13 +790,10 @@ export const generateFactionsForParty = (
         createFactionObject({
           name: getRandomElement(factionNameTemplates.radical),
           ideology: partyIdeology, // Radicals often see themselves as the purest form
-          leader: generateFullAIPolitician(
-            countryId,
-            allPartiesInScope,
-            POLICY_QUESTIONS,
-            IDEOLOGY_DEFINITIONS,
-            partyId
-          ),
+          leader: generateFullAIPolitician(countryId, allPartiesInScope, {
+            ...countryData,
+            forcePartyId: partyId,
+          }),
         })
       );
       break; // Stop after adding a radical faction if we're out of specifics
@@ -794,6 +828,7 @@ export const generateNationalParties = ({
   countryId,
   dominantIdeologies,
   countryName,
+  countryData,
 }) => {
   let parties = [];
   const numDominantIdeologies = dominantIdeologies?.length || 0;
@@ -859,19 +894,22 @@ export const generateNationalParties = ({
       partyIdeologyName,
       partyId,
       countryId,
-      partiesWithScoresForContext
+      partiesWithScoresForContext,
+      countryData
     );
+
+    const commsDirectorName = useGameStore
+      .getState()
+      .actions.generateDynamicName({ countryId });
 
     const leadership = {
       chairperson: generateFullAIPolitician(
         countryId,
         partiesWithScoresForContext,
-        POLICY_QUESTIONS,
-        IDEOLOGY_DEFINITIONS,
-        partyId
+        { ...countryData, forcePartyId: partyId }
       ),
       commsDirector: createPartyStaffObject({
-        name: generateAICandidateNameForElection(countryId),
+        name: commsDirectorName,
         role: "Communications Director",
         partyId: partyId,
       }),

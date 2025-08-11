@@ -353,9 +353,7 @@ const ElectionSimulatorScreen = () => {
         const pol = generateFullAIPolitician(
           currentSetup.selectedCountryId,
           currentSetup.parties,
-          POLICY_QUESTIONS,
-          IDEOLOGY_DEFINITIONS,
-          party.id
+          { forcePartyId: party.id }
         );
         return pol
           ? {
