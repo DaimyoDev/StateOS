@@ -99,6 +99,7 @@ export const createGovernmentOffice = (params = {}) => ({
   members: params.members || [],
   termEnds: params.termEnds || { year: 2025, month: 11, day: 1 },
   numberOfSeatsToFill: params.numberOfSeatsToFill || 1,
+  instanceIdBase: params.instanceIdBase,
 });
 
 export const generateFullSecondAdminRegionData = (params = {}) => {
@@ -810,6 +811,37 @@ export const generateFullCityData = (params = {}) => {
 };
 
 // --- State Generation Logic ---
+export const generateInitialStateLaws = ({
+  countryId,
+  wealthLevel,
+  gdpPerCapita,
+}) => {
+  const laws = {};
+
+  // Example State-Level Laws
+  laws.stateMinimumWage = parseFloat((gdpPerCapita / 3000 + 5).toFixed(2));
+  laws.environmentalProtectionAct = getRandomElement([
+    "basic",
+    "comprehensive",
+    "strict",
+  ]);
+  laws.stateEducationStandards = getRandomElement([
+    "federally_aligned",
+    "state_specific",
+    "performance_based",
+  ]);
+  laws.healthcareSubsidies = wealthLevel === "high" ? "expanded" : "standard";
+
+  if (countryId === "USA") {
+    laws.firearmRegulations = getRandomElement([
+      "minimal",
+      "moderate",
+      "strict",
+    ]);
+  }
+
+  return laws;
+};
 
 /**
  * Generates a full state data object, often by aggregating data from its cities.
@@ -826,6 +858,16 @@ export const generateFullStateData = (params = {}) => {
   const normalizedBaseLandscape = normalizePartyPopularities(
     baseRegionalLandscape
   );
+
+  let determinedType = params.type; // Use the type from data if it exists
+  if (!determinedType) {
+    // If not, determine it from the ID
+    if (id.startsWith("USA_")) determinedType = "State";
+    else if (id.startsWith("JPN_")) determinedType = "Prefecture";
+    else if (id.startsWith("PHL_")) determinedType = "Province";
+    // Add other fallbacks as needed for other countries
+    else determinedType = "Region"; // Generic fallback
+  }
 
   const cities = generateCitiesForState({
     totalPopulation,
@@ -908,10 +950,17 @@ export const generateFullStateData = (params = {}) => {
 
   const capitalCity = cities.sort((a, b) => b.population - a.population)[0];
 
+  const stateLaws = generateInitialStateLaws({
+    countryId: params.countryId,
+    wealthLevel: "mid", // This could be aggregated from cities for more accuracy
+    gdpPerCapita: aggregatedEconomicProfile.gdpPerCapita,
+  });
+
   return createStateObject({
     ...params,
     population: finalTotalPopulation,
     cities: cities,
+    stateLaws: stateLaws,
     capitalCityId: capitalCity ? capitalCity.id : null,
     demographics: aggregatedDemographics,
     economicProfile: aggregatedEconomicProfile,
@@ -921,6 +970,7 @@ export const generateFullStateData = (params = {}) => {
       mainIssues: aggregatedMainIssues,
       // We can aggregate other stats like wealth, mood, etc. here in the future
     },
+    type: determinedType,
   });
 };
 
@@ -1054,7 +1104,7 @@ const generateInitialStateOffices = (
   const regionData = countryData?.regions?.find((r) => r.id === regionId);
   if (!regionData) return [];
 
-  // 1. Generate Executive Offices (like Governor) - This part is correct.
+  // 1. Generate Executive Offices (like Governor) - This logic remains the same.
   const executiveTypes = stateElectionTypes.filter((e) => e.generatesOneWinner);
   executiveTypes.forEach((electionType) => {
     let officeName = electionType.officeNameTemplate.replace(
@@ -1075,7 +1125,7 @@ const generateInitialStateOffices = (
         officeName,
         holder,
         regionId: regionId,
-        officeId: `initial_${electionType.id}_${generateId()}`,
+        officeId: `gov_${electionType.id}_${generateId()}`,
         officeNameTemplateId: electionType.id,
         level: electionType.level,
         termEnds: {
@@ -1084,11 +1134,12 @@ const generateInitialStateOffices = (
           day: 1,
         },
         numberOfSeatsToFill: 1,
+        instanceIdBase: `${electionType.id}_${regionData.id}`,
       })
     );
   });
 
-  // 2. Generate Legislative Offices from District Data
+  // 2. Generate Legislative Offices (Upper & Lower Houses)
   const lowerHouseType = stateElectionTypes.find(
     (e) => e.level === "local_state_lower_house"
   );
@@ -1096,40 +1147,86 @@ const generateInitialStateOffices = (
     (e) => e.level === "local_state_upper_house"
   );
 
-  // MODIFIED: Loop over the array of district objects for the Lower House
-  if (
-    lowerHouseType &&
-    Array.isArray(regionData.legislativeDistricts?.state_hr)
-  ) {
+  // --- Process Lower House ---
+  if (lowerHouseType) {
     const termLength = lowerHouseType.frequencyYears || 4;
-    regionData.legislativeDistricts.state_hr.forEach((district) => {
-      const officeName = district.name;
-      const holder = generateFullAIPolitician(
-        countryData.id,
-        processedParties,
-        regionData
-      );
-      holder.currentOffice = officeName;
 
-      stateOffices.push(
-        createGovernmentOffice({
-          officeName,
-          holder,
-          regionId: regionId,
-          officeId: `initial_${lowerHouseType.id}_${
-            district.id
-          }_${generateId()}`,
-          officeNameTemplateId: lowerHouseType.id,
-          level: lowerHouseType.level,
-          termEnds: {
-            year: 2025 + termLength - 1,
-            month: lowerHouseType.electionMonth || 11,
-            day: 1,
-          },
-          numberOfSeatsToFill: 1,
-        })
+    // *** NEW: Conditional logic based on the electoral system ***
+    if (
+      lowerHouseType.electoralSystem === "FPTP" &&
+      Array.isArray(regionData.legislativeDistricts?.state_hr)
+    ) {
+      // Logic for district-based systems (e.g., US State Legislatures)
+      regionData.legislativeDistricts.state_hr.forEach((district) => {
+        const officeName = district.name;
+        const holder = generateFullAIPolitician(
+          countryData.id,
+          processedParties,
+          regionData
+        );
+        holder.currentOffice = officeName;
+
+        stateOffices.push(
+          createGovernmentOffice({
+            officeName,
+            holder,
+            regionId: regionId,
+            officeId: `gov_${lowerHouseType.id}_${district.id}_${generateId()}`,
+            officeNameTemplateId: lowerHouseType.id,
+            level: lowerHouseType.level,
+            termEnds: {
+              year: 2025 + termLength - 1,
+              month: lowerHouseType.electionMonth || 11,
+              day: 1,
+            },
+            numberOfSeatsToFill: 1,
+            instanceIdBase: `${lowerHouseType.id}_${district.id}`,
+          })
+        );
+      });
+    } else if (
+      lowerHouseType.electoralSystem === "PartyListPR" ||
+      lowerHouseType.electoralSystem === "MMP"
+    ) {
+      // Logic for multi-member systems (e.g., German Länder)
+      const numberOfSeats = calculateNumberOfSeats(
+        lowerHouseType,
+        regionData.population
       );
-    });
+      if (numberOfSeats > 0) {
+        const officeName = lowerHouseType.officeNameTemplate.replace(
+          /{regionName}|{stateName}|{prefectureName}|{provinceName}/g,
+          regionData.name
+        );
+        const members = Array.from({ length: numberOfSeats }, () => {
+          const member = generateFullAIPolitician(
+            countryData.id,
+            processedParties,
+            regionData
+          );
+          member.currentOffice = officeName;
+          return member;
+        });
+
+        stateOffices.push(
+          createGovernmentOffice({
+            officeName,
+            regionId: regionId,
+            members, // A single office with a 'members' array
+            officeId: `gov_${lowerHouseType.id}_${generateId()}`,
+            officeNameTemplateId: lowerHouseType.id,
+            level: lowerHouseType.level,
+            termEnds: {
+              year: 2025 + termLength - 1,
+              month: lowerHouseType.electionMonth || 11,
+              day: 1,
+            },
+            numberOfSeatsToFill: numberOfSeats,
+            instanceIdBase: `${lowerHouseType.id}_${regionData.id}`,
+          })
+        );
+      }
+    }
   }
 
   // MODIFIED: Loop over the array of district objects for the Upper House
@@ -1152,9 +1249,7 @@ const generateInitialStateOffices = (
           officeName,
           holder,
           regionId: regionId,
-          officeId: `initial_${upperHouseType.id}_${
-            district.id
-          }_${generateId()}`,
+          officeId: `gov_${upperHouseType.id}_${district.id}_${generateId()}`,
           officeNameTemplateId: upperHouseType.id,
           level: upperHouseType.level,
           termEnds: {
@@ -1163,6 +1258,7 @@ const generateInitialStateOffices = (
             day: 1,
           },
           numberOfSeatsToFill: 1,
+          instanceIdBase: `${upperHouseType.id}_${district.id}`,
         })
       );
     });

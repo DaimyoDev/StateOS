@@ -510,7 +510,6 @@ export function generateFullAIPolitician(
 
   // --- STEP 1: Determine a Target Ideology ---
   let targetIdeology;
-  console.log(IDEOLOGY_DEFINITIONS);
   if (forcePartyId) {
     const forcedParty = allPartiesInScope.find((p) => p.id === forcePartyId);
     targetIdeology =

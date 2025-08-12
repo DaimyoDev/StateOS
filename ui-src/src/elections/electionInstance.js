@@ -247,10 +247,7 @@ export const generateStateLegislativeElectionInstances = (
             district.name
           );
           instances.push({
-            instanceIdBase: buildIdBaseFunc(
-              electionType.id,
-              `${entity.id}_${district.id}`
-            ),
+            instanceIdBase: buildIdBaseFunc(electionType.id, district.id),
             entityType: "subnational_legislative_district",
             entityData: {
               ...district,

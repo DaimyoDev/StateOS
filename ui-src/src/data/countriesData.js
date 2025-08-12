@@ -606,7 +606,8 @@ export const generateDetailedCountryData = (countryToProcess) => {
         totalPopulation: staticRegion.population,
         id: staticRegion.id,
         legislativeDistricts: staticRegion.legislativeDistricts,
-        nationalParties: processedCountry.nationalParties, // Pass the parties here
+        nationalParties: processedCountry.nationalParties,
+        type: null,
       });
     });
   }

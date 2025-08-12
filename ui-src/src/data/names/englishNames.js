@@ -754,7 +754,7 @@ export const ENGLISH_MALE_NAMES = [
   "Keven",
   "Kevin",
   "Keyon",
-  "KHALID",
+  "Khalid",
   "Kian",
   "Kieran",
   "Killian",

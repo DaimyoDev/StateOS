@@ -269,7 +269,7 @@ export const createElectionSlice = (set, get) => ({
           }
 
           const officeIndex = updatedGovernmentOffices.findIndex(
-            (o) => o.officeName === updatedElection.officeName
+            (o) => o.instanceIdBase === updatedElection.instanceIdBase
           );
 
           if (outcome.winnerAssignment.type === "MEMBERS_ARRAY") {
@@ -306,7 +306,7 @@ export const createElectionSlice = (set, get) => ({
             }
           } else {
             // SINGLE_HOLDER
-            const winner = winners[0];
+            const winner = outcome.winnerAssignment.winners[0];
             const newHolder = {
               ...winner,
               name: cleanWinnerName(winner.name),
@@ -330,6 +330,7 @@ export const createElectionSlice = (set, get) => ({
                 holder: newHolder,
                 termEnds,
                 officeNameTemplateId: updatedElection.officeNameTemplateId,
+                instanceIdBase: updatedElection.instanceIdBase,
               });
             }
           }
