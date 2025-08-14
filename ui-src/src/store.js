@@ -20,6 +20,7 @@ import { createCampaignStaffSlice } from "./stores/campaignStaffSlice.js";
 import { createOrganizationActionSlice } from "./stores/organizationActionSlice.js";
 import { createCustomEntitySlice } from "./stores/customEntitySlice.js";
 import { createPersonnelSlice } from "./stores/personnelSlice.js";
+import { createDataSlice } from "./stores/dataSlice.js";
 
 // --- Helper Functions (to be moved to relevant slices or utils later) ---
 
@@ -52,10 +53,11 @@ export const useGameStore = create(
       const organizationActions = createOrganizationActionSlice(set, get);
       const customEntitySlice = createCustomEntitySlice(set, get);
       const personnelSlice = createPersonnelSlice(set, get);
+      const dataSliceData = createDataSlice(set, get);
 
       return {
+        savedPoliticians: dataSliceData.savedPoliticians,
         creatingPolitian: politicianSliceData.creatingPolitician,
-        savedPoliticians: politicianSliceData.savedPoliticians,
         activeCampaign: campaignSlice.activeCampaign,
         proposedLegislation: legislationSlice.proposedLegislation,
         activeLegislation: legislationSlice.activeLegislation,
@@ -101,6 +103,7 @@ export const useGameStore = create(
           ...organizationActions,
           ...customEntitySlice.actions,
           ...personnelSlice.actions,
+          ...dataSliceData.actions,
 
           acknowledgeDisclaimer: () => set({ hasAcknowledgedDisclaimer: true }),
 
@@ -507,10 +510,42 @@ export const useGameStore = create(
     },
     {
       name: "stateos-game-storage",
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => localStorage, {
+        replacer: (key, value) => {
+          if (value instanceof Map) {
+            return {
+              __type: "Map",
+              value: Array.from(value.entries()),
+            };
+          }
+          if (value instanceof Set) {
+            return {
+              __type: "Set",
+              value: Array.from(value.values()),
+            };
+          }
+          return value;
+        },
+        reviver: (key, value) => {
+          if (
+            typeof value === "object" &&
+            value !== null &&
+            value.__type === "Map"
+          ) {
+            return new Map(value.value);
+          }
+          if (
+            typeof value === "object" &&
+            value !== null &&
+            value.__type === "Set"
+          ) {
+            return new Set(value.value);
+          }
+          return value;
+        },
+      }),
       partialize: (state) => ({
         activeThemeName: state.activeThemeName,
-        savedPoliticians: state.savedPoliticians,
         hasAcknowledgedDisclaimer: state.hasAcknowledgedDisclaimer,
       }),
       onRehydrateStorage: () => {
@@ -553,6 +588,8 @@ if (resetPoliticianAction && !politicianToEditIdFromStore) {
 } else {
   console.warn("Store.js: resetCreatingPolitician action not found.");
 }
+
+useGameStore.getState().actions.loadSavedPoliticians();
 
 console.log("Store.js: Initial store setup actions complete.");
 

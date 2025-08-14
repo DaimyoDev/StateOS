@@ -965,10 +965,8 @@ export const generateFullStateData = (params = {}) => {
     demographics: aggregatedDemographics,
     economicProfile: aggregatedEconomicProfile,
     politicalLandscape: normalizePartyPopularities(finalPoliticalLandscape),
-    // --- NEW: Add the aggregated stats to the state object ---
     stats: {
       mainIssues: aggregatedMainIssues,
-      // We can aggregate other stats like wealth, mood, etc. here in the future
     },
     type: determinedType,
   });

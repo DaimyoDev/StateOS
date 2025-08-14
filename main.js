@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain } = require("electron");
+const { app, BrowserWindow } = require("electron");
 const isDev = require("electron-is-dev");
 
 // Keep a global reference of the window object, if you don't, the window will
@@ -11,9 +11,8 @@ function createWindow() {
     width: 1280,
     height: 720,
     webPreferences: {
-      nodeIntegration: false, // Keep false for security
-      contextIsolation: true, // Keep true
-      // preload: path.join(__dirname, 'preload.js') // We'll add this later for IPC
+      nodeIntegration: false,
+      contextIsolation: true,
     },
   });
 
@@ -21,7 +20,7 @@ function createWindow() {
     console.log(
       "Development mode: Loading from Vite dev server (e.g., http://localhost:5173)"
     );
-    mainWindow.loadURL("http://localhost:5173"); // Adjust port if Vite uses a different one
+    mainWindow.loadURL("http://localhost:5173");
     mainWindow.webContents.openDevTools();
   } else {
     console.log("Production mode: Loading from build files");

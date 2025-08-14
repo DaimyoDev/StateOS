@@ -6,6 +6,7 @@ import {
 import { ELECTION_TYPES_BY_COUNTRY } from "../data/electionsData";
 import { generateInitialGovernmentOffices } from "../entities/politicalEntities";
 import { assignPopulationToCountry } from "../utils/populationUtils";
+import { politicians as temporaryPoliticianStore } from "../entities/personnel";
 
 // ADDED: Import the new generator functions and their dependencies
 import {
@@ -16,13 +17,39 @@ import { POLICY_QUESTIONS } from "../data/policyData";
 
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+const getInitialPoliticianSoA = () => ({
+  base: new Map(),
+  attributes: new Map(),
+  policyStances: new Map(),
+  ideologyScores: new Map(),
+  state: new Map(),
+  finances: new Map(),
+  background: new Map(),
+  campaign: new Map(),
+  staff: new Map(),
+});
+
+const getPoliticianFromSoA = (id, soaStore) => {
+  const base = soaStore.base.get(id);
+  if (!base) return null;
+  return {
+    ...base,
+    attributes: soaStore.attributes.get(id) || {},
+    policyStances: Object.fromEntries(
+      soaStore.policyStances.get(id) || new Map()
+    ),
+    ideologyScores: soaStore.ideologyScores.get(id) || {},
+    ...(soaStore.finances.get(id) || {}),
+    background: soaStore.background.get(id) || {},
+  };
+};
+
 export const createCampaignSetupSlice = (set, get) => {
   return {
     actions: {
       // --- REFACTORED to be an async function ---
       finalizeLocalAreaAndStart: async (
         selectedCityObject,
-        playerPoliticianData,
         allCustomPartiesData,
         availableCountriesData
       ) => {
@@ -36,20 +63,24 @@ export const createCampaignSetupSlice = (set, get) => {
           clearAllNews,
           initializeRelationships,
           generateTalentPool,
+          addPoliticianToStore,
+          clearTemporaryPoliticians,
         } = get().actions;
 
-        // --- STEP 1: Show the initial loading screen ---
         setLoadingGame(true, "Initializing world generation...");
-        await pause(50); // Give React time to render the loading screen
+        await pause(50);
 
         const setupState = get().currentCampaignSetup;
-        const playerPolitician = get().savedPoliticians?.find(
-          (p) => p.id === setupState.selectedPoliticianId
+        const savedPoliticiansSoA = get().savedPoliticians;
+
+        const playerPoliticianData = getPoliticianFromSoA(
+          setupState.selectedPoliticianId,
+          savedPoliticiansSoA
         );
 
         if (
           !selectedCityObject ||
-          !playerPolitician ||
+          !playerPoliticianData ||
           !setupState.selectedCountryId ||
           !setupState.selectedRegionId
         ) {
@@ -60,16 +91,17 @@ export const createCampaignSetupSlice = (set, get) => {
           return;
         }
 
-        // --- STEP 2: Perform generation logic in sequential, awaited steps ---
-
         setLoadingGame(true, "Establishing your starting city...");
         await pause(20);
-        const newCityObject = selectedCityObject;
-        if (!newCityObject) {
-          alert("Critical error: Could not generate city data.");
-          setLoadingGame(false);
-          return;
-        }
+
+        // Temporarily set a placeholder activeCampaign to allow nested state updates
+        set({ activeCampaign: { politicians: getInitialPoliticianSoA() } });
+
+        // Add the player to the campaign's SoA store
+        addPoliticianToStore(
+          { ...playerPoliticianData, isPlayer: true },
+          "activeCampaign.politicians"
+        );
 
         setLoadingGame(true, "Forming the government...");
         await pause(20);
@@ -79,14 +111,29 @@ export const createCampaignSetupSlice = (set, get) => {
         const currentRegionData = currentCountryData.regions.find(
           (region) => region.id === setupState.selectedRegionId
         );
+
         const initialGovernmentOffices = generateInitialGovernmentOffices({
           countryElectionTypes:
             ELECTION_TYPES_BY_COUNTRY[setupState.selectedCountryId] || [],
-          city: newCityObject,
+          city: selectedCityObject,
           countryData: currentCountryData,
           regionId: setupState.selectedRegionId,
           availableParties: setupState.generatedPartiesInCountry,
           currentYear: 2025,
+        });
+
+        const allInitialPoliticianIds = new Set();
+        initialGovernmentOffices.forEach((office) => {
+          if (office.holderId) allInitialPoliticianIds.add(office.holderId);
+          if (office.memberIds)
+            office.memberIds.forEach((id) => allInitialPoliticianIds.add(id));
+        });
+
+        allInitialPoliticianIds.forEach((id) => {
+          const polData = getPoliticianFromSoA(id, temporaryPoliticianStore);
+          if (polData) {
+            addPoliticianToStore(polData, "activeCampaign.politicians");
+          }
         });
 
         setLoadingGame(true, "Setting up media and special interests...");
@@ -108,44 +155,37 @@ export const createCampaignSetupSlice = (set, get) => {
           countryId: setupState.selectedCountryId,
           regionId: setupState.selectedRegionId,
         });
-        const allNewsOutlets = [...nationalNews, ...regionalNews];
         const allLobbyingGroups = generateInitialLobbyingGroups({
           policyQuestions: POLICY_QUESTIONS,
           countryId: setupState.selectedCountryId,
         });
 
-        const allInitialPoliticians = initialGovernmentOffices
-          .flatMap(
-            (office) => office.members || (office.holder ? [office.holder] : [])
-          )
-          .filter(Boolean);
-        initializeRelationships(allInitialPoliticians);
+        initializeRelationships(Array.from(allInitialPoliticianIds));
 
-        const newActiveCampaign = {
-          politician: { ...playerPoliticianData },
-          countryId: setupState.selectedCountryId,
-          regionId: setupState.selectedRegionId,
-          partyInfo: setupState.playerPartyChoice,
-          customPartiesSnapshot: [...allCustomPartiesData],
-          generatedPartiesSnapshot: [...setupState.generatedPartiesInCountry],
-          startingCity: newCityObject,
-          currentDate: { year: 2025, month: 1, day: 1 },
-          elections: [],
-          lastElectionYear: {},
-          governmentOffices: initialGovernmentOffices,
-          viewingElectionNightForDate: null,
-          newsAndEvents: [],
-          availableCountries: availableCountriesData,
-          newsOutlets: allNewsOutlets,
-          lobbyingGroups: allLobbyingGroups,
-        };
-
-        // --- STEP 3: Finalize state and navigate ---
         setLoadingGame(true, "Finalizing...");
         await pause(20);
 
+        set((state) => ({
+          activeCampaign: {
+            ...state.activeCampaign,
+            playerPoliticianId: playerPoliticianData.id,
+            countryId: setupState.selectedCountryId,
+            regionId: setupState.selectedRegionId,
+            partyInfo: setupState.playerPartyChoice,
+            customPartiesSnapshot: [...allCustomPartiesData],
+            generatedPartiesSnapshot: [...setupState.generatedPartiesInCountry],
+            startingCity: selectedCityObject,
+            currentDate: { year: 2025, month: 1, day: 1 },
+            elections: [],
+            lastElectionYear: {},
+            governmentOffices: initialGovernmentOffices,
+            newsOutlets: [...nationalNews, ...regionalNews],
+            lobbyingGroups: allLobbyingGroups,
+            availableCountries: availableCountriesData,
+          },
+        }));
+
         clearAllNews();
-        set({ activeCampaign: newActiveCampaign });
 
         setLoadingGame(true, "Assembling staff talent pool...");
         await pause(20);
@@ -158,8 +198,8 @@ export const createCampaignSetupSlice = (set, get) => {
         resetCampaignSetup?.();
         generateScheduledElections();
         resetLegislationState();
+        clearTemporaryPoliticians();
 
-        // Hide the loading screen after everything is done
         setLoadingGame(false);
       },
       loadCountries: () => set({ availableCountries: BASE_COUNTRIES_DATA }),

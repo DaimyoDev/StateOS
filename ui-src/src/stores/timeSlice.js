@@ -55,11 +55,22 @@ const _updatePoliticalLandscapePure = (campaign, newLandscape) => {
   };
 };
 
-const _updatePlayerApprovalPure = (campaign, newApproval) => {
-  if (newApproval === null || !campaign) return campaign;
+const _updatePlayerApprovalPure = (campaign, playerId, newApproval) => {
+  if (newApproval === null || !campaign || !playerId) return campaign;
+
+  const politicians = campaign.politicians;
+  const stateData = politicians.state.get(playerId);
+  if (!stateData) return campaign;
+
+  const newStateMap = new Map(politicians.state);
+  newStateMap.set(playerId, {
+    ...stateData,
+    approvalRating: newApproval,
+  });
+
   return {
     ...campaign,
-    politician: { ...campaign.politician, approvalRating: newApproval },
+    politicians: { ...politicians, state: newStateMap },
   };
 };
 
@@ -73,6 +84,7 @@ export const createTimeSlice = (set, get) => {
           let currentCampaign = { ...state.activeCampaign };
           if (!currentCampaign?.currentDate) return state;
 
+          const playerPoliticianId = currentCampaign.playerPoliticianId;
           let collectedNewsThisMonth = [];
 
           // --- REFACTORED MONTHLY UPDATE PIPELINE ---
@@ -107,6 +119,7 @@ export const createTimeSlice = (set, get) => {
             runMonthlyPlayerApprovalUpdate(currentCampaign);
           currentCampaign = _updatePlayerApprovalPure(
             currentCampaign,
+            playerPoliticianId,
             newPlayerApproval
           );
 
@@ -223,19 +236,14 @@ export const createTimeSlice = (set, get) => {
 
         // --- PHASE 2: Perform the primary state update for date advancement & player politician ---
         set((state) => {
-          let updatedCampaign = { ...state.activeCampaign }; // Start update with current state
+          let updatedCampaign = { ...state.activeCampaign };
+          const { playerPoliticianId, politicians } = updatedCampaign;
 
           // Calculate new date
           let { year, month, day } = updatedCampaign.currentDate;
-          const daysInMonthArr = [
-            0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31,
-          ];
-          if (year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0)) {
-            daysInMonthArr[2] = 29; // Leap year
-          }
-
+          const daysInMonth = new Date(year, month, 0).getDate();
           day++;
-          if (day > daysInMonthArr[month]) {
+          if (day > daysInMonth) {
             day = 1;
             month++;
             if (month > 12) {
@@ -245,44 +253,32 @@ export const createTimeSlice = (set, get) => {
           }
           updatedCampaign.currentDate = { year, month, day };
 
-          // Player politician updates
-          if (updatedCampaign.politician) {
-            let newPlayerMediaBuzz =
-              updatedCampaign.politician.playerMediaBuzz || 0;
-            if (updatedCampaign.politician.playerMediaBuzz > 0) {
-              newPlayerMediaBuzz = Math.max(
+          // Player politician daily updates using SoA
+          if (playerPoliticianId && politicians) {
+            const stateData = politicians.state.get(playerPoliticianId);
+
+            if (stateData) {
+              const newMediaBuzz = Math.max(
                 0,
-                updatedCampaign.politician.playerMediaBuzz - getRandomInt(1, 2)
+                (stateData.mediaBuzz || 0) - getRandomInt(1, 2)
               );
+              const newStateMap = new Map(politicians.state);
+              newStateMap.set(playerPoliticianId, {
+                ...stateData,
+                mediaBuzz: newMediaBuzz,
+              });
+              updatedCampaign.politicians = {
+                ...politicians,
+                state: newStateMap,
+              };
             }
-            updatedCampaign.politician = {
-              ...updatedCampaign.politician,
-              playerCampaignActionToday: false,
-              playerMediaBuzz: newPlayerMediaBuzz,
-            };
           }
 
-          const newPoliticianState = {
-            ...state.activeCampaign.politician,
-            workingHours: state.activeCampaign.politician.maxWorkingHours, // Reset hours
-            campaignActionToday: false, // Reset this too
-          };
-
-          // Update modal-related viewing flags
-          updatedCampaign.viewingElectionNightForDate =
-            electionDayInfo.shouldShowModal
-              ? electionDayInfo.electionDayContextForModal
-              : updatedCampaign.viewingElectionNightForDate;
-
-          return {
-            activeCampaign: {
-              ...updatedCampaign,
-              politician: newPoliticianState,
-            },
-          };
+          return { activeCampaign: updatedCampaign };
         });
 
-        get().actions.processDailyCampaignEffects();
+        // This action now correctly resets hours for ALL politicians, including the player
+        get().actions.resetDailyCampaignHours();
 
         // --- PHASE 3: Post-date-advancement operations (using the NEW date) ---
         // Get the campaign state AFTER the date advancement. This is crucial for monthly updates and AI.

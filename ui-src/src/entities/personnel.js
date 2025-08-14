@@ -42,57 +42,113 @@ export const createPartyStaffObject = (params = {}) => ({
   partyId: params.partyId || null,
 });
 
-export const createPoliticianObject = (params = {}) => ({
-  id: params.id || `pol_${generateId()}`,
-  firstName: params.firstName || "John",
-  lastName: params.lastName || "Doe",
-  name:
-    params.name || `${params.firstName || "John"} ${params.lastName || "Doe"}`,
-  age: params.age || getRandomInt(30, 75),
-  gender: params.gender || (Math.random() < 0.5 ? "male" : "female"),
-  attributes: params.attributes || {
-    charisma: getRandomInt(1, 10),
-    integrity: getRandomInt(1, 10),
-    intelligence: getRandomInt(1, 10),
-    negotiation: getRandomInt(1, 10),
-    oratory: getRandomInt(1, 10),
-    fundraising: getRandomInt(1, 10),
-  },
-  policyStances: params.policyStances || {},
-  background: params.background || {
-    education: "Unknown",
-    career: "Unknown",
-    narrative: "A new face in politics.",
-  },
-  calculatedIdeology: params.calculatedIdeology || "Centrist",
-  ideologyScores: params.ideologyScores || {},
-  partyId: params.partyId || "independent",
-  factionId: params.factionId || null,
-  partyName: params.partyName || "Independent",
-  partyColor: params.partyColor || "#888888",
-  isIncumbent: params.isIncumbent || false,
-  isPlayer: params.isPlayer || false,
-  politicalCapital: params.politicalCapital || getRandomInt(10, 50),
-  nameRecognition: params.nameRecognition || getRandomInt(100, 10000),
-  treasury: params.treasury || getRandomInt(1000, 20000),
-  campaignFunds: params.campaignFunds || getRandomInt(500, 10000),
-  approvalRating: params.approvalRating || getRandomInt(40, 70),
-  mediaBuzz: params.mediaBuzz || getRandomInt(0, 30),
-  partySupport: params.partySupport || 0,
-  currentOffice: params.currentOffice || null,
-  campaignHoursPerDay: params.campaignHoursPerDay || 0,
-  campaignHoursRemainingToday: params.campaignHoursRemainingToday || 0,
-  hiredStaff: params.hiredStaff || [],
-  volunteerCount: params.volunteerCount || 0,
-  advertisingBudgetMonthly: params.advertisingBudgetMonthly || 0,
-  currentAdStrategy: params.currentAdStrategy || {
-    focus: "none",
-    targetId: null,
-    intensity: 0,
-  },
-  isInCampaign: params.isInCampaign || false,
-  polling: params.polling || 0,
-});
+export const politicians = {
+  base: new Map(),
+  attributes: new Map(),
+  policyStances: new Map(),
+  ideologyScores: new Map(),
+  state: new Map(),
+  finances: new Map(),
+  background: new Map(),
+  campaign: new Map(),
+  staff: new Map(),
+};
+
+export const addPolitician = (politicianData) => {
+  const { id } = politicianData;
+  if (!id) {
+    console.error("Cannot add politician without an ID.");
+    return;
+  }
+
+  politicians.base.set(id, {
+    id: politicianData.id,
+    firstName: politicianData.firstName,
+    lastName: politicianData.lastName,
+    name: politicianData.name,
+    age: politicianData.age,
+    sex: politicianData.sex,
+    isPlayer: politicianData.isPlayer,
+    partyId: politicianData.partyId,
+    factionId: politicianData.factionId,
+    currentOffice: politicianData.currentOffice,
+    partyName: politicianData.partyName,
+    partyColor: politicianData.partyColor,
+    calculatedIdeology: politicianData.calculatedIdeology,
+  });
+
+  politicians.attributes.set(id, politicianData.attributes);
+
+  const stancesMap = new Map(
+    Object.entries(politicianData.policyStances || {})
+  );
+  politicians.policyStances.set(id, stancesMap);
+
+  politicians.ideologyScores.set(id, politicianData.ideologyScores);
+
+  politicians.state.set(id, {
+    politicalCapital: politicianData.politicalCapital,
+    nameRecognition: politicianData.nameRecognition,
+    approvalRating: politicianData.approvalRating,
+    mediaBuzz: politicianData.mediaBuzz,
+    partySupport: politicianData.partySupport,
+    polling: politicianData.polling,
+  });
+
+  politicians.finances.set(id, {
+    treasury: politicianData.treasury,
+    campaignFunds: politicianData.campaignFunds,
+    advertisingBudgetMonthly: politicianData.advertisingBudgetMonthly,
+  });
+
+  politicians.background.set(id, politicianData.background);
+
+  politicians.campaign.set(id, {
+    isInCampaign: politicianData.isInCampaign,
+    campaignHoursPerDay: politicianData.campaignHoursPerDay,
+    volunteerCount: politicianData.volunteerCount,
+    currentAdStrategy: politicianData.currentAdStrategy,
+  });
+
+  politicians.staff.set(
+    id,
+    politicianData.hiredStaff.map((staff) => staff.id)
+  );
+};
+
+/**
+ * Re-hydrates a full politician object from the SoA data stores.
+ * @param {string} politicianId - The ID of the politician to re-hydrate.
+ * @param {object} soaStore - The Structure of Arrays store for politicians (e.g., activeCampaign.politicians).
+ * @returns {object|null} The re-hydrated politician object or null if not found.
+ */
+export const rehydratePolitician = (politicianId, soaStore) => {
+  if (!politicianId || !soaStore?.base?.has(politicianId)) {
+    return null;
+  }
+
+  const base = soaStore.base.get(politicianId);
+  const attributes = soaStore.attributes.get(politicianId) || {};
+  const policyStances = soaStore.policyStances.get(politicianId) || new Map();
+  const ideologyScores = soaStore.ideologyScores.get(politicianId) || {};
+  const state = soaStore.state.get(politicianId) || {};
+  const finances = soaStore.finances.get(politicianId) || {};
+  const background = soaStore.background.get(politicianId) || {};
+  const campaign = soaStore.campaign.get(politicianId) || {};
+  const staff = soaStore.staff.get(politicianId) || [];
+
+  return {
+    ...base,
+    attributes,
+    policyStances: Object.fromEntries(policyStances),
+    ideologyScores,
+    ...state,
+    ...finances,
+    background,
+    ...campaign,
+    hiredStaff: staff,
+  };
+};
 
 export const createPartyObject = (params = {}) => ({
   id: params.id || `party_${generateId()}`,
@@ -112,7 +168,7 @@ export const createPartyObject = (params = {}) => ({
     chairperson: null,
     commsDirector: null,
   },
-  members: params.members || [],
+  memberIds: new Set(),
   financialStanding: params.financialStanding || 0,
   mediaBias: params.mediaBias || 0,
   platform: params.platform || [],
@@ -125,7 +181,7 @@ export const createFactionObject = (params = {}) => ({
   ideology: params.ideology || "Centrism",
   influence: params.influence || getRandomInt(10, 40),
   leader: params.leader || null,
-  members: params.members || [],
+  memberIds: new Set(),
   policyStances: params.policyStances || {},
 });
 

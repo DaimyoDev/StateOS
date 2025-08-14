@@ -311,12 +311,20 @@ export const runMonthlyPartyPopularityUpdate = (campaign) => {
 
 export const runMonthlyPlayerApprovalUpdate = (campaign) => {
   const cityStats = campaign.startingCity?.stats;
-  if (!cityStats) return null;
+  const playerPoliticianId = campaign.playerPoliticianId;
+  const politiciansStore = campaign.politicians;
+
+  if (!cityStats || !playerPoliticianId || !politiciansStore) return null;
 
   const mayorOffice = campaign.governmentOffices.find(
     (off) => off.officeNameTemplateId === "mayor"
   );
-  const mayor = mayorOffice?.holder;
+  const mayorId = mayorOffice?.holder?.id;
+
+  const playerState = politiciansStore.state.get(playerPoliticianId);
+  if (!playerState) return null; // Player data not found
+
+  const currentApproval = playerState.approvalRating;
   const currentOverallCitizenMood = cityStats.overallCitizenMood;
 
   let approvalChangeFromMood = 0;
@@ -325,27 +333,27 @@ export const runMonthlyPlayerApprovalUpdate = (campaign) => {
     approvalChangeFromMood = [-2, -1, 0, 1, 2, 3][moodIndex] || 0;
   }
 
-  const currentApproval = campaign.politician.approvalRating;
   let newPlayerApproval = currentApproval;
 
-  if (mayor && mayor.isPlayer) {
+  // Check if the player is the mayor by comparing IDs
+  if (mayorId && mayorId === playerPoliticianId) {
     newPlayerApproval = Math.round(
       Math.min(
         100,
         Math.max(
           0,
-          (currentApproval || 50) + approvalChangeFromMood + getRandomInt(-1, 1)
+          currentApproval + approvalChangeFromMood + getRandomInt(-1, 1)
         )
       )
     );
   } else {
-    // If player is not the mayor, their approval is less tied to city mood
+    // Player is not the mayor, less affected by city mood
     newPlayerApproval = Math.round(
       Math.min(
         100,
         Math.max(
           0,
-          (currentApproval || 50) +
+          currentApproval +
             getRandomInt(-1, 1) +
             Math.floor(approvalChangeFromMood / 2)
         )

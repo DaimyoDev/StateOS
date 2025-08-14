@@ -20,7 +20,7 @@ export function distributeVotesToCandidates(
   if (candidatesInput instanceof Map) {
     candidateMap = new Map(candidatesInput); // Copy to avoid mutating original
   } else if (Array.isArray(candidatesInput)) {
-    candidateMap = new Map(candidatesInput.map((c, i) => [i, c]));
+    candidateMap = new Map(candidatesInput.map((c) => [c.id, c]));
   } else if (candidatesInput && typeof candidatesInput === "object") {
     candidateMap = new Map(
       Object.entries(candidatesInput).map(([k, v]) => [k, v])

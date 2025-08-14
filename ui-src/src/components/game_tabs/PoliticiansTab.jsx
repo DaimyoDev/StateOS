@@ -133,7 +133,6 @@ function PoliticiansTab() {
               key={pol.id}
               politician={pol}
               relationship={relationships[pol.id]?.relationship ?? 0}
-              // ADDED: Passing the intel and onPraise props down to the card
               intel={politicianIntel[pol.id]}
               onGatherIntel={() => actions.gatherIntelOnPolitician(pol.id)}
               onPraise={() => actions.praisePolitician(pol.id)}

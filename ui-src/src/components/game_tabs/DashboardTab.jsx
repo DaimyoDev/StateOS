@@ -1,5 +1,5 @@
 // ui-src/src/components/game_tabs/DashboardTab.jsx
-import React from "react";
+import React, { useMemo } from "react";
 import useGameStore from "../../store";
 import { getTimeUntil, createDateObj } from "../../utils/generalUtils.js";
 import "./TabStyles.css";
@@ -7,13 +7,30 @@ import "./DashboardTab.css";
 
 function DashboardTab({ campaignData }) {
   const {
-    politician: playerPolitician,
+    playerPoliticianId,
+    politicians: politiciansSoA,
     currentDate,
     startingCity,
     elections = [],
   } = campaignData || {};
 
   const actions = useGameStore((state) => state.actions);
+
+  const playerPolitician = useMemo(() => {
+    if (!playerPoliticianId || !politiciansSoA) return null;
+
+    const base = politiciansSoA.base.get(playerPoliticianId);
+    const state = politiciansSoA.state.get(playerPoliticianId);
+    const finances = politiciansSoA.finances.get(playerPoliticianId);
+
+    if (!base || !state || !finances) return null;
+
+    return {
+      ...base,
+      ...state,
+      ...finances,
+    };
+  }, [playerPoliticianId, politiciansSoA]);
 
   if (!playerPolitician || !currentDate || !startingCity) {
     return (

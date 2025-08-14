@@ -1,5 +1,5 @@
 // ui-src/src/scenes/CampaignGameScreen.jsx
-import React from "react";
+import React, { useMemo } from "react";
 import useGameStore from "../store";
 import "./CampaignGameScreen.css";
 import Modal from "../components/modals/Modal";
@@ -19,6 +19,7 @@ import NewsEventsTab from "../components/game_tabs/NewsEventsTab";
 import PoliticalEntitiesTab from "../components/game_tabs/PoliticalEntitiesTab";
 import PoliticiansTab from "../components/game_tabs/PoliticiansTab";
 import ArticleViewerModal from "../components/modals/ArticleViewerModal";
+import DonationModal from "../components/modals/DonationModal";
 
 const TABS = [
   { id: "Dashboard", label: "Dashboard" },
@@ -36,6 +37,21 @@ function CampaignGameScreen() {
   // --- Individual Selections from Zustand Store ---
   const activeMainGameTab = useGameStore((state) => state.activeMainGameTab);
   const activeCampaign = useGameStore((state) => state.activeCampaign);
+
+  const playerPoliticianId = useGameStore(
+    (state) => state.activeCampaign?.playerPoliticianId
+  );
+  const politiciansSoA = useGameStore(
+    (state) => state.activeCampaign?.politicians
+  );
+
+  const playerData = useMemo(() => {
+    if (!playerPoliticianId || !politiciansSoA) return null;
+    return {
+      base: politiciansSoA.base.get(playerPoliticianId),
+      campaign: politiciansSoA.campaign.get(playerPoliticianId),
+    };
+  }, [playerPoliticianId, politiciansSoA]);
 
   const isBillDetailsModalOpen = useGameStore(
     (state) => state.isBillDetailsModalOpen
@@ -173,7 +189,7 @@ function CampaignGameScreen() {
     }
   };
 
-  const playerFirstName = activeCampaign.politician?.firstName || "Player";
+  const playerFirstName = playerData.base?.firstName || "Player";
 
   return (
     <>
@@ -186,8 +202,8 @@ function CampaignGameScreen() {
               Date: {currentDate?.month}/{currentDate?.day}/{currentDate?.year}
             </p>
             <p>
-              Time Remaining: {activeCampaign.politician.workingHours} /{" "}
-              {activeCampaign.politician.maxWorkingHours} hrs
+              Time Remaining: {playerData.campaign?.workingHours ?? "..."} /{" "}
+              {playerData.campaign?.maxWorkingHours ?? "..."} hrs
             </p>
           </div>
           <nav className="tab-navigation">
@@ -317,6 +333,7 @@ function CampaignGameScreen() {
           proposalData={viewingVoteDetailsForBill}
         />
         {isArticleModalOpen && <ArticleViewerModal />}
+        <DonationModal />
       </div>
     </>
   );

@@ -10,9 +10,7 @@ function LocalAreaSetupScreen() {
     (state) => state.currentCampaignSetup
   );
   const actions = useGameStore((state) => state.actions);
-  const savedPoliticians = useGameStore(
-    (state) => state.savedPoliticians || []
-  );
+  const savedPoliticians = useGameStore((state) => state.savedPoliticians);
   const availableCountries = useGameStore(
     (state) => state.availableCountries || []
   );
@@ -59,9 +57,7 @@ function LocalAreaSetupScreen() {
       regionPoliticalLandscape, // Ensure this is part of currentCampaignSetup from store
     } = currentCampaignSetup;
 
-    const politician = savedPoliticians.find(
-      (p) => p.id === selectedPoliticianId
-    );
+    const politician = savedPoliticians?.base?.get(selectedPoliticianId);
     const country = availableCountries.find((c) => c.id === selectedCountryId);
     const region = country?.regions?.find((r) => r.id === selectedRegionId);
 
@@ -122,22 +118,17 @@ function LocalAreaSetupScreen() {
 
   const handleSubmitCity = () => {
     if (selectedCityId && actions && actions.finalizeLocalAreaAndStart) {
-      const selectedPoliticianObject = savedPoliticians.find(
-        (p) => p.id === currentCampaignSetup?.selectedPoliticianId
-      );
       const selectedCityObject = citiesInRegion.find(
         (c) => c.id === selectedCityId
       );
 
-      if (!selectedPoliticianObject || !selectedCityObject) {
+      if (!selectedCityObject) {
         alert("Error: Missing politician or city data. Please go back.");
         return;
       }
 
-      // --- MODIFIED: Pass the selected city object directly ---
       actions.finalizeLocalAreaAndStart(
-        selectedCityObject, // Pass the whole object
-        selectedPoliticianObject,
+        selectedCityObject,
         allCustomParties,
         availableCountries
       );

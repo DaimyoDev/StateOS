@@ -125,11 +125,60 @@ export const createOrganizationActionSlice = (set, get) => ({
     const group = get().activeCampaign?.lobbyingGroups?.find(
       (g) => g.id === groupId
     );
-    if (!group) return;
-    console.log(`[Action] Donating to ${group.name}.`);
-    get().actions.addToast({
-      message: `Donation screen for ${group.name} is not yet implemented.`,
-      type: "info",
+    if (!group) {
+      console.warn(`Donation Action: Group with ID ${groupId} not found.`);
+      return;
+    }
+    // Opens the modal using the action from the new uiSlice.
+    get().actions.openDonationModal(group);
+  },
+
+  /**
+   * NEW: Processes a donation, deducting funds and providing feedback.
+   * @param {string} groupId - The ID of the group receiving the donation.
+   * @param {number} amount - The amount being donated.
+   */
+  confirmDonation: (groupId, amount) => {
+    set((state) => {
+      const group = state.activeCampaign?.lobbyingGroups?.find(
+        (g) => g.id === groupId
+      );
+      if (!group) {
+        console.warn(`Confirm Donation: Group with ID ${groupId} not found.`);
+        return state;
+      }
+
+      const currentFunds = state.activeCampaign.politician.treasury;
+      const donationAmount = parseInt(amount, 10);
+
+      if (currentFunds < donationAmount) {
+        get().actions.addToast({
+          message: "Insufficient funds for donation.",
+          type: "error",
+        });
+        return state;
+      }
+
+      get().actions.addToast({
+        message: `You successfully donated $${donationAmount.toLocaleString()} to ${
+          group.name
+        }.`,
+        type: "success",
+      });
+
+      // Close the modal as part of the state update
+      get().actions.closeDonationModal();
+
+      // Return the updated state with the correct structure
+      return {
+        activeCampaign: {
+          ...state.activeCampaign,
+          politician: {
+            ...state.activeCampaign.politician,
+            treasury: currentFunds - donationAmount,
+          },
+        },
+      };
     });
   },
   investigateLobbyGroup: (groupId) => {

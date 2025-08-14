@@ -1,0 +1,73 @@
+/* ui-src/src/components/modals/DonationModal.css */
+.donation-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  text-align: left;
+}
+
+.donation-current-funds {
+  text-align: center;
+  font-size: 1.1em;
+  padding: 10px;
+  background-color: var(--secondary-bg);
+  border-radius: var(--element-radius);
+  border: 1px solid var(--border-color);
+}
+
+.donation-current-funds strong {
+  color: var(--success-text);
+  font-weight: 700;
+}
+
+.donation-input-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.donation-input-group span {
+  font-size: 1.5em;
+  font-weight: 700;
+  color: var(--primary-text);
+}
+
+.donation-amount-input {
+  flex-grow: 1;
+  padding: 12px;
+  font-size: 1.2em;
+  font-family: var(--font-main);
+  background-color: var(--input-bg);
+  color: var(--input-text);
+  border: var(--border-width) solid var(--border-color);
+  border-radius: var(--element-radius);
+  text-align: right;
+  transition: border-color var(--transition-speed),
+    box-shadow var(--transition-speed);
+}
+
+.donation-amount-input:focus {
+  outline: none;
+  border-color: var(--accent-border-color);
+  box-shadow: 0 0 0 3px var(--input-focus-shadow-color);
+}
+
+.donation-quick-amounts {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.quick-amount-button {
+  flex-grow: 1;
+}
+
+.donation-error-message {
+  text-align: center;
+  color: var(--error-text);
+  font-weight: 500;
+  min-height: 20px; /* Reserve space to prevent layout shift */
+  margin-top: -10px;
+  margin-bottom: -5px;
+}

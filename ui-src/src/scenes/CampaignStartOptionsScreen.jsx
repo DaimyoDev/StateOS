@@ -4,27 +4,18 @@ import "./CampaignStartOptionsScreen.css";
 
 function CampaignStartOptionsScreen() {
   const actions = useGameStore((state) => state.actions);
-  const savedPoliticians = useGameStore(
-    (state) => state.savedPoliticians || []
-  );
+  const savedPoliticians = useGameStore((state) => state.savedPoliticians);
 
   const handleCreateNew = () => {
-    // Navigate to where the player creates a new politician
-    // This will eventually be your PoliticianCreator scene within the CreatorHub
-    actions.navigateTo("PoliticianCreator"); // Example scene name
-    // Or, if CreatorHub is the entry point: actions.navigateTo('CreatorHub');
-    // and then from CreatorHub, they choose to create a politician.
+    actions.navigateTo("PoliticianCreator");
   };
 
   const handleUseExisting = () => {
-    // Navigate to a screen where they can select from previously created politicians
-    actions.navigateTo("ManagePoliticiansScreen"); // Example scene name
+    actions.navigateTo("ManagePoliticiansScreen");
   };
 
-  // Determine if "Use Existing Politician" button should be enabled
-  // For MVP, you might always disable it if saving/loading isn't ready:
-  // const canUseExisting = false;
-  const canUseExisting = savedPoliticians && savedPoliticians.length > 0;
+  const canUseExisting =
+    savedPoliticians && savedPoliticians.base && savedPoliticians.base.size > 0;
 
   return (
     <div className="campaign-start-options-container">

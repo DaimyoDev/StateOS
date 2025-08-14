@@ -4,6 +4,18 @@ import { POLICY_QUESTIONS } from "../data/policyData";
 import { calculateIdeologyFromStances } from "../entities/personnel";
 import { IDEOLOGY_DEFINITIONS } from "../data/ideologiesData";
 
+const getInitialPoliticianSoA = () => ({
+  base: new Map(),
+  attributes: new Map(),
+  policyStances: new Map(),
+  ideologyScores: new Map(),
+  state: new Map(),
+  finances: new Map(),
+  background: new Map(),
+  campaign: new Map(),
+  staff: new Map(),
+});
+
 const getInitialCreatingPoliticianState = () => ({
   id: null,
   firstName: "Alex",
@@ -15,8 +27,8 @@ const getInitialCreatingPoliticianState = () => ({
   nameRecognition: 5000,
   treasury: 10000,
   campaignFunds: 5000,
-  workingHours: 8, // Add this
-  maxWorkingHours: 8, // Add this
+  workingHours: 8,
+  maxWorkingHours: 8,
   attributes: {
     charisma: 5,
     integrity: 5,
@@ -33,7 +45,7 @@ const getInitialCreatingPoliticianState = () => ({
 
 export const createPoliticianSlice = (set, get) => ({
   // --- STATE ---
-  savedPoliticians: [],
+  savedPoliticians: getInitialPoliticianSoA(),
   creatingPolitician: getInitialCreatingPoliticianState(),
   politicianToEditId: null,
 
@@ -104,51 +116,55 @@ export const createPoliticianSlice = (set, get) => ({
     },
 
     finalizeNewPolitician: () => {
-      const { navigateBack } = get().actions;
-      // We directly use the creatingPolitician object which now holds the correct stat values
-      const newPolitician = { ...get().creatingPolitician };
+      const { navigateBack, addPoliticianToStore } = get().actions;
+      const politicianData = { ...get().creatingPolitician };
 
-      if (!newPolitician.id) {
-        newPolitician.id = `pol_${generateId()}`;
-      }
+      const isEditing = !!politicianData.id;
+      const id = isEditing ? politicianData.id : `pol_${generateId()}`;
+      politicianData.id = id;
 
-      set((state) => {
-        const existingIndex = state.savedPoliticians.findIndex(
-          (p) => p.id === newPolitician.id
-        );
-        let updatedSavedPoliticians;
-        if (existingIndex > -1) {
-          updatedSavedPoliticians = [...state.savedPoliticians];
-          updatedSavedPoliticians[existingIndex] = newPolitician;
-        } else {
-          updatedSavedPoliticians = [...state.savedPoliticians, newPolitician];
-        }
-        return { savedPoliticians: updatedSavedPoliticians };
-      });
+      // Call the centralized action to save the data to the 'savedPoliticians' SoA store
+      addPoliticianToStore(politicianData, "savedPoliticians");
+      get().actions.persistSavedPoliticians();
 
       get().actions.resetCreatingPolitician();
       navigateBack();
     },
 
+    /**
+     * REFACTORED: Loads a politician from the main data store into the creator form.
+     */
     loadPoliticianForEditing: (politicianId) => {
-      const politicianToEdit = get().savedPoliticians.find(
-        (p) => p.id === politicianId
-      );
-      if (politicianToEdit) {
-        set({
-          creatingPolitician: { ...politicianToEdit },
-          politicianToEditId: politicianId,
-        });
-        get().actions.navigateTo("PoliticianCreator");
-      }
+      const soa = get().savedPoliticians; // Get the SoA store from the root state
+      const base = soa.base.get(politicianId);
+      if (!base) return;
+
+      // Re-hydrate a monolithic object from the various maps
+      const politicianToEdit = {
+        ...base,
+        attributes: soa.attributes.get(politicianId) || {},
+        policyStances: Object.fromEntries(
+          soa.policyStances.get(politicianId) || new Map()
+        ),
+        ideologyScores: soa.ideologyScores.get(politicianId) || {},
+        ...(soa.finances.get(politicianId) || {}),
+        background: soa.background.get(politicianId) || {},
+        // Add other properties from other maps as needed
+      };
+
+      set({
+        creatingPolitician: politicianToEdit,
+        politicianToEditId: politicianId,
+      });
+      get().actions.navigateTo("PoliticianCreator");
     },
 
+    /**
+     * REFACTORED: Calls the dataSlice to delete a politician.
+     */
     deleteSavedPolitician: (politicianId) => {
-      set((state) => ({
-        savedPoliticians: state.savedPoliticians.filter(
-          (p) => p.id !== politicianId
-        ),
-      }));
+      get().actions.deletePoliticianFromStore(politicianId, "savedPoliticians");
+      get().actions.persistSavedPoliticians();
     },
   },
 });

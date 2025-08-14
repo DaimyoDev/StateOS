@@ -50,9 +50,12 @@ const formatBudgetKey = (key) => {
 };
 const formatLawValue = (key, value) => {
   if (value === null || value === undefined) return "N/A";
-  if (key === "minimumWage") {
+
+  // MODIFIED: This check now works for both "minimumWage" and "stateMinimumWage"
+  if (key.toLowerCase().includes("minimumwage")) {
     return `$${Number(value).toFixed(2)} / hour`;
   }
+
   if (typeof value === "object") {
     return Object.entries(value)
       .map(

@@ -3,6 +3,8 @@
 // NOTE: Import paths will need to be updated once the refactoring is complete.
 import { distributeVotesToCandidates } from "./electionSimulator.js";
 import { getRandomInt } from "../utils/core.js";
+import useGameStore from "../store.js";
+import { rehydratePolitician } from "../entities/personnel.js";
 
 // --- Seat Allocation & Winner Determination ---
 
@@ -451,16 +453,15 @@ export const calculateElectionOutcome = (
   let totalVotesActuallyCast = 0;
   let voterTurnoutPercentageActual = 0;
   const seatsToFill = electionToEnd.numberOfSeatsToFill || 1;
+  const soaStore = useGameStore.getState().activeCampaign.politicians;
 
-  // Step 1: Simulate or retrieve vote counts
   if (simulatedElectionData) {
     totalVotesActuallyCast = simulatedElectionData.totalExpectedVotes || 0;
     voterTurnoutPercentageActual = simulatedElectionData.voterTurnoutPercentage;
 
-    // Convert simulated array to a Map
     candidatesWithFinalVotes = new Map(
       (simulatedElectionData.candidates || []).map((c) => [
-        c.id || c.name || crypto.randomUUID(), // use stable key if available
+        c.id,
         { ...c, votes: c.currentVotes || 0 },
       ])
     );
@@ -471,31 +472,22 @@ export const calculateElectionOutcome = (
         (voterTurnoutPercentageActual / 100)
     );
 
-    let baseCandidatesForSim =
-      electionToEnd.electoralSystem === "PartyListPR"
-        ? []
-        : electionToEnd.candidates || [];
+    const candidatesMap = electionToEnd.candidates || new Map();
+    const candidateIds = Array.from(candidatesMap.keys());
 
-    if (electionToEnd.electoralSystem === "MMP" && electionToEnd.mmpData) {
-      baseCandidatesForSim = Object.values(
-        electionToEnd.mmpData.constituencyCandidatesByParty || {}
-      ).flat();
-      baseCandidatesForSim.push(
-        ...(electionToEnd.mmpData.independentConstituencyCandidates || [])
-      );
-    }
+    const rehydratedCandidatesForSim = candidateIds
+      .map((id) => rehydratePolitician(id, soaStore))
+      .filter(Boolean);
 
-    if (baseCandidatesForSim) {
-      // distributeVotesToCandidates now returns a Map
-      candidatesWithFinalVotes = distributeVotesToCandidates(
-        baseCandidatesForSim,
-        totalVotesActuallyCast,
-        electionToEnd.id
-      );
-    }
+    console.log(rehydratedCandidatesForSim);
+
+    candidatesWithFinalVotes = distributeVotesToCandidates(
+      rehydratedCandidatesForSim,
+      totalVotesActuallyCast,
+      electionToEnd.id
+    );
   }
 
-  // Step 2: Process results based on the electoral system
   const processorParams = {
     electionToEnd,
     allPartiesInGame,
@@ -512,41 +504,31 @@ export const calculateElectionOutcome = (
     case "MMP":
       result = processMMPResults(processorParams);
       break;
-    case "FPTP":
-    case "TwoRoundSystem":
-    case "ElectoralCollege":
-    case "SNTV_MMD":
-    case "BlockVote":
-    case "PluralityMMD":
-      result = processFPTPResults(processorParams);
-      break;
     default:
-      console.warn(
-        `calculateElectionOutcome: Unknown electoral system '${electionToEnd.electoralSystem}'. Falling back to FPTP.`
-      );
       result = processFPTPResults(processorParams);
       break;
   }
 
-  // Step 3: Assign winners
+  // Step 3: Format the final return object
   if (result.determinedWinnersArray) {
-    const isMultiMemberBody = seatsToFill > 1;
     result.winnerAssignment = {
-      type: isMultiMemberBody ? "MEMBERS_ARRAY" : "SINGLE_HOLDER",
+      type: seatsToFill > 1 ? "MEMBERS_ARRAY" : "SINGLE_HOLDER",
       winners: result.determinedWinnersArray,
     };
   }
 
-  // Step 4: Final outcome object
   const finalOutcome = {
     ...result,
+    resultsByCandidate: Array.from(
+      result.allRelevantIndividuals?.values() || []
+    ),
     totalVotesActuallyCast,
     voterTurnoutPercentageActual,
     seatsToFill: result.seatsToFill || seatsToFill,
     cityId: electionToEnd.entityDataSnapshot.id,
     newsContext: {
       officeName: electionToEnd.officeName,
-      winners: result.determinedWinnersArray.map((w) => ({
+      winners: (result.determinedWinnersArray || []).map((w) => ({
         name: w.name,
         partyName:
           allPartiesInGame.find((p) => p.id === w.partyId)?.name ||

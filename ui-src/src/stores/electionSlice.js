@@ -14,6 +14,7 @@ import {
   initializeElectionObject,
 } from "../utils/electionUtils.js";
 import { generateNewsForEvent } from "../simulation/newsGenerator.js";
+import { rehydratePolitician } from "../entities/personnel.js";
 
 // --- Local Helper Functions (To be moved to electionManager.js later) ---
 
@@ -454,17 +455,20 @@ export const createElectionSlice = (set, get) => ({
               ...partyDetails,
             };
 
-            const currentCandidatesArray = Array.from(
-              election.candidates.values()
-            );
+            const initialCandidatesMap = election.candidates || new Map();
+            const candidateIds = Array.from(initialCandidatesMap.keys());
+            const soaStore = state.activeCampaign.politicians;
 
-            // 2. Add the player to the array
+            const currentCandidatesArray = candidateIds
+              .map((id) => rehydratePolitician(id, soaStore))
+              .filter(Boolean);
+
             const newCandidateList = [
               ...currentCandidatesArray,
               playerAsCandidate,
             ];
 
-            const adultPop = election.totalEligibleVoters / 0.7; // Estimate
+            const adultPop = election.totalEligibleVoters / 0.7;
             const candidatesWithScores = newCandidateList.map((c) => ({
               ...c,
               baseScore:
@@ -472,11 +476,15 @@ export const createElectionSlice = (set, get) => ({
                 calculateBaseCandidateScore(c, election, state.activeCampaign),
             }));
 
-            // 3. Normalize polling on the array, which returns a new Map
-            const finalCandidatesMap = normalizePolling(
+            const incorrectlyKeyedMap = normalizePolling(
               candidatesWithScores,
               adultPop
             );
+
+            const finalCandidatesMap = new Map();
+            for (const candidate of incorrectlyKeyedMap.values()) {
+              finalCandidatesMap.set(candidate.id, candidate);
+            }
 
             successfullyDeclared = true;
             get().actions.addToast?.({
@@ -511,40 +519,45 @@ export const createElectionSlice = (set, get) => ({
       set((state) => {
         if (!state.activeCampaign?.elections) return state;
 
-        let pollingChanged = false;
-
         const updatedElections = state.activeCampaign.elections.map(
           (election) => {
             if (
               election.outcome?.status === "upcoming" ||
               election.outcome?.status === "campaigning"
             ) {
-              const normalizedCandidates = normalizePolling(
-                election.candidates,
-                100
-              ); //
+              // --- FIX STARTS HERE ---
 
-              if (
-                JSON.stringify(normalizedCandidates) !==
-                JSON.stringify(election.candidates)
-              ) {
-                pollingChanged = true;
+              // 1. Run the polling calculation as before.
+              const incorrectlyKeyedMap = normalizePolling(
+                election.candidates,
+                election.totalEligibleVoters // Using a more realistic population is better than 100
+              );
+
+              // 2. Create a new, empty map.
+              const correctlyKeyedMap = new Map();
+
+              // 3. Loop through the results and rebuild the map with the CORRECT ID as the key.
+              for (const candidate of incorrectlyKeyedMap.values()) {
+                if (candidate && candidate.id) {
+                  // Ensure candidate and id exist
+                  correctlyKeyedMap.set(candidate.id, candidate);
+                }
               }
-              return { ...election, candidates: normalizedCandidates };
+
+              return { ...election, candidates: correctlyKeyedMap };
+
+              // --- FIX ENDS HERE ---
             }
             return election;
           }
         );
 
-        if (pollingChanged) {
-          return {
-            activeCampaign: {
-              ...state.activeCampaign,
-              elections: updatedElections,
-            },
-          };
-        }
-        return state;
+        return {
+          activeCampaign: {
+            ...state.activeCampaign,
+            elections: updatedElections,
+          },
+        };
       });
     },
     setIsSimulationMode: (isSim) => set({ isSimulationMode: isSim }),

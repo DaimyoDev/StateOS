@@ -707,37 +707,36 @@ export const createPersonnelSlice = (set, get) => ({
     },
     generateDynamicName: (context) => {
       const { countryId, regionId, cityId } = context;
-      // Get all possible states at once
       const { activeCampaign, currentCampaignSetup, availableCountries } =
         get();
       let demographics = null;
 
-      // Determine which state to look in: active campaign takes precedence, otherwise use setup data
-      const sourceState = activeCampaign || {
-        availableCountries,
-        startingCity: currentCampaignSetup.customCity, // Use custom city if it exists during setup
-      };
-
-      if (cityId && sourceState.startingCity?.id === cityId) {
-        // Use the active/selected city's demographics
-        demographics = sourceState.startingCity.demographics;
-      } else if (regionId) {
-        // Find the specific state/region from the main country list
-        const country = sourceState.availableCountries.find(
+      if (activeCampaign && activeCampaign.availableCountries) {
+        // --- LOGIC FOR AN ACTIVE CAMPAIGN ---
+        const country = activeCampaign.availableCountries.find(
           (c) => c.id === countryId
         );
-        const region = country?.regions.find((r) => r.id === regionId);
-        demographics = region?.demographics;
-      } else if (countryId) {
-        // Fallback to the national demographics from the main country list
-        const country = sourceState.availableCountries.find(
-          (c) => c.id === countryId
-        );
-        demographics = country?.demographics;
+        if (cityId && activeCampaign.startingCity?.id === cityId) {
+          demographics = activeCampaign.startingCity.demographics;
+        } else if (regionId && country?.regions) {
+          const region = country.regions.find((r) => r.id === regionId);
+          demographics = region?.demographics;
+        } else if (country) {
+          demographics = country.demographics;
+        }
+      } else {
+        // --- LOGIC FOR CAMPAIGN SETUP ---
+        const country = availableCountries.find((c) => c.id === countryId);
+        if (cityId && currentCampaignSetup?.customCity?.id === cityId) {
+          demographics = currentCampaignSetup.customCity.demographics;
+        } else if (regionId && country?.regions) {
+          const region = country.regions.find((r) => r.id === regionId);
+          demographics = region?.demographics;
+        } else if (country) {
+          demographics = country.demographics;
+        }
       }
 
-      // If no demographics were found (e.g., during very early setup), it will gracefully pass null
-      // and the name generator will use its own defaults.
       return generateAICandidateNameForElection(countryId, demographics);
     },
   },

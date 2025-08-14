@@ -1,10 +1,10 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import useGameStore from "../store";
 import Modal from "../components/modals/Modal";
 import "./ManagePoliticiansScreen.css";
 
 function ManagePoliticiansScreen() {
-  const savedPoliticians = useGameStore((state) => state.savedPoliticians);
+  const politiciansBase = useGameStore((state) => state.savedPoliticians.base);
   const actions = useGameStore((state) => state.actions);
   // NEW: Get the previous scene to determine the context
   const previousScene = useGameStore((state) => state.previousScene);
@@ -14,6 +14,11 @@ function ManagePoliticiansScreen() {
 
   // Determine if the screen was opened from the campaign start flow.
   const isCampaignSetup = previousScene === "CampaignStartOptionsScreen";
+
+  const savedPoliticians = useMemo(
+    () => Array.from(politiciansBase.values()),
+    [politiciansBase]
+  );
 
   const openDeleteConfirmModal = (politician) => {
     setPoliticianToDelete({

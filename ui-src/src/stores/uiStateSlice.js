@@ -46,6 +46,8 @@ export const createUISlice = (set, get) => ({
   viewingVoteDetailsForBill: null,
   viewingArticleId: null,
   isArticleModalOpen: false,
+  donationEntity: null,
+  isDonationModalOpen: false,
 
   // --- ACTIONS ---
   actions: {
@@ -271,9 +273,18 @@ export const createUISlice = (set, get) => ({
         console.warn(`Article with ID ${articleId} not found.`);
       }
     },
-
     closeArticleModal: () => {
       set({ viewingArticleId: null, isArticleModalOpen: false });
+    },
+    openDonationModal: (entity) => {
+      if (!entity) {
+        console.error("Attempted to open donation modal without an entity.");
+        return;
+      }
+      set({ isDonationModalOpen: true, donationEntity: entity });
+    },
+    closeDonationModal: () => {
+      set({ isDonationModalOpen: false, donationEntity: null });
     },
   },
 });
