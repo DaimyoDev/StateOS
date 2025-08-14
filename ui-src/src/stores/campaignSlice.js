@@ -48,9 +48,15 @@ export const createCampaignSlice = (set, get) => ({
           campaignHoursRemainingToday: hoursAvailable - hoursToSpend,
         });
 
+        const newDirtyList = new Set(
+          state.activeCampaign.politicianIdsWithSpentHours
+        );
+        newDirtyList.add(playerPoliticianId);
+
         return {
           activeCampaign: {
             ...activeCampaign,
+            politicianIdsWithSpentHours: newDirtyList,
             politicians: { ...politicians, campaign: newCampaignMap },
           },
         };
@@ -61,20 +67,25 @@ export const createCampaignSlice = (set, get) => ({
       set((state) => {
         const { activeCampaign } = state;
         if (!activeCampaign || !activeCampaign.politicians) return state;
-
+        const dirtyList = activeCampaign.politicianIdsWithSpentHours;
+        if (dirtyList.size === 0) return state; // Nothing to do, return immediately.
         const newCampaignMap = new Map(activeCampaign.politicians.campaign);
 
         // Iterate over all politicians in the campaign
-        for (const [id, campaignData] of newCampaignMap.entries()) {
-          newCampaignMap.set(id, {
-            ...campaignData,
-            campaignHoursRemainingToday: campaignData.maxWorkingHours || 8,
-          });
+        for (const id of dirtyList) {
+          const campaignData = newCampaignMap.get(id);
+          if (campaignData) {
+            newCampaignMap.set(id, {
+              ...campaignData,
+              campaignHoursRemainingToday: campaignData.maxWorkingHours || 8,
+            });
+          }
         }
 
         return {
           activeCampaign: {
             ...activeCampaign,
+            politicianIdsWithSpentHours: new Set(),
             politicians: {
               ...activeCampaign.politicians,
               campaign: newCampaignMap,
@@ -123,6 +134,11 @@ export const createCampaignSlice = (set, get) => ({
           campaignFunds: (financesData.campaignFunds || 0) + fundsRaised,
         });
 
+        const newDirtyList = new Set(
+          state.activeCampaign.politicianIdsWithSpentHours
+        );
+        newDirtyList.add(playerPoliticianId);
+
         get().actions.addToast?.({
           message: `Spent ${hoursToSpend}hr(s) fundraising. Raised $${fundsRaised.toLocaleString()}!`,
           type: "success",
@@ -131,6 +147,7 @@ export const createCampaignSlice = (set, get) => ({
         return {
           activeCampaign: {
             ...activeCampaign,
+            politicianIdsWithSpentHours: newDirtyList,
             politicians: {
               ...politicians,
               campaign: newCampaignMap,
@@ -205,6 +222,11 @@ export const createCampaignSlice = (set, get) => ({
           nameRecognition: currentRecognition + actualNewPeopleRecognized,
         });
 
+        const newDirtyList = new Set(
+          state.activeCampaign.politicianIdsWithSpentHours
+        );
+        newDirtyList.add(playerPoliticianId);
+
         get().actions.addToast?.({
           message: `Door knocking: Reached ~${totalPeopleReached} people. Name Rec +${actualNewPeopleRecognized.toLocaleString()}.`,
           type: "info",
@@ -213,6 +235,7 @@ export const createCampaignSlice = (set, get) => ({
         return {
           activeCampaign: {
             ...activeCampaign,
+            politicianIdsWithSpentHours: newDirtyList,
             politicians: {
               ...politicians,
               campaign: newCampaignMap,
@@ -299,6 +322,11 @@ export const createCampaignSlice = (set, get) => ({
           mediaBuzz: Math.min(100, (stateData.mediaBuzz || 0) + mediaBuzzGain),
         });
 
+        const newDirtyList = new Set(
+          state.activeCampaign.politicianIdsWithSpentHours
+        );
+        newDirtyList.add(playerPoliticianId);
+
         get().actions.addToast?.({
           message: `Public appearance: Approval +${approvalBoost}%. Name Rec +${nameRecGain.toLocaleString()}. Buzz +${mediaBuzzGain}.`,
           type: "success",
@@ -351,6 +379,11 @@ export const createCampaignSlice = (set, get) => ({
           volunteerCount: (campaignData.volunteerCount || 0) + newVolunteers,
         });
 
+        const newDirtyList = new Set(
+          state.activeCampaign.politicianIdsWithSpentHours
+        );
+        newDirtyList.add(playerPoliticianId);
+
         get().actions.addToast?.({
           message: `You spent ${hoursToSpend}hrs and recruited ${newVolunteers} new volunteers!`,
           type: "success",
@@ -358,6 +391,7 @@ export const createCampaignSlice = (set, get) => ({
 
         return {
           activeCampaign: {
+            politicianIdsWithSpentHours: newDirtyList,
             ...activeCampaign,
             politicians: { ...politicians, campaign: newCampaignMap },
           },
@@ -519,11 +553,17 @@ export const createCampaignSlice = (set, get) => ({
           nameRecognition: (stateData.nameRecognition || 0) + nameRecEffect,
         });
 
+        const newDirtyList = new Set(
+          state.activeCampaign.politicianIdsWithSpentHours
+        );
+        newDirtyList.add(playerPoliticianId);
+
         get().actions.addToast?.({ message: toastMessage, type: "success" });
 
         return {
           activeCampaign: {
             ...activeCampaign,
+            politicianIdsWithSpentHours: newDirtyList,
             politicians: {
               ...politicians,
               campaign: newCampaignMap,
@@ -549,6 +589,11 @@ export const createCampaignSlice = (set, get) => ({
         const resultsMap = new Map(
           allAIResults.map((res) => [res.politicianId, res.dailyResults])
         );
+
+        const newDirtyList = new Set(
+          state.activeCampaign.politicianIdsWithSpentHours
+        );
+        allAIResults.forEach((result) => newDirtyList.add(result.politicianId));
 
         const updatedElections = state.activeCampaign.elections.map(
           (election) => {
@@ -706,6 +751,7 @@ export const createCampaignSlice = (set, get) => ({
         return {
           activeCampaign: {
             ...state.activeCampaign,
+            politicianIdsWithSpentHours: newDirtyList,
             elections: updatedElections,
           },
         };

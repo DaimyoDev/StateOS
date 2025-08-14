@@ -421,8 +421,21 @@ function ElectionsTab({ campaignData }) {
   const sortedResultsByCandidate = useMemo(() => {
     const results = electionOutcome?.resultsByCandidate;
     if (!results?.length) return [];
-    return [...results].sort((a, b) => (b.votes || 0) - (a.votes || 0));
-  }, [electionOutcome]);
+
+    // --- THIS IS THE FIX ---
+    // Map over the results and enrich each candidate with their party's name and color.
+    const enrichedResults = results.map((candidate) => {
+      const partyDetails = partiesMap.get(candidate.partyId);
+      return {
+        ...candidate,
+        partyName: partyDetails?.name || "Independent",
+        partyColor: partyDetails?.color || "#888888",
+      };
+    });
+    // --- END OF FIX ---
+
+    return enrichedResults.sort((a, b) => (b.votes || 0) - (a.votes || 0));
+  }, [electionOutcome, partiesMap]); // Add partiesMap as a dependency
 
   const sortedUpcomingCandidates = useMemo(() => {
     // The internal logic of this hook is now correct.
@@ -463,9 +476,19 @@ function ElectionsTab({ campaignData }) {
     const isConcluded = electionOutcome?.status === "concluded";
 
     if (isConcluded) {
-      // ### CORRECTED WINNER LOGIC ###
-      // Look for winners in the new `winnerAssignment` structure
-      const winners = electionOutcome?.winnerAssignment?.winners || [];
+      // --- APPLY THE SAME FIX HERE ---
+      const rawWinners = electionOutcome?.winnerAssignment?.winners || [];
+      const winners = rawWinners
+        .map((winner) => {
+          if (!winner) return null; // Defensive check
+          const partyDetails = partiesMap.get(winner.partyId);
+          return {
+            ...winner,
+            partyName: partyDetails?.name || "Independent",
+            partyColor: partyDetails?.color || "#888888",
+          };
+        })
+        .filter(Boolean); // Filter out any nulls
       const resultsByPartySeats = electionOutcome?.partySeatSummary || {};
 
       return (

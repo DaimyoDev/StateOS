@@ -72,29 +72,57 @@ export function handleFPTPParticipants({
     targetTotalCandidates - candidates.length
   );
 
-  for (let i = 0; i < numberOfChallengersToGenerate; i++) {
+  const newChallengers = [];
+  // Use a 'while' loop to ensure we generate the exact number of unique challengers needed.
+  while (newChallengers.length < numberOfChallengersToGenerate) {
     const newChallenger = generateFullAIPolitician(
       countryId,
       partiesInScope,
       generationContext
     );
 
-    const isPartyAlreadyRepresented = candidates.some(
-      (existingCandidate) => existingCandidate.partyId === newChallenger.partyId
-    );
+    // Check if the new challenger is a duplicate of an incumbent OR another new challenger.
+    const isDuplicate =
+      candidates.some((c) => c.id === newChallenger.id) ||
+      newChallengers.some((c) => c.id === newChallenger.id);
 
-    if (newChallenger.partyId !== "independent" && isPartyAlreadyRepresented) {
-      newChallenger.partyId = `independent_ai_challenger_${i}`;
-      newChallenger.partyName = "Independent";
-      newChallenger.partyColor = "#888888";
-    }
+    // Only add the challenger if they are not a duplicate.
+    if (!isDuplicate) {
+      // Your logic for handling party representation is still valid here.
+      const isPartyAlreadyRepresented =
+        candidates.some(
+          (existing) => existing.partyId === newChallenger.partyId
+        ) ||
+        newChallengers.some(
+          (existing) => existing.partyId === newChallenger.partyId
+        );
 
-    if (!candidates.find((c) => c.id === newChallenger.id)) {
-      candidates.push(newChallenger);
-    } else {
-      i--;
+      if (
+        newChallenger.partyId !== "independent" &&
+        isPartyAlreadyRepresented
+      ) {
+        newChallenger.partyId = `independent_ai_${newChallenger.id}`;
+        newChallenger.partyName = "Independent";
+        newChallenger.partyColor = "#888888";
+      }
+
+      newChallengers.push(newChallenger);
     }
+    // If it was a duplicate, the loop simply runs again to generate a replacement.
   }
+
+  // After the loop, add all new unique challengers to the store in one batch.
+  if (newChallengers.length > 0) {
+    useGameStore
+      .getState()
+      .actions.addMultiplePoliticiansToStore(
+        newChallengers,
+        "activeCampaign.politicians"
+      );
+  }
+
+  // Now, add the generated challengers to the local candidates array for this election.
+  candidates.push(...newChallengers);
 
   const candidatesWithScores = candidates.map((cand) => ({
     ...cand,
@@ -134,6 +162,8 @@ export function handlePartyListPRParticipants({
   } = generationContext;
 
   const partyListsOutput = {};
+  const allNewCandidates = []; // 1. Create a single array to hold ALL new politicians.
+
   partiesInScope.forEach((party) => {
     const blocSeats = electionType.minCouncilSeats || numberOfSeatsToFill;
     const listSize = Math.max(
@@ -144,67 +174,15 @@ export function handlePartyListPRParticipants({
       )
     );
     partyListsOutput[party.id] = [];
+
     for (let i = 0; i < listSize; i++) {
       const newCand = generateFullAIPolitician(countryId, partiesInScope, {
         ...generationContext,
         forcePartyId: party.id,
       });
-      partyListsOutput[party.id].push({
-        ...newCand,
-        name: `${newCand.name} (${party.shortName || party.name} List #${
-          i + 1
-        })`,
-        listPosition: i + 1,
-        partyAffiliationReadOnly: {
-          /* ... */
-        },
-        baseScore: calculateBaseCandidateScore(
-          newCand,
-          electionPropertiesForScoring,
-          activeCampaign
-        ),
-        polling: 0,
-      });
-    }
-  });
-  return { type: "party_lists", data: partyListsOutput };
-}
 
-/**
- * Handles participant generation for Mixed-Member Proportional (MMP) elections.
- * @param {object} params - The parameters for participant generation.
- * @returns {object} { type: "mmp_participants", data: object }
- */
-export function handleMMPParticipants({
-  partiesInScope,
-  countryId,
-  ...generationContext
-}) {
-  const {
-    activeCampaign,
-    electionPropertiesForScoring,
-    numberOfSeatsToFill,
-    electionType,
-    incumbentInfo,
-  } = generationContext;
-  const partyListsOutput = {};
-  const partiesSubmittingLists = partiesInScope.filter((p) => !p.isIndependent);
+      allNewCandidates.push(newCand); // 2. Add every new candidate to the batch array.
 
-  // 1. Generate Party Lists
-  partiesSubmittingLists.forEach((party) => {
-    const listSeatTarget = Math.ceil(
-      numberOfSeatsToFill * (electionType.mmpListSeatsRatio || 0.5)
-    );
-    const listSize = Math.max(
-      Math.floor(listSeatTarget * 0.6) + 1,
-      getRandomInt(Math.max(3, listSeatTarget - 5), listSeatTarget + 10)
-    );
-    partyListsOutput[party.id] = [];
-    for (let i = 0; i < listSize; i++) {
-      const newCand = generateFullAIPolitician(countryId, partiesInScope, {
-        ...generationContext,
-        forcePartyId: party.id,
-      });
       partyListsOutput[party.id].push({
         ...newCand,
         name: `${newCand.name} (${party.shortName || party.name} List #${
@@ -226,8 +204,76 @@ export function handleMMPParticipants({
     }
   });
 
-  // 2. Generate Constituency Candidates
+  // 3. After all loops are done, add everyone to the store in one action.
+  if (allNewCandidates.length > 0) {
+    useGameStore
+      .getState()
+      .actions.addMultiplePoliticiansToStore(
+        allNewCandidates,
+        "activeCampaign.politicians"
+      );
+  }
+
+  return { type: "party_lists", data: partyListsOutput };
+}
+
+/**
+ * Handles participant generation for Mixed-Member Proportional (MMP) elections.
+ * @param {object} params - The parameters for participant generation.
+ * @returns {object} { type: "mmp_participants", data: object }
+ */
+export function handleMMPParticipants({
+  partiesInScope,
+  countryId,
+  ...generationContext
+}) {
+  const {
+    activeCampaign,
+    electionPropertiesForScoring,
+    numberOfSeatsToFill,
+    electionType,
+    incumbentInfo,
+  } = generationContext;
+
+  const partyListsOutput = {};
   const constituencyCandidatesByParty = {};
+  const independentConstituencyCandidates = [];
+  const allNewCandidates = []; // Array to hold ALL new politicians for batch update.
+
+  const partiesSubmittingLists = partiesInScope.filter((p) => !p.isIndependent);
+
+  // 1. Generate Party Lists
+  partiesSubmittingLists.forEach((party) => {
+    const listSeatTarget = Math.ceil(
+      numberOfSeatsToFill * (electionType.mmpListSeatsRatio || 0.5)
+    );
+    const listSize = Math.max(
+      Math.floor(listSeatTarget * 0.6) + 1,
+      getRandomInt(Math.max(3, listSeatTarget - 5), listSeatTarget + 10)
+    );
+    partyListsOutput[party.id] = [];
+    for (let i = 0; i < listSize; i++) {
+      const newCand = generateFullAIPolitician(countryId, partiesInScope, {
+        ...generationContext,
+        forcePartyId: party.id,
+      });
+      allNewCandidates.push(newCand);
+      partyListsOutput[party.id].push({
+        ...newCand,
+        name: `${newCand.name} (${party.shortName || party.name} List #${
+          i + 1
+        })`,
+        listPosition: i + 1,
+        baseScore: calculateBaseCandidateScore(
+          newCand,
+          electionPropertiesForScoring,
+          activeCampaign
+        ),
+      });
+    }
+  });
+
+  // 2. Generate Constituency Candidates
   const approxConstituencySeats = Math.floor(
     numberOfSeatsToFill * (electionType.mmpConstituencySeatsRatio || 0.5)
   );
@@ -235,17 +281,17 @@ export function handleMMPParticipants({
     constituencyCandidatesByParty[party.id] = [];
     const numConstituencyCandsForParty = Math.max(
       1,
-      Math.min(
-        approxConstituencySeats,
-        getRandomInt(
-          Math.floor(approxConstituencySeats * 0.7),
-          approxConstituencySeats + 5
-        )
+      getRandomInt(
+        Math.floor(approxConstituencySeats * 0.7),
+        approxConstituencySeats + 5
       )
     );
     for (let i = 0; i < numConstituencyCandsForParty; i++) {
       let newConstituencyCand;
       let attempts = 0;
+
+      // --- RESTORED LOGIC ---
+      // This loop ensures a constituency candidate is not already on the party's list.
       do {
         newConstituencyCand = generateFullAIPolitician(
           countryId,
@@ -259,7 +305,9 @@ export function handleMMPParticipants({
         ) &&
         attempts < 10
       );
+      // --- END RESTORED LOGIC ---
 
+      allNewCandidates.push(newConstituencyCand);
       constituencyCandidatesByParty[party.id].push({
         ...newConstituencyCand,
         isIncumbent:
@@ -275,7 +323,6 @@ export function handleMMPParticipants({
   });
 
   // 3. Generate Independent Constituency Candidates
-  let independentConstituencyCandidates = [];
   const numIndependentConstituencyCands = getRandomInt(
     0,
     Math.floor(approxConstituencySeats * 0.05)
@@ -287,12 +334,22 @@ export function handleMMPParticipants({
       ideology: getRandomElement(BASE_IDEOLOGIES)?.name || "Centrist",
       color: "#888888",
     };
-    independentConstituencyCandidates.push(
-      generateFullAIPolitician(countryId, [], {
-        ...generationContext,
-        forcePartyId: indParty.id,
-      })
-    );
+    const indCand = generateFullAIPolitician(countryId, [], {
+      ...generationContext,
+      forcePartyId: indParty.id,
+    });
+    allNewCandidates.push(indCand);
+    independentConstituencyCandidates.push(indCand);
+  }
+
+  // After ALL generation is complete, add everyone to the store in one batch.
+  if (allNewCandidates.length > 0) {
+    useGameStore
+      .getState()
+      .actions.addMultiplePoliticiansToStore(
+        allNewCandidates,
+        "activeCampaign.politicians"
+      );
   }
 
   return {
@@ -331,7 +388,7 @@ export function handleMMDParticipants({
     entityPopulation,
     incumbentInfo,
   } = generationContext;
-  // This logic is very similar to FPTP but generates more candidates relative to seats.
+
   let candidates = [];
   const runningIncumbents = [];
 
@@ -341,15 +398,7 @@ export function handleMMDParticipants({
       : [incumbentInfo];
     incumbentsArray.forEach((inc) => {
       if (inc && inc.isActuallyRunning) {
-        runningIncumbents.push({
-          ...inc,
-          isIncumbent: true,
-          name:
-            inc.name ||
-            useGameStore
-              .getState()
-              .actions.generateDynamicName({ countryId, ...generationContext }),
-        });
+        runningIncumbents.push({ ...inc, isIncumbent: true });
       }
     });
     candidates.push(...runningIncumbents);
@@ -367,30 +416,55 @@ export function handleMMDParticipants({
     targetTotalCandidates - candidates.length
   );
 
-  for (let i = 0; i < numberOfChallengersToGenerate; i++) {
+  const newChallengers = [];
+  // Use a 'while' loop to ensure we generate the exact number of unique challengers.
+  while (newChallengers.length < numberOfChallengersToGenerate) {
     const newChallenger = generateFullAIPolitician(
       countryId,
       partiesInScope,
       generationContext
     );
 
-    const isPartyAlreadyRepresented = candidates.some(
-      (existingCandidate) => existingCandidate.partyId === newChallenger.partyId
-    );
+    const isDuplicate =
+      candidates.some((c) => c.id === newChallenger.id) ||
+      newChallengers.some((c) => c.id === newChallenger.id);
 
-    // 3. If the party is taken AND it's not "independent", make this challenger an Independent.
-    if (newChallenger.partyId !== "independent" && isPartyAlreadyRepresented) {
-      newChallenger.partyId = `independent_ai_challenger_${i}`;
-      newChallenger.partyName = "Independent";
-      newChallenger.partyColor = "#888888"; // Standard independent color
-    }
+    if (!isDuplicate) {
+      // --- RESTORED LOGIC ---
+      // Check if the challenger's party is already represented by an incumbent or another challenger.
+      const isPartyAlreadyRepresented =
+        candidates.some(
+          (existing) => existing.partyId === newChallenger.partyId
+        ) ||
+        newChallengers.some(
+          (existing) => existing.partyId === newChallenger.partyId
+        );
 
-    if (!candidates.find((c) => c.id === newChallenger.id)) {
-      candidates.push(newChallenger);
-    } else {
-      i--;
+      if (
+        newChallenger.partyId !== "independent" &&
+        isPartyAlreadyRepresented
+      ) {
+        newChallenger.partyId = `independent_ai_${newChallenger.id}`;
+        newChallenger.partyName = "Independent";
+        newChallenger.partyColor = "#888888";
+      }
+      // --- END RESTORED LOGIC ---
+
+      newChallengers.push(newChallenger);
     }
+    // If it was a duplicate, the loop runs again to find a replacement.
   }
+
+  if (newChallengers.length > 0) {
+    useGameStore
+      .getState()
+      .actions.addMultiplePoliticiansToStore(
+        newChallengers,
+        "activeCampaign.politicians"
+      );
+  }
+
+  candidates.push(...newChallengers);
 
   const candidatesWithScores = candidates.map((cand) => ({
     ...cand,

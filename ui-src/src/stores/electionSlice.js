@@ -15,6 +15,7 @@ import {
 } from "../utils/electionUtils.js";
 import { generateNewsForEvent } from "../simulation/newsGenerator.js";
 import { rehydratePolitician } from "../entities/personnel.js";
+import { _addPoliticiansToSoA_helper } from "./dataSlice.js";
 
 // --- Local Helper Functions (To be moved to electionManager.js later) ---
 
@@ -94,6 +95,7 @@ export const createElectionSlice = (set, get) => ({
         } = state.activeCampaign;
         const countryElectionTypes = ELECTION_TYPES_BY_COUNTRY[countryId] || [];
         let newElectionsToAdd = [];
+        let allNewlyGeneratedChallengers = [];
 
         countryElectionTypes.forEach((electionType) => {
           const instances = getElectionInstances(
@@ -168,6 +170,27 @@ export const createElectionSlice = (set, get) => ({
               electionPropertiesForScoring,
             });
 
+            const newChallengersForThisRace = [];
+            const incumbentIds = new Set(
+              (incumbentInfo
+                ? Array.isArray(incumbentInfo)
+                  ? incumbentInfo
+                  : [incumbentInfo]
+                : []
+              ).map((i) => i.id)
+            );
+
+            // participantsData.data is a Map of all candidates in the race
+            for (const candidate of participantsData.data.values()) {
+              // If the candidate is not an incumbent, they are a new challenger
+              if (!incumbentIds.has(candidate.id)) {
+                newChallengersForThisRace.push(candidate);
+              }
+            }
+
+            // Collect all challengers from all generated elections into one big array
+            allNewlyGeneratedChallengers.push(...newChallengersForThisRace);
+
             const newElection = initializeElectionObject({
               electionType,
               instanceContext,
@@ -181,6 +204,15 @@ export const createElectionSlice = (set, get) => ({
           });
         });
 
+        let updatedPoliticiansSoA = state.activeCampaign.politicians;
+        if (allNewlyGeneratedChallengers.length > 0) {
+          // Use the pure helper function to add them to the current SoA store
+          updatedPoliticiansSoA = _addPoliticiansToSoA_helper(
+            allNewlyGeneratedChallengers,
+            state.activeCampaign.politicians
+          );
+        }
+
         if (newElectionsToAdd.length > 0) {
           const sortedElections = [
             ...existingElections,
@@ -192,6 +224,7 @@ export const createElectionSlice = (set, get) => ({
           return {
             activeCampaign: {
               ...state.activeCampaign,
+              politicians: updatedPoliticiansSoA,
               elections: sortedElections,
             },
           };
@@ -220,6 +253,9 @@ export const createElectionSlice = (set, get) => ({
           ...(state.activeCampaign.generatedPartiesSnapshot || []),
           ...(state.activeCampaign.customPartiesSnapshot || []),
         ];
+
+        const partiesMap = new Map(allParties.map((p) => [p.id, p]));
+
         const outcome = calculateElectionOutcome(
           electionToEnd,
           allParties,
@@ -257,9 +293,23 @@ export const createElectionSlice = (set, get) => ({
           outcome.winnerAssignment?.winners &&
           outcome.winnerAssignment.winners.length > 0
         ) {
-          const winners = outcome.winnerAssignment.winners;
+          const rawWinners = outcome.winnerAssignment.winners.filter(Boolean);
+
+          // --- THIS IS THE FIX ---
+          // Enrich the raw winner objects with full party details
+          const winners = rawWinners.map((winner) => {
+            const partyDetails = partiesMap.get(winner.partyId);
+            return {
+              ...winner,
+              partyName: partyDetails?.name || "Independent",
+              partyColor: partyDetails?.color || "#888888",
+            };
+          });
+
+          const playerPoliticianId = state.activeCampaign.playerPoliticianId;
+
           const playerIsWinner = winners.some(
-            (winner) => winner.id === state.activeCampaign.politician.id
+            (winner) => winner.id === playerPoliticianId
           );
 
           if (playerIsWinner) {
@@ -307,7 +357,7 @@ export const createElectionSlice = (set, get) => ({
             }
           } else {
             // SINGLE_HOLDER
-            const winner = outcome.winnerAssignment.winners[0];
+            const winner = winners[0];
             const newHolder = {
               ...winner,
               name: cleanWinnerName(winner.name),

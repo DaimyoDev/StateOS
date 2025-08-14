@@ -6,7 +6,6 @@ import {
 import { ELECTION_TYPES_BY_COUNTRY } from "../data/electionsData";
 import { generateInitialGovernmentOffices } from "../entities/politicalEntities";
 import { assignPopulationToCountry } from "../utils/populationUtils";
-import { politicians as temporaryPoliticianStore } from "../entities/personnel";
 
 // ADDED: Import the new generator functions and their dependencies
 import {
@@ -65,6 +64,7 @@ export const createCampaignSetupSlice = (set, get) => {
           generateTalentPool,
           addPoliticianToStore,
           clearTemporaryPoliticians,
+          addMultiplePoliticiansToStore,
         } = get().actions;
 
         setLoadingGame(true, "Initializing world generation...");
@@ -122,19 +122,27 @@ export const createCampaignSetupSlice = (set, get) => {
           currentYear: 2025,
         });
 
-        const allInitialPoliticianIds = new Set();
+        const initialPoliticians = [];
         initialGovernmentOffices.forEach((office) => {
-          if (office.holderId) allInitialPoliticianIds.add(office.holderId);
-          if (office.memberIds)
-            office.memberIds.forEach((id) => allInitialPoliticianIds.add(id));
-        });
-
-        allInitialPoliticianIds.forEach((id) => {
-          const polData = getPoliticianFromSoA(id, temporaryPoliticianStore);
-          if (polData) {
-            addPoliticianToStore(polData, "activeCampaign.politicians");
+          if (office.holder) {
+            initialPoliticians.push(office.holder);
+          }
+          if (office.members) {
+            initialPoliticians.push(...office.members);
           }
         });
+
+        // 2. Add them all to the central activeCampaign.politicians store in one batch.
+        if (initialPoliticians.length > 0) {
+          addMultiplePoliticiansToStore(
+            initialPoliticians,
+            "activeCampaign.politicians"
+          );
+        }
+
+        // 3. Gather their IDs to initialize relationships.
+        const allInitialPoliticianIds = initialPoliticians.map((p) => p.id);
+        initializeRelationships(allInitialPoliticianIds);
 
         setLoadingGame(true, "Setting up media and special interests...");
         await pause(20);
@@ -169,6 +177,7 @@ export const createCampaignSetupSlice = (set, get) => {
           activeCampaign: {
             ...state.activeCampaign,
             playerPoliticianId: playerPoliticianData.id,
+            politician: playerPoliticianData,
             countryId: setupState.selectedCountryId,
             regionId: setupState.selectedRegionId,
             partyInfo: setupState.playerPartyChoice,
@@ -182,6 +191,7 @@ export const createCampaignSetupSlice = (set, get) => {
             newsOutlets: [...nationalNews, ...regionalNews],
             lobbyingGroups: allLobbyingGroups,
             availableCountries: availableCountriesData,
+            politicianIdsWithSpentHours: new Set(),
           },
         }));
 

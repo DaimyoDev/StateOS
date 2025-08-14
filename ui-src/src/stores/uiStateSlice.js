@@ -157,11 +157,36 @@ export const createUISlice = (set, get) => ({
       applyThemeToDocument(themeData);
     },
 
-    openViewPoliticianModal: (politicianData) =>
-      set({
-        viewingPolitician: politicianData,
-        isViewPoliticianModalOpen: true,
-      }),
+    openViewPoliticianModal: (politician) => {
+      set((state) => {
+        if (!politician) return state;
+
+        // --- THIS IS THE FIX ---
+        // Get the full list of parties from the active campaign
+        const allParties = [
+          ...(state.activeCampaign.generatedPartiesSnapshot || []),
+          ...(state.activeCampaign.customPartiesSnapshot || []),
+        ];
+        const partiesMap = new Map(allParties.map((p) => [p.id, p]));
+
+        // Find the politician's party details using their partyId
+        const partyDetails = partiesMap.get(politician.partyId);
+
+        // Create an "enriched" politician object with the party name and color
+        const enrichedPolitician = {
+          ...politician,
+          partyName: partyDetails?.name || "Independent",
+          partyColor: partyDetails?.color || "#888888",
+        };
+        // --- END OF FIX ---
+
+        // Set the enriched object into state for the modal to display
+        return {
+          isViewPoliticianModalOpen: true,
+          viewingPolitician: enrichedPolitician,
+        };
+      });
+    },
     closeViewPoliticianModal: () =>
       set({ viewingPolitician: null, isViewPoliticianModalOpen: false }),
     openWinnerAnnouncementModal: (data) =>

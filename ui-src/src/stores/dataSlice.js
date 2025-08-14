@@ -33,11 +33,80 @@ const reviver = (key, value) => {
   return value;
 };
 
+export const _addPoliticiansToSoA_helper = (
+  politiciansArray,
+  targetSoAStore
+) => {
+  if (!politiciansArray || politiciansArray.length === 0) return targetSoAStore;
+
+  // Create new Maps for EVERY property, copying the existing ones.
+  const newSoA = {
+    base: new Map(targetSoAStore.base),
+    attributes: new Map(targetSoAStore.attributes),
+    policyStances: new Map(targetSoAStore.policyStances),
+    ideologyScores: new Map(targetSoAStore.ideologyScores),
+    state: new Map(targetSoAStore.state),
+    finances: new Map(targetSoAStore.finances),
+    background: new Map(targetSoAStore.background),
+    campaign: new Map(targetSoAStore.campaign),
+    staff: new Map(targetSoAStore.staff),
+  };
+
+  // Loop through the provided array and add EACH politician to the new maps
+  politiciansArray.forEach((politicianData) => {
+    const { id } = politicianData;
+    if (id) {
+      // This is the full "dehydration" logic from your original action
+      newSoA.base.set(id, {
+        id: politicianData.id,
+        firstName: politicianData.firstName,
+        lastName: politicianData.lastName,
+        name: `${politicianData.firstName} ${politicianData.lastName}`,
+        age: politicianData.age,
+        gender: politicianData.gender,
+        isPlayer: politicianData.isPlayer || false,
+        partyId: politicianData.partyId || null,
+        factionId: politicianData.factionId || null,
+        currentOffice: politicianData.currentOffice || null,
+        calculatedIdeology: politicianData.calculatedIdeology,
+      });
+      newSoA.attributes.set(id, politicianData.attributes);
+      newSoA.policyStances.set(
+        id,
+        new Map(Object.entries(politicianData.policyStances || {}))
+      );
+      newSoA.ideologyScores.set(id, politicianData.ideologyScores);
+      newSoA.finances.set(id, {
+        treasury: politicianData.treasury,
+        campaignFunds: politicianData.campaignFunds,
+      });
+      newSoA.background.set(id, politicianData.background);
+      newSoA.state.set(id, {
+        politicalCapital: politicianData.politicalCapital,
+        nameRecognition: politicianData.nameRecognition,
+        approvalRating: politicianData.approvalRating,
+        mediaBuzz: politicianData.mediaBuzz,
+        partySupport: politicianData.partySupport,
+        polling: politicianData.polling,
+      });
+      newSoA.campaign.set(id, {
+        isInCampaign: politicianData.isInCampaign,
+        workingHours: politicianData.workingHours,
+        maxWorkingHours: politicianData.maxWorkingHours,
+        volunteerCount: politicianData.volunteerCount,
+        currentAdStrategy: politicianData.currentAdStrategy,
+      });
+    }
+  });
+
+  return newSoA;
+};
+
 export const createDataSlice = (set, get) => ({
-  // This holds the TEMPLATES for custom politicians. This is what gets saved.
   savedPoliticians: getInitialPoliticianSoA(),
 
   actions: {
+    _addPoliticiansToSoA_helper,
     /**
      * REFACTORED: Adds a politician's data to a specified SoA store, supporting nested paths.
      * @param {object} politicianData - The full politician object to add.
@@ -45,96 +114,6 @@ export const createDataSlice = (set, get) => ({
      */
     addPoliticianToStore: (politicianData, storePath) => {
       set((state) => {
-        const { id } = politicianData;
-        if (!id) {
-          console.error("Cannot add politician without an ID.");
-          return state;
-        }
-
-        const pathParts = storePath.split(".");
-        const newState = { ...state };
-        let currentLevel = newState;
-
-        // Traverse the path to the parent of the target store
-        for (let i = 0; i < pathParts.length - 1; i++) {
-          currentLevel[pathParts[i]] = { ...currentLevel[pathParts[i]] };
-          currentLevel = currentLevel[pathParts[i]];
-        }
-
-        const storeKey = pathParts[pathParts.length - 1];
-        const targetStore = currentLevel[storeKey];
-
-        if (!targetStore) {
-          console.error(
-            `SoA store with key "${storeKey}" does not exist at path.`
-          );
-          return state;
-        }
-
-        // Immutable update: create new Maps by copying the old ones.
-        const newSoA = {
-          base: new Map(targetStore.base),
-          attributes: new Map(targetStore.attributes),
-          policyStances: new Map(targetStore.policyStances),
-          ideologyScores: new Map(targetStore.ideologyScores),
-          finances: new Map(targetStore.finances),
-          background: new Map(targetStore.background),
-          state: new Map(targetStore.state),
-          campaign: new Map(targetStore.campaign),
-          staff: new Map(targetStore.staff),
-        };
-
-        // Dehydrate the monolithic object into the SoA structure
-        newSoA.base.set(id, {
-          id: politicianData.id,
-          firstName: politicianData.firstName,
-          lastName: politicianData.lastName,
-          name: `${politicianData.firstName} ${politicianData.lastName}`,
-          age: politicianData.age,
-          gender: politicianData.gender,
-          isPlayer: politicianData.isPlayer || false,
-          partyId: politicianData.partyId || null,
-          factionId: politicianData.factionId || null,
-          currentOffice: politicianData.currentOffice || null,
-          calculatedIdeology: politicianData.calculatedIdeology,
-        });
-        newSoA.attributes.set(id, politicianData.attributes);
-        newSoA.policyStances.set(
-          id,
-          new Map(Object.entries(politicianData.policyStances || {}))
-        );
-        newSoA.ideologyScores.set(id, politicianData.ideologyScores);
-        newSoA.finances.set(id, {
-          treasury: politicianData.treasury,
-          campaignFunds: politicianData.campaignFunds,
-        });
-        newSoA.background.set(id, politicianData.background);
-        newSoA.state.set(id, {
-          politicalCapital: politicianData.politicalCapital,
-          nameRecognition: politicianData.nameRecognition,
-          approvalRating: politicianData.approvalRating,
-          mediaBuzz: politicianData.mediaBuzz,
-          partySupport: politicianData.partySupport,
-          polling: politicianData.polling,
-        });
-        newSoA.campaign.set(id, {
-          isInCampaign: politicianData.isInCampaign,
-          workingHours: politicianData.workingHours,
-          maxWorkingHours: politicianData.maxWorkingHours,
-          volunteerCount: politicianData.volunteerCount,
-          currentAdStrategy: politicianData.currentAdStrategy,
-        });
-
-        currentLevel[storeKey] = newSoA;
-        return newState;
-      });
-    },
-
-    addMultiplePoliticiansToStore: (politiciansArray, storePath) => {
-      set((state) => {
-        if (!politiciansArray || politiciansArray.length === 0) return state;
-
-        // --- (This setup logic is the same as addPoliticianToStore) ---
         const pathParts = storePath.split(".");
         const newState = { ...state };
         let currentLevel = newState;
@@ -148,59 +127,38 @@ export const createDataSlice = (set, get) => ({
           console.error(`SoA store at "${storePath}" does not exist.`);
           return state;
         }
-        const newSoA = {
-          base: new Map(targetStore.base),
-          attributes: new Map(targetStore.attributes),
-          // ... (copy all other maps)
-        };
-        // --- (End setup logic) ---
 
-        // Loop through the provided array and add EACH politician to the new maps
-        politiciansArray.forEach((politicianData) => {
-          const { id } = politicianData;
-          if (id) {
-            // This is the same "dehydration" logic from your addPoliticianToStore action
-            newSoA.base.set(id, {
-              id: politicianData.id,
-              firstName: politicianData.firstName,
-              lastName: politicianData.lastName,
-              name: `${politicianData.firstName} ${politicianData.lastName}`,
-              age: politicianData.age,
-              gender: politicianData.gender,
-              isPlayer: politicianData.isPlayer || false,
-              partyId: politicianData.partyId || null,
-              factionId: politicianData.factionId || null,
-              currentOffice: politicianData.currentOffice || null,
-              calculatedIdeology: politicianData.calculatedIdeology,
-            });
-            newSoA.attributes.set(id, politicianData.attributes);
-            newSoA.policyStances.set(
-              id,
-              new Map(Object.entries(politicianData.policyStances || {}))
-            );
-            newSoA.ideologyScores.set(id, politicianData.ideologyScores);
-            newSoA.finances.set(id, {
-              treasury: politicianData.treasury,
-              campaignFunds: politicianData.campaignFunds,
-            });
-            newSoA.background.set(id, politicianData.background);
-            newSoA.state.set(id, {
-              politicalCapital: politicianData.politicalCapital,
-              nameRecognition: politicianData.nameRecognition,
-              approvalRating: politicianData.approvalRating,
-              mediaBuzz: politicianData.mediaBuzz,
-              partySupport: politicianData.partySupport,
-              polling: politicianData.polling,
-            });
-            newSoA.campaign.set(id, {
-              isInCampaign: politicianData.isInCampaign,
-              workingHours: politicianData.workingHours,
-              maxWorkingHours: politicianData.maxWorkingHours,
-              volunteerCount: politicianData.volunteerCount,
-              currentAdStrategy: politicianData.currentAdStrategy,
-            });
-          }
-        });
+        const newSoA = _addPoliticiansToSoA_helper(
+          [politicianData],
+          targetStore
+        );
+
+        currentLevel[storeKey] = newSoA;
+        return newState;
+      });
+    },
+
+    // REFACTORED to use the helper
+    addMultiplePoliticiansToStore: (politiciansArray, storePath) => {
+      set((state) => {
+        const pathParts = storePath.split(".");
+        const newState = { ...state };
+        let currentLevel = newState;
+        for (let i = 0; i < pathParts.length - 1; i++) {
+          currentLevel[pathParts[i]] = { ...currentLevel[pathParts[i]] };
+          currentLevel = currentLevel[pathParts[i]];
+        }
+        const storeKey = pathParts[pathParts.length - 1];
+        const targetStore = currentLevel[storeKey];
+        if (!targetStore) {
+          console.error(`SoA store at "${storePath}" does not exist.`);
+          return state;
+        }
+
+        const newSoA = _addPoliticiansToSoA_helper(
+          politiciansArray,
+          targetStore
+        );
 
         currentLevel[storeKey] = newSoA;
         return newState;

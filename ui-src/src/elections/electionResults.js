@@ -479,8 +479,6 @@ export const calculateElectionOutcome = (
       .map((id) => rehydratePolitician(id, soaStore))
       .filter(Boolean);
 
-    console.log(rehydratedCandidatesForSim);
-
     candidatesWithFinalVotes = distributeVotesToCandidates(
       rehydratedCandidatesForSim,
       totalVotesActuallyCast,
