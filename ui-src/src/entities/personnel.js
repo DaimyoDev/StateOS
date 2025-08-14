@@ -746,7 +746,7 @@ export function generateFullAIPolitician(
     partySupport: partyName !== "Independent" ? getRandomInt(30, 75) : 0,
     currentOffice: null,
     campaignHoursPerDay: getRandomInt(6, 10),
-    campaignHoursRemainingToday: 0,
+    campaignHoursRemainingToday: 8,
     hiredStaff: [],
     volunteerCount: isIncumbent ? getRandomInt(10, 50) : getRandomInt(0, 15),
     advertisingBudgetMonthly: 0,

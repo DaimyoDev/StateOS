@@ -63,7 +63,7 @@ export const _addPoliticiansToSoA_helper = (
         lastName: politicianData.lastName,
         name: `${politicianData.firstName} ${politicianData.lastName}`,
         age: politicianData.age,
-        gender: politicianData.gender,
+        sex: politicianData.sex,
         isPlayer: politicianData.isPlayer || false,
         partyId: politicianData.partyId || null,
         factionId: politicianData.factionId || null,
@@ -93,8 +93,18 @@ export const _addPoliticiansToSoA_helper = (
         isInCampaign: politicianData.isInCampaign,
         workingHours: politicianData.workingHours,
         maxWorkingHours: politicianData.maxWorkingHours,
+        campaignHoursPerDay: politicianData.campaignHoursPerDay,
+        campaignHoursRemainingToday: politicianData.campaignHoursRemainingToday,
         volunteerCount: politicianData.volunteerCount,
         currentAdStrategy: politicianData.currentAdStrategy,
+      });
+      newSoA.state.set(id, {
+        politicalCapital: politicianData.politicalCapital,
+        nameRecognition: politicianData.nameRecognition,
+        approvalRating: politicianData.approvalRating,
+        mediaBuzz: politicianData.mediaBuzz,
+        partySupport: politicianData.partySupport,
+        polling: politicianData.polling,
       });
     }
   });

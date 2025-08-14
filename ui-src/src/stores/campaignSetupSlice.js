@@ -31,6 +31,7 @@ const getInitialPoliticianSoA = () => ({
 const getPoliticianFromSoA = (id, soaStore) => {
   const base = soaStore.base.get(id);
   if (!base) return null;
+
   return {
     ...base,
     attributes: soaStore.attributes.get(id) || {},
@@ -40,6 +41,8 @@ const getPoliticianFromSoA = (id, soaStore) => {
     ideologyScores: soaStore.ideologyScores.get(id) || {},
     ...(soaStore.finances.get(id) || {}),
     background: soaStore.background.get(id) || {},
+    ...(soaStore.campaign.get(id) || {}),
+    ...(soaStore.state.get(id) || {}),
   };
 };
 
@@ -78,6 +81,15 @@ export const createCampaignSetupSlice = (set, get) => {
           savedPoliticiansSoA
         );
 
+        const finalPlayerPoliticianData = {
+          ...playerPoliticianData,
+          // Set partyId from the choice, or null if independent
+          partyId:
+            setupState.playerPartyChoice?.type !== "independent"
+              ? setupState.playerPartyChoice?.id
+              : null,
+        };
+
         if (
           !selectedCityObject ||
           !playerPoliticianData ||
@@ -99,7 +111,7 @@ export const createCampaignSetupSlice = (set, get) => {
 
         // Add the player to the campaign's SoA store
         addPoliticianToStore(
-          { ...playerPoliticianData, isPlayer: true },
+          { ...finalPlayerPoliticianData, isPlayer: true },
           "activeCampaign.politicians"
         );
 

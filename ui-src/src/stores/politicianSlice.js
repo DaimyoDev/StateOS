@@ -25,10 +25,24 @@ const getInitialCreatingPoliticianState = () => ({
   policyFocus: "Economic Growth",
   politicalCapital: 20,
   nameRecognition: 5000,
+  approvalRating: 50, // Added
+  mediaBuzz: 0, // Added
+  partySupport: 50, // Added
+  polling: 0, // Added
   treasury: 10000,
   campaignFunds: 5000,
   workingHours: 8,
   maxWorkingHours: 8,
+  campaignHoursPerDay: 8,
+  campaignHoursRemainingToday: 8,
+  isInCampaign: false, // Added
+  volunteerCount: 0, // Added
+  currentAdStrategy: {
+    // Added
+    focus: "none",
+    targetId: null,
+    intensity: 0,
+  },
   attributes: {
     charisma: 5,
     integrity: 5,
@@ -123,6 +137,8 @@ export const createPoliticianSlice = (set, get) => ({
       const id = isEditing ? politicianData.id : `pol_${generateId()}`;
       politicianData.id = id;
 
+      console.log("Data being sent to save:", politicianData);
+
       // Call the centralized action to save the data to the 'savedPoliticians' SoA store
       addPoliticianToStore(politicianData, "savedPoliticians");
       get().actions.persistSavedPoliticians();
@@ -149,7 +165,7 @@ export const createPoliticianSlice = (set, get) => ({
         ideologyScores: soa.ideologyScores.get(politicianId) || {},
         ...(soa.finances.get(politicianId) || {}),
         background: soa.background.get(politicianId) || {},
-        // Add other properties from other maps as needed
+        ...(soa.campaign.get(politicianId) || {}),
       };
 
       set({

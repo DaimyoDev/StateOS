@@ -6,13 +6,15 @@ import {
   getDisplayedPolling,
   calculateAdultPopulation,
 } from "../../utils/generalUtils";
-import { STAFF_ROLES_INFO } from "../../data/campaignStaffData";
-import { POLICY_QUESTIONS } from "../../data/policyData";
+import { rehydratePolitician } from "../../entities/personnel";
 
 // --- SUB-TAB COMPONENTS ---
 
-const CampaignOverviewSubTab = ({ campaignData, openViewPoliticianModal }) => {
-  const politician = campaignData.politician || {};
+const CampaignOverviewSubTab = ({
+  politician,
+  campaignData,
+  openViewPoliticianModal,
+}) => {
   const startingCity = campaignData.startingCity || {};
   const playerActiveElection = campaignData.elections?.find(
     (election) =>
@@ -224,8 +226,7 @@ const StaffSubTab = () => {
   );
 };
 
-const FieldOpsSubTab = ({ campaignData, actions }) => {
-  const politician = campaignData.politician || {};
+const FieldOpsSubTab = ({ politician, campaignData, actions }) => {
   const startingCity = campaignData.startingCity || {};
   const campaignHoursRemainingToday =
     politician.campaignHoursRemainingToday || 0;
@@ -402,8 +403,12 @@ const FieldOpsSubTab = ({ campaignData, actions }) => {
   );
 };
 
-const CommsAdsSubTab = ({ campaignData, actions, cityKeyIssues }) => {
-  const politician = campaignData.politician || {};
+const CommsAdsSubTab = ({
+  politician,
+  campaignData,
+  actions,
+  cityKeyIssues,
+}) => {
   const campaignHoursRemainingToday =
     politician.campaignHoursRemainingToday || 0;
   const playerActiveElection = campaignData.elections?.find(
@@ -876,8 +881,8 @@ const CommsAdsSubTab = ({ campaignData, actions, cityKeyIssues }) => {
   );
 };
 
-const FundraisingSubTab = ({ campaignData, actions }) => {
-  const politician = campaignData.politician || {};
+// eslint-disable-next-line no-unused-vars
+const FundraisingSubTab = ({ politician, _campaignData, actions }) => {
   const campaignHoursRemainingToday =
     politician.campaignHoursRemainingToday || 0;
   const [fundraisingHours, setFundraisingHours] = useState(2);
@@ -938,11 +943,11 @@ const FundraisingSubTab = ({ campaignData, actions }) => {
   );
 };
 
-const PollingSubTab = ({ campaignData, actions }) => {
+const PollingSubTab = ({ politician, campaignData, actions }) => {
   const POLLING_COST = 5000;
   const POLLING_HOURS = 8;
 
-  const { politician, pollResults } = campaignData;
+  const { pollResults } = campaignData;
   const [stanceSelections, setStanceSelections] = useState({});
 
   const handleStanceSelectionChange = (questionId, value) => {
@@ -1086,7 +1091,20 @@ function CampaignTab({ campaignData }) {
     [campaignData?.startingCity?.stats?.mainIssues]
   );
 
-  const politician = campaignData?.politician || {};
+  const playerPoliticianId = useGameStore(
+    (state) => state.activeCampaign?.playerPoliticianId
+  );
+  const politiciansSoA = useGameStore(
+    (state) => state.activeCampaign?.politicians
+  );
+
+  // 2. Use a 'useMemo' hook to rehydrate a fresh, up-to-date politician object whenever the data changes.
+  const politician = useMemo(() => {
+    if (!playerPoliticianId || !politiciansSoA) {
+      return {};
+    }
+    return rehydratePolitician(playerPoliticianId, politiciansSoA) || {};
+  }, [playerPoliticianId, politiciansSoA]);
   const previousDayRef = React.useRef(campaignData?.currentDate?.day);
 
   // Effect to reset daily campaign hours when the game day changes
@@ -1115,6 +1133,7 @@ function CampaignTab({ campaignData }) {
   const renderSubTabContent = () => {
     // Consolidate props passed to sub-tabs
     const subTabProps = {
+      politician: politician,
       campaignData, // This contains politician, startingCity, elections etc.
       actions: storeActions,
       cityKeyIssues, // Already memoized

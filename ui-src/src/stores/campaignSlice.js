@@ -158,16 +158,87 @@ export const createCampaignSlice = (set, get) => ({
       });
     },
 
-    holdRallyActivity: () => {
-      // This is a complex action that updates multiple politician stats and election polling.
-      // It will require a more detailed refactor once election data is also normalized.
-      // For now, it is disabled to prevent data corruption.
-      console.warn(
-        "holdRallyActivity is temporarily disabled pending a full refactor."
-      );
-      get().actions.addToast?.({
-        message: "Rally functionality is under rework.",
-        type: "info",
+    holdRallyActivity: (hoursToSpend = 4) => {
+      set((state) => {
+        const { activeCampaign } = state;
+        const { playerPoliticianId, politicians } = activeCampaign;
+        if (!playerPoliticianId || !politicians) return state;
+
+        const campaignData = politicians.campaign.get(playerPoliticianId);
+        const financesData = politicians.finances.get(playerPoliticianId);
+        const stateData = politicians.state.get(playerPoliticianId);
+        const attributesData = politicians.attributes.get(playerPoliticianId);
+
+        const cost = 500 + hoursToSpend * 150;
+        const hoursAvailable = campaignData.campaignHoursRemainingToday || 0;
+        const fundsAvailable = financesData.campaignFunds || 0;
+
+        if (hoursAvailable < hoursToSpend) {
+          get().actions.addToast?.({
+            message: `Not enough hours (Need ${hoursToSpend})`,
+            type: "warning",
+          });
+          return state;
+        }
+        if (fundsAvailable < cost) {
+          get().actions.addToast?.({
+            message: `Not enough funds (Need $${cost.toLocaleString()})`,
+            type: "error",
+          });
+          return state;
+        }
+
+        const oratoryFactor = Math.max(0.6, (attributesData.oratory || 3) / 5);
+        const nameRecGain = Math.round(
+          getRandomInt(100 * hoursToSpend, 250 * hoursToSpend) * oratoryFactor
+        );
+        const mediaBuzzGain = Math.round(
+          getRandomInt(5 * hoursToSpend, 10 * hoursToSpend) * oratoryFactor
+        );
+        const pollingBoost = Math.round(getRandomInt(0, 2) * oratoryFactor); // Small polling boost
+
+        const newCampaignMap = new Map(politicians.campaign);
+        newCampaignMap.set(playerPoliticianId, {
+          ...campaignData,
+          campaignHoursRemainingToday: hoursAvailable - hoursToSpend,
+        });
+
+        const newFinancesMap = new Map(politicians.finances);
+        newFinancesMap.set(playerPoliticianId, {
+          ...financesData,
+          campaignFunds: fundsAvailable - cost,
+        });
+
+        const newStateMap = new Map(politicians.state);
+        newStateMap.set(playerPoliticianId, {
+          ...stateData,
+          nameRecognition: (stateData.nameRecognition || 0) + nameRecGain,
+          mediaBuzz: Math.min(100, (stateData.mediaBuzz || 0) + mediaBuzzGain),
+          polling: (stateData.polling || 0) + pollingBoost, // Note: polling will be renormalized later
+        });
+
+        const newDirtyList = new Set(
+          state.activeCampaign.politicianIdsWithSpentHours
+        );
+        newDirtyList.add(playerPoliticianId);
+
+        get().actions.addToast?.({
+          message: `Rally successful! Name Rec +${nameRecGain.toLocaleString()}, Buzz +${mediaBuzzGain}.`,
+          type: "success",
+        });
+
+        return {
+          activeCampaign: {
+            ...activeCampaign,
+            politicianIdsWithSpentHours: newDirtyList,
+            politicians: {
+              ...politicians,
+              campaign: newCampaignMap,
+              finances: newFinancesMap,
+              state: newStateMap,
+            },
+          },
+        };
       });
     },
 
@@ -391,8 +462,8 @@ export const createCampaignSlice = (set, get) => ({
 
         return {
           activeCampaign: {
-            politicianIdsWithSpentHours: newDirtyList,
             ...activeCampaign,
+            politicianIdsWithSpentHours: newDirtyList,
             politicians: { ...politicians, campaign: newCampaignMap },
           },
         };

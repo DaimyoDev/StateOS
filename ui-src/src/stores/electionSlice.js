@@ -170,7 +170,47 @@ export const createElectionSlice = (set, get) => ({
               electionPropertiesForScoring,
             });
 
-            const newChallengersForThisRace = [];
+            let allCandidatesInRace = [];
+            switch (participantsData.type) {
+              case "individual_candidates":
+                // For FPTP/MMD, data is a Map of candidates.
+                if (participantsData.data instanceof Map) {
+                  allCandidatesInRace = Array.from(
+                    participantsData.data.values()
+                  );
+                }
+                break;
+              case "party_lists":
+                // For PartyListPR, data is an object where each property is an array of candidates.
+                allCandidatesInRace = Object.values(
+                  participantsData.data || {}
+                ).flat();
+                break;
+              case "mmp_participants": {
+                // For MMP, data is a complex object. We need to gather from all sources.
+                const mmpData = participantsData.data || {};
+                const listCands = Object.values(
+                  mmpData.partyLists || {}
+                ).flat();
+                const constCands = Object.values(
+                  mmpData.constituencyCandidatesByParty || {}
+                ).flat();
+                const indCands =
+                  mmpData.independentConstituencyCandidates || [];
+                allCandidatesInRace = [
+                  ...listCands,
+                  ...constCands,
+                  ...indCands,
+                ];
+                break;
+              }
+              default:
+                console.warn(
+                  `Unknown participantsData type: ${participantsData.type}`
+                );
+            }
+
+            // Now, we can safely find the new challengers from our unified list.
             const incumbentIds = new Set(
               (incumbentInfo
                 ? Array.isArray(incumbentInfo)
@@ -180,15 +220,10 @@ export const createElectionSlice = (set, get) => ({
               ).map((i) => i.id)
             );
 
-            // participantsData.data is a Map of all candidates in the race
-            for (const candidate of participantsData.data.values()) {
-              // If the candidate is not an incumbent, they are a new challenger
-              if (!incumbentIds.has(candidate.id)) {
-                newChallengersForThisRace.push(candidate);
-              }
-            }
+            const newChallengersForThisRace = allCandidatesInRace.filter(
+              (candidate) => candidate && !incumbentIds.has(candidate.id)
+            );
 
-            // Collect all challengers from all generated elections into one big array
             allNewlyGeneratedChallengers.push(...newChallengersForThisRace);
 
             const newElection = initializeElectionObject({
@@ -444,6 +479,8 @@ export const createElectionSlice = (set, get) => ({
           elections,
           customPartiesSnapshot,
           generatedPartiesSnapshot,
+          politicians: politiciansSoA, // Get the SoA store
+          playerPoliticianId,
         } = state.activeCampaign;
         let successfullyDeclared = false;
 
@@ -550,10 +587,30 @@ export const createElectionSlice = (set, get) => ({
           return election;
         });
 
+        let updatedPoliticiansSoA = politiciansSoA;
+
+        // If candidacy was successful, we need to update the SoA store.
+        if (successfullyDeclared) {
+          const newCampaignMap = new Map(politiciansSoA.campaign);
+          const campaignData = newCampaignMap.get(playerPoliticianId) || {};
+
+          // Set isInCampaign to true for the player
+          newCampaignMap.set(playerPoliticianId, {
+            ...campaignData,
+            isInCampaign: true,
+          });
+
+          updatedPoliticiansSoA = {
+            ...politiciansSoA,
+            campaign: newCampaignMap,
+          };
+        }
+
         return {
           activeCampaign: {
             ...state.activeCampaign,
             elections: updatedElections,
+            politicians: updatedPoliticiansSoA,
             politician: {
               ...politician,
               isInCampaign: successfullyDeclared || politician.isInCampaign,
