@@ -17,38 +17,481 @@ const getDisplayedPolling = (actualPolling) => {
   return Math.round(displayed);
 };
 
+const MemoizedElectionDetails = React.memo(function MemoizedElectionDetails({
+  selectedElection,
+  partiesMap,
+  canDeclareForSelectedElection,
+  handleCandidateClick,
+  handleDeclareCandidacy,
+  partyLists: electionPartyLists,
+  mmpData: electionMmpData,
+}) {
+  // This hook now safely lives inside the component that uses its props.
+  const renderElectionParticipantsAndResults = useCallback(() => {
+    if (!selectedElection) return null;
+
+    const {
+      outcome: electionOutcome,
+      electoralSystem,
+      candidates: electionCandidates,
+    } = selectedElection;
+
+    const isConcluded = electionOutcome?.status === "concluded";
+
+    const sortedPartyResultsVotes = [
+      ...(electionOutcome?.partyVoteSummary || []),
+    ].sort((a, b) => (b.votes || 0) - (a.votes || 0));
+
+    const sortedResultsByCandidate = [
+      ...(electionOutcome?.resultsByCandidate || []),
+    ]
+      .map((candidate) => {
+        const partyDetails = partiesMap.get(candidate.partyId);
+        return {
+          ...candidate,
+          partyName: partyDetails?.name || "Independent",
+          partyColor: partyDetails?.color || "#888888",
+        };
+      })
+      .sort((a, b) => (b.votes || 0) - (a.votes || 0));
+
+    const sortedUpcomingCandidates = Array.from(
+      (electionCandidates || new Map()).values()
+    )
+      .filter(
+        (cand) => cand && cand.name !== undefined && cand.id !== undefined
+      )
+      .sort((a, b) => (b.polling || 0) - (a.polling || 0));
+
+    if (isConcluded) {
+      const rawWinners = electionOutcome?.winnerAssignment?.winners || [];
+      const winners = rawWinners
+        .map((winner) =>
+          winner
+            ? {
+                ...winner,
+                partyName:
+                  partiesMap.get(winner.partyId)?.name || "Independent",
+              }
+            : null
+        )
+        .filter(Boolean);
+      const resultsByPartySeats = electionOutcome?.partySeatSummary || {};
+
+      return (
+        <div className="election-results-summary">
+          <h4>Election Results:</h4>
+          {winners.length > 0 ? (
+            <>
+              {(electoralSystem === "PartyListPR" ||
+                electoralSystem === "MMP") &&
+                sortedPartyResultsVotes.length > 0 && (
+                  <div className="party-performance-section">
+                    <h4>Party Performance:</h4>
+                    <ul className="party-results-list">
+                      {sortedPartyResultsVotes.map((partyRes) => (
+                        <ConcludedPartyResultItem
+                          key={partyRes.id}
+                          partyResult={partyRes}
+                          turnoutActual={electionOutcome.totalVotesActuallyCast}
+                          seats={resultsByPartySeats[partyRes.id]}
+                          partiesMap={partiesMap}
+                        />
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              {winners.length === 1 ? (
+                <p>
+                  <strong>
+                    Winner:{" "}
+                    <WinnerListItem
+                      winner={winners[0]}
+                      onCandidateClick={handleCandidateClick}
+                    />
+                  </strong>
+                </p>
+              ) : (
+                <div>
+                  <strong>Winners ({winners.length}):</strong>
+                  <ul className="winners-list">
+                    {winners.map((winner, index) => (
+                      <WinnerListItem
+                        key={winner.id || `winner-${index}`}
+                        winner={winner}
+                        onCandidateClick={handleCandidateClick}
+                      />
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </>
+          ) : (
+            <p>
+              <strong>
+                Outcome: No winner(s) determined or results not available.
+              </strong>
+            </p>
+          )}
+          {sortedResultsByCandidate.length > 0 &&
+            electoralSystem !== "PartyListPR" &&
+            electoralSystem !== "MMP" && (
+              <div className="candidate-performance-section">
+                <h5>Candidate Performance:</h5>
+                <ul className="candidate-list results-list">
+                  {sortedResultsByCandidate.map((cand) => (
+                    <ConcludedCandidateResultItem
+                      key={cand.candidateId || cand.id}
+                      candidate={cand}
+                      onCandidateClick={handleCandidateClick}
+                    />
+                  ))}
+                </ul>
+              </div>
+            )}
+        </div>
+      );
+    }
+
+    if (electoralSystem === "PartyListPR" && electionPartyLists) {
+      return (
+        <div className="party-lists-container">
+          <h4>Party Lists:</h4>
+          {Object.entries(electionPartyLists).map(([partyId, candidates]) => {
+            const party = partiesMap.get(partyId);
+            return (
+              <div key={partyId} className="party-list-section">
+                <h5 style={{ color: party?.color }}>
+                  {party?.name || "Unknown Party"}
+                </h5>
+                {candidates.length > VIRTUALIZATION_THRESHOLD ? (
+                  <VirtualizedList
+                    items={candidates}
+                    ItemComponent={UpcomingCandidateOnPartyListItem}
+                    itemProps={{ onCandidateClick: handleCandidateClick }}
+                  />
+                ) : (
+                  <ul className="candidate-list">
+                    {candidates.map((candidate, index) => (
+                      <UpcomingCandidateOnPartyListItem
+                        key={candidate.id || index}
+                        candidate={candidate}
+                        index={index}
+                        onCandidateClick={handleCandidateClick}
+                      />
+                    ))}
+                  </ul>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      );
+    } else if (electoralSystem === "MMP" && electionMmpData) {
+      return (
+        <div className="mmp-details-container">
+          {electionMmpData.partyLists &&
+            Object.keys(electionMmpData.partyLists).length > 0 && (
+              <div className="party-lists-container">
+                <h4>Party Lists (for Proportional Seats):</h4>
+                {Object.entries(electionMmpData.partyLists).map(
+                  ([partyId, candidates]) => {
+                    const party = partiesMap.get(partyId);
+                    return (
+                      <div key={partyId} className="party-list-section">
+                        <h5 style={{ color: party?.color }}>
+                          {party?.name || "Unknown Party"}
+                        </h5>
+                        <VirtualizedList
+                          items={candidates}
+                          ItemComponent={UpcomingCandidateOnPartyListItem}
+                          itemProps={{ onCandidateClick: handleCandidateClick }}
+                        />
+                      </div>
+                    );
+                  }
+                )}
+              </div>
+            )}
+          {electionMmpData.constituencyCandidatesByParty &&
+            Object.keys(electionMmpData.constituencyCandidatesByParty).length >
+              0 && (
+              <div className="constituency-candidates-container">
+                <h4>Constituency Candidates (for District Seat):</h4>
+                {Object.entries(
+                  electionMmpData.constituencyCandidatesByParty
+                ).map(([partyId, candidates]) => {
+                  const party = partiesMap.get(partyId);
+                  return (
+                    <div key={partyId} className="party-list-section">
+                      <h5 style={{ color: party?.color }}>
+                        {party?.name || "Unknown Party"}
+                      </h5>
+                      <ul className="candidate-list">
+                        {candidates.map((candidate, index) => (
+                          <UpcomingConstituencyCandidateItem
+                            key={candidate.id || index}
+                            candidate={candidate}
+                            onCandidateClick={handleCandidateClick}
+                          />
+                        ))}
+                      </ul>
+                    </div>
+                  );
+                })}
+                {electionMmpData.independentConstituencyCandidates &&
+                  electionMmpData.independentConstituencyCandidates.length >
+                    0 && (
+                    <div className="party-list-section">
+                      <h5>Independents</h5>
+                      <ul className="candidate-list">
+                        {electionMmpData.independentConstituencyCandidates.map(
+                          (candidate, index) => (
+                            <UpcomingConstituencyCandidateItem
+                              key={candidate.id || index}
+                              candidate={candidate}
+                              onCandidateClick={handleCandidateClick}
+                              isIndependent={true}
+                            />
+                          )
+                        )}
+                      </ul>
+                    </div>
+                  )}
+              </div>
+            )}
+        </div>
+      );
+    }
+
+    if (electionCandidates && electionCandidates.size > 0) {
+      return (
+        <>
+          <h4>Declared Candidates:</h4>
+          <ul className="candidate-list">
+            {sortedUpcomingCandidates.map((candidate) => (
+              <UpcomingDeclaredCandidateItem
+                key={candidate.id}
+                candidate={candidate}
+                onCandidateClick={handleCandidateClick}
+              />
+            ))}
+          </ul>
+        </>
+      );
+    } else {
+      return <p>No candidates declared for this election yet.</p>;
+    }
+  }, [
+    selectedElection,
+    partiesMap,
+    handleCandidateClick,
+    electionMmpData,
+    electionPartyLists,
+  ]);
+
+  if (!selectedElection) {
+    return (
+      <p className="no-election-selected">
+        Select an election from the list to see details.
+      </p>
+    );
+  }
+
+  return (
+    // This component now returns a single fragment
+    <>
+      <h3>Details for: {selectedElection.officeName}</h3>
+      <div className="election-detail-grid">
+        <p>
+          <strong>System:</strong> {selectedElection.electoralSystem}
+        </p>
+        <p>
+          <strong>Election Date:</strong> {selectedElection.electionDate.month}/
+          {selectedElection.electionDate.day}/
+          {selectedElection.electionDate.year}
+        </p>
+        <p>
+          <strong>Filing Deadline:</strong>{" "}
+          {selectedElection.filingDeadline?.month}/
+          {selectedElection.filingDeadline?.day}/
+          {selectedElection.filingDeadline?.year || "N/A"}
+        </p>
+        {selectedElection.entityDataSnapshot?.population != null && (
+          <p>
+            <strong>Electorate Population:</strong>{" "}
+            {selectedElection.entityDataSnapshot.population.toLocaleString()}
+          </p>
+        )}
+        {selectedElection.numberOfSeatsToFill != null &&
+          selectedElection.numberOfSeatsToFill > 1 && (
+            <p>
+              <strong>Seats to Fill:</strong>{" "}
+              {selectedElection.numberOfSeatsToFill}
+            </p>
+          )}
+        {selectedElection.voterTurnoutPercentage != null &&
+          selectedElection.outcome?.status !== "concluded" && (
+            <p>
+              <strong>Expected Turnout:</strong>{" "}
+              {selectedElection.voterTurnoutPercentage}%
+            </p>
+          )}
+        {selectedElection.outcome?.status === "concluded" &&
+          selectedElection.outcome?.voterTurnoutPercentageActual != null && (
+            <p>
+              <strong>Actual Turnout:</strong>{" "}
+              {selectedElection.outcome.voterTurnoutPercentageActual.toFixed(1)}
+              % (
+              {selectedElection.outcome.totalVotesActuallyCast?.toLocaleString()}{" "}
+              votes)
+            </p>
+          )}
+        {selectedElection.incumbentInfo &&
+          (Array.isArray(selectedElection.incumbentInfo)
+            ? selectedElection.incumbentInfo.length > 0
+            : selectedElection.incumbentInfo.name) && (
+            <p>
+              <strong>Incumbent(s):</strong>
+              {Array.isArray(selectedElection.incumbentInfo)
+                ? selectedElection.incumbentInfo
+                    .map((inc) => inc.name)
+                    .join(", ")
+                : selectedElection.incumbentInfo.name}
+            </p>
+          )}
+      </div>
+
+      {renderElectionParticipantsAndResults()}
+
+      {!selectedElection.playerIsCandidate &&
+        selectedElection.outcome?.status !== "concluded" &&
+        canDeclareForSelectedElection && (
+          <button
+            className="action-button declare-candidacy-button"
+            onClick={() => handleDeclareCandidacy(selectedElection.id)}
+          >
+            Declare Candidacy for {selectedElection.officeName}
+          </button>
+        )}
+      {selectedElection.playerIsCandidate &&
+        selectedElection.outcome?.status !== "concluded" && (
+          <p className="already-declared-note">
+            You are a candidate in this election.
+          </p>
+        )}
+    </>
+  );
+});
+
+const MemoizedElectionsList = React.memo(function MemoizedElectionsList({
+  displayableElections,
+  selectedElectionId,
+  onSelect,
+  getTimeUntilDisplay,
+  rawCurrentDate,
+}) {
+  if (displayableElections.length === 0) {
+    return <p>No upcoming elections match the current filter.</p>;
+  }
+
+  // Pass all necessary data and callbacks to the RowRenderer
+  const itemData = {
+    elections: displayableElections,
+    selectedElectionId,
+    onSelect,
+    getTimeUntilDisplay,
+    rawCurrentDate,
+  };
+
+  return (
+    // We need a container with a defined height for AutoSizer to work
+    <div className="elections-list-container">
+      <AutoSizer>
+        {({ height, width }) => (
+          <List
+            height={height}
+            width={width}
+            itemCount={displayableElections.length}
+            itemSize={150} // Adjust this based on the height of your ElectionListItem
+            itemData={itemData}
+            itemKey={(index) => displayableElections[index].id} // Use unique keys
+          >
+            {ElectionListRow}
+          </List>
+        )}
+      </AutoSizer>
+    </div>
+  );
+});
+
 // --- Memoized List Item Components ---
+
+const ElectionListRow = ({ index, style, data }) => {
+  // Destructure ALL necessary props from the data object
+  const {
+    elections,
+    selectedElectionId,
+    onSelect,
+    getTimeUntilDisplay,
+    rawCurrentDate, // The name in the data object
+  } = data;
+
+  const election = elections[index];
+  if (!election) return null;
+
+  return (
+    <div style={style} className="election-list-item-wrapper">
+      {/* CRITICAL FIX: Pass all the necessary props down to ElectionListItem.
+        The `currentDate` prop was renamed to `rawCurrentDate` to match what we passed in `itemData`.
+      */}
+      <ElectionListItem
+        election={election}
+        isSelected={selectedElectionId === election.id}
+        onSelect={onSelect}
+        getTimeUntilDisplay={getTimeUntilDisplay}
+        currentDate={rawCurrentDate}
+      />
+    </div>
+  );
+};
 
 // For election list on the left
 const ElectionListItem = React.memo(
   ({ election, isSelected, onSelect, getTimeUntilDisplay, currentDate }) => {
     const isConcluded = election.outcome?.status === "concluded";
+    // Check if currentDate exists before using it
     const isPastFiling =
       currentDate && election.filingDeadline
         ? !isDateSameOrBefore(currentDate, election.filingDeadline)
         : false;
 
     return (
-      <li
+      <li // This is now a semantic `li` as it should be, styling is on the wrapper
         className={`election-list-item ${isSelected ? "selected" : ""} ${
           isConcluded ? "past-election" : ""
         }`}
         onClick={() => onSelect(election.id)}
       >
         <span className="election-office">{election.officeName}</span>
-        <span className="election-date">
-          Date: {election.electionDate.month}/{election.electionDate.day}/
-          {election.electionDate.year}
-        </span>
-        <span className="election-countdown">
-          {" "}
-          (
-          {getTimeUntilDisplay(election.electionDate, election.outcome?.status)}
-          )
-        </span>
-        {isPastFiling && !isConcluded && !election.playerIsCandidate && (
-          <span className="deadline-passed-note"> (Filing Closed)</span>
-        )}
+        <div>
+          <span className="election-date">
+            Date: {election.electionDate.month}/{election.electionDate.day}/
+            {election.electionDate.year}
+          </span>
+          <span className="election-countdown">
+            {" "}
+            (
+            {getTimeUntilDisplay(
+              election.electionDate,
+              election.outcome?.status
+            )}
+            )
+          </span>
+          {isPastFiling && !isConcluded && !election.playerIsCandidate && (
+            <span className="deadline-passed-note"> (Filing Closed)</span>
+          )}
+        </div>
       </li>
     );
   }
@@ -278,12 +721,22 @@ function ElectionsTab({ campaignData }) {
 
   const {
     elections = [],
-    currentDate: rawCurrentDate, // Rename to avoid conflict with Date object
+    currentDate: rawCurrentDate,
     politician: playerPoliticianData,
     generatedPartiesSnapshot: allParties = [],
+    availableCountries = [],
+    countryId = null,
   } = campaignData || {};
 
+  const countryData = useMemo(
+    () => availableCountries.find((c) => c.id === countryId),
+    [availableCountries, countryId]
+  );
+
   const [selectedElectionId, setSelectedElectionId] = useState(null);
+  const [regionFilter, setRegionFilter] = useState("all");
+
+  const regionTerm = countryData?.regionTerm || "Region";
 
   // Memoized values from previous optimizations
   const partiesMap = useMemo(() => {
@@ -304,24 +757,48 @@ function ElectionsTab({ campaignData }) {
   const displayableElections = useMemo(() => {
     if (!elections.length || !currentDateObj) return [];
     const currentTimestamp = currentDateObj.getTime();
-    return elections
-      .filter((election) => {
-        const electionDateObj = new Date(
-          election.electionDate.year,
-          election.electionDate.month - 1,
-          election.electionDate.day
-        );
-        const diffTime = electionDateObj.getTime() - currentTimestamp;
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        return diffDays >= -7 && diffDays <= 365 * 2;
-      })
-      .sort(
-        (a, b) =>
-          a.electionDate.year - b.electionDate.year ||
-          a.electionDate.month - b.electionDate.month ||
-          a.electionDate.day - b.electionDate.day
-      );
-  }, [elections, currentDateObj]);
+    return (
+      elections
+        .filter((election) => {
+          const electionDateObj = new Date(
+            election.electionDate.year,
+            election.electionDate.month - 1,
+            election.electionDate.day
+          );
+          const diffTime = electionDateObj.getTime() - currentTimestamp;
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          return diffDays >= -7 && diffDays <= 365 * 2;
+        })
+        .filter((election) => {
+          if (regionFilter === "all") return true;
+          if (regionFilter === "national") {
+            return election.entityType === "nation";
+          }
+
+          const entity = election.entityDataSnapshot;
+          if (!entity) return false;
+
+          // This final check now covers all known cases:
+          return (
+            // 1. Catches state-wide races like Senate/Governor
+            entity.id === regionFilter ||
+            // 2. Catches entities with an explicit stateId (like U.S. House districts)
+            entity.stateId === regionFilter ||
+            // 3. Catches entities with a parentId (a failsafe for future use)
+            entity.parentId === regionFilter ||
+            // 4. NEW: Catches entities whose ID starts with the state's ID (e.g., "USA_WI_...")
+            entity.id.startsWith(regionFilter + "_")
+          );
+        })
+        // MODIFICATION END
+        .sort(
+          (a, b) =>
+            a.electionDate.year - b.electionDate.year ||
+            a.electionDate.month - b.electionDate.month ||
+            a.electionDate.day - b.electionDate.day
+        )
+    );
+  }, [elections, currentDateObj, regionFilter]);
 
   useEffect(() => {
     if (!currentDateObj) return;
@@ -405,482 +882,6 @@ function ElectionsTab({ campaignData }) {
     [playerPoliticianData?.id, openViewPoliticianModal]
   );
 
-  // Memoized sorted lists derived from selectedElection
-  const electionOutcome = selectedElection?.outcome;
-  const electoralSystem = selectedElection?.electoralSystem;
-  const electionCandidates = selectedElection?.candidates;
-  const electionPartyLists = selectedElection?.partyLists;
-  const electionMmpData = selectedElection?.mmpData;
-
-  const sortedPartyResultsVotes = useMemo(() => {
-    const votes = electionOutcome?.partyVoteSummary;
-    if (!votes?.length) return [];
-    return [...votes].sort((a, b) => (b.votes || 0) - (a.votes || 0));
-  }, [electionOutcome]);
-
-  const sortedResultsByCandidate = useMemo(() => {
-    const results = electionOutcome?.resultsByCandidate;
-    if (!results?.length) return [];
-
-    // --- THIS IS THE FIX ---
-    // Map over the results and enrich each candidate with their party's name and color.
-    const enrichedResults = results.map((candidate) => {
-      const partyDetails = partiesMap.get(candidate.partyId);
-      return {
-        ...candidate,
-        partyName: partyDetails?.name || "Independent",
-        partyColor: partyDetails?.color || "#888888",
-      };
-    });
-    // --- END OF FIX ---
-
-    return enrichedResults.sort((a, b) => (b.votes || 0) - (a.votes || 0));
-  }, [electionOutcome, partiesMap]); // Add partiesMap as a dependency
-
-  const sortedUpcomingCandidates = useMemo(() => {
-    // The internal logic of this hook is now correct.
-    // It uses the 'electionCandidates' variable from the outer scope.
-    const candidatesArray = Array.from(
-      (electionCandidates || new Map()).values()
-    );
-
-    const validCandidates = candidatesArray.filter((cand) => {
-      if (!cand) {
-        return false;
-      }
-      if (typeof cand.name === "undefined" || typeof cand.id === "undefined") {
-        return false;
-      }
-      return true;
-    });
-
-    if (!validCandidates.length) return [];
-
-    // This sort is correct
-    const sorted = [...validCandidates].sort(
-      (a, b) => (b.polling || 0) - (a.polling || 0)
-    );
-
-    // FIX: Return a new array of new objects to break memoization
-    return sorted.map((c) => ({ ...c }));
-  }, [electionCandidates]);
-
-  const renderElectionParticipantsAndResults = useCallback(() => {
-    if (!selectedElection)
-      return (
-        <p className="no-election-selected">
-          Select an election to see details.
-        </p>
-      );
-
-    const isConcluded = electionOutcome?.status === "concluded";
-
-    if (isConcluded) {
-      // --- APPLY THE SAME FIX HERE ---
-      const rawWinners = electionOutcome?.winnerAssignment?.winners || [];
-      const winners = rawWinners
-        .map((winner) => {
-          if (!winner) return null; // Defensive check
-          const partyDetails = partiesMap.get(winner.partyId);
-          return {
-            ...winner,
-            partyName: partyDetails?.name || "Independent",
-            partyColor: partyDetails?.color || "#888888",
-          };
-        })
-        .filter(Boolean); // Filter out any nulls
-      const resultsByPartySeats = electionOutcome?.partySeatSummary || {};
-
-      return (
-        <div className="election-results-summary">
-          <h4>Election Results:</h4>
-          {winners.length > 0 ? (
-            <>
-              {(electoralSystem === "PartyListPR" ||
-                electoralSystem === "MMP") &&
-                sortedPartyResultsVotes.length > 0 && (
-                  <div className="party-performance-section">
-                    <h4>Party Performance:</h4>
-                    <ul className="party-results-list">
-                      {" "}
-                      {/* Apply content-visibility here if needed */}
-                      {sortedPartyResultsVotes.map((partyRes) => (
-                        <ConcludedPartyResultItem
-                          key={partyRes.id}
-                          partyResult={partyRes}
-                          turnoutActual={
-                            electionOutcome.totalVotesActuallyCast
-                          } /* Corrected turnout prop */
-                          seats={resultsByPartySeats[partyRes.id]}
-                          partiesMap={partiesMap}
-                        />
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              {winners.length === 1 ? (
-                <p>
-                  <strong>
-                    Winner:{" "}
-                    <WinnerListItem
-                      winner={winners[0]}
-                      onCandidateClick={handleCandidateClick}
-                    />
-                  </strong>
-                </p>
-              ) : (
-                <div>
-                  <strong>Winners ({winners.length}):</strong>
-                  <ul className="winners-list">
-                    {winners.map((winner, index) => (
-                      <WinnerListItem
-                        key={winner.id || `winner-${index}`}
-                        winner={winner}
-                        onCandidateClick={handleCandidateClick}
-                      />
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </>
-          ) : (
-            <p>
-              <strong>
-                Outcome: No winner(s) determined or results not available.
-              </strong>
-            </p>
-          )}
-
-          {sortedResultsByCandidate.length > VIRTUALIZATION_THRESHOLD &&
-          electoralSystem !== "PartyListPR" &&
-          electoralSystem !== "MMP" ? (
-            <div className="candidate-performance-section">
-              <h5>Candidate Performance:</h5>
-              <VirtualizedList
-                items={sortedResultsByCandidate}
-                ItemComponent={ConcludedCandidateResultItem}
-                itemProps={{ onCandidateClick: handleCandidateClick }}
-                listClassName="results-list"
-              />
-            </div>
-          ) : (
-            sortedResultsByCandidate.length > 0 &&
-            electoralSystem !== "PartyListPR" &&
-            electoralSystem !== "MMP" && (
-              <div className="candidate-performance-section">
-                <h5>Candidate Performance:</h5>
-                <ul className="candidate-list results-list">
-                  {sortedResultsByCandidate.map((cand) => (
-                    <ConcludedCandidateResultItem
-                      key={cand.candidateId || cand.id}
-                      candidate={cand}
-                      onCandidateClick={handleCandidateClick}
-                    />
-                  ))}
-                </ul>
-              </div>
-            )
-          )}
-          {electoralSystem === "MMP" &&
-            electionOutcome?.constituencyWinners?.length > 0 && (
-              <div className="constituency-winners-section">
-                <h5>Constituency Winners:</h5>
-                <ul className="winners-list">
-                  {electionOutcome.constituencyWinners.map((winner, index) => (
-                    <WinnerListItem
-                      key={`const-win-${winner.id || index}`}
-                      winner={winner}
-                      onCandidateClick={handleCandidateClick}
-                    />
-                  ))}
-                </ul>
-              </div>
-            )}
-        </div>
-      );
-    }
-
-    // --- UPCOMING ELECTIONS ---
-    if (
-      electoralSystem === "PartyListPR" ||
-      (electoralSystem === "MMP" && electionPartyLists)
-    ) {
-      const listsToDisplay =
-        electionPartyLists ||
-        (electionMmpData && electionMmpData.partyLists) ||
-        {};
-      const participatingPartyIds = Object.keys(listsToDisplay);
-
-      if (
-        participatingPartyIds.length === 0 &&
-        (!electionMmpData ||
-          (!electionMmpData.constituencyCandidatesByParty &&
-            !electionMmpData.independentConstituencyCandidates))
-      ) {
-        return (
-          <p>No parties or candidates have declared for this election yet.</p>
-        );
-      }
-      return (
-        <div>
-          {participatingPartyIds.length > 0 && (
-            <h4>Participating Parties & Lists:</h4>
-          )}
-          {participatingPartyIds.map((partyId) => {
-            const partyDetails = partiesMap.get(partyId) ||
-              listsToDisplay[partyId]?.[0]?.partyAffiliationReadOnly || {
-                name: `Party ${partyId}`,
-                color: "#CCCCCC",
-              };
-
-            const rawCandidatesOnList = listsToDisplay[partyId] || [];
-
-            // --- Solution: Filter out invalid candidate entries ---
-            const validCandidatesOnList = rawCandidatesOnList.filter(
-              (candidate) => {
-                if (!candidate) {
-                  // Check if candidate is null or undefined
-                  console.warn(
-                    `[ElectionsTab] Filtered out a null/undefined candidate entry for partyId: ${partyId}.`
-                  );
-                  return false;
-                }
-                if (
-                  typeof candidate.name === "undefined" ||
-                  typeof candidate.id === "undefined"
-                ) {
-                  // Check for essential properties
-                  console.warn(
-                    `[ElectionsTab] Filtered out a candidate with missing name or id for partyId: ${partyId}`,
-                    candidate
-                  );
-                  return false;
-                }
-                return true;
-              }
-            );
-
-            return (
-              <div key={partyId} className="party-list-section">
-                <h5 style={{ color: partyDetails.color, fontWeight: "bold" }}>
-                  {partyDetails.name}
-                </h5>
-                {validCandidatesOnList.length > VIRTUALIZATION_THRESHOLD ? (
-                  <VirtualizedList
-                    items={validCandidatesOnList} // Use the filtered list
-                    ItemComponent={UpcomingCandidateOnPartyListItem}
-                    itemProps={{ onCandidateClick: handleCandidateClick }}
-                    listClassName="candidate-list"
-                    itemSize={DEFAULT_ITEM_HEIGHT} // Make sure itemSize is defined
-                  />
-                ) : validCandidatesOnList.length > 0 ? (
-                  <ul className="candidate-list">
-                    {validCandidatesOnList.map(
-                      (
-                        candidate,
-                        index // Map over the filtered list
-                      ) => (
-                        <UpcomingCandidateOnPartyListItem
-                          key={candidate.id} // candidate.id is now guaranteed by the filter
-                          candidate={candidate}
-                          index={index}
-                          onCandidateClick={handleCandidateClick}
-                        />
-                      )
-                    )}
-                  </ul>
-                ) : (
-                  <p>No candidates submitted for this party's list.</p>
-                )}
-              </div>
-            );
-          })}
-          {electoralSystem === "MMP" && electionMmpData && (
-            <>
-              <h4 style={{ marginTop: "20px" }}>
-                Constituency Candidate Pools:
-              </h4>
-              {Object.keys(electionMmpData.constituencyCandidatesByParty || {})
-                .length === 0 &&
-                (electionMmpData.independentConstituencyCandidates || [])
-                  .length === 0 && (
-                  <p>No specific constituency candidates listed yet.</p>
-                )}
-
-              {Object.keys(
-                electionMmpData.constituencyCandidatesByParty || {}
-              ).map((partyId) => {
-                const partyDetails = partiesMap.get(partyId) || {
-                  name: `Party ${partyId}`,
-                  color: "#CCCCCC",
-                };
-                const rawConstituencyCands =
-                  electionMmpData.constituencyCandidatesByParty[partyId] || [];
-
-                // --- Solution: Filter constituency candidates for this party ---
-                const validConstituencyCands = rawConstituencyCands.filter(
-                  (cand) => {
-                    if (!cand) {
-                      console.warn(
-                        `[ElectionsTab] Filtered out a null/undefined constituency candidate for partyId: ${partyId}.`
-                      );
-                      return false;
-                    }
-                    if (
-                      typeof cand.name === "undefined" ||
-                      typeof cand.id === "undefined"
-                    ) {
-                      console.warn(
-                        `[ElectionsTab] Filtered out a constituency candidate with missing name or id for partyId: ${partyId}`,
-                        cand
-                      );
-                      return false;
-                    }
-                    return true;
-                  }
-                );
-
-                return (
-                  <div
-                    key={`const-pool-${partyId}`}
-                    className="party-list-section"
-                  >
-                    <h5 style={{ color: partyDetails.color }}>
-                      {partyDetails.name}
-                    </h5>
-                    {validConstituencyCands.length >
-                    VIRTUALIZATION_THRESHOLD ? (
-                      <VirtualizedList
-                        items={validConstituencyCands} // Use filtered list
-                        ItemComponent={UpcomingConstituencyCandidateItem}
-                        itemProps={{ onCandidateClick: handleCandidateClick }}
-                        listClassName="candidate-list"
-                        itemSize={DEFAULT_ITEM_HEIGHT} // Ensure itemSize is defined
-                      />
-                    ) : validConstituencyCands.length > 0 ? (
-                      <ul className="candidate-list">
-                        {validConstituencyCands.map(
-                          (
-                            cand // Use filtered list
-                          ) => (
-                            <UpcomingConstituencyCandidateItem
-                              key={cand.id} // cand.id is now guaranteed
-                              candidate={cand}
-                              onCandidateClick={handleCandidateClick}
-                            />
-                          )
-                        )}
-                      </ul>
-                    ) : (
-                      <p>
-                        No constituency candidates currently pooled for this
-                        party.
-                      </p>
-                    )}
-                  </div>
-                );
-              })}
-
-              {/* --- Refactored Independent Constituency Candidates (MMP) --- */}
-              {(() => {
-                // IIFE for local scoping
-                const rawIndependentCands =
-                  electionMmpData?.independentConstituencyCandidates || [];
-                const validIndependentCands = rawIndependentCands.filter(
-                  (cand) => {
-                    if (!cand) {
-                      // console.warn(`[ElectionsTab] Filtered out a null/undefined independent constituency candidate.`);
-                      return false;
-                    }
-                    if (
-                      typeof cand.name === "undefined" ||
-                      typeof cand.id === "undefined"
-                    ) {
-                      // console.warn(`[ElectionsTab] Filtered out an independent constituency candidate with missing name or id.`, cand);
-                      return false;
-                    }
-                    return true;
-                  }
-                );
-
-                if (validIndependentCands.length > 0) {
-                  return (
-                    <div className="party-list-section">
-                      <h5>Independent Constituency Candidates</h5>
-                      {validIndependentCands.length >
-                      VIRTUALIZATION_THRESHOLD ? (
-                        <VirtualizedList
-                          items={validIndependentCands}
-                          ItemComponent={UpcomingConstituencyCandidateItem}
-                          itemProps={{
-                            onCandidateClick: handleCandidateClick,
-                            isIndependent: true,
-                          }}
-                          listClassName="candidate-list"
-                          itemSize={DEFAULT_ITEM_HEIGHT} // CRITICAL: Make sure DEFAULT_ITEM_HEIGHT is defined and correct
-                        />
-                      ) : (
-                        <ul className="candidate-list">
-                          {validIndependentCands.map((cand) => (
-                            <UpcomingConstituencyCandidateItem
-                              key={cand.id} // Safe due to filter
-                              candidate={cand}
-                              onCandidateClick={handleCandidateClick}
-                              isIndependent={true}
-                            />
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  );
-                }
-                return null; // No valid independent candidates to show
-              })()}
-            </>
-          )}
-        </div>
-      );
-    } else if (electionCandidates && electionCandidates.size > 0) {
-      return (
-        <>
-          <h4>Declared Candidates:</h4>
-          {sortedUpcomingCandidates.length > VIRTUALIZATION_THRESHOLD ? (
-            <VirtualizedList
-              items={sortedUpcomingCandidates}
-              ItemComponent={UpcomingDeclaredCandidateItem}
-              itemProps={{ onCandidateClick: handleCandidateClick }} // getDisplayedPolling is inside item
-              listClassName="candidate-list"
-            />
-          ) : (
-            <ul className="candidate-list">
-              {sortedUpcomingCandidates.map((candidate) => (
-                <UpcomingDeclaredCandidateItem
-                  key={candidate.id}
-                  candidate={candidate}
-                  onCandidateClick={handleCandidateClick}
-                />
-              ))}
-            </ul>
-          )}
-        </>
-      );
-    } else {
-      return <p>No candidates declared for this election yet.</p>;
-    }
-  }, [
-    selectedElection,
-    electionOutcome,
-    electoralSystem,
-    electionCandidates,
-    electionPartyLists,
-    electionMmpData,
-    partiesMap,
-    sortedPartyResultsVotes,
-    sortedResultsByCandidate,
-    sortedUpcomingCandidates,
-    handleCandidateClick,
-  ]); // Add all dependencies
-
   if (!campaignData) {
     return (
       <div className="tab-content-container elections-tab ui-panel">
@@ -895,119 +896,45 @@ function ElectionsTab({ campaignData }) {
       <div className="elections-layout">
         <div className="upcoming-elections-panel">
           <h3>Upcoming & Recent Elections</h3>
-          {displayableElections.length > 0 ? (
-            // This list could also be virtualized if it becomes extremely long,
-            // but usually, the number of distinct elections is manageable.
-            <ul className="elections-list">
-              {displayableElections.map((election) => (
-                <ElectionListItem
-                  key={election.id}
-                  election={election}
-                  isSelected={selectedElectionId === election.id}
-                  onSelect={setSelectedElectionId}
-                  getTimeUntilDisplay={getTimeUntilDisplay}
-                  currentDate={rawCurrentDate}
-                  playerPoliticianData={playerPoliticianData}
-                />
+          <div className="elections-filter-container">
+            <label htmlFor="region-filter">Filter by {regionTerm}:</label>
+            <select
+              id="region-filter"
+              className="region-filter-select"
+              value={regionFilter}
+              onChange={(e) => setRegionFilter(e.target.value)}
+            >
+              <option value="all">All {regionTerm}s</option>
+              <option value="national">National Level</option>
+              {countryData?.regions?.map((region) => (
+                <option key={region.id} value={region.id}>
+                  {region.name}
+                </option>
               ))}
-            </ul>
+            </select>
+          </div>
+          {displayableElections.length > 0 ? (
+            <MemoizedElectionsList
+              displayableElections={displayableElections}
+              selectedElectionId={selectedElectionId}
+              onSelect={setSelectedElectionId}
+              getTimeUntilDisplay={getTimeUntilDisplay}
+              rawCurrentDate={rawCurrentDate}
+            />
           ) : (
-            <p>No upcoming or very recent elections scheduled.</p>
+            <p>No upcoming elections match the current filter.</p>
           )}
         </div>
-
         <div className="selected-election-details-panel">
-          {selectedElection ? (
-            <>
-              <h3>Details for: {selectedElection.officeName}</h3>
-              <div className="election-detail-grid">
-                <p>
-                  <strong>System:</strong> {selectedElection.electoralSystem}
-                </p>
-                <p>
-                  <strong>Election Date:</strong>{" "}
-                  {selectedElection.electionDate.month}/
-                  {selectedElection.electionDate.day}/
-                  {selectedElection.electionDate.year}
-                </p>
-                <p>
-                  <strong>Filing Deadline:</strong>{" "}
-                  {selectedElection.filingDeadline?.month}/
-                  {selectedElection.filingDeadline?.day}/
-                  {selectedElection.filingDeadline?.year || "N/A"}
-                </p>
-                {selectedElection.entityDataSnapshot?.population != null && (
-                  <p>
-                    <strong>Electorate Population:</strong>{" "}
-                    {selectedElection.entityDataSnapshot.population.toLocaleString()}
-                  </p>
-                )}
-                {selectedElection.numberOfSeatsToFill != null &&
-                  selectedElection.numberOfSeatsToFill > 1 && (
-                    <p>
-                      <strong>Seats to Fill:</strong>{" "}
-                      {selectedElection.numberOfSeatsToFill}
-                    </p>
-                  )}
-                {selectedElection.voterTurnoutPercentage != null &&
-                  selectedElection.outcome?.status !== "concluded" && (
-                    <p>
-                      <strong>Expected Turnout:</strong>{" "}
-                      {selectedElection.voterTurnoutPercentage}%
-                    </p>
-                  )}
-                {selectedElection.outcome?.status === "concluded" &&
-                  selectedElection.outcome?.voterTurnoutPercentageActual !=
-                    null && (
-                    <p>
-                      <strong>Actual Turnout:</strong>{" "}
-                      {selectedElection.outcome.voterTurnoutPercentageActual.toFixed(
-                        1
-                      )}
-                      % (
-                      {selectedElection.outcome.totalVotesActuallyCast?.toLocaleString()}{" "}
-                      votes)
-                    </p>
-                  )}
-                {selectedElection.incumbentInfo &&
-                  (selectedElection.incumbentInfo.name ||
-                    (Array.isArray(selectedElection.incumbentInfo) &&
-                      selectedElection.incumbentInfo.length > 0)) && (
-                    <p>
-                      <strong>Incumbent(s):</strong>
-                      {Array.isArray(selectedElection.incumbentInfo)
-                        ? selectedElection.incumbentInfo
-                            .map((inc) => inc.name)
-                            .join(", ")
-                        : selectedElection.incumbentInfo.name}
-                    </p>
-                  )}
-              </div>
-
-              {renderElectionParticipantsAndResults()}
-
-              {!selectedElection.playerIsCandidate &&
-                selectedElection.outcome?.status !== "concluded" &&
-                canDeclareForSelectedElection && (
-                  <button
-                    className="action-button declare-candidacy-button"
-                    onClick={() => handleDeclareCandidacy(selectedElection.id)}
-                  >
-                    Declare Candidacy for {selectedElection.officeName}
-                  </button>
-                )}
-              {selectedElection.playerIsCandidate &&
-                selectedElection.outcome?.status !== "concluded" && (
-                  <p className="already-declared-note">
-                    You are a candidate in this election.
-                  </p>
-                )}
-            </>
-          ) : (
-            <p className="no-election-selected">
-              Select an election from the list to see details.
-            </p>
-          )}
+          <MemoizedElectionDetails
+            selectedElection={selectedElection}
+            partiesMap={partiesMap}
+            rawCurrentDate={rawCurrentDate}
+            playerPoliticianData={playerPoliticianData}
+            canDeclareForSelectedElection={canDeclareForSelectedElection}
+            handleCandidateClick={handleCandidateClick}
+            handleDeclareCandidacy={handleDeclareCandidacy}
+          />
         </div>
       </div>
     </div>

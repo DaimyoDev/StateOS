@@ -57,11 +57,11 @@ export const getServiceRatingDetails = (
  * Assumes AI politician's hours are already reset for the day before this is called.
  */
 export const simulateAICampaignDayForPolitician = (
-  initialAIPoliticianObject, // Accepts the pre-found object
-  electionContext, // Accepts the pre-found election
-  activeCampaign // The current campaign state for context
+  initialAIPoliticianObject,
+  electionContext,
+  opponentListsCache,
+  activeCampaign
 ) => {
-  // This function no longer calls store actions directly
   if (
     !initialAIPoliticianObject ||
     !electionContext ||
@@ -75,7 +75,7 @@ export const simulateAICampaignDayForPolitician = (
   // --- Initialize local variables for the simulation ---
   let hoursLeft = initialAIPoliticianObject.campaignHoursPerDay || 8;
   let fundsLeft = initialAIPoliticianObject.campaignFunds || 0;
-  const actionsToCommit = []; // This will store the results of the simulation
+  const actionsToCommit = [];
 
   const city = activeCampaign.startingCity;
   const adultPopulation =
@@ -95,29 +95,25 @@ export const simulateAICampaignDayForPolitician = (
     const currentVolunteers = initialAIPoliticianObject.volunteerCount || 0;
     const currentMediaBuzz = initialAIPoliticianObject.mediaBuzz || 0;
     const myPolling = initialAIPoliticianObject.polling || 0;
+    const nameRecFraction = currentNameRec / adultPopulation;
 
-    // This array will hold all actions the AI could possibly take this turn
     let availableActions = [];
 
-    // 1. Fundraising (if funds are low)
+    // All action checks are from your original, performant code
     const fundraisingHoursChoice = getRandomInt(2, Math.min(4, hoursLeft));
     if (fundsLeft < 10000 && hoursLeft >= fundraisingHoursChoice) {
-      let score = 3.0 + (10000 - fundsLeft) / 2000;
       availableActions.push({
         name: "personalFundraisingActivity",
-        score,
+        score: 3.0 + (10000 - fundsLeft) / 2000,
         hours: fundraisingHoursChoice,
       });
     }
 
-    // 2. Name Recognition (Door Knocking or Public Appearance)
-    const nameRecFraction = currentNameRec / adultPopulation;
     const doorKnockingHoursChoice = getRandomInt(2, Math.min(6, hoursLeft));
     if (nameRecFraction < 0.3 && hoursLeft >= doorKnockingHoursChoice) {
-      let score = 2.5 + (0.3 - nameRecFraction) * 10 + currentVolunteers / 25;
       availableActions.push({
         name: "goDoorKnocking",
-        score,
+        score: 2.5 + (0.3 - nameRecFraction) * 10 + currentVolunteers / 25,
         hours: doorKnockingHoursChoice,
       });
     }
@@ -128,8 +124,9 @@ export const simulateAICampaignDayForPolitician = (
       fundsLeft >= 100 &&
       hoursLeft >= appearanceHoursChoice
     ) {
-      let score = 1.5 + (0.5 - nameRecFraction) * 5;
-      score +=
+      let score =
+        1.5 +
+        (0.5 - nameRecFraction) * 5 +
         ((initialAIPoliticianObject.attributes?.charisma || 5) - 5) * 0.2;
       if (currentMediaBuzz < 40) score += 0.5;
       availableActions.push({
@@ -139,7 +136,6 @@ export const simulateAICampaignDayForPolitician = (
       });
     }
 
-    // 3. Rally
     const rallyHoursChoice = getRandomInt(3, Math.min(6, hoursLeft));
     const rallyCost = 500 + rallyHoursChoice * 150;
     if (
@@ -148,8 +144,11 @@ export const simulateAICampaignDayForPolitician = (
       currentVolunteers >= 5 * rallyHoursChoice &&
       hoursLeft >= rallyHoursChoice
     ) {
-      let score = 1.0 + nameRecFraction * 2 + currentVolunteers / 50;
-      score += ((initialAIPoliticianObject.attributes?.oratory || 5) - 5) * 0.3;
+      let score =
+        1.0 +
+        nameRecFraction * 2 +
+        currentVolunteers / 50 +
+        ((initialAIPoliticianObject.attributes?.oratory || 5) - 5) * 0.3;
       availableActions.push({
         name: "holdRallyActivity",
         score,
@@ -157,7 +156,6 @@ export const simulateAICampaignDayForPolitician = (
       });
     }
 
-    // 4. Ad Blitz
     const adBlitzHoursChoice = getRandomInt(2, Math.min(4, hoursLeft));
     const adBlitzSpend = Math.min(fundsLeft * 0.1, getRandomInt(1000, 5000));
     if (
@@ -165,22 +163,22 @@ export const simulateAICampaignDayForPolitician = (
       adBlitzSpend > 500 &&
       hoursLeft >= adBlitzHoursChoice
     ) {
-      const opponents = Array.from(electionContext.candidates.values()).filter(
+      const allCandidatesInElection =
+        opponentListsCache.get(electionContext.id) || [];
+      const opponents = allCandidatesInElection.filter(
         (c) => c.id !== aiPoliticianId
       );
-
       const topOpponentPolling = Math.max(
         0,
         ...opponents.map((c) => c.polling || 0)
       );
       let score = 0.5;
       if (myPolling < topOpponentPolling - 5) score += 1.0;
-
       let adType = "positive";
       let targetId = null;
       if (
         myPolling < topOpponentPolling &&
-        (initialAIPoliticianObject.attributes?.integrity || 5) >= 4 &&
+        (initialAIPoliticianObject.attributes?.integrity || 5) < 4 &&
         Math.random() < 0.4
       ) {
         adType = "attack";
@@ -196,27 +194,29 @@ export const simulateAICampaignDayForPolitician = (
       });
     }
 
-    // 5. Recruit Volunteers
     const recruitHoursChoice = getRandomInt(1, Math.min(3, hoursLeft));
     if (
       currentVolunteers < adultPopulation * 0.002 &&
       hoursLeft >= recruitHoursChoice
     ) {
-      let score = currentVolunteers < 20 ? 2.5 : 1.0;
       availableActions.push({
         name: "recruitVolunteers",
-        score,
+        score: currentVolunteers < 20 ? 2.5 : 1.0,
         hours: recruitHoursChoice,
       });
     }
 
-    if (availableActions.length === 0) {
-      break; // No possible actions, end the day for this AI
-    }
+    if (availableActions.length === 0) break;
 
-    // --- Decide on the best action and record it ---
-    availableActions.sort((a, b) => b.score - a.score);
-    const chosenAction = availableActions[0];
+    let bestAction = null;
+    let maxScore = -Infinity;
+    for (const action of availableActions) {
+      if (action.score > maxScore) {
+        maxScore = action.score;
+        bestAction = action;
+      }
+    }
+    const chosenAction = bestAction;
 
     actionsToCommit.push({
       actionName: chosenAction.name,
@@ -224,20 +224,19 @@ export const simulateAICampaignDayForPolitician = (
       params: chosenAction.params || {},
     });
 
-    // Update local variables for the *next potential action in the same day*
     hoursLeft -= chosenAction.hours;
     if (chosenAction.name === "launchManualAdBlitz") {
       fundsLeft -= chosenAction.params.spendAmount;
     }
   }
 
-  // --- Return the collected results for batch processing ---
   if (actionsToCommit.length > 0) {
     return {
       politicianId: aiPoliticianId,
       dailyResults: actionsToCommit,
+      electionId: electionContext.id,
     };
   }
 
-  return null; // Return null if no actions were taken
+  return null;
 };

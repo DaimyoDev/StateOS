@@ -116,6 +116,7 @@ const baseCountriesData = [
     ],
     politicalSystem: "Presidential Republic",
     regions: usaStates.map((r) => ({ ...r })),
+    regionTerm: "State",
     secondAdminRegions: usaCounties.map((c) => ({ ...c })),
     nationalLowerHouseDistricts: [],
     nationalHrTiers: chamberTiers.USA.NATIONAL.USA_CONGRESSIONAL_DISTRICT_TIERS,

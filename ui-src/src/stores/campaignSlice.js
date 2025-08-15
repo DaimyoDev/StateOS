@@ -645,11 +645,11 @@ export const createCampaignSlice = (set, get) => ({
         };
       });
     },
-
-    applyDailyAICampaignResults: (allAIResults) => {
+    updatePollingForAffectedElections: (affectedElectionIds) => {
       set((state) => {
-        if (!state.activeCampaign?.elections) return state;
+        if (!state.activeCampaign?.elections) return {};
 
+        const affectedIdsSet = new Set(affectedElectionIds);
         const city = state.activeCampaign.startingCity;
         const adultPop =
           calculateAdultPopulation(
@@ -657,163 +657,15 @@ export const createCampaignSlice = (set, get) => ({
             city.demographics?.ageDistribution
           ) || 1;
 
-        const resultsMap = new Map(
-          allAIResults.map((res) => [res.politicianId, res.dailyResults])
-        );
-
-        const newDirtyList = new Set(
-          state.activeCampaign.politicianIdsWithSpentHours
-        );
-        allAIResults.forEach((result) => newDirtyList.add(result.politicianId));
-
         const updatedElections = state.activeCampaign.elections.map(
           (election) => {
-            const newCandidates = new Map(election.candidates);
-            let hasChanges = false;
-            let needsPollingUpdate = false;
-
-            for (const [candidateId, candidate] of newCandidates.entries()) {
-              const resultsForThisCandidate = resultsMap.get(candidateId);
-              if (!resultsForThisCandidate) continue;
-
-              let updatedCandidate = { ...candidate };
-              hasChanges = true;
-
-              resultsForThisCandidate.forEach((actionResult) => {
-                switch (actionResult.actionName) {
-                  case "personalFundraisingActivity": {
-                    const fundraisingSkill =
-                      updatedCandidate.attributes?.fundraising || 5;
-                    const nameRec = updatedCandidate.nameRecognition || 0;
-                    const nameRecMultiplier = 0.5 + nameRec / 200000;
-                    const fundsGained = Math.round(
-                      getRandomInt(500, 1500) *
-                        actionResult.hoursSpent *
-                        (fundraisingSkill / 4) *
-                        nameRecMultiplier
-                    );
-                    updatedCandidate.campaignFunds =
-                      (updatedCandidate.campaignFunds || 0) + fundsGained;
-                    break;
-                  }
-                  case "goDoorKnocking": {
-                    const reachPerHour =
-                      10 +
-                      ((updatedCandidate.attributes?.charisma || 5) - 5) * 2;
-                    const volunteerReach =
-                      (updatedCandidate.volunteerCount || 0) *
-                      3 *
-                      actionResult.hoursSpent;
-                    const totalReached = Math.round(
-                      reachPerHour * actionResult.hoursSpent + volunteerReach
-                    );
-                    const potentialNewReach = Math.max(
-                      0,
-                      adultPop - (updatedCandidate.nameRecognition || 0)
-                    );
-                    const newRecognition = Math.min(
-                      potentialNewReach,
-                      totalReached
-                    );
-                    updatedCandidate.nameRecognition =
-                      (updatedCandidate.nameRecognition || 0) + newRecognition;
-                    break;
-                  }
-                  case "holdRallyActivity": {
-                    needsPollingUpdate = true;
-                    const nameRecFraction =
-                      (updatedCandidate.nameRecognition || 0) / adultPop;
-                    const scoreBoost = Math.round(
-                      getRandomInt(
-                        actionResult.hoursSpent,
-                        actionResult.hoursSpent * 2
-                      ) +
-                        updatedCandidate.attributes.oratory / 2 +
-                        nameRecFraction * 3
-                    );
-                    const mediaBuzzGain = getRandomInt(
-                      3 * actionResult.hoursSpent,
-                      7 * actionResult.hoursSpent
-                    );
-                    const nameRecGain = Math.round(
-                      getRandomInt(
-                        50 * actionResult.hoursSpent,
-                        200 * actionResult.hoursSpent
-                      ) *
-                        (1 + (updatedCandidate.mediaBuzz || 0) / 200)
-                    );
-                    updatedCandidate.mediaBuzz = Math.min(
-                      100,
-                      (updatedCandidate.mediaBuzz || 0) + mediaBuzzGain
-                    );
-                    updatedCandidate.nameRecognition = Math.min(
-                      adultPop,
-                      (updatedCandidate.nameRecognition || 0) + nameRecGain
-                    );
-                    updatedCandidate.baseScore =
-                      (updatedCandidate.baseScore || 10) + scoreBoost;
-                    break;
-                  }
-                  case "recruitVolunteers": {
-                    const charismaFactor =
-                      1 +
-                      ((updatedCandidate.attributes?.charisma || 5) - 5) * 0.1;
-                    const newVolunteers = Math.round(
-                      getRandomInt(3, 8) *
-                        actionResult.hoursSpent *
-                        charismaFactor
-                    );
-                    updatedCandidate.volunteerCount =
-                      (updatedCandidate.volunteerCount || 0) + newVolunteers;
-                    break;
-                  }
-                  case "launchManualAdBlitz": {
-                    needsPollingUpdate = true;
-                    const { adType, targetId, spendAmount } =
-                      actionResult.params;
-                    const {
-                      charisma = 5,
-                      integrity = 5,
-                      intelligence = 5,
-                    } = updatedCandidate.attributes;
-                    const effectivenessFactor =
-                      (spendAmount / 1000) *
-                      (actionResult.hoursSpent / 3) *
-                      (1 + ((intelligence + charisma) / 2 - 5) * 0.1);
-                    let baseScoreChangePlayer = 0;
-
-                    if (adType === "positive") {
-                      baseScoreChangePlayer =
-                        getRandomInt(1, 2) * effectivenessFactor;
-                    } else if (adType === "attack" && targetId) {
-                      const backlashChance =
-                        0.15 + Math.max(0, (5 - integrity) * 0.05);
-                      if (Math.random() < backlashChance) {
-                        baseScoreChangePlayer =
-                          getRandomInt(0, 1) * effectivenessFactor * -1;
-                      }
-                    }
-                    updatedCandidate.baseScore =
-                      (updatedCandidate.baseScore || 10) +
-                      Math.round(baseScoreChangePlayer);
-                    break;
-                  }
-                }
-                updatedCandidate.campaignHoursRemainingToday -=
-                  actionResult.hoursSpent;
-              });
-
-              newCandidates.set(candidateId, updatedCandidate);
-            }
-
-            if (hasChanges) {
-              if (needsPollingUpdate) {
-                return {
-                  ...election,
-                  candidates: normalizePolling(newCandidates, adultPop),
-                };
-              }
-              return { ...election, candidates: newCandidates };
+            if (affectedIdsSet.has(election.id)) {
+              // Re-normalize polling only for elections where a candidate's score changed
+              const updatedCandidates = normalizePolling(
+                election.candidates,
+                adultPop
+              );
+              return { ...election, candidates: updatedCandidates };
             }
             return election;
           }
@@ -822,11 +674,186 @@ export const createCampaignSlice = (set, get) => ({
         return {
           activeCampaign: {
             ...state.activeCampaign,
-            politicianIdsWithSpentHours: newDirtyList,
             elections: updatedElections,
           },
         };
       });
+    },
+    applyDailyAICampaignResults: (allAIResults) => {
+      if (!allAIResults || allAIResults.length === 0) return;
+
+      const affectedElectionIds = new Set();
+
+      set((state) => {
+        if (!state.activeCampaign?.politicians) return state;
+
+        const { politicians, startingCity } = state.activeCampaign;
+        const adultPop =
+          calculateAdultPopulation(
+            startingCity.population,
+            startingCity.demographics?.ageDistribution
+          ) || 1;
+
+        // Create mutable copies of the SoA maps to update
+        const newCampaignMap = new Map(politicians.campaign);
+        const newFinancesMap = new Map(politicians.finances);
+        const newStateMap = new Map(politicians.state);
+
+        for (const result of allAIResults) {
+          const { politicianId, dailyResults, electionId } = result;
+
+          // Get the current data for the AI from the new maps
+          let campaignData = newCampaignMap.get(politicianId) || {};
+          let financesData = newFinancesMap.get(politicianId) || {};
+          let stateData = newStateMap.get(politicianId) || {};
+          // We need attributes for calculations, but they don't change daily
+          const attributesData = politicians.attributes.get(politicianId) || {};
+
+          for (const actionResult of dailyResults) {
+            // A flag to mark if an action affects polling
+            let pollingAffected = false;
+
+            switch (actionResult.actionName) {
+              case "personalFundraisingActivity": {
+                const fundraisingSkill = attributesData.fundraising || 5;
+                const nameRec = stateData.nameRecognition || 0;
+                const nameRecMultiplier = 0.5 + nameRec / 200000;
+                const fundsGained = Math.round(
+                  getRandomInt(500, 1500) *
+                    actionResult.hoursSpent *
+                    (fundraisingSkill / 4) *
+                    nameRecMultiplier
+                );
+                financesData.campaignFunds =
+                  (financesData.campaignFunds || 0) + fundsGained;
+                break;
+              }
+              case "goDoorKnocking": {
+                const reachPerHour =
+                  10 + ((attributesData.charisma || 5) - 5) * 2;
+                const volunteerReach =
+                  (campaignData.volunteerCount || 0) *
+                  3 *
+                  actionResult.hoursSpent;
+                const totalReached = Math.round(
+                  reachPerHour * actionResult.hoursSpent + volunteerReach
+                );
+                const potentialNewReach = Math.max(
+                  0,
+                  adultPop - (stateData.nameRecognition || 0)
+                );
+                const newRecognition = Math.min(
+                  potentialNewReach,
+                  totalReached
+                );
+                stateData.nameRecognition =
+                  (stateData.nameRecognition || 0) + newRecognition;
+                break;
+              }
+              case "holdRallyActivity": {
+                pollingAffected = true;
+                const nameRecFraction =
+                  (stateData.nameRecognition || 0) / adultPop;
+                const scoreBoost = Math.round(
+                  getRandomInt(
+                    actionResult.hoursSpent,
+                    actionResult.hoursSpent * 2
+                  ) +
+                    attributesData.oratory / 2 +
+                    nameRecFraction * 3
+                );
+                const mediaBuzzGain = getRandomInt(
+                  3 * actionResult.hoursSpent,
+                  7 * actionResult.hoursSpent
+                );
+                const nameRecGain = Math.round(
+                  getRandomInt(
+                    50 * actionResult.hoursSpent,
+                    200 * actionResult.hoursSpent
+                  ) *
+                    (1 + (stateData.mediaBuzz || 0) / 200)
+                );
+
+                stateData.mediaBuzz = Math.min(
+                  100,
+                  (stateData.mediaBuzz || 0) + mediaBuzzGain
+                );
+                stateData.nameRecognition = Math.min(
+                  adultPop,
+                  (stateData.nameRecognition || 0) + nameRecGain
+                );
+                stateData.baseScore = (stateData.baseScore || 10) + scoreBoost; // Assuming baseScore is part of stateData now
+                break;
+              }
+              case "recruitVolunteers": {
+                const charismaFactor =
+                  1 + ((attributesData.charisma || 5) - 5) * 0.1;
+                const newVolunteers = Math.round(
+                  getRandomInt(3, 8) * actionResult.hoursSpent * charismaFactor
+                );
+                campaignData.volunteerCount =
+                  (campaignData.volunteerCount || 0) + newVolunteers;
+                break;
+              }
+              case "launchManualAdBlitz": {
+                pollingAffected = true;
+                // Simplified logic from your example; this would need to handle attack ads
+                const { charisma = 5, intelligence = 5 } = attributesData;
+                const { spendAmount } = actionResult.params;
+                const effectivenessFactor =
+                  (spendAmount / 1000) *
+                  (actionResult.hoursSpent / 3) *
+                  (1 + ((intelligence + charisma) / 2 - 5) * 0.1);
+                stateData.baseScore =
+                  (stateData.baseScore || 10) +
+                  getRandomInt(1, 2) * effectivenessFactor;
+                break;
+              }
+            }
+
+            campaignData.campaignHoursRemainingToday =
+              (campaignData.campaignHoursRemainingToday || 0) -
+              actionResult.hoursSpent;
+
+            if (pollingAffected) {
+              affectedElectionIds.add(electionId);
+            }
+          }
+
+          // Put the updated data back into the maps
+          newCampaignMap.set(politicianId, campaignData);
+          newFinancesMap.set(politicianId, financesData);
+          newStateMap.set(politicianId, stateData);
+        }
+
+        // Create the new politician SoA object with the updated maps
+        const newPoliticiansSoA = {
+          ...politicians,
+          campaign: newCampaignMap,
+          finances: newFinancesMap,
+          state: newStateMap,
+        };
+
+        const newDirtyList = new Set(
+          state.activeCampaign.politicianIdsWithSpentHours
+        );
+        allAIResults.forEach((result) => newDirtyList.add(result.politicianId));
+
+        return {
+          activeCampaign: {
+            ...state.activeCampaign,
+            politicianIdsWithSpentHours: newDirtyList,
+            politicians: newPoliticiansSoA,
+          },
+        };
+      });
+
+      // After the main state update, trigger the polling update for affected elections
+      if (affectedElectionIds.size > 0) {
+        get().actions.updatePollingForAffectedElections(
+          Array.from(affectedElectionIds)
+        );
+      }
     },
     updateActiveCampaign: (updates) => {
       set((state) => {

@@ -64,6 +64,11 @@ import {
   INDIAN_FEMALE_NAMES,
   INDIAN_LAST_NAMES,
 } from "./names/indianNames";
+import {
+  BELGIAN_MALE_NAMES,
+  BELGIAN_LAST_NAMES,
+  BELGIAN_FEMALE_NAMES,
+} from "./names/belgianNames";
 
 export const NAMES_BY_COUNTRY = {
   JPN: {
@@ -155,6 +160,11 @@ export const NAMES_BY_COUNTRY = {
     male: INDONESIAN_MALE_NAMES,
     female: INDONESIAN_FEMALE_NAMES,
     last: INDONESIAN_LAST_NAMES,
+  },
+  BEL: {
+    male: BELGIAN_MALE_NAMES,
+    female: BELGIAN_FEMALE_NAMES,
+    last: BELGIAN_LAST_NAMES,
   },
 };
 

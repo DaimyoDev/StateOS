@@ -103,7 +103,7 @@ function MainMenu() {
           </button>
         </nav>
         <footer className="menu-footer">
-          <p>Version 0.0.2 Alpha</p>
+          <p>Version 0.0.3 Alpha</p>
         </footer>
       </div>
     </>

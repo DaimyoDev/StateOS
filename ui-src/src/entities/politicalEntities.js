@@ -972,14 +972,19 @@ export const generateFullStateData = (params = {}) => {
   });
 };
 
-//totalPopulation
-
 export const generateNationalDemographics = (countryId) => {
   // Simplified ethnicity data; this can be expanded with more detail
   const ethnicityData = {
-    USA: { White: 60, Hispanic: 18, Black: 13, Asian: 6, Other: 3 },
+    USA: {
+      White: 40,
+      European: 20,
+      Hispanic: 18,
+      Black: 13,
+      Asian: 6,
+      Other: 3,
+    },
     JPN: { Japanese: 98, Other: 2 },
-    CAN: { European: 72, Asian: 18, Indigenous: 5, Other: 5 },
+    CAN: { European: 38, White: 42, Asian: 18, Indigenous: 5, Other: 5 },
   };
 
   const demographics = generateCityDemographics(); // Reuse for age/education structure

@@ -8,8 +8,8 @@ import {
   runAIBillProposals,
 } from "../simulation/monthlyTick.js";
 import { simulateAICampaignDayForPolitician } from "../utils/aiUtils.js";
+import { rehydrateLeanCampaigner } from "../entities/personnel.js";
 
-// --- Refactored Internal Helper Functions (now pure functions, no longer calling set directly) ---
 const _updateCityStatsPure = (campaign, statUpdates) => {
   if (!campaign?.startingCity?.stats) return campaign;
   return {
@@ -321,39 +321,55 @@ export const createTimeSlice = (set, get) => {
         let campaignForAILoop = get().activeCampaign; // Re-fetch to ensure latest state
 
         if (campaignForAILoop && campaignForAILoop.elections) {
-          const aiProcessingQueue = [];
+          // Step 1: Gather and REHYDRATE all unique AI candidates ONCE.
+          const allCandidatesMap = new Map();
+          const electionContexts = new Map();
+          const soaStore = campaignForAILoop.politicians;
 
-          campaignForAILoop.elections.forEach((election) => {
+          const opponentListsCache = new Map();
+
+          for (const election of campaignForAILoop.elections) {
             if (
               election.outcome?.status === "upcoming" &&
               election.candidates
             ) {
-              for (const candidate of election.candidates.values()) {
-                if (!candidate.isPlayer && candidate.id) {
-                  aiProcessingQueue.push({
-                    aiPolitician: candidate,
-                    electionContext: election,
-                  });
+              // Pre-compute the full candidate list for this election once
+              const candidatesInElection = Array.from(
+                election.candidates.values()
+              );
+              opponentListsCache.set(election.id, candidatesInElection);
+
+              for (const candidateId of election.candidates.keys()) {
+                if (!allCandidatesMap.has(candidateId)) {
+                  const leanCampaignerObject = rehydrateLeanCampaigner(
+                    candidateId,
+                    soaStore
+                  );
+                  if (leanCampaignerObject && !leanCampaignerObject.isPlayer) {
+                    allCandidatesMap.set(candidateId, leanCampaignerObject);
+                    electionContexts.set(candidateId, election);
+                  }
                 }
               }
             }
-          });
+          }
 
-          // --- NEW LOGIC: Collect results first ---
+          // Step 2: Call your original, performant function for each rehydrated AI
           const allAIResults = [];
-          aiProcessingQueue.forEach((job) => {
-            storeActions.resetDailyCampaignHours?.(job.aiPolitician.id);
+          for (const candidate of allCandidatesMap.values()) {
+            const context = electionContexts.get(candidate.id);
             const result = simulateAICampaignDayForPolitician(
-              job.aiPolitician,
-              job.electionContext,
-              campaignForAILoop // Pass the current campaign state
+              candidate,
+              context,
+              opponentListsCache,
+              campaignForAILoop
             );
             if (result) {
               allAIResults.push(result);
             }
-          });
+          }
 
-          // --- NEW LOGIC: Apply all results in a single batch update ---
+          // Step 3: Apply the results in a single batch update
           if (allAIResults.length > 0) {
             storeActions.applyDailyAICampaignResults(allAIResults);
           }

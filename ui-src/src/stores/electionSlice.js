@@ -98,9 +98,14 @@ export const createElectionSlice = (set, get) => ({
         let allNewlyGeneratedChallengers = [];
 
         countryElectionTypes.forEach((electionType) => {
+          const generationCampaignContext = {
+            ...state.activeCampaign,
+            regionId: null,
+          };
+
           const instances = getElectionInstances(
             electionType,
-            state.activeCampaign
+            generationCampaignContext // Use the modified context
           );
 
           instances.forEach((instanceContext) => {

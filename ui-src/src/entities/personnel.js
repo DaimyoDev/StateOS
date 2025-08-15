@@ -150,6 +150,39 @@ export const rehydratePolitician = (politicianId, soaStore) => {
   };
 };
 
+/**
+ * Creates a lean, focused campaign object for a politician,
+ * containing only the data needed for the daily AI simulation.
+ * @param {string} politicianId - The ID of the politician.
+ * @param {object} soaStore - The main politician SoA store.
+ * @returns {object|null} A lean object for campaign simulation.
+ */
+export const rehydrateLeanCampaigner = (politicianId, soaStore) => {
+  if (!politicianId || !soaStore?.base?.has(politicianId)) {
+    return null;
+  }
+
+  // Get only the necessary data slices from the SoA store
+  const base = soaStore.base.get(politicianId);
+  const attributes = soaStore.attributes.get(politicianId) || {};
+  const state = soaStore.state.get(politicianId) || {};
+  const finances = soaStore.finances.get(politicianId) || {};
+  const campaign = soaStore.campaign.get(politicianId) || {};
+
+  // Combine them into a single, flat object
+  return {
+    id: base.id,
+    isPlayer: base.isPlayer,
+    attributes,
+    campaignHoursPerDay: campaign.campaignHoursPerDay,
+    campaignFunds: finances.campaignFunds,
+    nameRecognition: state.nameRecognition,
+    volunteerCount: campaign.volunteerCount,
+    mediaBuzz: state.mediaBuzz,
+    polling: state.polling,
+  };
+};
+
 export const createPartyObject = (params = {}) => ({
   id: params.id || `party_${generateId()}`,
   name: params.name || "New Party",
@@ -414,7 +447,7 @@ export function calculateIdeologyFromStances(
 const ETHNICITY_TO_NAME_MAPPING = {
   Hispanic: ["ESP", "MEX"],
   Asian: ["JPN", "KOR", "PHL"],
-  // "White", "Black", and others will default to the primary country's name set.
+  European: ["FRA", "ENG", "GER", "ITA"],
 };
 
 /**
