@@ -13,6 +13,10 @@ import ArgentinianMap from "../maps/ArgentinianMap";
 import AustralianMap from "../maps/AustraliaMap";
 import AustrianMap from "../maps/AustrianMap";
 import BelgianMap from "../maps/BelgianMap";
+import FranceMap from "../maps/FranceMap";
+import GreatBritainMap from "../maps/GreatBritainMap";
+import ItalyMap from "../maps/ItalyMap";
+import SpainMap from "../maps/SpainMap";
 
 function CountryDetailsScreen() {
   const actions = useGameStore((state) => state.actions);
@@ -26,6 +30,18 @@ function CountryDetailsScreen() {
 
   const mapData = useMemo(() => {
     if (!country?.regions) return [];
+
+    const populations = country.regions.map((r) => r.population || 0);
+    const maxPop = Math.max(...populations);
+    const minPop = Math.min(...populations);
+    const popRange = maxPop - minPop;
+
+    const gdps = country.regions.map(
+      (r) => r.economicProfile?.gdpPerCapita || 0
+    );
+    const maxGdp = Math.max(...gdps);
+    const minGdp = Math.min(...gdps);
+    const gdpRange = maxGdp - minGdp;
 
     switch (mapView) {
       case "party_popularity":
@@ -45,17 +61,26 @@ function CountryDetailsScreen() {
         });
 
       case "gdp":
-        return country.regions.map((region) => ({
-          id: region.id,
-          value: region.economicProfile?.gdpPerCapita || 0,
-        }));
+        return country.regions.map((region) => {
+          const gdp = region.economicProfile?.gdpPerCapita || 0;
+          const normalizedValue = gdpRange > 0 ? (gdp - minGdp) / gdpRange : 0;
+          return {
+            id: region.id,
+            value: normalizedValue,
+          };
+        });
 
       case "population":
       default:
-        return country.regions.map((region) => ({
-          id: region.id,
-          value: region.population || 0,
-        }));
+        return country.regions.map((region) => {
+          const population = region.population || 0;
+          const normalizedValue =
+            popRange > 0 ? (population - minPop) / popRange : 0;
+          return {
+            id: region.id,
+            value: normalizedValue,
+          };
+        });
     }
   }, [country, mapView]);
 
@@ -86,6 +111,14 @@ function CountryDetailsScreen() {
         return <AustrianMap {...props} />;
       case "BEL":
         return <BelgianMap {...props} />;
+      case "FRA":
+        return <FranceMap {...props} />;
+      case "GBR":
+        return <GreatBritainMap {...props} />;
+      case "ITA":
+        return <ItalyMap {...props} />;
+      case "ESP":
+        return <SpainMap {...props} />;
       default:
         return (
           <div className="map-placeholder">

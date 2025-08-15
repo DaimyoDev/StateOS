@@ -264,7 +264,19 @@ const MemoizedElectionDetails = React.memo(function MemoizedElectionDetails({
       );
     }
 
-    if (electionCandidates && electionCandidates.size > 0) {
+    const hasAnyCandidates =
+      (electionCandidates && electionCandidates.size > 0) ||
+      (electionPartyLists && Object.keys(electionPartyLists).length > 0) ||
+      (electionMmpData &&
+        ((electionMmpData.partyLists &&
+          Object.keys(electionMmpData.partyLists).length > 0) ||
+          (electionMmpData.constituencyCandidatesByParty &&
+            Object.keys(electionMmpData.constituencyCandidatesByParty).length >
+              0)));
+
+    if (hasAnyCandidates) {
+      // This part now correctly handles simple (FPTP) candidate lists,
+      // but only if the other more complex types haven't been rendered first.
       return (
         <>
           <h4>Declared Candidates:</h4>
@@ -280,6 +292,7 @@ const MemoizedElectionDetails = React.memo(function MemoizedElectionDetails({
         </>
       );
     } else {
+      // This message will now only show if there are truly no candidates in any of the possible data structures.
       return <p>No candidates declared for this election yet.</p>;
     }
   }, [
@@ -772,7 +785,7 @@ function ElectionsTab({ campaignData }) {
         .filter((election) => {
           if (regionFilter === "all") return true;
           if (regionFilter === "national") {
-            return election.entityType === "nation";
+            return election.level && election.level.startsWith("national_");
           }
 
           const entity = election.entityDataSnapshot;
@@ -934,6 +947,8 @@ function ElectionsTab({ campaignData }) {
             canDeclareForSelectedElection={canDeclareForSelectedElection}
             handleCandidateClick={handleCandidateClick}
             handleDeclareCandidacy={handleDeclareCandidacy}
+            partyLists={selectedElection?.partyLists}
+            mmpData={selectedElection?.mmpData}
           />
         </div>
       </div>

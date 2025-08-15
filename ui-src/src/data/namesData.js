@@ -166,6 +166,16 @@ export const NAMES_BY_COUNTRY = {
     female: BELGIAN_FEMALE_NAMES,
     last: BELGIAN_LAST_NAMES,
   },
+  AUT: {
+    male: GERMAN_MALE_NAMES,
+    female: GERMAN_FEMALE_NAMES,
+    last: GERMAN_LAST_NAMES,
+  },
+  GBR: {
+    male: ENGLISH_MALE_NAMES,
+    female: ENGLISH_FEMALE_NAMES,
+    last: ENGLISH_LAST_NAMES,
+  },
 };
 
 export const GENERIC_FIRST_NAMES_MALE = ["Alex", "Chris", "Jordan", "Taylor"];

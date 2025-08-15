@@ -60,6 +60,10 @@ import ArgentinianMap from "../maps/ArgentinianMap";
 import AustralianMap from "../maps/AustraliaMap";
 import AustrianMap from "../maps/AustrianMap";
 import BelgianMap from "../maps/BelgianMap";
+import FranceMap from "../maps/FranceMap";
+import GreatBritainMap from "../maps/GreatBritainMap";
+import ItalyMap from "../maps/ItalyMap";
+import SpainMap from "../maps/SpainMap";
 
 function CampaignSetupScreen() {
   const currentTheme = useGameStore(
@@ -1220,7 +1224,58 @@ function CampaignSetupScreen() {
             </div>
           </>
         )}
-        {/* Fallback for countries without maps */}
+        {selectedCountryId === "FRA" && (
+          <>
+            <p className="map-instruction-cs">
+              Click on a region to begin your political career there.
+            </p>
+            <div className="map-render-wrapper">
+              <FranceMap
+                onSelectRegion={handleRegionSelectionFromMap}
+                selectedRegionGameId={selectedRegionId}
+              />
+            </div>
+          </>
+        )}
+        {selectedCountryId === "GBR" && (
+          <>
+            <p className="map-instruction-cs">
+              Click on a region to begin your political career there.
+            </p>
+            <div className="map-render-wrapper">
+              <GreatBritainMap
+                onSelectRegion={handleRegionSelectionFromMap}
+                selectedRegionGameId={selectedRegionId}
+              />
+            </div>
+          </>
+        )}
+        {selectedCountryId === "ITA" && (
+          <>
+            <p className="map-instruction-cs">
+              Click on a region to begin your political career there.
+            </p>
+            <div className="map-render-wrapper">
+              <ItalyMap
+                onSelectRegion={handleRegionSelectionFromMap}
+                selectedRegionGameId={selectedRegionId}
+              />
+            </div>
+          </>
+        )}
+        {selectedCountryId === "ESP" && (
+          <>
+            <p className="map-instruction-cs">
+              Click on a region to begin your political career there.
+            </p>
+            <div className="map-render-wrapper">
+              <SpainMap
+                onSelectProvince={handleRegionSelectionFromMap}
+                selectedProvinceGameId={selectedRegionId}
+              />
+            </div>
+          </>
+        )}
         {currentSelectedCountryData &&
           ![
             "JPN",
@@ -1233,6 +1288,10 @@ function CampaignSetupScreen() {
             "AUS",
             "AUT",
             "BEL",
+            "FRA",
+            "GBR",
+            "ITA",
+            "ESP",
           ].includes(selectedCountryId) && (
             <div className="map-placeholder">
               <p>

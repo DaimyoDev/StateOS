@@ -22,7 +22,7 @@ import { canadaProvinces } from "./states/canadaProvinces";
 import { frenchRegions } from "./states/frenchRegions";
 import { greatBritainAdminRegions } from "./states/greatBritianAdminRegions";
 import { italianRegions } from "./states/italianRegions";
-import { spanishProvinces } from "./states/spanishProvinces";
+import { spanishRegions } from "./states/spanishRegions";
 import { swedishCounties } from "./states/swedishCounties";
 import { polishVoivodeships } from "./states/polishVoivodeships";
 import { brazilianStates } from "./states/brazilianStates";
@@ -95,6 +95,7 @@ const baseCountriesData = [
     dominantIdeologies: ["Conservative", "Social Liberal", "Nationalist"],
     politicalSystem: "Parliamentary Monarchy (Constitutional)",
     regions: japanPrefectures.map((r) => ({ ...r })),
+    regionTerm: "Prefecture",
     nationalLowerHouseDistricts: [],
     nationalPrBlocs: [],
     nationalHrTiers:
@@ -135,6 +136,7 @@ const baseCountriesData = [
     dominantIdeologies: ["Social Democrat", "Christian Democrat", "Green"],
     politicalSystem: "Parliamentary Republic",
     regions: germanStates.map((r) => ({ ...r })),
+    regionTerm: "State",
   },
   {
     id: "PHL",
@@ -148,6 +150,7 @@ const baseCountriesData = [
     ],
     politicalSystem: "Presidential Republic",
     regions: philippinesRegions.map((r) => ({ ...r })),
+    regionTerm: "Region",
     provinces: philippinesProvinces.map((p) => ({ ...p })),
     nationalLowerHouseDistricts: [],
     nationalHrTiers:
@@ -167,6 +170,7 @@ const baseCountriesData = [
     ],
     politicalSystem: "Presidential Republic",
     regions: koreaAdministrativeDivisions.map((r) => ({ ...r })),
+    regionTerm: "Province",
     nationalLowerHouseDistricts: [],
     nationalHrTiers:
       chamberTiers.KOR.NATIONAL.KOR_NATIONAL_ASSEMBLY_CONSTITUENCY_TIERS,
@@ -182,6 +186,7 @@ const baseCountriesData = [
     politicalSystem: "Parliamentary Monarchy (Federal)",
     dominantIdeologies: ["Liberal", "Conservative", "Social Democrat"],
     regions: canadaProvinces.map((p) => ({ ...p })),
+    regionTerm: "Province",
     nationalLowerHouseDistricts: [],
     nationalHrTiers: chamberTiers.CAN.NATIONAL.CAN_FEDERAL_HR_DISTRICT_TIERS,
     nationalHrName: "Parliament District",
@@ -234,7 +239,7 @@ const baseCountriesData = [
     flag: "🇪🇸",
     dominantIdeologies: ["Socialist", "Conservative", "Regionalist"],
     politicalSystem: "Parliamentary Monarchy (Constitutional)",
-    regions: spanishProvinces.map((p) => ({ ...p })),
+    regions: spanishRegions.map((p) => ({ ...p })),
     nationalLowerHouseDistricts: [],
   },
   {
