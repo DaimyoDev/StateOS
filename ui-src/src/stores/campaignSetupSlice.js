@@ -11,6 +11,7 @@ import { assignPopulationToCountry } from "../utils/populationUtils";
 import {
   generateNewsOutlets,
   generateInitialLobbyingGroups,
+  generatePollingFirms,
 } from "../entities/organizationEntities";
 import { POLICY_QUESTIONS } from "../data/policyData";
 
@@ -179,6 +180,16 @@ export const createCampaignSetupSlice = (set, get) => {
           policyQuestions: POLICY_QUESTIONS,
           countryId: setupState.selectedCountryId,
         });
+        setLoadingGame(true, "Establishing polling and survey groups...");
+        await pause(20);
+        const nationalPollingFirms = generatePollingFirms({
+          level: "national",
+          locationName: currentCountryData.name,
+        });
+        const regionalPollingFirms = generatePollingFirms({
+          level: "regional",
+          locationName: regionalLocationName,
+        });
 
         initializeRelationships(Array.from(allInitialPoliticianIds));
 
@@ -202,6 +213,7 @@ export const createCampaignSetupSlice = (set, get) => {
             governmentOffices: initialGovernmentOffices,
             newsOutlets: [...nationalNews, ...regionalNews],
             lobbyingGroups: allLobbyingGroups,
+            pollingFirms: [...nationalPollingFirms, ...regionalPollingFirms],
             availableCountries: availableCountriesData,
             politicianIdsWithSpentHours: new Set(),
           },

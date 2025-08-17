@@ -252,3 +252,68 @@
   border-color: var(--accent-border-color);
   box-shadow: 0 0 5px var(--highlight-bg);
 }
+
+.polls-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 15px;
+  margin-top: 10px;
+}
+
+.poll-card {
+  background-color: var(--primary-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--element-radius);
+  padding: 10px;
+}
+
+.poll-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+}
+
+.pollster-name {
+  font-weight: bold;
+  color: var(--primary-text);
+}
+
+.poll-date {
+  font-size: 0.8em;
+  color: var(--secondary-text);
+}
+
+.poll-results-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.poll-result-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  font-size: 0.9em;
+}
+
+.poll-result-item .candidate-info {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-right: 10px;
+}
+
+.poll-result-item .candidate-polling {
+  font-weight: bold;
+  color: var(--accent-color);
+  white-space: nowrap;
+}
+
+.no-polls-message {
+  font-style: italic;
+  color: var(--secondary-text);
+  margin-top: 10px;
+}

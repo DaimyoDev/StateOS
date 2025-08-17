@@ -17,6 +17,8 @@ import FranceMap from "../maps/FranceMap";
 import GreatBritainMap from "../maps/GreatBritainMap";
 import ItalyMap from "../maps/ItalyMap";
 import SpainMap from "../maps/SpainMap";
+import PolandMap from "../maps/PolandMap";
+import SwedenMap from "../maps/SwedenMap";
 
 function CountryDetailsScreen() {
   const actions = useGameStore((state) => state.actions);
@@ -119,6 +121,10 @@ function CountryDetailsScreen() {
         return <ItalyMap {...props} />;
       case "ESP":
         return <SpainMap {...props} />;
+      case "POL":
+        return <PolandMap {...props} />;
+      case "SWE":
+        return <SwedenMap {...props} />;
       default:
         return (
           <div className="map-placeholder">

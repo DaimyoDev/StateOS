@@ -64,6 +64,8 @@ import FranceMap from "../maps/FranceMap";
 import GreatBritainMap from "../maps/GreatBritainMap";
 import ItalyMap from "../maps/ItalyMap";
 import SpainMap from "../maps/SpainMap";
+import PolandMap from "../maps/PolandMap";
+import SwedenMap from "../maps/SwedenMap";
 
 function CampaignSetupScreen() {
   const currentTheme = useGameStore(
@@ -1276,6 +1278,32 @@ function CampaignSetupScreen() {
             </div>
           </>
         )}
+        {selectedCountryId === "POL" && (
+          <>
+            <p className="map-instruction-cs">
+              Click on a region to begin your political career there.
+            </p>
+            <div className="map-render-wrapper">
+              <PolandMap
+                onSelectRegion={handleRegionSelectionFromMap}
+                selectedRegionGameId={selectedRegionId}
+              />
+            </div>
+          </>
+        )}
+        {selectedCountryId === "SWE" && (
+          <>
+            <p className="map-instruction-cs">
+              Click on a region to begin your political career there.
+            </p>
+            <div className="map-render-wrapper">
+              <SwedenMap
+                onSelectRegion={handleRegionSelectionFromMap}
+                selectedRegionGameId={selectedRegionId}
+              />
+            </div>
+          </>
+        )}
         {currentSelectedCountryData &&
           ![
             "JPN",
@@ -1292,6 +1320,8 @@ function CampaignSetupScreen() {
             "GBR",
             "ITA",
             "ESP",
+            "POL",
+            "SWE",
           ].includes(selectedCountryId) && (
             <div className="map-placeholder">
               <p>

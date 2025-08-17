@@ -17,6 +17,36 @@ const getDisplayedPolling = (actualPolling) => {
   return Math.round(displayed);
 };
 
+const PollResultCard = React.memo(({ poll }) => {
+  if (!poll || !poll.results) return null;
+
+  // Sort the results for this specific poll
+  const sortedResults = Array.from(poll.results.values()).sort(
+    (a, b) => (b.polling || 0) - (a.polling || 0)
+  );
+
+  return (
+    <div className="poll-card">
+      <div className="poll-header">
+        <span className="pollster-name">{poll.pollsterName}</span>
+        <span className="poll-date">
+          {poll.date.month}/{poll.date.day}/{poll.date.year}
+        </span>
+      </div>
+      <ul className="poll-results-list">
+        {sortedResults.map((candidate) => (
+          <li key={candidate.id} className="poll-result-item">
+            <span className="candidate-info">
+              {candidate.name} ({candidate.partyName || "Independent"})
+            </span>
+            <span className="candidate-polling">{candidate.polling}%</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+});
+
 const MemoizedElectionDetails = React.memo(function MemoizedElectionDetails({
   selectedElection,
   partiesMap,
@@ -25,6 +55,7 @@ const MemoizedElectionDetails = React.memo(function MemoizedElectionDetails({
   handleDeclareCandidacy,
   partyLists: electionPartyLists,
   mmpData: electionMmpData,
+  recentPolls,
 }) {
   // This hook now safely lives inside the component that uses its props.
   const renderElectionParticipantsAndResults = useCallback(() => {
@@ -376,6 +407,26 @@ const MemoizedElectionDetails = React.memo(function MemoizedElectionDetails({
       </div>
 
       {renderElectionParticipantsAndResults()}
+
+      {selectedElection.outcome?.status !== "concluded" && (
+        <section className="detail-section">
+          <h4>Recent Polls</h4>
+          {recentPolls && recentPolls.length > 0 ? (
+            <div className="polls-container">
+              {recentPolls.map((poll) => (
+                <PollResultCard
+                  key={`${poll.pollsterId}-${poll.date.day}`}
+                  poll={poll}
+                />
+              ))}
+            </div>
+          ) : (
+            <p className="no-polls-message">
+              No recent polls are available for this election.
+            </p>
+          )}
+        </section>
+      )}
 
       {!selectedElection.playerIsCandidate &&
         selectedElection.outcome?.status !== "concluded" &&
@@ -749,6 +800,16 @@ function ElectionsTab({ campaignData }) {
   const [selectedElectionId, setSelectedElectionId] = useState(null);
   const [regionFilter, setRegionFilter] = useState("all");
 
+  const recentPollsByElection = useGameStore(
+    (state) => state.recentPollsByElection
+  );
+
+  // Find the polls specifically for the selected election
+  const recentPollsForSelected = useMemo(() => {
+    if (!selectedElectionId) return [];
+    return recentPollsByElection.get(selectedElectionId) || [];
+  }, [selectedElectionId, recentPollsByElection]);
+
   const regionTerm = countryData?.regionTerm || "Region";
 
   // Memoized values from previous optimizations
@@ -949,6 +1010,7 @@ function ElectionsTab({ campaignData }) {
             handleDeclareCandidacy={handleDeclareCandidacy}
             partyLists={selectedElection?.partyLists}
             mmpData={selectedElection?.mmpData}
+            recentPolls={recentPollsForSelected}
           />
         </div>
       </div>

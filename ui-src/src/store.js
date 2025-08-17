@@ -21,6 +21,7 @@ import { createOrganizationActionSlice } from "./stores/organizationActionSlice.
 import { createCustomEntitySlice } from "./stores/customEntitySlice.js";
 import { createPersonnelSlice } from "./stores/personnelSlice.js";
 import { createDataSlice } from "./stores/dataSlice.js";
+import { createPollingSlice } from "./stores/pollingSlice.js";
 
 // --- Helper Functions (to be moved to relevant slices or utils later) ---
 
@@ -54,6 +55,7 @@ export const useGameStore = create(
       const customEntitySlice = createCustomEntitySlice(set, get);
       const personnelSlice = createPersonnelSlice(set, get);
       const dataSliceData = createDataSlice(set, get);
+      const pollingSliceData = createPollingSlice(set, get);
 
       return {
         savedPoliticians: dataSliceData.savedPoliticians,
@@ -85,6 +87,7 @@ export const useGameStore = create(
         savedElectionSetups: customEntitySlice.savedElectionSetups,
         politicianRelationships: personnelSlice.politicianRelationships,
         politicianIntel: personnelSlice.politicianIntel,
+        recentPollsByElection: pollingSliceData.recentPollsByElection,
 
         currentCampaignSetup: getInitialCampaignSetupState(),
         hasAcknowledgedDisclaimer: false,
@@ -104,6 +107,7 @@ export const useGameStore = create(
           ...customEntitySlice.actions,
           ...personnelSlice.actions,
           ...dataSliceData.actions,
+          ...pollingSliceData.actions,
 
           acknowledgeDisclaimer: () => set({ hasAcknowledgedDisclaimer: true }),
 

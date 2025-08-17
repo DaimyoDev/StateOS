@@ -291,6 +291,17 @@ export const createTimeSlice = (set, get) => {
         }
         const effectiveDate = campaignAfterDateAdvance.currentDate;
 
+        const dayOfWeek = new Date(
+          effectiveDate.year,
+          effectiveDate.month - 1,
+          effectiveDate.day
+        ).getDay();
+
+        // On Mondays (dayOfWeek === 1), run the weekly polling update
+        if (dayOfWeek === 1) {
+          get().actions.runWeeklyPollingUpdates?.();
+        }
+
         const billsToVoteOnToday = get()
           .proposedBills.filter(
             (b) =>
@@ -533,6 +544,34 @@ export const createTimeSlice = (set, get) => {
           requestAnimationFrame(simulateYearAdvanceLoop);
         } else {
           get().actions.setIsAdvancingToNextElection(false);
+        }
+      },
+      runWeeklyPollingUpdates: () => {
+        const { activeCampaign, actions } = get();
+        if (!activeCampaign?.elections) return;
+
+        // For performance, we only poll for a subset of elections each week
+        // We'll focus on the player's election and a few other random ones.
+
+        const playerElection = activeCampaign.elections.find(
+          (e) => e.playerIsCandidate
+        );
+        if (playerElection) {
+          actions.generateNewPollForElection?.(playerElection.id);
+        }
+
+        // Poll for a few other random, non-player elections to make the world feel alive
+        const otherElections = activeCampaign.elections.filter(
+          (e) => !e.playerIsCandidate && e.outcome?.status === "upcoming"
+        );
+        const numberOfRandomPolls = Math.min(otherElections.length, 10); // Poll up to 3 other races
+
+        for (let i = 0; i < numberOfRandomPolls; i++) {
+          const randomElection =
+            otherElections[Math.floor(Math.random() * otherElections.length)];
+          if (randomElection) {
+            actions.generateNewPollForElection?.(randomElection.id);
+          }
         }
       },
     },

@@ -3,6 +3,10 @@ import { LOBBYING_NAME_COMPONENTS } from "../data/lobbyingNames";
 import { NEWS_NAME_COMPONENTS } from "../data/newsOutletNames";
 import useGameStore from "../store";
 import { generateId, getRandomElement, getRandomInt } from "../utils/core";
+import {
+  POLLING_FIRM_ARCHETYPES,
+  POLLING_FIRM_NAME_COMPONENTS,
+} from "../data/pollingData";
 
 const LOBBYING_ARCHETYPES = [
   // Economic
@@ -324,6 +328,18 @@ export const createNewsArticleObject = (params = {}) => ({
   context: params.context || {},
 });
 
+export const createPollingFirmObject = (params = {}) => ({
+  id: `pollster_${generateId()}`,
+  name: params.name || "Survey Services",
+  reach: params.reach || getRandomInt(20, 85),
+  credibility: params.credibility || getRandomInt(40, 95),
+  level: params.level || "national",
+  biases: params.biases || {
+    ideologicalSkew: 0,
+    methodologyBias: "none",
+  },
+});
+
 // --- Organization Generation Logic ---
 
 /**
@@ -485,4 +501,52 @@ export const generateInitialLobbyingGroups = ({
     groups.push(newGroup);
   }
   return groups;
+};
+
+/**
+ * Generates a set of polling firms for a specific political landscape.
+ * @param {object} options - Generation options.
+ * @param {string} options.level - The level of the pollsters ('national', 'regional').
+ * @param {string} options.locationName - Name of the country or region.
+ * @returns {Array<object>} An array of fully-formed polling firm objects.
+ */
+export const generatePollingFirms = ({ level, locationName }) => {
+  const firms = [];
+  const numFirms = getRandomInt(3, 5);
+  const { prefixes, cores, suffixes } = POLLING_FIRM_NAME_COMPONENTS;
+
+  // Use archetypes for some of the firms to ensure variety
+  const archetypesToUse = [...POLLING_FIRM_ARCHETYPES].sort(
+    () => 0.5 - Math.random()
+  );
+
+  for (let i = 0; i < numFirms; i++) {
+    let firm;
+    if (i < archetypesToUse.length && Math.random() < 0.6) {
+      // Create a firm from an archetype
+      const archetype = archetypesToUse.pop();
+      firm = createPollingFirmObject({
+        name: `${locationName} ${archetype.name}`,
+        reach: archetype.reach + getRandomInt(-5, 5),
+        credibility: archetype.credibility + getRandomInt(-5, 5),
+        level,
+        biases: {
+          ideologicalSkew: archetype.ideologicalSkew + getRandomInt(-1, 1),
+          methodologyBias: archetype.methodologyBias,
+        },
+      });
+    } else {
+      // Create a procedurally generated firm
+      const name = `${getRandomElement(prefixes)} ${getRandomElement(
+        cores
+      )} ${getRandomElement(suffixes)}`;
+      firm = createPollingFirmObject({
+        name,
+        level,
+        biases: { ideologicalSkew: getRandomInt(-4, 4) },
+      });
+    }
+    firms.push(firm);
+  }
+  return firms;
 };
