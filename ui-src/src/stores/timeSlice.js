@@ -6,6 +6,7 @@ import {
   runMonthlyPlayerApprovalUpdate,
   runMonthlyPartyPopularityUpdate,
   runAIBillProposals,
+  runMonthlyRegionalUpdates,
 } from "../simulation/monthlyTick.js";
 import { simulateAICampaignDayForPolitician } from "../utils/aiUtils.js";
 import { rehydrateLeanCampaigner } from "../entities/personnel.js";
@@ -74,6 +75,25 @@ const _updatePlayerApprovalPure = (campaign, playerId, newApproval) => {
   };
 };
 
+const _updateCountryPure = (campaign, updatedCountry) => {
+  if (!updatedCountry || !campaign?.country) return campaign;
+  return {
+    ...campaign,
+    country: updatedCountry,
+  };
+};
+
+const _updateRegionsPure = (campaign, updatedRegions) => {
+  if (!updatedRegions || !Object.keys(updatedRegions).length || !campaign?.regions) return campaign;
+  const newRegions = campaign.regions.map(region => 
+    updatedRegions[region.id] ? updatedRegions[region.id] : region
+  );
+  return {
+    ...campaign,
+    regions: newRegions,
+  };
+};
+
 export const createTimeSlice = (set, get) => {
   return {
     isAdvancingToNextElection: false,
@@ -102,7 +122,16 @@ export const createTimeSlice = (set, get) => {
               budgetResult.budgetUpdates
             );
           }
-          collectedNewsThisMonth.push(...budgetResult.newsItems);
+                    collectedNewsThisMonth.push(...budgetResult.newsItems);
+
+          // 2.5 Recalculate Regional & National Budgets
+          const regionalResult = runMonthlyRegionalUpdates(currentCampaign);
+          if (regionalResult.updatedRegions) {
+            currentCampaign = _updateRegionsPure(currentCampaign, regionalResult.updatedRegions);
+          }
+          if (regionalResult.updatedCountry) {
+            currentCampaign = _updateCountryPure(currentCampaign, regionalResult.updatedCountry);
+          }
 
           // 3. Simulate and update all city stats
           const statResult = runMonthlyStatUpdate(currentCampaign);
@@ -123,19 +152,6 @@ export const createTimeSlice = (set, get) => {
             newPlayerApproval
           );
 
-          // 5. AI Policy Proposals
-          const authoredBills = runAIBillProposals(currentCampaign, get);
-          if (authoredBills.length > 0) {
-            authoredBills.forEach((bill) => {
-              // Call the correct "proposeBill" action with the correct bill data
-              get().actions.proposeBill?.(
-                bill.name,
-                bill.policies,
-                bill.proposerId,
-                bill.proposerName
-              );
-            });
-          }
 
           // 6. Update Party Popularity
           const partyPopResult = runMonthlyPartyPopularityUpdate(
@@ -224,11 +240,11 @@ export const createTimeSlice = (set, get) => {
 
         const pendingVoteQueue = get().voteQueue;
         if (pendingVoteQueue && pendingVoteQueue.length > 0) {
-          const billsToProcess = [...pendingVoteQueue]; // Process a copy
-          billsToProcess.forEach((billId) => {
+          const votesToProcess = [...pendingVoteQueue]; // Process a copy
+          votesToProcess.forEach((vote) => {
             // Instantly run all AI votes and finalize the result for each bill
-            get().actions.runAllAIVotesForBill?.(billId);
-            get().actions.finalizeBillVote?.(billId); // This action already creates a toast
+            get().actions.runAllAIVotesForBill?.(vote.billId, vote.level);
+            get().actions.finalizeBillVote?.(vote.billId, vote.level); // This action already creates a toast
           });
           // Clear the queue now that all votes have been processed
           get().actions.clearVoteQueue?.();
@@ -302,30 +318,17 @@ export const createTimeSlice = (set, get) => {
           get().actions.runWeeklyPollingUpdates?.();
         }
 
-        const billsToVoteOnToday = get()
-          .proposedBills.filter(
-            (b) =>
-              b.status === "pending_vote" &&
-              b.voteScheduledFor &&
-              areGameDatesEqual(effectiveDate, b.voteScheduledFor)
-          )
-          .map((b) => b.id);
-
-        if (billsToVoteOnToday.length > 0) {
-          // Add all of today's bills to the queue instead of starting the session directly
-          get().actions.startVotingQueue?.(billsToVoteOnToday);
-        }
-
-        get().actions.processDailyBillCommentary?.();
+        // --- PHASE 3a: Daily Legislation Processing ---
+        // These actions are now self-contained and iterate through city, state, and national levels.
+        get().actions.processImpendingVotes?.(); // Checks for bills to be voted on today
+        get().actions.processDailyBillCommentary?.(); // AI politicians form stances
+        get().actions.processAIProposals?.(); // AI politicians propose new bills
 
         // Monthly updates
         if (effectiveDate.day === 1) {
           get().actions.processMonthlyUpdates();
-          get().actions.applyActiveLegislationEffects();
+          // Note: applyActiveLegislationEffects is called within processMonthlyUpdates
         }
-
-        // Daily proposal activity
-        get().actions.processDailyProposalActivity?.(effectiveDate);
 
         // --- PHASE 4: AI Campaign Simulation Loop ---
         const storeActions = get().actions;

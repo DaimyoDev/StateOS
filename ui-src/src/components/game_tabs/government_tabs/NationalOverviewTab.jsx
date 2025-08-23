@@ -10,6 +10,7 @@ const formatPercentage = (value, precision = 1) =>
   value != null ? `${value.toFixed(precision)}%` : "N/A";
 const formatBudgetKey = (key) =>
   key.replace(/([A-Z])/g, " $1").replace(/^./, (str) => str.toUpperCase());
+const formatCurrency = (value) => value != null ? `$${value.toLocaleString()}` : "N/A";
 
 const NationalOverviewTab = ({ campaignData }) => {
   const [activeSubTab, setActiveSubTab] = useState("summary");
@@ -28,11 +29,24 @@ const NationalOverviewTab = ({ campaignData }) => {
   }, [campaignData.governmentOffices]);
 
   const headOfState = useMemo(
-    () => nationalOffices.find((o) => o.level.includes("head_of_state")),
+    () => nationalOffices.find((o) => 
+      o.level.includes("head_of_state") || 
+      o.level === "national_head_of_state_and_government"
+    ),
     [nationalOffices]
   );
   const lowerHouse = useMemo(
-    () => nationalOffices.filter((o) => o.level.includes("lower_house")),
+    () => nationalOffices.filter((o) => 
+      o.level.includes("lower_house") || 
+      o.level === "national_lower_house_constituency"
+    ),
+    [nationalOffices]
+  );
+  const upperHouse = useMemo(
+    () => nationalOffices.filter((o) => 
+      o.level.includes("upper_house") || 
+      o.level === "national_upper_house_state_rep"
+    ),
     [nationalOffices]
   );
 
@@ -139,6 +153,57 @@ const NationalOverviewTab = ({ campaignData }) => {
             </div>
           </section>
         );
+            case "budget":
+        const budget = countryData.stats?.budget;
+        return (
+          <section className="city-section">
+            <h4>National Budget</h4>
+            {budget ? (
+              <>
+                <div className="city-stats-grid two-col budget-summary-grid">
+                  <div className="stat-item">
+                    <strong>Total Income:</strong> {formatCurrency(budget.totalAnnualIncome)}
+                  </div>
+                  <div className="stat-item">
+                    <strong>Total Expenses:</strong> {formatCurrency(budget.totalAnnualExpenses)}
+                  </div>
+                  <div className="stat-item">
+                    <strong>Balance:</strong>
+                    <span className={budget.balance >= 0 ? "text-success" : "text-error"}>
+                      {formatCurrency(budget.balance)}
+                    </span>
+                  </div>
+                </div>
+                <div className="budget-details-container">
+                  <div className="budget-column income-sources">
+                    <h5>Income Sources:</h5>
+                    <ul className="budget-breakdown-list">
+                      {Object.entries(budget.incomeSources || {}).map(([key, value]) => (
+                        <li key={key}>
+                          <span>{formatBudgetKey(key)}:</span>
+                          <span>{formatCurrency(value)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className="budget-column expense-allocations">
+                    <h5>Expense Allocations:</h5>
+                    <ul className="budget-breakdown-list">
+                      {Object.entries(budget.expenseAllocations || {}).map(([key, value]) => (
+                        <li key={key}>
+                          <span>{formatBudgetKey(key)}:</span>
+                          <span>{formatCurrency(value)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <p>No budget data available for the nation.</p>
+            )}
+          </section>
+        );
       case "government":
         return (
           <section className="city-officials-section city-section">
@@ -168,7 +233,7 @@ const NationalOverviewTab = ({ campaignData }) => {
                   />
                 </div>
                 <div className="officials-cards-grid">
-                  {lowerHouse.slice(0, 18).map((office) => (
+                  {lowerHouse.map((office) => (
                     <PoliticianCard
                       key={office.officeId}
                       politician={office.holder}
@@ -177,9 +242,25 @@ const NationalOverviewTab = ({ campaignData }) => {
                       formatOfficeTitle={formatOfficeTitleForDisplay}
                     />
                   ))}
-                  {lowerHouse.length > 18 && (
-                    <p>...and {lowerHouse.length - 18} more members.</p>
-                  )}
+                </div>
+              </div>
+            )}
+            {upperHouse.length > 0 && (
+              <div className="chamber-section">
+                <h5>
+                  {countryData.nationalSenateName || "Upper House"} (
+                  {upperHouse.length} Seats)
+                </h5>
+                <div className="officials-cards-grid">
+                  {upperHouse.map((office) => (
+                    <PoliticianCard
+                      key={office.officeId}
+                      politician={office.holder}
+                      office={office}
+                      onClick={openViewPoliticianModal}
+                      formatOfficeTitle={formatOfficeTitleForDisplay}
+                    />
+                  ))}
                 </div>
               </div>
             )}
@@ -213,6 +294,12 @@ const NationalOverviewTab = ({ campaignData }) => {
           className={activeSubTab === "government" ? "active" : ""}
         >
           Government
+        </button>
+        <button
+          onClick={() => setActiveSubTab("budget")}
+          className={activeSubTab === "budget" ? "active" : ""}
+        >
+          Budget
         </button>
       </div>
       <div className="sub-tab-content-area">{renderSubTabContent()}</div>

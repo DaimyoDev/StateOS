@@ -5,6 +5,37 @@
   padding: 10px;
 }
 
+.level-selector-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.level-button {
+  padding: 10px 20px;
+  cursor: pointer;
+  background-color: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: var(--secondary-text);
+  font-family: var(--font-heading);
+  font-size: 1em;
+  font-weight: 600;
+  transition: color 0.2s ease-in-out, border-bottom-color 0.2s ease-in-out;
+  margin: 0 5px;
+  transform: translateY(1px); /* Aligns with the container's bottom border */
+}
+
+.level-button:hover {
+  color: var(--primary-text);
+}
+
+.level-button.active {
+  color: var(--accent-color);
+  border-bottom-color: var(--accent-color);
+}
+
 .legislation-section {
   margin-bottom: 30px;
 }

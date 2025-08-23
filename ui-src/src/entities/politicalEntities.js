@@ -956,6 +956,86 @@ export const generateFullStateData = (params = {}) => {
     gdpPerCapita: aggregatedEconomicProfile.gdpPerCapita,
   });
 
+  // Generate budget data for the state
+  const stateBudget = generateStateBudget({
+    population: finalTotalPopulation,
+    gdpPerCapita: aggregatedEconomicProfile.gdpPerCapita,
+    countryId: params.countryId,
+  });
+
+  // --- NEW: Aggregate state-level service stats from cities so UI has data ---
+  const weightedAverage = (items) => {
+    let sum = 0;
+    let weightSum = 0;
+    for (const it of items) {
+      const v = it?.value;
+      const w = it?.weight || 0;
+      if (v !== undefined && v !== null && !Number.isNaN(Number(v)) && w > 0) {
+        sum += Number(v) * w;
+        weightSum += w;
+      }
+    }
+    return weightSum > 0 ? sum / weightSum : null;
+  };
+
+  const ratingToIndex = (rating) => {
+    const idx = RATING_LEVELS.indexOf(rating);
+    return idx >= 0 ? idx : null; // exclude missing/unknown ratings
+  };
+  const indexToRating = (idx) =>
+    RATING_LEVELS[
+      Math.max(0, Math.min(RATING_LEVELS.length - 1, Math.round(idx)))
+    ];
+
+  // Population-weighted averages
+  const educationQualityIdx = weightedAverage(
+    cities.map((c) => ({ value: ratingToIndex(c.stats?.educationQuality), weight: c.population }))
+  );
+  const infrastructureStateIdx = weightedAverage(
+    cities.map((c) => ({ value: ratingToIndex(c.stats?.infrastructureState), weight: c.population }))
+  );
+  const environmentRatingIdx = weightedAverage(
+    cities.map((c) => ({ value: ratingToIndex(c.stats?.environmentRating), weight: c.population }))
+  );
+  const cultureArtsRatingIdx = weightedAverage(
+    cities.map((c) => ({ value: ratingToIndex(c.stats?.cultureArtsRating), weight: c.population }))
+  );
+
+  const healthcareCoverage = weightedAverage(
+    cities.map((c) => ({ value: c.stats?.healthcareCoverage, weight: c.population }))
+  );
+  const healthcareCostPerPerson = weightedAverage(
+    cities.map((c) => ({ value: c.stats?.healthcareCostPerPerson, weight: c.population }))
+  );
+  const povertyRate = weightedAverage(
+    cities.map((c) => ({ value: c.stats?.povertyRate, weight: c.population }))
+  );
+  const crimeRatePer1000 = weightedAverage(
+    cities.map((c) => ({ value: c.stats?.crimeRatePer1000, weight: c.population }))
+  );
+  const unemploymentRateAvg = weightedAverage(
+    cities.map((c) => ({ value: parseFloat(c.stats?.unemploymentRate), weight: c.population }))
+  );
+
+  const aggregatedServiceStats = {
+    educationQuality:
+      educationQualityIdx !== null ? indexToRating(educationQualityIdx) : getRandomElement(RATING_LEVELS),
+    infrastructureState:
+      infrastructureStateIdx !== null ? indexToRating(infrastructureStateIdx) : getRandomElement(RATING_LEVELS),
+    environmentRating:
+      environmentRatingIdx !== null ? indexToRating(environmentRatingIdx) : getRandomElement(RATING_LEVELS),
+    cultureArtsRating:
+      cultureArtsRatingIdx !== null ? indexToRating(cultureArtsRatingIdx) : getRandomElement(RATING_LEVELS),
+    healthcareCoverage: healthcareCoverage,
+    healthcareCostPerPerson: healthcareCostPerPerson,
+    povertyRate: povertyRate,
+    crimeRatePer1000: crimeRatePer1000,
+    unemploymentRate:
+      unemploymentRateAvg !== null && !Number.isNaN(unemploymentRateAvg)
+        ? unemploymentRateAvg.toFixed(1)
+        : undefined,
+  };
+
   return createStateObject({
     ...params,
     population: finalTotalPopulation,
@@ -967,9 +1047,59 @@ export const generateFullStateData = (params = {}) => {
     politicalLandscape: normalizePartyPopularities(finalPoliticalLandscape),
     stats: {
       mainIssues: aggregatedMainIssues,
+      ...aggregatedServiceStats,
+      budget: stateBudget,
     },
     type: determinedType,
   });
+};
+
+/**
+ * Generates budget data for a state/region
+ */
+export const generateStateBudget = ({ population, gdpPerCapita, countryId }) => {
+  // Base tax rates for states (different from cities)
+  const taxRates = {
+    property: 0.008, // 0.8% property tax
+    sales: 0.06, // 6% sales tax
+    business: 0.04, // 4% business tax
+    income: 0.05, // 5% state income tax
+  };
+
+  // Calculate income sources based on population and economic factors
+  const incomeSources = {
+    propertyTaxes: Math.floor(population * gdpPerCapita * 0.1 * taxRates.property),
+    salesTaxes: Math.floor(population * gdpPerCapita * 0.2 * taxRates.sales),
+    businessTaxes: Math.floor(population * gdpPerCapita * 0.3 * taxRates.business),
+    incomeTaxes: Math.floor(population * gdpPerCapita * 0.4 * taxRates.income),
+    federalGrants: Math.floor(population * 150), // $150 per capita in federal grants
+  };
+
+  const totalAnnualIncome = Object.values(incomeSources).reduce((sum, val) => sum + val, 0);
+
+  // State-level expense allocations (different from city expenses)
+  const expenseAllocations = {
+    publicEducation: Math.floor(totalAnnualIncome * 0.35), // 35% of budget
+    publicHealthServices: Math.floor(totalAnnualIncome * 0.20), // 20% of budget
+    transportationInfrastructure: Math.floor(totalAnnualIncome * 0.15), // 15% of budget
+    socialWelfarePrograms: Math.floor(totalAnnualIncome * 0.12), // 12% of budget
+    publicSafety: Math.floor(totalAnnualIncome * 0.08), // 8% of budget
+    environmentalProtection: Math.floor(totalAnnualIncome * 0.05), // 5% of budget
+    generalAdministration: Math.floor(totalAnnualIncome * 0.05), // 5% of budget
+  };
+
+  const totalAnnualExpenses = Object.values(expenseAllocations).reduce((sum, val) => sum + val, 0);
+  const balance = totalAnnualIncome - totalAnnualExpenses;
+
+  return {
+    totalAnnualIncome,
+    totalAnnualExpenses,
+    balance,
+    accumulatedDebt: 0,
+    taxRates,
+    incomeSources,
+    expenseAllocations,
+  };
 };
 
 export const generateNationalDemographics = (countryId) => {
@@ -1320,9 +1450,11 @@ const generateInitialNationalOffices = (
 
   // 2. Generate National Legislative Seats from District Data
   const lowerHouseType = nationalElectionTypes.find(
-    (e) => e.level === "national_lower_house"
+    (e) => e.level === "national_lower_house" || e.level === "national_lower_house_constituency"
   );
-  //const upperHouseType = nationalElectionTypes.find(e => e.level === 'national_upper_house');
+  const upperHouseType = nationalElectionTypes.find(
+    (e) => e.level === "national_upper_house" || e.level === "national_upper_house_state_rep"
+  );
 
   if (
     lowerHouseType &&
@@ -1358,8 +1490,42 @@ const generateInitialNationalOffices = (
     });
   }
 
-  // Add logic for upper house if it also uses districts
-  // ...
+  // 3. Generate Upper House Seats (Senate) - typically 2 per state/region
+  if (upperHouseType && countryData.regions && Array.isArray(countryData.regions)) {
+    const termLength = upperHouseType.frequencyYears || 6;
+    countryData.regions.forEach((region) => {
+      // Generate 2 senators per state/region (common pattern)
+      for (let seatNum = 1; seatNum <= 2; seatNum++) {
+        const officeName = upperHouseType.officeNameTemplate
+          .replace("{stateName}", region.name)
+          .replace("{regionName}", region.name);
+        
+        const holder = generateFullAIPolitician(
+          countryData.id,
+          processedParties,
+          countryData
+        );
+        holder.currentOffice = officeName;
+        
+        nationalOffices.push(
+          createGovernmentOffice({
+            officeName,
+            holder,
+            countryId: countryData.id,
+            officeId: `initial_${upperHouseType.id}_${region.id}_${seatNum}_${generateId()}`,
+            officeNameTemplateId: upperHouseType.id,
+            level: upperHouseType.level,
+            termEnds: {
+              year: 2025 + termLength - 1,
+              month: upperHouseType.electionMonth || 11,
+              day: 1,
+            },
+            numberOfSeatsToFill: 1,
+          })
+        );
+      }
+    });
+  }
 
   return nationalOffices;
 };

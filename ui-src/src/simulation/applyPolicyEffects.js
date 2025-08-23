@@ -63,7 +63,11 @@ export const applyPolicyEffect = (
     return newState; // Condition not met, effect does not trigger
   }
 
-  const path = effect.targetStat.split(".");
+  let pathString = effect.targetStat;
+  if (pathString.startsWith("budget.")) {
+    pathString = `startingCity.stats.${pathString}`;
+  }
+  const path = pathString.split(".");
   let target = newState;
   let lastKey = null;
 

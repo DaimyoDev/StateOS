@@ -1,0 +1,104 @@
+/* src/components/game_tabs/PassedBillsArchive.css */
+
+.passed-bills-archive-container {
+  padding: 1rem;
+  background-color: var(--primary-bg);
+}
+
+.archive-card {
+  background-color: var(--secondary-bg);
+  border: 1px solid var(--border-color);
+  border-left: 5px solid var(--success-text);
+  border-radius: var(--element-radius);
+  margin-bottom: 1.5rem;
+  padding: 1.5rem;
+  box-shadow: var(--item-shadow);
+  transition: box-shadow 0.3s ease;
+}
+
+.archive-card:hover {
+  box-shadow: var(--item-hover-shadow);
+}
+
+.archive-card-header h3 {
+  font-family: var(--font-heading);
+  font-size: 1.4em;
+  color: var(--accent-color);
+  margin: 0 0 0.5rem 0;
+}
+
+.archive-card-subheader {
+  font-size: 0.9em;
+  color: var(--secondary-text);
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 1rem;
+}
+
+.archive-card-subheader strong {
+  color: var(--primary-text);
+}
+
+.bill-contents-section {
+  margin-bottom: 1.5rem;
+}
+
+.bill-contents-section h4 {
+  font-family: var(--font-heading);
+  font-size: 1.1em;
+  color: var(--primary-text);
+  margin-bottom: 1rem;
+}
+
+.policy-list-archive {
+  list-style: none;
+  padding-left: 0;
+}
+
+.policy-list-archive li {
+  background-color: var(--primary-bg);
+  padding: 1rem;
+  border-radius: var(--element-radius);
+  margin-bottom: 1rem;
+  border: 1px solid var(--border-color-light);
+}
+
+.policy-list-archive strong {
+  display: block;
+  font-size: 1.05em;
+  color: var(--primary-text);
+  margin-bottom: 0.5rem;
+}
+
+.policy-detail-text {
+  font-size: 0.95em;
+  color: var(--secondary-text);
+  line-height: 1.6;
+}
+
+.final-vote-tally {
+  border-top: 1px solid var(--border-color);
+  padding-top: 1rem;
+  display: flex;
+  justify-content: space-around;
+  text-align: center;
+}
+
+.vote-tally-item strong {
+  display: block;
+  font-size: 1.2em;
+  color: var(--primary-text);
+}
+
+.vote-tally-item span {
+  font-size: 0.9em;
+  color: var(--secondary-text);
+}
+
+.vote-tally-item .tally-yea strong {
+  color: var(--success-text);
+}
+
+.vote-tally-item .tally-nay strong {
+  color: var(--error-text);
+}

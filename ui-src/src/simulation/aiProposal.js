@@ -5,7 +5,6 @@
  * a cleaner pipeline of filtering, scoring, and parameter selection.
  */
 
-import { CITY_POLICIES } from "../data/policyDefinitions";
 import { RATING_LEVELS } from "../data/governmentData";
 
 // --- CORE HELPER FUNCTIONS (Extracted for Clarity) ---
@@ -299,7 +298,7 @@ const calculateDetailedFiscalScore = (
  * @param {string} currentAiId - The ID of the AI we are checking for, to exclude their own proposals.
  * @returns {object} { budgetLines: Set, taxRates: Set }
  */
-const getLockedTargets = (proposedLegislationThisCycle, currentAiId) => {
+const getLockedTargets = (proposedLegislationThisCycle, currentAiId, allPolicyDefs) => {
   const budgetLines = new Set();
   const taxRates = new Set();
 
@@ -313,7 +312,7 @@ const getLockedTargets = (proposedLegislationThisCycle, currentAiId) => {
 
   policiesByOthers.forEach((policyInBill) => {
     // We need the full policy definition to check its details
-    const policyDef = CITY_POLICIES.find((p) => p.id === policyInBill.policyId);
+    const policyDef = allPolicyDefs?.find((p) => p.id === policyInBill.policyId);
     if (policyDef?.isParameterized && policyDef.parameterDetails) {
       const pDetails = policyDef.parameterDetails;
       if (pDetails.targetBudgetLine) budgetLines.add(pDetails.targetBudgetLine);
@@ -357,7 +356,8 @@ function getValidPolicyCandidates(
 
   const lockedTargets = getLockedTargets(
     proposedLegislationThisCycle,
-    aiPolitician.id
+    aiPolitician.id,
+    allPolicyDefs
   );
 
   const proposedPolicyIdsInBills = new Set(
@@ -794,7 +794,8 @@ export const decideAndAuthorAIBill = (
   availablePolicyIds,
   cityStats,
   activeLegislation,
-  proposedLegislation
+  proposedLegislation,
+  allPolicyDefsForLevel
 ) => {
   if (!aiPolitician || !availablePolicyIds?.length || !cityStats?.budget) {
     return null; // Not enough data to make a decision
@@ -803,7 +804,7 @@ export const decideAndAuthorAIBill = (
   // --- PHASE 1: FILTERING & SCORING (Re-uses existing logic) ---
   const candidatePolicies = getValidPolicyCandidates(
     aiPolitician,
-    CITY_POLICIES.filter((p) => availablePolicyIds.includes(p.id)),
+    (allPolicyDefsForLevel || []).filter((p) => availablePolicyIds.includes(p.id)),
     activeLegislation,
     proposedLegislation
   );

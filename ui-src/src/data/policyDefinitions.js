@@ -1,18 +1,6 @@
 // ui-src/src/data/policyDefinitions.js
 
-export const POLICY_AREAS = {
-  PUBLIC_SAFETY: "Public Safety",
-  ECONOMY: "Economy & Employment",
-  HOUSING: "Housing & Development",
-  INFRASTRUCTURE: "Infrastructure & Transport",
-  EDUCATION: "Education",
-  HEALTHCARE: "Healthcare",
-  ENVIRONMENT: "Environment & Sustainability",
-  SOCIAL_SERVICES: "Social Services & Welfare",
-  TAXATION: "Taxation & Budget",
-  CITY_ADMIN: "City Administration & Governance",
-  CULTURE_RECREATION: "Culture & Recreation",
-};
+import { POLICY_AREAS } from "./policyAreas";
 
 export const CITY_POLICIES = [
   {

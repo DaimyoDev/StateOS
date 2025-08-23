@@ -134,6 +134,7 @@ export const createCampaignSetupSlice = (set, get) => {
           availableParties: setupState.generatedPartiesInCountry,
           currentYear: 2025,
         });
+        
 
         const initialPoliticians = [];
         initialGovernmentOffices.forEach((office) => {
@@ -216,6 +217,9 @@ export const createCampaignSetupSlice = (set, get) => {
             pollingFirms: [...nationalPollingFirms, ...regionalPollingFirms],
             availableCountries: availableCountriesData,
             politicianIdsWithSpentHours: new Set(),
+            // Add missing country and regions data for legislation system
+            country: currentCountryData,
+            regions: currentCountryData.regions,
           },
         }));
 
@@ -227,12 +231,16 @@ export const createCampaignSetupSlice = (set, get) => {
           generateTalentPool(setupState.selectedCountryId);
         }
 
+        setLoadingGame(true, "Creating elections and candidates...");
+        await pause(30);
+
         navigateTo("CampaignGameScreen");
         setActiveMainGameTab("Dashboard");
         resetCampaignSetup?.();
         generateScheduledElections();
         resetLegislationState();
-        clearTemporaryPoliticians();
+        // Don't clear temporary politicians - they're referenced by government offices
+        // clearTemporaryPoliticians();
 
         setLoadingGame(false);
       },

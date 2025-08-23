@@ -8,14 +8,7 @@ import { isDateSameOrBefore, getTimeUntil } from "../../utils/generalUtils";
 import { getRandomInt } from "../../utils/core";
 
 // --- Utility Functions (kept outside component) ---
-const getDisplayedPolling = (actualPolling) => {
-  if (actualPolling == null) return 0;
-  const margin = getRandomInt(2, 5);
-  const adjustment = getRandomInt(-margin, margin);
-  let displayed = actualPolling + adjustment;
-  displayed = Math.max(0, Math.min(100, displayed));
-  return Math.round(displayed);
-};
+// Removed getDisplayedPolling function as polling values are no longer displayed in election tab
 
 const PollResultCard = React.memo(({ poll }) => {
   if (!poll || !poll.results) return null;
@@ -695,7 +688,6 @@ const UpcomingConstituencyCandidateItem = React.memo(
 // For declared candidates in upcoming non-PR/MMP elections
 const UpcomingDeclaredCandidateItem = React.memo(
   ({ candidate, onCandidateClick }) => {
-    const displayPollingValue = getDisplayedPolling(candidate.polling);
     return (
       <li className="candidate-item">
         <span
@@ -708,10 +700,6 @@ const UpcomingDeclaredCandidateItem = React.memo(
         <span className="candidate-party">
           {" "}
           ({candidate.partyName || "Independent"})
-        </span>
-        <span className="candidate-polling">
-          {" "}
-          Polling: ~{displayPollingValue}%
         </span>
       </li>
     );
@@ -776,6 +764,51 @@ const VirtualizedList = React.memo(
     );
   }
 );
+
+// --- Helper Functions ---
+
+/**
+ * Checks if a player is eligible to declare candidacy for an election based on their location.
+ * Players can only run for offices within their state or city.
+ */
+const checkCandidacyEligibility = (election, playerLocation) => {
+  const { startingCity, regionId, countryId } = playerLocation;
+  const entity = election.entityDataSnapshot;
+  
+  if (!entity) return false;
+  
+  // National elections - eligible if same country
+  if (election.level && election.level.startsWith("national_")) {
+    return entity.countryId === countryId || entity.id === countryId;
+  }
+  
+  // Local city elections - eligible if same city
+  if (election.level === "local_city" || election.level === "local_city_or_municipality") {
+    return entity.id === startingCity?.id;
+  }
+  
+  // State/regional elections - eligible if same state/region
+  if (election.level && (election.level.startsWith("state_") || election.level.startsWith("regional_"))) {
+    return (
+      entity.id === regionId ||
+      entity.stateId === regionId ||
+      entity.parentId === regionId ||
+      entity.id.startsWith(regionId + "_")
+    );
+  }
+  
+  // District elections within state - eligible if district is in player's state
+  if (entity.stateId === regionId || entity.parentId === regionId || entity.id.startsWith(regionId + "_")) {
+    return true;
+  }
+  
+  // City council elections - eligible if same city
+  if (election.level === "local_city_or_municipality_council") {
+    return entity.id === startingCity?.id || entity.parentId === startingCity?.id;
+  }
+  
+  return false;
+};
 
 // --- Main ElectionsTab Component ---
 function ElectionsTab({ campaignData }) {
@@ -932,16 +965,24 @@ function ElectionsTab({ campaignData }) {
       selectedElection &&
       rawCurrentDate &&
       selectedElection.filingDeadline &&
-      selectedElection.outcome?.status !== "concluded"
+      selectedElection.outcome?.status !== "concluded" &&
+      campaignData
     ) {
+      const isEligible = checkCandidacyEligibility(selectedElection, {
+        startingCity: campaignData.startingCity,
+        regionId: campaignData.regionId,
+        countryId: campaignData.countryId,
+      });
+      
       return (
         !selectedElection.playerIsCandidate &&
         isDateSameOrBefore(rawCurrentDate, selectedElection.filingDeadline) &&
-        isDateSameOrBefore(rawCurrentDate, selectedElection.electionDate)
+        isDateSameOrBefore(rawCurrentDate, selectedElection.electionDate) &&
+        isEligible
       );
     }
     return false;
-  }, [selectedElection, rawCurrentDate]); // playerIsCandidate might depend on playerPoliticianData
+  }, [selectedElection, rawCurrentDate, campaignData]);
 
   const handleCandidateClick = useCallback(
     (candidate) => {

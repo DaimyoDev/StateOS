@@ -11,6 +11,7 @@ import {
 } from "../data/governmentData";
 import { calculateDetailedIncomeSources } from "../entities/politicalEntities.js";
 import { calculateAllCityStats } from "../utils/statCalculationCore.js";
+import { runStateBudgetUpdate, runNationalBudgetUpdate } from "../utils/regionalStatCalc.js";
 import { normalizePartyPopularities } from "../utils/electionUtils.js";
 import { decideAndAuthorAIBill } from "./aiProposal.js";
 import { generateNewsForEvent } from "./newsGenerator.js";
@@ -36,6 +37,13 @@ const deriveRatingFromValue = (value, thresholds, labels) => {
  * @param {object} campaign - The current activeCampaign object.
  * @returns {object} { budgetUpdates: object | null, newsItems: Array }
  */
+export const runMonthlyRegionalUpdates = (campaign) => {
+  // For now, return empty object since the campaign structure doesn't have regions/country
+  // The existing city budget update handles the main budget calculations
+  // TODO: Implement proper regional budget structure when campaign data model is updated
+  return {};
+};
+
 export const runMonthlyBudgetUpdate = (campaign) => {
   if (!campaign?.startingCity?.stats?.budget) {
     return { budgetUpdates: null, newsItems: [] };
@@ -230,7 +238,8 @@ export const runAIBillProposals = (campaign, getFromStore) => {
         availablePolicyIds,
         campaign.startingCity.stats,
         getFromStore().activeLegislation || [],
-        proposedBillsThisTick
+        proposedBillsThisTick,
+        getFromStore().availablePoliciesForProposal || []
       );
 
       // Check if the AI successfully created a bill

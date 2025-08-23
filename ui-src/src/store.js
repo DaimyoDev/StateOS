@@ -61,8 +61,9 @@ export const useGameStore = create(
         savedPoliticians: dataSliceData.savedPoliticians,
         creatingPolitian: politicianSliceData.creatingPolitician,
         activeCampaign: campaignSlice.activeCampaign,
-        proposedLegislation: legislationSlice.proposedLegislation,
+        proposedBills: legislationSlice.proposedBills,
         activeLegislation: legislationSlice.activeLegislation,
+        passedBillsArchive: legislationSlice.passedBillsArchive,
         availablePoliciesForProposal:
           legislationSlice.availablePoliciesForProposal,
 

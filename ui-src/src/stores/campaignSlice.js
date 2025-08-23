@@ -227,7 +227,12 @@ export const createCampaignSlice = (set, get) => ({
           type: "success",
         });
 
-        return {
+        // Find which elections the player is participating in to trigger polling updates
+        const playerElections = activeCampaign.elections?.filter(election => 
+          election.candidates.some(candidate => candidate.id === playerPoliticianId)
+        ) || [];
+        
+        const result = {
           activeCampaign: {
             ...activeCampaign,
             politicianIdsWithSpentHours: newDirtyList,
@@ -239,6 +244,20 @@ export const createCampaignSlice = (set, get) => ({
             },
           },
         };
+        
+        // Trigger polling updates for player's elections after state update
+        setTimeout(() => {
+          if (playerElections.length > 0) {
+            get().actions.updatePollingForAffectedElections(
+              playerElections.map(e => e.id)
+            );
+            playerElections.forEach(election => {
+              get().actions.generateNewPollForElection?.(election.id);
+            });
+          }
+        }, 0);
+        
+        return result;
       });
     },
 
@@ -631,7 +650,12 @@ export const createCampaignSlice = (set, get) => ({
 
         get().actions.addToast?.({ message: toastMessage, type: "success" });
 
-        return {
+        // Find which elections the player is participating in to trigger polling updates
+        const playerElections = activeCampaign.elections?.filter(election => 
+          election.candidates.some(candidate => candidate.id === playerPoliticianId)
+        ) || [];
+        
+        const result = {
           activeCampaign: {
             ...activeCampaign,
             politicianIdsWithSpentHours: newDirtyList,
@@ -643,6 +667,20 @@ export const createCampaignSlice = (set, get) => ({
             },
           },
         };
+        
+        // Trigger polling updates for player's elections after state update
+        setTimeout(() => {
+          if (playerElections.length > 0) {
+            get().actions.updatePollingForAffectedElections(
+              playerElections.map(e => e.id)
+            );
+            playerElections.forEach(election => {
+              get().actions.generateNewPollForElection?.(election.id);
+            });
+          }
+        }, 0);
+        
+        return result;
       });
     },
     updatePollingForAffectedElections: (affectedElectionIds) => {
@@ -657,12 +695,57 @@ export const createCampaignSlice = (set, get) => ({
             city.demographics?.ageDistribution
           ) || 1;
 
+        const { politicians } = state.activeCampaign;
+        
         const updatedElections = state.activeCampaign.elections.map(
           (election) => {
             if (affectedIdsSet.has(election.id)) {
-              // Re-normalize polling only for elections where a candidate's score changed
+              // Handle both Map and Array cases efficiently
+              let updatedCandidatesArray;
+              
+              if (election.candidates instanceof Map) {
+                // Work directly with Map for better performance
+                updatedCandidatesArray = [];
+                for (const candidate of election.candidates.values()) {
+                  const stateData = politicians.state.get(candidate.id);
+                  const attributesData = politicians.attributes.get(candidate.id);
+                  
+                  if (stateData || attributesData) {
+                    updatedCandidatesArray.push({
+                      ...candidate,
+                      baseScore: stateData?.baseScore || candidate.baseScore,
+                      nameRecognition: stateData?.nameRecognition || candidate.nameRecognition,
+                      approvalRating: stateData?.approvalRating || candidate.approvalRating,
+                      mediaBuzz: stateData?.mediaBuzz || candidate.mediaBuzz,
+                      ...(attributesData && { attributes: { ...candidate.attributes, ...attributesData } })
+                    });
+                  } else {
+                    updatedCandidatesArray.push(candidate);
+                  }
+                }
+              } else {
+                // Handle array case
+                updatedCandidatesArray = election.candidates.map(candidate => {
+                  const stateData = politicians.state.get(candidate.id);
+                  const attributesData = politicians.attributes.get(candidate.id);
+                  
+                  if (stateData || attributesData) {
+                    return {
+                      ...candidate,
+                      baseScore: stateData?.baseScore || candidate.baseScore,
+                      nameRecognition: stateData?.nameRecognition || candidate.nameRecognition,
+                      approvalRating: stateData?.approvalRating || candidate.approvalRating,
+                      mediaBuzz: stateData?.mediaBuzz || candidate.mediaBuzz,
+                      ...(attributesData && { attributes: { ...candidate.attributes, ...attributesData } })
+                    };
+                  }
+                  return candidate;
+                });
+              }
+              
+              // Re-normalize polling with updated candidate data
               const updatedCandidates = normalizePolling(
-                election.candidates,
+                updatedCandidatesArray,
                 adultPop
               );
               return { ...election, candidates: updatedCandidates };
@@ -820,6 +903,7 @@ export const createCampaignSlice = (set, get) => ({
             }
           }
 
+
           // Put the updated data back into the maps
           newCampaignMap.set(politicianId, campaignData);
           newFinancesMap.set(politicianId, financesData);
@@ -853,8 +937,46 @@ export const createCampaignSlice = (set, get) => ({
         get().actions.updatePollingForAffectedElections(
           Array.from(affectedElectionIds)
         );
+        
+        // Generate new polls only periodically (every 3-7 days) for realism
+        const currentDate = get().activeCampaign?.currentDate;
+        if (currentDate && get().actions.shouldGenerateNewPolls?.(currentDate)) {
+          affectedElectionIds.forEach(electionId => {
+            get().actions.generateNewPollForElection?.(electionId);
+          });
+        }
       }
     },
+
+    shouldGenerateNewPolls: (currentDate) => {
+      const state = get();
+      const lastPollDate = state.activeCampaign?.lastPollGenerationDate;
+      
+      if (!lastPollDate) {
+        // First poll generation
+        get().actions.updateActiveCampaign({ lastPollGenerationDate: currentDate });
+        return true;
+      }
+      
+      // Calculate days since last poll
+      const daysSinceLastPoll = 
+        (currentDate.year - lastPollDate.year) * 365 +
+        (currentDate.month - lastPollDate.month) * 30 +
+        (currentDate.day - lastPollDate.day);
+      
+      // Generate polls every 3-7 days (with some randomness)
+      const minDaysBetweenPolls = 3;
+      const maxDaysBetweenPolls = 7;
+      const shouldGenerate = daysSinceLastPoll >= minDaysBetweenPolls && 
+        (daysSinceLastPoll >= maxDaysBetweenPolls || Math.random() < 0.3);
+      
+      if (shouldGenerate) {
+        get().actions.updateActiveCampaign({ lastPollGenerationDate: currentDate });
+      }
+      
+      return shouldGenerate;
+    },
+
     updateActiveCampaign: (updates) => {
       set((state) => {
         if (!state.activeCampaign) return {};

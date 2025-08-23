@@ -8,10 +8,13 @@ const VoteAlert = () => {
     (state) => state.actions
   );
 
-  const nextBillId = voteQueue[0];
-  const bill = useGameStore((state) =>
-    state.proposedBills.find((b) => b.id === nextBillId)
-  );
+  const nextVote = voteQueue[0];
+  const bill = useGameStore((state) => {
+    if (!nextVote) return null;
+    const { billId, level } = nextVote;
+    if (!state[level] || !state[level].proposedBills) return null;
+    return state[level].proposedBills.find((b) => b.id === billId);
+  });
 
   if (!voteQueue || voteQueue.length === 0) {
     return null;
@@ -20,7 +23,7 @@ const VoteAlert = () => {
   if (!bill) return null;
 
   const handleSkip = () => {
-    skipAndProcessVote(bill.id);
+    skipAndProcessVote(bill.id, bill.level);
     addToast({
       message: `Vote for "${bill.name}" has been processed.`,
       type: "info",

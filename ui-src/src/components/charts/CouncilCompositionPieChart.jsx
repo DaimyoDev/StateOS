@@ -2,14 +2,11 @@
 import React from "react";
 import { Pie } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, Title } from "chart.js";
+import "./CouncilCompositionPieChart.css";
 
 ChartJS.register(ArcElement, Tooltip, Legend, Title); // Register datalabels plugin
 
-function CouncilCompositionPieChart({
-  councilCompositionData,
-  themeColors,
-  themeFonts,
-}) {
+function CouncilCompositionPieChart({ councilCompositionData }) {
   if (!councilCompositionData || councilCompositionData.length === 0) {
     return <p>No council composition data available.</p>;
   }
@@ -32,7 +29,7 @@ function CouncilCompositionPieChart({
         backgroundColor: councilCompositionData.map(
           (party) => party.color || "#CCCCCC"
         ),
-        borderColor: themeColors ? themeColors["--ui-panel-bg"] : "#FFFFFF",
+        borderColor: "var(--ui-panel-bg)",
         borderWidth: 1,
       },
     ],
@@ -45,12 +42,10 @@ function CouncilCompositionPieChart({
       legend: {
         position: "right", // Changed position for potentially more labels
         labels: {
-          color: themeColors ? themeColors["--primary-text"] : "#333333",
+          color: getComputedStyle(document.documentElement).getPropertyValue("--primary-text").trim(),
           font: {
-            family: themeFonts
-              ? themeFonts["--font-main"]
-              : "Arial, sans-serif",
-            size: 12, // Slightly smaller for potentially more parties
+            family: getComputedStyle(document.documentElement).getPropertyValue("--font-main").trim(),
+            size: 12,
           },
           boxWidth: 20,
           padding: 15,
@@ -58,13 +53,11 @@ function CouncilCompositionPieChart({
       },
       title: {
         display: true,
-        text: `Council Composition (${totalSeats} Total Seats)`, // Updated title
-        color: themeColors ? themeColors["--accent-color"] : "#000000",
+        text: `Council Composition (${totalSeats} Total Seats)`,
+        color: getComputedStyle(document.documentElement).getPropertyValue("--primary-text").trim(),
         font: {
-          family: themeFonts
-            ? themeFonts["--font-heading"]
-            : "Arial, sans-serif",
-          size: 16, // Adjusted title size
+          family: getComputedStyle(document.documentElement).getPropertyValue("--font-heading").trim(),
+          size: 16,
           weight: "bold",
         },
         padding: {

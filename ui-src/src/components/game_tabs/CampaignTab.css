@@ -401,3 +401,104 @@
   margin: 0; /* Override default margins for this context */
   flex-shrink: 0;
 }
+
+/* Polling Section Styles */
+.polling-section {
+  background-color: var(--secondary-bg);
+  padding: 18px 20px;
+  border-radius: var(--element-radius);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--panel-shadow);
+  margin-bottom: 20px;
+}
+
+.polling-section h4 {
+  font-family: var(--font-heading);
+  color: var(--primary-text);
+  margin-bottom: 15px;
+  font-size: 1.15em;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.no-polls-message {
+  color: var(--secondary-text);
+  font-style: italic;
+  text-align: center;
+  padding: 20px 0;
+  margin: 0;
+}
+
+.polls-container {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.poll-card {
+  background-color: var(--tertiary-bg, var(--secondary-bg));
+  border: 1px solid var(--border-color);
+  border-radius: var(--element-radius);
+  padding: 15px;
+  border-left: 3px solid var(--accent-color);
+}
+
+.poll-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed var(--border-color);
+}
+
+.pollster-name {
+  font-weight: 600;
+  color: var(--primary-text);
+  font-size: 1em;
+}
+
+.poll-date {
+  font-size: 0.9em;
+  color: var(--secondary-text);
+  font-style: italic;
+}
+
+.poll-results-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.poll-result-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px dotted var(--border-color);
+}
+
+.poll-result-item:last-child {
+  border-bottom: none;
+}
+
+.poll-result-item .candidate-info {
+  flex-grow: 1;
+}
+
+.poll-result-item .candidate-polling {
+  font-weight: bold;
+  color: var(--primary-text);
+  margin-left: 15px;
+  min-width: 50px;
+  text-align: right;
+}
+
+.more-polls-note {
+  text-align: center;
+  color: var(--secondary-text);
+  font-size: 0.9em;
+  font-style: italic;
+  margin-top: 15px;
+  margin-bottom: 0;
+}

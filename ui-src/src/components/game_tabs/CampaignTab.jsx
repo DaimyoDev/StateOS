@@ -10,11 +10,70 @@ import { rehydratePolitician } from "../../entities/personnel";
 
 // --- SUB-TAB COMPONENTS ---
 
+const RecentPollingSection = React.memo(({ electionId, recentPolls }) => {
+  if (!recentPolls || recentPolls.length === 0) {
+    return (
+      <section className="info-card polling-section">
+        <h4>Recent Polling</h4>
+        <p className="no-polls-message">
+          No recent polls available for this election. Polls are conducted by independent firms every few days.
+        </p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="info-card polling-section">
+      <h4>Recent Polling</h4>
+      <div className="polls-container">
+        {recentPolls.slice(0, 3).map((poll, index) => (
+          <div key={`${poll.pollsterId}-${poll.date.day}-${index}`} className="poll-card">
+            <div className="poll-header">
+              <span className="pollster-name">{poll.pollsterName}</span>
+              <span className="poll-date">
+                {poll.date.month}/{poll.date.day}/{poll.date.year}
+              </span>
+            </div>
+            <ul className="poll-results-list">
+              {Array.from(poll.results.values())
+                .sort((a, b) => (b.polling || 0) - (a.polling || 0))
+                .map((candidate) => (
+                  <li key={candidate.id} className="poll-result-item">
+                    <span className="candidate-info">
+                      <span 
+                        className={candidate.isPlayer ? "player-candidate-name" : ""}
+                        style={{
+                          color: candidate.isPlayer ? "var(--accent-color)" : "inherit"
+                        }}
+                      >
+                        {candidate.name}
+                      </span>
+                      <span className="party-name-display">
+                        {" "}({candidate.partyName || "Independent"})
+                      </span>
+                    </span>
+                    <span className="candidate-polling">{candidate.polling}%</span>
+                  </li>
+                ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+      {recentPolls.length > 3 && (
+        <p className="more-polls-note">
+          Showing 3 most recent polls. View all polls in the "Polling" tab.
+        </p>
+      )}
+    </section>
+  );
+});
+
 const CampaignOverviewSubTab = ({
   politician,
   campaignData,
   openViewPoliticianModal,
 }) => {
+  const recentPollsByElection = useGameStore((state) => state.recentPollsByElection || new Map());
   const startingCity = campaignData.startingCity || {};
   const playerActiveElection = campaignData.elections?.find(
     (election) =>
@@ -86,49 +145,54 @@ const CampaignOverviewSubTab = ({
       </section>
 
       {playerActiveElection && (
-        <section className="info-card current-standing">
-          {" "}
-          {/* Your existing class */}
-          <h4>Current Polling</h4> {/* Your existing class for h4 */}
-          <ul>
-            {Array.from(playerActiveElection.candidates.values())
-              .sort((a, b) => (b.polling || 0) - (a.polling || 0))
-              .map((candidate) => (
-                <li
-                  key={candidate.id}
-                  onClick={() =>
-                    !candidate.isPlayer && openViewPoliticianModal(candidate)
-                  }
-                  style={{ cursor: candidate.isPlayer ? "default" : "pointer" }}
-                >
-                  <span className="candidate-info">
-                    <span
-                      style={{
-                        color: candidate.isPlayer
-                          ? "var(--accent-color)"
-                          : "inherit",
-                      }}
-                      className={
-                        candidate.isPlayer ? "player-candidate-name" : ""
-                      }
-                    >
-                      {candidate.name}
+        <>
+          <section className="info-card current-standing">
+            <h4>Current Race Standing</h4>
+            <ul>
+              {Array.from(playerActiveElection.candidates.values())
+                .sort((a, b) => (b.polling || 0) - (a.polling || 0))
+                .map((candidate) => (
+                  <li
+                    key={candidate.id}
+                    onClick={() =>
+                      !candidate.isPlayer && openViewPoliticianModal(candidate)
+                    }
+                    style={{ cursor: candidate.isPlayer ? "default" : "pointer" }}
+                  >
+                    <span className="candidate-info">
+                      <span
+                        style={{
+                          color: candidate.isPlayer
+                            ? "var(--accent-color)"
+                            : "inherit",
+                        }}
+                        className={
+                          candidate.isPlayer ? "player-candidate-name" : ""
+                        }
+                      >
+                        {candidate.name}
+                      </span>
+                      <span className="party-name-display">
+                        {" "}
+                        ({candidate.partyName || "Independent"})
+                      </span>
+                      {candidate.isIncumbent && (
+                        <span className="incumbent-marker">(Incumbent)</span>
+                      )}
                     </span>
-                    <span className="party-name-display">
-                      {" "}
-                      ({candidate.partyName || "Independent"})
+                    <span className="candidate-polling">
+                      Current: ~{getDisplayedPolling(candidate.polling)}%
                     </span>
-                    {candidate.isIncumbent && (
-                      <span className="incumbent-marker">(Incumbent)</span>
-                    )}
-                  </span>
-                  <span className="candidate-polling">
-                    Polling: ~{getDisplayedPolling(candidate.polling)}%
-                  </span>
-                </li>
-              ))}
-          </ul>
-        </section>
+                  </li>
+                ))}
+            </ul>
+          </section>
+          
+          <RecentPollingSection 
+            electionId={playerActiveElection.id}
+            recentPolls={recentPollsByElection.get(playerActiveElection.id) || []}
+          />
+        </>
       )}
     </div>
   );

@@ -2,15 +2,36 @@
 // This slice manages the state of proposed and active legislation.
 // It contains the full logic for AI voting and applying policy effects to the campaign state.
 
-import { generateId } from "../utils/core.js";
-import { CITY_POLICIES } from "../data/policyDefinitions";
+import { generateId, getRandomInt } from "../utils/core.js";
+import {
+  CITY_POLICIES,
+  STATE_POLICIES,
+  NATIONAL_POLICIES,
+} from "../data";
 import { applyPolicyEffect } from "../simulation/applyPolicyEffects.js";
 import { decideAndAuthorAIBill } from "../simulation/aiProposal.js";
 import { decideAIVote } from "../simulation/aiVoting.js";
+import {
+  getLegislatureDetails,
+  getStatsForLevel,
+} from "../utils/legislationUtils";
 
 const getInitialLegislationState = () => ({
-  proposedBills: [],
-  activeLegislation: [],
+  city: {
+    proposedBills: [],
+    activeLegislation: [],
+    passedBillsArchive: [],
+  },
+  state: {
+    proposedBills: [],
+    activeLegislation: [],
+    passedBillsArchive: [],
+  },
+  national: {
+    proposedBills: [],
+    activeLegislation: [],
+    passedBillsArchive: [],
+  },
   savedBillTemplates: [],
 });
 
@@ -48,16 +69,30 @@ const generateAIBillName = (currentYear) => {
 
 export const createLegislationSlice = (set, get) => ({
   ...getInitialLegislationState(),
-  availablePoliciesForProposal: CITY_POLICIES,
+  availablePolicies: {
+    city: CITY_POLICIES,
+    state: STATE_POLICIES,
+    national: NATIONAL_POLICIES,
+  },
 
   actions: {
-    resetLegislationState: () => set(getInitialLegislationState()),
+    resetLegislationState: () => set({
+      ...getInitialLegislationState(),
+      availablePolicies: {
+        city: CITY_POLICIES,
+        state: STATE_POLICIES,
+        national: NATIONAL_POLICIES,
+      },
+    }),
 
-    proposeBill: (billName, policies, proposerId, proposerName) => {
+    proposeBill: (level, billName, policies, proposerId, proposerName) => {
       set((state) => {
+        if (!state[level]) {
+          return state;
+        }
+
         const dateProposed = { ...state.activeCampaign.currentDate };
-        // Schedule the vote for 10 days from when it was proposed
-        const voteScheduledFor = addDaysToDate(dateProposed, 10);
+        const voteScheduledFor = addDaysToDate(dateProposed, getRandomInt(7, 21));
 
         const newBill = {
           id: `bill_${generateId()}`,
@@ -66,28 +101,35 @@ export const createLegislationSlice = (set, get) => ({
             generateAIBillName(state.activeCampaign.currentDate.year),
           proposerId,
           proposerName,
+          level, // Store the level on the bill itself
           policies: policies.map((p) => {
-            const def = CITY_POLICIES.find((def) => def.id === p.policyId);
+            const policyDefinition = state.availablePolicies[level].find(
+              (def) => def.id === p.policyId
+            );
             return {
               ...p,
-              policyName: def?.name,
-              description: def?.description,
-              parameterDetails: def?.parameterDetails,
+              policyName: policyDefinition?.name,
+              description: policyDefinition?.description,
+              parameterDetails: policyDefinition?.parameterDetails,
             };
           }),
           status: "pending_vote",
           dateProposed: dateProposed,
-          voteScheduledFor: voteScheduledFor, // Add the new property
+          voteScheduledFor: voteScheduledFor,
           votes: { yea: [], nay: [], abstain: [] },
           councilVotesCast: {},
         };
 
         get().actions.addToast?.({
-          message: `Bill Proposed: "${newBill.name}"`,
+          message: `Bill Proposed at ${level} level: "${newBill.name}"`,
           type: "info",
         });
+
         return {
-          proposedBills: [...state.proposedBills, newBill],
+          [level]: {
+            ...state[level],
+            proposedBills: [...state[level].proposedBills, newBill],
+          },
         };
       });
     },
@@ -113,10 +155,28 @@ export const createLegislationSlice = (set, get) => ({
     // NEW: This action now finalizes a BILL vote
     finalizeBillVote: (billId) => {
       set((state) => {
-        const bill = state.proposedBills.find((b) => b.id === billId);
-        if (!bill) return state;
+        let bill = null;
+        let level = null;
 
-        const councilSize = get().actions.getCityCouncilSize?.() || 1; // Assumes a helper action
+        // Find the bill and its level
+        for (const key of ["city", "state", "national"]) {
+          const foundBill = state[key].proposedBills.find((b) => b.id === billId);
+          if (foundBill) {
+            bill = foundBill;
+            level = key;
+            break;
+          }
+        }
+
+        if (!bill) {
+          return state;
+        }
+
+        const { size: legislatureSize } = getLegislatureDetails(
+          state.activeCampaign,
+          level
+        );
+        const councilSize = legislatureSize;
         const majorityNeeded = Math.floor(councilSize / 2) + 1;
         const yeaVotes = bill.votes.yea?.length || 0;
         const nayVotes = bill.votes.nay?.length || 0;
@@ -127,20 +187,20 @@ export const createLegislationSlice = (set, get) => ({
           context: {
             policyName: bill.name,
             didPass: billDidPass,
-            // Use the first policy ID for the generator's bias check
             policyId: bill.policies[0]?.policyId,
             yeaVotes: yeaVotes,
             nayVotes: nayVotes,
+            level: level,
           },
         };
-        // This action, defined in newsSlice, will create an article from every outlet
         get().actions.generateAndAddNewsForAllOutlets?.(voteEvent);
 
-        let newActiveLegislationList = [...state.activeLegislation];
+        let newActiveLegislationList = [...state[level].activeLegislation];
+        let newPassedBillsArchive = [...state[level].passedBillsArchive];
+
         if (billDidPass) {
-          // Add ALL policies from the bill to the active legislation list
           bill.policies.forEach((policyInBill) => {
-            const policyDef = CITY_POLICIES.find(
+            const policyDef = state.availablePolicies[level].find(
               (p) => p.id === policyInBill.policyId
             );
             if (policyDef) {
@@ -154,78 +214,105 @@ export const createLegislationSlice = (set, get) => ({
                 effectsApplied: false,
                 effects: policyDef.effects,
                 proposerId: bill.proposerId,
+                level: level,
                 isParameterized: policyDef.isParameterized,
                 parameterDetails: policyDef.parameterDetails,
                 chosenParameters: policyInBill.chosenParameters,
               });
             }
           });
+
+          const archivedBill = {
+            ...bill,
+            datePassed: { ...state.activeCampaign.currentDate },
+            status: "passed",
+          };
+          newPassedBillsArchive = [...state[level].passedBillsArchive, archivedBill];
         }
 
         get().actions.addToast?.({
-          message: `Vote on "${bill.name}" has concluded. The bill has ${
+          message: `Vote on "${bill.name}" (${level}) has concluded. The bill has ${
             billDidPass ? "passed" : "failed"
           }.`,
           type: billDidPass ? "success" : "error",
         });
 
-        // Update the bill's status instead of removing it immediately, so it can be viewed in the "past votes" list
-        const updatedBills = state.proposedBills.map((b) =>
+        const updatedBills = state[level].proposedBills.map((b) =>
           b.id === billId
             ? { ...b, status: billDidPass ? "passed" : "failed" }
             : b
         );
 
         return {
-          proposedBills: updatedBills,
-          activeLegislation: newActiveLegislationList,
+          [level]: {
+            ...state[level],
+            proposedBills: updatedBills,
+            activeLegislation: newActiveLegislationList,
+            passedBillsArchive: newPassedBillsArchive,
+          },
         };
       });
     },
 
-    processAIDailyActions: () => {
-      const { activeCampaign, proposedBills } = get();
-      if (!activeCampaign?.governmentOffices) return;
+    processAIProposals: () => {
+      const { activeCampaign } = get();
+      if (!activeCampaign) {
+        return;
+      }
 
-      // Find all AI council members
-      const councilOffice = activeCampaign.governmentOffices.find((o) =>
-        o.officeNameTemplateId.includes("council")
-      );
-      const aiCouncilMembers =
-        councilOffice?.members.filter((m) => !m.isPlayer) || [];
-
-      aiCouncilMembers.forEach((ai) => {
-        // Give each AI a chance to propose something if they haven't already
-        const hasProposedBillThisTurn = proposedBills.some(
-          (b) => b.proposerId === ai.id && b.status === "pending_vote"
-        );
-        if (hasProposedBillThisTurn) return;
-
-        // Use a random chance to prevent every AI from proposing a bill every day
-        if (Math.random() > 0.1) {
-          // 10% chance per day
-          return;
-        }
-
-        // Call the NEW AI bill authoring logic
-        const authoredPolicies = get().actions.decideAndAuthorAIBill(
-          ai,
-          get().availablePoliciesForProposal.map((p) => p.id), // Pass all available policy IDs
-          activeCampaign.startingCity.stats,
-          get().activeLegislation,
-          proposedBills
+      const levels = ["city", "state", "national"];
+      levels.forEach((level) => {
+        const { members: legislators } = getLegislatureDetails(
+          activeCampaign,
+          level
         );
 
-        if (authoredPolicies && authoredPolicies.length > 0) {
-          // If the AI authored a valid bill, propose it
-          const proposerName = `${ai.firstName} ${ai.lastName}`;
-          get().actions.proposeBill(
-            null,
-            authoredPolicies,
-            ai.id,
-            proposerName
-          ); // Pass null for name to have one generated
-        }
+        const aiLegislators = legislators.filter(
+          (m) => m.id !== activeCampaign.playerPoliticianId
+        );
+
+        aiLegislators.forEach((ai) => {
+          const proposalChance =
+            level === "city" ? 0.5 : level === "state" ? 0.3 : 0.2;
+          const roll = Math.random();
+
+          if (roll < proposalChance) {
+            const state = get();
+            const availablePolicies = state.availablePolicies?.[level] || [];
+            const availablePolicyIds = availablePolicies.map(p => p.id);
+
+            const relevantStats = level === 'city' ? activeCampaign.startingCity?.stats : 
+                               level === 'state' ? activeCampaign.regions?.find(r => r.id === activeCampaign.startingCity?.regionId)?.stats :
+                               activeCampaign.country?.stats;
+
+            const activeLegislation = get()[level]?.activeLegislation || [];
+            const proposedLegislation = get()[level]?.proposedBills || [];
+
+            const authoredPolicies = decideAndAuthorAIBill(
+              ai,
+              availablePolicyIds,
+              relevantStats,
+              activeLegislation,
+              proposedLegislation,
+              availablePolicies
+            );
+
+            if (!authoredPolicies || !authoredPolicies.policies || authoredPolicies.policies.length === 0) {
+              return;
+            }
+
+            const politicianData = activeCampaign.politicians.state.get(ai.id);
+            const proposerName = politicianData?.name || ai.name || 'An AI Politician';
+
+            get().actions.proposeBill(
+              level,
+              null,
+              authoredPolicies.policies,
+              ai.id,
+              proposerName
+            );
+          }
+        });
       });
     },
 
@@ -233,10 +320,21 @@ export const createLegislationSlice = (set, get) => ({
 
     recordCouncilVote: (billId, councilMemberId, voteChoice) => {
       set((state) => {
-        const updatedBills = state.proposedBills.map((bill) => {
-          // Find the correct bill by its ID
+        let level = null;
+        for (const key of ["city", "state", "national"]) {
+          const bill = state[key].proposedBills.find((b) => b.id === billId);
+          if (bill) {
+            level = key;
+            break;
+          }
+        }
+
+        if (!level) {
+          return state;
+        }
+
+        const updatedBills = state[level].proposedBills.map((bill) => {
           if (bill.id === billId) {
-            // Create a new votes object, removing any previous vote from this member
             const newVotes = {
               yea: bill.votes.yea.filter((id) => id !== councilMemberId),
               nay: bill.votes.nay.filter((id) => id !== councilMemberId),
@@ -245,12 +343,10 @@ export const createLegislationSlice = (set, get) => ({
               ),
             };
 
-            // Add the member's ID to the correct new vote array
             if (newVotes[voteChoice]) {
               newVotes[voteChoice].push(councilMemberId);
             }
 
-            // Return the updated bill object
             return {
               ...bill,
               votes: newVotes,
@@ -260,201 +356,219 @@ export const createLegislationSlice = (set, get) => ({
               },
             };
           }
-          return bill; // Return other bills unchanged
+          return bill;
         });
 
-        // Update the state with the new array of bills
-        return { proposedBills: updatedBills };
+        return {
+          [level]: {
+            ...state[level],
+            proposedBills: updatedBills,
+          },
+        };
       });
     },
 
     applyActiveLegislationEffects: () => {
       set((state) => {
-        if (!state.activeCampaign) return state; //
+        if (!state.activeCampaign) return state;
 
         let legislationChanged = false;
-        let newState = { ...state }; // Start with a copy of the top-level state
-        let updatedActiveCampaign = { ...newState.activeCampaign }; // Copy activeCampaign
+        let updatedState = { ...state };
+        let updatedActiveCampaign = { ...state.activeCampaign };
 
-        const effectsToApplyNow = [];
-
-        // First pass: update monthsUntilEffective and identify policies to apply
-        const updatedActiveLegislation = newState.activeLegislation.map(
-          (leg) => {
+        for (const level of ["city", "state", "national"]) {
+          const effectsToApplyNow = [];
+          const updatedLevelLegislation = updatedState[level].activeLegislation.map((leg) => {
             if (leg.monthsUntilEffective > 0) {
               legislationChanged = true;
-              return {
-                ...leg,
-                monthsUntilEffective: leg.monthsUntilEffective - 1,
-              };
+              return { ...leg, monthsUntilEffective: leg.monthsUntilEffective - 1 };
             }
             if (leg.monthsUntilEffective === 0 && !leg.effectsApplied) {
               legislationChanged = true;
-              effectsToApplyNow.push(leg); // Collect policies whose effects should be applied this tick
-              return { ...leg, effectsApplied: true }; // Mark as applied to prevent re-application
+              effectsToApplyNow.push(leg);
+              return { ...leg, effectsApplied: true };
             }
             return leg;
-          }
-        );
-        newState.activeLegislation = updatedActiveLegislation; // Update activeLegislation in the newState draft
+          });
 
-        // Second pass: apply the effects for policies identified
-        if (effectsToApplyNow.length > 0) {
-          console.log(
-            "Applying policy effects:",
-            effectsToApplyNow.map((e) => e.policyName)
-          );
-          effectsToApplyNow.forEach((policyToApply) => {
-            // Apply generic effects defined in the policy's 'effects' array
-            policyToApply.effects.forEach((effect) => {
-              updatedActiveCampaign = applyPolicyEffect(
-                updatedActiveCampaign,
-                { ...effect, parameterDetails: policyToApply.parameterDetails },
-                policyToApply.chosenParameters
-              );
-            });
+          updatedState = {
+            ...updatedState,
+            [level]: { ...updatedState[level], activeLegislation: updatedLevelLegislation },
+          };
 
-            // NOW, apply effects specifically from chosenParameters if it's a parameterized policy affecting budget/tax
-            if (
-              policyToApply.isParameterized &&
-              policyToApply.parameterDetails &&
-              policyToApply.chosenParameters
-            ) {
-              const pDetails = policyToApply.parameterDetails;
-              const chosenValue = policyToApply.chosenParameters[pDetails.key];
+          if (effectsToApplyNow.length > 0) {
+            effectsToApplyNow.forEach((policy) => {
+              const targetObjectPath = level === 'city' ? 'startingCity.stats' : (level === 'state' ? 'activeState.stats' : 'national.stats');
 
-              if (chosenValue !== undefined) {
-                if (pDetails.targetBudgetLine) {
-                  const budgetLinePath = `startingCity.stats.budget.expenseAllocations.${pDetails.targetBudgetLine}`;
-                  const tempEffect = {
-                    targetStat: budgetLinePath,
-                    change: chosenValue,
-                    type: "absolute_change",
-                  };
-                  updatedActiveCampaign = applyPolicyEffect(
-                    updatedActiveCampaign,
-                    tempEffect
-                  );
-                  console.log(
-                    `[Legislation] Applied parameterized budget change for ${policyToApply.policyName} to ${pDetails.targetBudgetLine}: ${chosenValue}`
-                  ); //
-                } else if (pDetails.targetTaxRate) {
-                  const taxRatePath = `startingCity.stats.budget.taxRates.${pDetails.targetTaxRate}`;
-                  const tempEffect = {
-                    targetStat: taxRatePath,
-                    change: chosenValue,
-                    type: "percentage_point_change",
-                  };
-                  updatedActiveCampaign = applyPolicyEffect(
-                    updatedActiveCampaign,
-                    tempEffect
-                  );
-                  console.log(
-                    `[Legislation] Applied parameterized tax rate change for ${policyToApply.policyName} to ${pDetails.targetTaxRate}: ${chosenValue}`
-                  ); //
+              policy.effects.forEach((effect) => {
+                const effectWithScope = { ...effect, targetScope: targetObjectPath };
+                updatedActiveCampaign = applyPolicyEffect(
+                  updatedActiveCampaign,
+                  { ...effectWithScope, parameterDetails: policy.parameterDetails },
+                  policy.chosenParameters
+                );
+              });
+
+              if (policy.isParameterized && policy.parameterDetails && policy.chosenParameters) {
+                const pDetails = policy.parameterDetails;
+                const chosenValue = policy.chosenParameters[pDetails.key];
+                if (chosenValue !== undefined) {
+                  let path = '';
+                  if (pDetails.targetBudgetLine) {
+                    path = `${targetObjectPath}.budget.expenseAllocations.${pDetails.targetBudgetLine}`;
+                  } else if (pDetails.targetTaxRate) {
+                    path = `${targetObjectPath}.budget.taxRates.${pDetails.targetTaxRate}`;
+                  }
+
+                  if(path){
+                    const tempEffect = {
+                      targetStat: path,
+                      change: chosenValue,
+                      type: pDetails.valueType === 'percentage_point' ? 'percentage_point_change' : 'absolute_change',
+                    };
+                    updatedActiveCampaign = applyPolicyEffect(updatedActiveCampaign, tempEffect);
+                  }
                 }
               }
-            }
 
-            // Add a news event for the policy being enacted
-            get().actions.addNewsEvent?.({
-              headline: `Policy Enacted: "${policyToApply.policyName}"`,
-              summary: `The policy has now taken full effect across the city.`,
-              type: "policy_enacted",
-              policyId: policyToApply.policyId,
+              get().actions.addNewsEvent?.({
+                headline: `Policy Enacted: "${policy.policyName}" (${level})`,
+                summary: `The policy has now taken full effect.`, 
+                type: "policy_enacted",
+                policyId: policy.policyId,
+              });
             });
-          });
-          newState.activeCampaign = updatedActiveCampaign;
-          legislationChanged = true;
+          }
         }
 
         if (legislationChanged) {
-          return newState;
+          return { ...updatedState, activeCampaign: updatedActiveCampaign };
         }
+
         return state;
       });
     },
+
     processDailyBillCommentary: () => {
       set((state) => {
-        const { activeCampaign, proposedBills, activeLegislation } = state;
-        const councilMembers = state.actions.getCityCouncilMembers?.() || [];
+        const { activeCampaign } = state;
+        for (const level of ["city", "state", "national"]) {
+          const { members: legislators } = getLegislatureDetails(
+            activeCampaign,
+            level
+          );
+          const relevantStats = getStatsForLevel(activeCampaign, level);
 
-        const updatedBills = proposedBills.map((bill) => {
-          if (bill.status !== "pending_vote") return bill;
+          if (!legislators || !relevantStats) continue;
 
-          const newStances = [...(bill.publicStances || [])];
+          const updatedBills = state[level].proposedBills.map((bill) => {
+            if (bill.status !== "pending_vote") return bill;
 
-          councilMembers.forEach((ai) => {
-            if (ai.isPlayer) return; // Skip player
+            const newStances = [...(bill.publicStances || [])];
 
-            // Check if this AI already has a public stance
-            const hasStance = newStances.some((s) => s.politicianId === ai.id);
-            if (hasStance) return;
+            legislators.forEach((ai) => {
+              if (ai.id === activeCampaign.playerPoliticianId) return;
+              const hasStance = newStances.some((s) => s.politicianId === ai.id);
+              if (hasStance) return;
 
-            // Give AI a chance to comment each day
-            if (Math.random() < 0.25) {
-              // 25% chance per day to form an opinion
-              // Use decideAIVote to get a preliminary opinion
-              const voteLeaning = decideAIVote(
-                ai,
-                bill,
-                activeCampaign.startingCity.stats,
-                activeLegislation,
-                proposedBills,
-                activeCampaign.governmentOffices
-              );
+              if (Math.random() < 0.25) {
+                const voteLeaning = decideAIVote(
+                  ai,
+                  bill,
+                  relevantStats,
+                  state[level].activeLegislation,
+                  state[level].proposedBills,
+                  activeCampaign.governmentOffices
+                );
 
-              let stance = "undecided";
-              if (voteLeaning === "yea") stance = "leaning_yea";
-              if (voteLeaning === "nay") stance = "leaning_nay";
+                let stance = "undecided";
+                if (voteLeaning === "yea") stance = "leaning_yea";
+                if (voteLeaning === "nay") stance = "leaning_nay";
 
-              newStances.push({
-                politicianId: ai.id,
-                politicianName: `${ai.firstName} ${ai.lastName}`,
-                stance: stance,
-              });
-            }
+                const politicianData = activeCampaign.politicians.state.get(ai.id);
+
+                newStances.push({
+                  politicianId: ai.id,
+                  politicianName: politicianData?.name || 'AI Politician',
+                  stance: stance,
+                });
+              }
+            });
+            return { ...bill, publicStances: newStances };
           });
-          return { ...bill, publicStances: newStances };
-        });
 
-        return { proposedBills: updatedBills };
+          state = {
+            ...state,
+            [level]: { ...state[level], proposedBills: updatedBills },
+          };
+        }
+
+        return state;
       });
     },
+
     runAllAIVotesForBill: (billId) => {
-      const { activeCampaign, proposedBills, activeLegislation } = get();
-      const bill = proposedBills.find((b) => b.id === billId);
+      const { activeCampaign } = get();
+      let bill = null;
+      let level = null;
+
+      for (const key of ["city", "state", "national"]) {
+        const foundBill = get()[key].proposedBills.find((b) => b.id === billId);
+        if (foundBill) {
+          bill = foundBill;
+          level = key;
+          break;
+        }
+      }
 
       if (!bill) {
-        console.warn(
-          `[runAllAIVotesForBill] Could not find bill with ID: ${billId}`
-        );
         return;
       }
 
-      const councilMembers = get().actions.getCityCouncilMembers?.() || [];
+      const { members: legislators } = getLegislatureDetails(activeCampaign, level);
+      const relevantStats = getStatsForLevel(activeCampaign, level);
 
-      councilMembers.forEach((ai) => {
-        // Skip the player and anyone who has already voted
+      if (!legislators || !relevantStats) return;
+
+      legislators.forEach((ai) => {
         if (
-          ai.isPlayer ||
+          ai.id === activeCampaign.playerPoliticianId ||
           (bill.councilVotesCast && bill.councilVotesCast[ai.id])
         ) {
           return;
         }
 
-        // Run the voting simulation for this AI member
         const voteChoice = decideAIVote(
           ai,
           bill,
-          activeCampaign.startingCity.stats,
-          activeLegislation,
-          proposedBills,
+          relevantStats,
+          get()[level].activeLegislation,
+          get()[level].proposedBills,
           activeCampaign.governmentOffices
         );
 
-        // Record the vote using the existing action
         get().actions.recordCouncilVote(billId, ai.id, voteChoice);
+      });
+    },
+
+    processImpendingVotes: () => {
+      const state = get();
+      const currentDate = state.activeCampaign.currentDate;
+      const allProposedBills = [
+        ...state.city.proposedBills,
+        ...state.state.proposedBills,
+        ...state.national.proposedBills,
+      ];
+
+      allProposedBills.forEach((bill) => {
+        if (
+          bill.status === "pending_vote" &&
+          bill.voteScheduledFor.year === currentDate.year &&
+          bill.voteScheduledFor.month === currentDate.month &&
+          bill.voteScheduledFor.day === currentDate.day
+        ) {
+          get().actions.finalizeBillVote(bill.id);
+        }
       });
     },
   },

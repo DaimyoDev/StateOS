@@ -217,10 +217,14 @@ const StateOverviewTab = ({ campaignData }) => {
     unemploymentRate,
     overallCitizenMood,
     budget,
+    crimeRatePer1000,
+    povertyRate,
     publicSafetyRating,
     educationQuality,
     infrastructureState,
+    healthcareCoverage,
     healthcareQuality,
+    healthcareCostPerPerson,
     environmentRating,
     cultureArtsRating,
   } = stats || {};
@@ -523,16 +527,31 @@ const StateOverviewTab = ({ campaignData }) => {
             <div className="city-stats-grid three-col">
               {" "}
               {/* Using city-stats-grid */}
+              {crimeRatePer1000 != null ? (
+                <div className="stat-item">
+                  <strong>Crime Rate:</strong>{" "}
+                  <span className="stat-descriptor">
+                    {parseFloat(crimeRatePer1000).toFixed(1)} per 1,000 residents
+                  </span>
+                </div>
+              ) : (
+                <div className="stat-item">
+                  <strong>Public Safety:</strong>{" "}
+                  <span
+                    className={`stat-descriptor rating-${(
+                      publicSafetyRating || "average"
+                    )
+                      .toLowerCase()
+                      .replace(/\s+/g, "-")}`}
+                  >
+                    {getRatingDescriptor(publicSafetyRating)}
+                  </span>
+                </div>
+              )}
               <div className="stat-item">
-                <strong>Public Safety:</strong>{" "}
-                <span
-                  className={`stat-descriptor rating-${(
-                    publicSafetyRating || "average"
-                  )
-                    .toLowerCase()
-                    .replace(/\s+/g, "-")}`}
-                >
-                  {getRatingDescriptor(publicSafetyRating)}
+                <strong>Poverty Rate:</strong>{" "}
+                <span className="stat-descriptor">
+                  {formatPercentage(povertyRate, 1)}
                 </span>
               </div>
               <div className="stat-item">
@@ -559,18 +578,37 @@ const StateOverviewTab = ({ campaignData }) => {
                   {getRatingDescriptor(infrastructureState)}
                 </span>
               </div>
-              <div className="stat-item">
-                <strong>Healthcare Quality:</strong>{" "}
-                <span
-                  className={`stat-descriptor rating-${(
-                    healthcareQuality || "average"
-                  )
-                    .toLowerCase()
-                    .replace(/\s+/g, "-")}`}
-                >
-                  {getRatingDescriptor(healthcareQuality)}
-                </span>
-              </div>
+              {healthcareCoverage != null || healthcareCostPerPerson != null ? (
+                <>
+                  <div className="stat-item">
+                    <strong>Healthcare Coverage:</strong>{" "}
+                    <span className="stat-descriptor">
+                      {formatPercentage(healthcareCoverage, 1)}
+                    </span>
+                  </div>
+                  <div className="stat-item">
+                    <strong>Cost Per Person (Healthcare):</strong>{" "}
+                    <span className="stat-descriptor">
+                      ${typeof healthcareCostPerPerson === "number"
+                        ? healthcareCostPerPerson.toFixed(2)
+                        : "N/A"}
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <div className="stat-item">
+                  <strong>Healthcare Quality:</strong>{" "}
+                  <span
+                    className={`stat-descriptor rating-${(
+                      healthcareQuality || "average"
+                    )
+                      .toLowerCase()
+                      .replace(/\s+/g, "-")}`}
+                  >
+                    {getRatingDescriptor(healthcareQuality)}
+                  </span>
+                </div>
+              )}
               <div className="stat-item">
                 <strong>Environment Rating:</strong>{" "}
                 <span
