@@ -959,10 +959,20 @@ export const createCampaignSlice = (set, get) => ({
       }
       
       // Calculate days since last poll
-      const daysSinceLastPoll = 
-        (currentDate.year - lastPollDate.year) * 365 +
-        (currentDate.month - lastPollDate.month) * 30 +
-        (currentDate.day - lastPollDate.day);
+      const dateToDays = (date) => {
+        // A simplified conversion of a date object to a total number of days.
+        // This is an approximation and doesn't account for leap years, but is more
+        // accurate than the previous implementation for calculating intervals.
+        const daysInMonth = [0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+        let totalDays = date.year * 365;
+        for (let m = 1; m < date.month; m++) {
+          totalDays += daysInMonth[m];
+        }
+        totalDays += date.day;
+        return totalDays;
+      };
+
+      const daysSinceLastPoll = dateToDays(currentDate) - dateToDays(lastPollDate);
       
       // Generate polls every 3-7 days (with some randomness)
       const minDaysBetweenPolls = 3;

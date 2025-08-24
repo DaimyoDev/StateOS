@@ -38,6 +38,7 @@ const deriveRatingFromValue = (value, thresholds, labels) => {
  * @returns {object} { budgetUpdates: object | null, newsItems: Array }
  */
 export const runMonthlyRegionalUpdates = (campaign) => {
+  console.log('[Tick] Running monthly regional updates...');
   // For now, return empty object since the campaign structure doesn't have regions/country
   // The existing city budget update handles the main budget calculations
   // TODO: Implement proper regional budget structure when campaign data model is updated
@@ -45,6 +46,7 @@ export const runMonthlyRegionalUpdates = (campaign) => {
 };
 
 export const runMonthlyBudgetUpdate = (campaign) => {
+  console.log('[Tick] Running monthly budget update...');
   if (!campaign?.startingCity?.stats?.budget) {
     return { budgetUpdates: null, newsItems: [] };
   }
@@ -106,6 +108,7 @@ export const runMonthlyBudgetUpdate = (campaign) => {
  * @returns {object} { statUpdates: object, newsItems: Array }
  */
 export const runMonthlyStatUpdate = (campaign) => {
+  console.log('[Tick] Running monthly stat update...');
   const statUpdates = {};
   let newsItems = []; // Changed to let
   const city = campaign.startingCity;
@@ -208,6 +211,7 @@ const generateAIBillName = (theme, currentYear) => {
 };
 
 export const runAIBillProposals = (campaign, getFromStore) => {
+  console.log('[Tick] Running AI bill proposals...');
   const billsToDispatch = [];
   if (
     !campaign?.governmentOffices ||
@@ -274,6 +278,7 @@ export const runAIBillProposals = (campaign, getFromStore) => {
  * @returns {object} { newPoliticalLandscape: Array | null, newsItems: Array }
  */
 export const runMonthlyPartyPopularityUpdate = (campaign) => {
+  console.log('[Tick] Running monthly party popularity update...');
   if (!campaign?.startingCity?.politicalLandscape?.length) {
     return { newPoliticalLandscape: null, newsItems: [] };
   }
@@ -319,6 +324,7 @@ export const runMonthlyPartyPopularityUpdate = (campaign) => {
 };
 
 export const runMonthlyPlayerApprovalUpdate = (campaign) => {
+  console.log('[Tick] Running monthly player approval update...');
   const cityStats = campaign.startingCity?.stats;
   const playerPoliticianId = campaign.playerPoliticianId;
   const politiciansStore = campaign.politicians;

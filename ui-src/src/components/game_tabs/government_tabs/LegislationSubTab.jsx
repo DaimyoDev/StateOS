@@ -16,7 +16,7 @@ const LegislationSubTab = ({ campaignData }) => {
     (state) => state[currentLevel]?.activeLegislation || EMPTY_ARRAY
   );
 
-  const { openPolicyVoteDetailsModal, openBillDetailsModal } = useGameStore(
+  const { openPolicyVoteDetailsModal, openBillDetailsModal, openBillAuthoringModal } = useGameStore(
     (state) => state.actions
   );
 
@@ -288,6 +288,10 @@ const LegislationSubTab = ({ campaignData }) => {
                       {policy.proposerId &&
                         ` (Originally proposed by: ${enactingProposerName})`}
                     </p>
+                    <div className="legislation-actions">
+                      <button className="action-button small-button" onClick={(e) => { e.stopPropagation(); openBillAuthoringModal('amend', policy); }}>Amend</button>
+                      <button className="action-button small-button danger" onClick={(e) => { e.stopPropagation(); openBillAuthoringModal('repeal', policy); }}>Repeal</button>
+                    </div>
                   </li>
                 );
               })}

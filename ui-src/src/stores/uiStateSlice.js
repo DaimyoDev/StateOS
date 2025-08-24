@@ -48,6 +48,9 @@ export const createUISlice = (set, get) => ({
   isArticleModalOpen: false,
   donationEntity: null,
   isDonationModalOpen: false,
+  isBillAuthoringModalOpen: false,
+  billAuthoringMode: 'new', // 'new', 'amend', 'repeal'
+  billAuthoringTargetLaw: null,
 
   // --- ACTIONS ---
   actions: {
@@ -214,6 +217,7 @@ export const createUISlice = (set, get) => ({
     setLoadingGame: (isLoading, message = "") =>
       set({ isLoadingGame: isLoading, loadingMessage: message }),
     startVotingQueue: (votesToQueue) => { // Expects [{ billId, level }]
+      console.log('[VoteQueue] Starting queue with:', votesToQueue);
       if (!votesToQueue || votesToQueue.length === 0) return;
 
       set({ voteQueue: votesToQueue });
@@ -225,6 +229,7 @@ export const createUISlice = (set, get) => ({
 
     // UPDATED: This now specifically opens the LiveVoteSession overlay
     startVotingSession: () => {
+      console.log('[VoteQueue] Starting session for next bill.');
       const queue = get().voteQueue;
       if (queue.length > 0) {
         set({
@@ -237,6 +242,7 @@ export const createUISlice = (set, get) => ({
     // UPDATED: This now processes the queue
     endVotingSession: () => {
       const { billId, level } = get().activeVotingSessionDetails;
+      console.log(`[VoteQueue] Ending session for bill: ${billId}`);
       get().actions.finalizeBillVote(billId, level);
 
       const remainingQueue = get().voteQueue.filter(
@@ -260,6 +266,7 @@ export const createUISlice = (set, get) => ({
 
     // NEW: Action for when the player chooses to skip viewing the vote
     skipAndProcessVote: (billIdToSkip, level) => {
+      console.log(`[VoteQueue] Skipping and processing vote for bill: ${billIdToSkip}`);
       // This requires a helper function to run all AI votes instantly
       get().actions.runAllAIVotesForBill(billIdToSkip, level);
       get().actions.finalizeBillVote(billIdToSkip, level);
@@ -305,6 +312,22 @@ export const createUISlice = (set, get) => ({
     },
     closeDonationModal: () => {
       set({ isDonationModalOpen: false, donationEntity: null });
+    },
+
+    openBillAuthoringModal: (mode = 'new', targetLaw = null) => {
+      set({
+        isBillAuthoringModalOpen: true,
+        billAuthoringMode: mode,
+        billAuthoringTargetLaw: targetLaw,
+      });
+    },
+
+    closeBillAuthoringModal: () => {
+      set({
+        isBillAuthoringModalOpen: false,
+        billAuthoringMode: 'new',
+        billAuthoringTargetLaw: null,
+      });
     },
   },
 });

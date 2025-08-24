@@ -1,5 +1,4 @@
 // ui-src/src/utils/aiVoting.js
-import { CITY_POLICIES } from "../data/policyDefinitions"; //
 import { RATING_LEVELS } from "../data/governmentData"; //
 import { calculateFiscalConservatismFactor } from "./aiProposal";
 import { getServiceRatingDetails } from "../utils/aiUtils";
@@ -322,7 +321,8 @@ export const decideAIVote = (
   cityStats,
   activeLegislation,
   proposedLegislation,
-  governmentOffices
+  governmentOffices,
+  allPolicyDefsForLevel = [] // NEW: Pass the relevant policy definitions
 ) => {
   if (!bill || !bill.policies || bill.policies.length === 0) {
     console.warn(`[AI Voting] Bill object is invalid or has no policies.`);
@@ -334,7 +334,7 @@ export const decideAIVote = (
 
   // Iterate over each policy within the bill and aggregate the scores
   for (const policyInBill of bill.policies) {
-    const policyDef = CITY_POLICIES.find((p) => p.id === policyInBill.policyId);
+    const policyDef = allPolicyDefsForLevel.find((p) => p.id === policyInBill.policyId);
 
     if (!policyDef) {
       console.warn(

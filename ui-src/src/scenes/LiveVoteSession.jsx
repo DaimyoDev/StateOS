@@ -1,53 +1,46 @@
 import React, { useState, useEffect, useMemo } from "react";
 import useGameStore from "../store";
 import { decideAIVote } from "../simulation/aiVoting";
+import { getLegislatureDetails, getStatsForLevel } from "../utils/legislationUtils";
 import "./LiveVoteSession.css";
 
 const LiveVoteSession = () => {
-  // --- 1. Select individual, raw state properties from the store. ---
-  // This is the most stable and performant way to get data from Zustand.
-  const billId = useGameStore((state) => state.activeVotingSessionBillId);
-  const proposedBills = useGameStore((state) => state.proposedBills);
-  const governmentOffices = useGameStore(
-    (state) => state.activeCampaign.governmentOffices
-  );
-  const cityStats = useGameStore(
-    (state) => state.activeCampaign.startingCity.stats
-  );
-  const activeLegislation = useGameStore((state) => state.activeLegislation);
-  const playerId = useGameStore((state) => state.activeCampaign.politician.id);
-  const { endVotingSession, recordCouncilVote } = useGameStore(
-    (state) => state.actions
-  );
+  // --- 1. Select state from the store ---
+  const session = useGameStore((state) => state.activeVotingSessionDetails); // { billId, level }
+  const playerId = useGameStore((state) => state.activeCampaign?.playerPoliticianId);
+  const governmentOffices = useGameStore((state) => state.activeCampaign?.governmentOffices);
+  const activeCampaign = useGameStore((state) => state.activeCampaign);
+  const { endVotingSession, recordCouncilVote } = useGameStore((state) => state.actions);
 
   // --- 2. Derive complex data from the raw state using useMemo. ---
   // This logic will only re-run when its dependencies (the raw state above) change.
-  const bill = useMemo(
-    () => proposedBills.find((b) => b.id === billId),
-    [proposedBills, billId]
-  );
+  const bill = useGameStore((state) => {
+    if (!session) return null;
+    const { billId, level } = session;
+    const levelSlice = state[level];
+    if (!levelSlice?.proposedBills) return null;
+    return levelSlice.proposedBills.find((b) => b.id === billId) || null;
+  });
 
-  const councilMembers = useMemo(
-    () =>
-      governmentOffices?.find((o) => o.officeNameTemplateId.includes("council"))
-        ?.members || [],
-    [governmentOffices]
-  );
+  const councilMembers = useMemo(() => {
+    if (!activeCampaign || !session) return [];
+    return getLegislatureDetails(activeCampaign, session.level)?.members || [];
+  }, [activeCampaign, session]);
 
-  const playerIsVoter = useMemo(
-    () => councilMembers.some((m) => m.id === playerId),
-    [councilMembers, playerId]
-  );
+  const playerIsVoter = useMemo(() => councilMembers.some((m) => m.id === playerId), [councilMembers, playerId]);
+
+  const activeLegislation = useGameStore((state) => (session ? state[session.level]?.activeLegislation : []));
+  const proposedBillsForLevel = useGameStore((state) => (session ? state[session.level]?.proposedBills : []));
+  const relevantStats = useMemo(() => (session ? getStatsForLevel(activeCampaign, session.level) : null), [activeCampaign, session]);
 
   // --- Component State & Effects ---
   const [timeScale, setTimeScale] = useState(1);
 
   useEffect(() => {
-    if (!bill) return;
+    if (!bill || !session) return;
 
     const unvotedMembers = councilMembers.filter(
-      (m) =>
-        !m.isPlayer && !(bill.councilVotesCast && bill.councilVotesCast[m.id])
+      (m) => m.id !== playerId && !(bill.councilVotesCast && bill.councilVotesCast[m.id])
     );
     if (unvotedMembers.length === 0) return;
 
@@ -57,9 +50,9 @@ const LiveVoteSession = () => {
         const voteChoice = decideAIVote(
           memberToVote,
           bill,
-          cityStats,
+          relevantStats,
           activeLegislation,
-          proposedBills,
+          proposedBillsForLevel,
           governmentOffices
         );
         recordCouncilVote(bill.id, memberToVote.id, voteChoice);
@@ -71,11 +64,13 @@ const LiveVoteSession = () => {
     bill,
     councilMembers,
     timeScale,
-    cityStats,
+    relevantStats,
     activeLegislation,
-    proposedBills,
+    proposedBillsForLevel,
     governmentOffices,
     recordCouncilVote,
+    playerId,
+    session,
   ]);
 
   useEffect(() => {
@@ -85,12 +80,11 @@ const LiveVoteSession = () => {
     const totalVoters = councilMembers.length;
 
     if (totalVotesCast >= totalVoters) {
-      // Everyone has voted, end the session after a short delay
       const timer = setTimeout(() => {
         endVotingSession();
-      }, 2000); // Wait 2 seconds to show the final tally
+      }, 2000);
 
-      return () => clearTimeout(timer); // Cleanup timer on unmount
+      return () => clearTimeout(timer);
     }
   }, [bill, councilMembers, endVotingSession]);
 
@@ -100,16 +94,13 @@ const LiveVoteSession = () => {
 
   const handleSkip = () => {
     councilMembers.forEach((m) => {
-      if (
-        !m.isPlayer &&
-        !(bill.councilVotesCast && bill.councilVotesCast[m.id])
-      ) {
+      if (m.id !== playerId && !(bill.councilVotesCast && bill.councilVotesCast[m.id])) {
         const voteChoice = decideAIVote(
           m,
           bill,
-          cityStats,
+          relevantStats,
           activeLegislation,
-          proposedBills,
+          proposedBillsForLevel,
           governmentOffices
         );
         recordCouncilVote(bill.id, m.id, voteChoice);
@@ -148,7 +139,7 @@ const LiveVoteSession = () => {
                 key={m.id}
                 className={`voter-status-${currentVote || "pending"}`}
               >
-                {m.firstName} {m.lastName} ({m.partyName})
+                {m.firstName || m.name} {m.lastName || ""} {m.partyName ? `(${m.partyName})` : ""}
                 <span>
                   {currentVote ? currentVote.toUpperCase() : "PENDING"}
                 </span>

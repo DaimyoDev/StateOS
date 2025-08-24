@@ -2,6 +2,59 @@
 
 import { POLICY_AREAS } from "./policyAreas";
 
+const MINIMUM_WAGE_POLICY = {
+  id: "econ004_parameterized",
+  name: "Set Minimum Wage",
+  area: POLICY_AREAS.ECONOMY,
+  description: "Establish or change the legal minimum wage. This can affect unemployment, business costs, and worker income.",
+  tags: ["economy", "labor", "regulation", "minimum_wage", "parameterized"],
+  baseSupport: {
+    Socialist: 0.9,
+    Progressive: 0.8,
+    Liberal: 0.4,
+    Centrist: -0.1,
+    Conservative: -0.6,
+    Libertarian: -0.8,
+  },
+  cost: { politicalCapital: 6 },
+  durationToImplement: 2,
+  isParameterized: true,
+  // This flag indicates that the law itself sets a persistent value rather than just triggering one-off effects.
+  setsSimulationVariable: true, 
+  parameterDetails: {
+    key: "wageRate",
+    // This will target a new spot in the state slice, not a budget line.
+    targetStat: "economy.minimumWage", 
+    adjustmentType: "set_value",
+    valueType: "absolute_amount",
+    min: 0,
+    max: 50,
+    step: 0.25,
+    defaultValue: 15.00,
+    unit: "$/hour",
+    prompt: "Set the new minimum wage (per hour):",
+  },
+  effects: [
+    {
+      targetStat: "economicOutlook",
+      type: "conditional_level_change_by_param",
+      // Simplified logic: higher wage slightly dampens outlook, lower wage slightly boosts it.
+      change_direction: -1, 
+      base_change_for_default: 1,
+      chance: 0.4,
+      delay: 4,
+    },
+    {
+      targetStat: "unemploymentRate",
+      type: "percentage_point_change",
+      // Placeholder effect: a more complex model would be needed here.
+      change: 0.1, 
+      chance: 0.3,
+      delay: 6,
+    },
+  ],
+};
+
 export const CITY_POLICIES = [
   {
     id: "ps001_parameterized",
@@ -775,6 +828,7 @@ export const CITY_POLICIES = [
       },
     ],
   },
+  MINIMUM_WAGE_POLICY,
   {
     id: "tax001_parameterized", // New ID for clarity
     name: "Adjust Property Tax Rate",
@@ -1556,3 +1610,9 @@ export const CITY_POLICIES = [
     ],
   },
 ];
+
+export const STATE_POLICIES = [
+  // For now, state can have the same policies. This can be customized later.
+  ...CITY_POLICIES,
+];
+

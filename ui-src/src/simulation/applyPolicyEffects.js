@@ -2,175 +2,131 @@
 import { adjustStatLevel } from "../utils/core.js";
 import { RATING_LEVELS, MOOD_LEVELS } from "../data/governmentData";
 
-/**
- * Applies a single policy effect to the game state.
- * @param {object} currentState - The current campaign state (or a draft of it).
- * @param {object} effect - The effect object from policyDefinitions.
- * @param {object} policyChosenParameters - The parameters chosen for the policy, if it's parameterized.
- * @returns {object} The updated state after applying the effect.
- */
-export const applyPolicyEffect = (
-  currentState,
-  effect,
-  policyChosenParameters = {}
-) => {
-  // ### CORRECTED STATE CLONING ###
-  // Start with a shallow copy of the campaign state.
-  let newState = { ...currentState };
-  // If elections exist, we must deep-copy them carefully to preserve the candidates Map.
-  if (newState.elections) {
-    newState.elections = newState.elections.map((election) => ({
-      ...election,
-      candidates: new Map(election.candidates), // This correctly clones the Map!
-    }));
-  }
-  // This ensures the rest of the function works on a safe, mutable copy without corrupting the original state.
+const getTargetObjectAndKey = (campaignState, effect) => {
+  const { level, targetStat, isBudgetItem, isTaxRate } = effect;
 
-  // Check chance first
+  let baseObject;
+  switch (level) {
+    case 'city':
+      baseObject = campaignState.startingCity?.stats;
+      break;
+    case 'state':
+      baseObject = campaignState.regions?.find(r => r.id === campaignState.startingCity?.regionId)?.stats;
+      break;
+    case 'national':
+      baseObject = campaignState.country?.stats;
+      break;
+    default:
+      baseObject = campaignState.startingCity?.stats;
+  }
+
+  if (!baseObject) {
+    console.warn(`[getTargetObjectAndKey] Could not find baseObject for level: ${level}`);
+    return { target: null, lastKey: null };
+  }
+
+  if (isBudgetItem) {
+    if (!baseObject.budget) baseObject.budget = {};
+    if (!baseObject.budget.expenseAllocations) baseObject.budget.expenseAllocations = {};
+    return { target: baseObject.budget.expenseAllocations, lastKey: targetStat };
+  } else if (isTaxRate) {
+    if (!baseObject.budget) baseObject.budget = {};
+    if (!baseObject.budget.taxRates) baseObject.budget.taxRates = {};
+    return { target: baseObject.budget.taxRates, lastKey: targetStat };
+  }
+
+  const pathParts = targetStat.split('.');
+  let currentTarget = baseObject;
+  for (let i = 0; i < pathParts.length - 1; i++) {
+    const part = pathParts[i];
+    if (currentTarget[part] === undefined) {
+      currentTarget[part] = {};
+    }
+    currentTarget = currentTarget[part];
+  }
+
+  return { target: currentTarget, lastKey: pathParts[pathParts.length - 1] };
+};
+
+const setNestedValue = (obj, path, value) => {
+  const keys = Array.isArray(path) ? path : path.split('.');
+  let current = obj;
+  for (let i = 0; i < keys.length - 1; i++) {
+    const key = keys[i];
+    if (current[key] === undefined || typeof current[key] !== 'object') {
+      current[key] = {};
+    }
+    current = current[key];
+  }
+  current[keys[keys.length - 1]] = value;
+  return obj;
+};
+
+export const applyPolicyEffect = (currentState, effect, policyChosenParameters = {}) => {
+  if (!effect || !effect.targetStat) {
+    return currentState;
+  }
+
+
   if (effect.chance !== undefined && Math.random() > effect.chance) {
-    return newState; // Effect does not trigger
+    return currentState; // Return original state if chance fails
   }
 
-  // Handle conditions (simple string checks for now, expand as needed)
+  const draft = currentState; // Work directly on the passed state object
+
   let conditionMet = true;
   if (effect.condition) {
-    switch (effect.condition) {
-      case "mainIssue_is_Housing":
-        conditionMet =
-          newState.startingCity?.stats?.mainIssues?.includes("Housing");
-        break;
-      case "Green_party_strong_or_Pollution_is_issue":
-        conditionMet =
-          newState.startingCity?.stats?.mainIssues?.includes("Pollution");
-        break;
-      case "current_drought_severe":
-        conditionMet = false;
-        break;
-      case "wealth_inequality_high":
-        conditionMet = false;
-        break;
-      case "population_young_families_high":
-        conditionMet = false;
-        break;
-      case "demographics_seniors_high":
-        conditionMet = false;
-        break;
-      default:
-        conditionMet = true;
-    }
+    // Condition logic can be expanded here
   }
   if (!conditionMet) {
-    return newState; // Condition not met, effect does not trigger
+    return currentState; // Return original state if condition not met
   }
 
-  let pathString = effect.targetStat;
-  if (pathString.startsWith("budget.")) {
-    pathString = `startingCity.stats.${pathString}`;
-  }
-  const path = pathString.split(".");
-  let target = newState;
-  let lastKey = null;
+  // Handle effects that directly set a simulation variable (e.g., minimum wage)
+  if (effect.setsSimulationVariable && effect.parameterDetails) {
+    const { targetStat, key } = effect.parameterDetails;
+    const value = effect.parameters?.[key];
 
-  for (let i = 0; i < path.length; i++) {
-    lastKey = path[i];
-    if (i < path.length - 1) {
-      target = target[lastKey];
-      if (target === undefined) {
-        console.warn(
-          `[applyPolicyEffect] Target path part "${lastKey}" not found.`
-        );
-        return currentState; // Return original state if path is invalid
-      }
+    if (targetStat && value !== undefined) {
+      setNestedValue(draft, targetStat, value);
     }
-  }
-
-  let actualChange = effect.change || 0;
-
-  // Handle parameterized policies
-  if (
-    effect.type.includes("by_param") ||
-    effect.type.includes("by_tax_change")
-  ) {
-    const pDetails = effect.parameterDetails;
-    const chosenValue = policyChosenParameters[pDetails?.key || "amount"];
-
-    if (chosenValue !== undefined) {
-      if (effect.type.includes("conditional_level_change_by_param")) {
-        actualChange =
-          (chosenValue > 0 ? effect.change_direction : 0) *
-          effect.base_change_for_default;
-      } else if (effect.type.includes("conditional_mood_shift_by_tax_change")) {
-        actualChange = chosenValue > 0 ? -1 : chosenValue < 0 ? 1 : 0;
-      } else if (
-        effect.type.includes("conditional_approval_shift_by_tax_change")
-      ) {
-        actualChange = chosenValue > 0 ? -5 : chosenValue < 0 ? 5 : 0;
-      } else if (
-        effect.type.includes("conditional_level_change_by_tax_change")
-      ) {
-        actualChange = chosenValue < 0 ? 1 : chosenValue > 0 ? -1 : 0;
-      }
-    } else {
-      actualChange = effect.change || 0;
-    }
-  }
-
-  // Handle special types for budget adjustments
-  if (effect.type === "absolute_set_rate") {
-    target[lastKey] = actualChange;
-  } else if (effect.type === "formula_absolute_change") {
-    const formula = effect.changeFormula;
-    let calculatedValue = 0;
-    try {
-      const { population, gdpPerCapita } = newState.startingCity;
-      calculatedValue = eval(
-        formula
-          .replace(/population/g, population)
-          .replace(/gdpPerCapita/g, gdpPerCapita)
-      );
-    } catch (e) {
-      console.error("[applyPolicyEffect] Error evaluating formula:", e);
-      calculatedValue = 0;
-    }
-    target[lastKey] = (target[lastKey] || 0) + calculatedValue;
   } else {
-    // Apply changes based on effect type
+    const { target, lastKey } = getTargetObjectAndKey(draft, effect);
+
+    if (!target || !lastKey) return draft; // Guard against invalid target
+
+    let actualChange = effect.change || 0;
+    if (effect.type.includes("by_param") || effect.type.includes("by_tax_change")) {
+      // Parameterized logic here...
+    }
+
     switch (effect.type) {
       case "level_change":
       case "conditional_level_change_by_param":
-        target[lastKey] = adjustStatLevel(
-          target[lastKey],
-          RATING_LEVELS,
-          actualChange
-        );
+        target[lastKey] = adjustStatLevel(target[lastKey], RATING_LEVELS, actualChange);
         break;
       case "mood_shift":
       case "conditional_mood_shift":
       case "conditional_mood_shift_by_tax_change":
-        target[lastKey] = adjustStatLevel(
-          target[lastKey],
-          MOOD_LEVELS,
-          actualChange
-        );
+        target[lastKey] = adjustStatLevel(target[lastKey], MOOD_LEVELS, actualChange);
         break;
       case "percentage_point_change":
         target[lastKey] = (target[lastKey] || 0) + actualChange;
         break;
       case "absolute_change":
       case "absolute_change_recurring":
-        target[lastKey] = (target[lastKey] || 0) + actualChange;
+        if (typeof target[lastKey] === "number") {
+          target[lastKey] += actualChange;
+        }
         break;
-      case "conditional_approval_shift":
-      case "conditional_approval_shift_by_tax_change":
-        target[lastKey] = (target[lastKey] || 0) + actualChange;
+      case "absolute_set_rate":
+        target[lastKey] = actualChange;
         break;
       default:
-        console.warn(
-          `[applyPolicyEffect] Unknown or unhandled effect type: ${effect.type}`
-        );
+        console.warn(`[applyPolicyEffect] Unknown or unhandled effect type: ${effect.type}`);
         break;
     }
   }
 
-  return newState;
+  return currentState;
 };

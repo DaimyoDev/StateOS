@@ -1,36 +1,70 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import Modal from "./Modal";
 import useGameStore from "../../store";
 import "./BillAuthoringModal.css";
-import { CITY_POLICIES } from "../../data/policyDefinitions";
 
-const BillAuthoringModal = ({ isOpen, onClose }) => {
-  const savedBillTemplates = useGameStore(
-    (state) => state.savedBillTemplates || []
-  );
-  const { proposeBill, saveBillTemplate, addToast } = useGameStore(
-    (state) => state.actions
-  );
-  const playerPolitician = useGameStore(
-    (state) => state.activeCampaign.politician
-  );
+const BillAuthoringModal = ({ onClose }) => {
+  const {
+    availablePolicies,
+    proposeBill,
+    saveBillTemplate,
+    addToast,
+    savedBillTemplates,
+    playerPolitician,
+  } = useGameStore((state) => ({
+    availablePolicies: state.availablePolicies,
+    proposeBill: state.actions.proposeBill,
+    saveBillTemplate: state.actions.saveBillTemplate,
+    addToast: state.actions.addToast,
+    savedBillTemplates: state.savedBillTemplates || [],
+    playerPolitician: state.activeCampaign.politician,
+    isOpen: state.isBillAuthoringModalOpen,
+    mode: state.billAuthoringMode,
+    targetLaw: state.billAuthoringTargetLaw,
+  }));
 
   const [billName, setBillName] = useState("New Legislative Initiative");
   const [policiesInBill, setPoliciesInBill] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [currentLevel, setCurrentLevel] = useState("city");
+
+  useEffect(() => {
+    if (isOpen) {
+      if (mode === 'amend' && targetLaw) {
+        setBillName(`Amendment to: ${targetLaw.name}`);
+        setCurrentLevel(targetLaw.level);
+        setPoliciesInBill(targetLaw.policies.map(p => ({...p, policyId: p.id, chosenParameters: p.parameters || {}})));
+      } else if (mode === 'repeal' && targetLaw) {
+        setBillName(`Repeal of: ${targetLaw.name}`);
+        setCurrentLevel(targetLaw.level);
+        setPoliciesInBill(targetLaw.policies.map(p => ({...p, policyId: p.id, chosenParameters: {}})));
+      } else {
+        setBillName("New Legislative Initiative");
+        setPoliciesInBill([]);
+        setCurrentLevel("city");
+      }
+    } else {
+      // Reset form when modal is not open
+      setBillName("New Legislative Initiative");
+      setPoliciesInBill([]);
+      setCurrentLevel("city");
+      setSearchTerm("");
+    }
+  }, [isOpen, mode, targetLaw]);
 
   // State for the new "Save Template" modal
   const [isSaveTemplateModalOpen, setIsSaveTemplateModalOpen] = useState(false);
   const [templateNameInput, setTemplateNameInput] = useState("");
 
   const filteredAvailablePolicies = useMemo(() => {
-    return CITY_POLICIES.filter(
+    const policiesForLevel = availablePolicies[currentLevel] || [];
+    return policiesForLevel.filter(
       (p) =>
         (p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
           p.area.toLowerCase().includes(searchTerm.toLowerCase())) &&
         !policiesInBill.some((b) => b.policyId === p.id)
     );
-  }, [searchTerm, policiesInBill]);
+  }, [searchTerm, policiesInBill, currentLevel, availablePolicies]);
 
   const addPolicyToBill = (policy) => {
     const newPolicyEntry = {
@@ -75,11 +109,24 @@ const BillAuthoringModal = ({ isOpen, onClose }) => {
       });
       return;
     }
+
+    const policiesForAction = policiesInBill.map((p) => ({
+      policyId: p.policyId,
+    }));
+    const parameterizedPolicy = policiesInBill.find((p) => p.chosenParameters);
+    const parametersForAction = parameterizedPolicy
+      ? parameterizedPolicy.chosenParameters
+      : null;
+
     proposeBill(
+      currentLevel,
       billName,
-      policiesInBill,
+      policiesForAction,
       playerPolitician.id,
-      `${playerPolitician.firstName} ${playerPolitician.lastName}`
+      `${playerPolitician.firstName} ${playerPolitician.lastName}`,
+      parametersForAction,
+      mode, // 'new', 'amend', 'repeal'
+      targetLaw ? targetLaw.id : null
     );
     onClose();
   };
@@ -127,11 +174,15 @@ const BillAuthoringModal = ({ isOpen, onClose }) => {
       <Modal
         isOpen={isOpen}
         onClose={onClose}
-        title="Bill Authoring"
+        title={mode === 'amend' ? 'Amend Existing Law' : mode === 'repeal' ? 'Repeal Existing Law' : 'Author New Bill'}
         isLarge={true}
       >
         <div className="bill-authoring-content">
-          {/* ... existing bill authoring content ... */}
+          <div className="level-selector-container" style={{ marginBottom: '1rem', borderBottom: '1px solid #444', paddingBottom: '1rem' }}>
+            <button onClick={() => setCurrentLevel('city')} className={`level-button ${currentLevel === 'city' ? 'active' : ''}`} disabled={mode !== 'new'}>City</button>
+            <button onClick={() => setCurrentLevel('state')} className={`level-button ${currentLevel === 'state' ? 'active' : ''}`} disabled={mode !== 'new'}>State</button>
+            <button onClick={() => setCurrentLevel('national')} className={`level-button ${currentLevel === 'national' ? 'active' : ''}`} disabled={mode !== 'new'}>National</button>
+          </div>
           <div className="bill-setup-area">
             <input
               type="text"
@@ -158,10 +209,11 @@ const BillAuthoringModal = ({ isOpen, onClose }) => {
                 placeholder="Search policies..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                disabled={mode !== 'new'}
               />
               <ul className="policy-list">
                 {filteredAvailablePolicies.map((policy) => (
-                  <li key={policy.id} onClick={() => addPolicyToBill(policy)}>
+                  <li key={policy.id} onClick={() => mode === 'new' && addPolicyToBill(policy)} className={mode !== 'new' ? 'disabled' : ''}>
                     <strong>{policy.name}</strong>
                     <span>{policy.area}</span>
                   </li>
@@ -173,7 +225,8 @@ const BillAuthoringModal = ({ isOpen, onClose }) => {
               <h4>Policies in "{billName}"</h4>
               <ul className="policy-list">
                 {policiesInBill.map((p) => {
-                  const fullPolicy = CITY_POLICIES.find(
+                  const policiesForLevel = availablePolicies[currentLevel] || [];
+                  const fullPolicy = policiesForLevel.find(
                     (cp) => cp.id === p.policyId
                   );
                   return (
@@ -183,6 +236,7 @@ const BillAuthoringModal = ({ isOpen, onClose }) => {
                         <button
                           onClick={() => removePolicyFromBill(p.policyId)}
                           className="button-delete small-button"
+                          disabled={mode !== 'new'}
                         >
                           &times;
                         </button>
@@ -207,6 +261,7 @@ const BillAuthoringModal = ({ isOpen, onClose }) => {
                                 e.target.value
                               )
                             }
+                            disabled={mode === 'repeal'}
                             min={fullPolicy.parameterDetails.min}
                             max={fullPolicy.parameterDetails.max}
                             step={fullPolicy.parameterDetails.step}
@@ -233,7 +288,7 @@ const BillAuthoringModal = ({ isOpen, onClose }) => {
               onClick={handlePropose}
               disabled={policiesInBill.length === 0}
             >
-              Propose Bill
+              {mode === 'amend' ? 'Propose Amendment' : mode === 'repeal' ? 'Propose Repeal' : 'Propose Bill'}
             </button>
           </div>
         </div>
