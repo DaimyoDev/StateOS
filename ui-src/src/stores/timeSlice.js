@@ -310,24 +310,27 @@ export const createTimeSlice = (set, get) => {
 
         // --- PHASE 3a: Daily Legislation Processing ---
         // These actions are now self-contained and iterate through city, state, and national levels.
-        get().actions.processImpendingVotes?.(); // Checks for bills to be voted on today
+        // --- PHASE 3a: Process Yesterday's Queued Votes ---
+        // Auto-process votes from the PREVIOUS day if a live session wasn't started.
+        const { isVotingSessionActive, voteQueue } = get();
+        if (!isVotingSessionActive && voteQueue && voteQueue.length > 0) {
+          const votesToProcess = [...voteQueue]; // Process the queue from the previous day
+          votesToProcess.forEach((vote) => {
+            const aiVotes = get().actions.runAllAIVotesForBill?.(vote.billId, vote.level);
+            console.log(`[TimeSlice Debug] AI votes calculated:`, aiVotes);
+            get().actions.finalizeBillVote?.(vote.billId, vote.level, aiVotes);
+          });
+          // Clear the queue AFTER processing yesterday's votes
+          get().actions.clearVoteQueue?.();
+        }
+
+        // --- PHASE 3b: Daily Legislation Processing for NEW day ---
+        get().actions.processImpendingVotes?.(); // Finds and queues votes for the NEW day
         get().actions.processDailyBillCommentary?.(); // AI politicians form stances
         // AI politicians propose new bills
         ['city', 'state', 'national'].forEach(level => {
           get().actions.processAIProposals?.(level);
         });
-
-        // Auto-process votes if the player did not start a live voting session.
-        // This ensures that clicking Advance Day will still resolve today's scheduled votes.
-        const { isVotingSessionActive, voteQueue } = get();
-        if (!isVotingSessionActive && voteQueue && voteQueue.length > 0) {
-          const votesToProcess = [...voteQueue];
-          votesToProcess.forEach((vote) => {
-            get().actions.runAllAIVotesForBill?.(vote.billId, vote.level);
-            get().actions.finalizeBillVote?.(vote.billId, vote.level);
-          });
-          get().actions.clearVoteQueue?.();
-        }
 
         // Monthly updates
         if (effectiveDate.day === 1) {

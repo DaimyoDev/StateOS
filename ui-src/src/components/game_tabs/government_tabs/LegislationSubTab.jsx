@@ -4,6 +4,7 @@ import "./GovernmentSubTabStyles.css";
 import "./LegislationSubTab.css";
 import { areDatesEqual } from "../../../utils/core";
 import PassedBillsArchive from "../PassedBillsArchive";
+import FailedBillsArchive from "../FailedBillsArchive";
 
 const EMPTY_ARRAY = [];
 
@@ -140,7 +141,13 @@ const LegislationSubTab = ({ campaignData }) => {
           className={`sub-tab-button ${activeTab === 'archive' ? 'active' : ''}`}
           onClick={() => setActiveTab('archive')}
         >
-          Passed Bills Archive
+          Passed Bills
+        </button>
+        <button
+          className={`sub-tab-button ${activeTab === 'failed' ? 'active' : ''}`}
+          onClick={() => setActiveTab('failed')}
+        >
+          Failed Bills
         </button>
       </div>
 
@@ -156,9 +163,9 @@ const LegislationSubTab = ({ campaignData }) => {
                   bill.status === "pending_vote";
                 const proposerName =
                   bill.proposerName || getPoliticianNameById(bill.proposerId);
-                const yeaVotes = bill.votes?.yea?.length || 0;
-                const nayVotes = bill.votes?.nay?.length || 0;
-                const abstainVotes = bill.votes?.abstain?.length || 0;
+                const yeaVotes = bill.councilVotesCast ? Object.values(bill.councilVotesCast).filter(v => v === "yea" || v === "YEA").length : 0;
+                const nayVotes = bill.councilVotesCast ? Object.values(bill.councilVotesCast).filter(v => v === "nay" || v === "NAY").length : 0;
+                const abstainVotes = bill.councilVotesCast ? Object.values(bill.councilVotesCast).filter(v => v === "abstain").length : 0;
 
                 return (
                   <li
@@ -224,78 +231,67 @@ const LegislationSubTab = ({ campaignData }) => {
         <section className="legislation-section active-legislation">
           <h4>Active & Enacting Legislation</h4>
           {sortedActiveLegislation.length > 0 ? (
-            <ul className="legislation-list">
-              {sortedActiveLegislation.map((policy) => {
-                const enactingProposerName = getPoliticianNameById(
-                  policy.proposerId
-                );
-                let activeParameterDisplay = null;
-                if (
-                  policy.isParameterized &&
-                  policy.chosenParameters &&
-                  policy.parameterDetails
-                ) {
-                  const paramKey = policy.parameterDetails.key || "amount";
-                  const amount = policy.chosenParameters[paramKey];
-                  const unit = policy.parameterDetails.unit || "";
-                  const targetLine =
-                    policy.parameterDetails.targetBudgetLine ||
-                    policy.parameterDetails.targetTaxRate ||
-                    "funding";
-                  const targetLineFormatted = targetLine
-                    .replace(/([A-Z])/g, " $1")
-                    .toLowerCase();
-                  if (amount !== undefined) {
-                    const changeDesc =
-                      amount >= 0
-                        ? `Budget for ${targetLineFormatted} was increased by ${unit}${Math.abs(
-                            amount
-                          ).toLocaleString()}`
-                        : `Budget for ${targetLineFormatted} was decreased by ${unit}${Math.abs(
-                            amount
-                          ).toLocaleString()}`;
-                    activeParameterDisplay = (
-                      <p className="parameter-info">
-                        <strong>Adjustment:</strong> {changeDesc}
-                      </p>
-                    );
-                  }
-                }
-
+            <div className="passed-bills-archive-container active-legislation-container">
+              {sortedActiveLegislation.map((bill) => {
+                const enactingProposerName = getPoliticianNameById(bill.proposerId) || bill.proposerName;
                 return (
-                  <li
-                    key={policy.id}
-                    className="legislation-item status-passed"
-                    title="This is an active law. Its effects are being applied."
-                  >
-                    <div className="legislation-header">
-                      <strong className="policy-name">{policy.policyName}</strong>
-                      <span className="policy-status">
-                        {policy.monthsUntilEffective > 0
-                          ? `Enacting (Effective in ~${policy.monthsUntilEffective} mo.)`
-                          : policy.effectsApplied
-                          ? "Effects Active"
-                          : "Effective Now"}
-                      </span>
+                  <div key={bill.id} className="archive-card">
+                    <div className="archive-card-header">
+                      <h3>{bill.name}</h3>
+                      <p className="archive-card-subheader">
+                        Enacted on{" "}
+                        <strong>
+                          {bill.dateEnacted?.month}/{bill.dateEnacted?.day}/{bill.dateEnacted?.year}
+                        </strong>
+                        {' | '}Proposed by <strong>{enactingProposerName || 'N/A'}</strong>
+                      </p>
                     </div>
-                    <p className="policy-description">
-                      <em>{policy.description}</em>
-                    </p>
-                    {activeParameterDisplay}
-                    <p className="proposer-info">
-                      Enacted on: {policy.dateEnacted?.month}/
-                      {policy.dateEnacted?.day}/{policy.dateEnacted?.year}
-                      {policy.proposerId &&
-                        ` (Originally proposed by: ${enactingProposerName})`}
-                    </p>
-                    <div className="legislation-actions">
-                      <button className="action-button small-button" onClick={(e) => { e.stopPropagation(); openBillAuthoringModal('amend', policy); }}>Amend</button>
-                      <button className="action-button small-button danger" onClick={(e) => { e.stopPropagation(); openBillAuthoringModal('repeal', policy); }}>Repeal</button>
+
+                    <div className="bill-contents-section">
+                      <h4>Policies in this Law</h4>
+                      <ul className="policy-list-archive">
+                        {(bill.policies || []).map((policy, index) => {
+                          let activeParameterDisplay = null;
+                          if (policy.isParameterized && policy.chosenParameters && policy.parameterDetails) {
+                            const paramKey = policy.parameterDetails.key || "amount";
+                            const amount = policy.chosenParameters[paramKey];
+                            const unit = policy.parameterDetails.unit || "";
+                            if (amount !== undefined) {
+                              activeParameterDisplay = (
+                                <p className="policy-detail-text parameter-info">
+                                  <strong>Adjustment:</strong> {unit}{amount.toLocaleString()}
+                                </p>
+                              );
+                            }
+                          }
+
+                          return (
+                            <li key={`${bill.id}-${policy.policyId}-${index}`}>
+                              <div className="active-policy-header">
+                                <strong>{policy.policyName}</strong>
+                                <span className={`policy-status-badge status-${policy.monthsUntilEffective > 0 ? 'enacting' : (policy.effectsApplied ? 'active' : 'pending')}`}>
+                                  {policy.monthsUntilEffective > 0
+                                    ? `Enacting (~${policy.monthsUntilEffective} mo)`
+                                    : policy.effectsApplied
+                                    ? "Effects Active"
+                                    : "Effective Now"}
+                                </span>
+                              </div>
+                              <p className="policy-detail-text">{policy.description}</p>
+                              {activeParameterDisplay}
+                              <div className="legislation-actions" style={{ marginTop: '8px' }}>
+                                <button className="action-button small-button" onClick={(e) => { e.stopPropagation(); openBillAuthoringModal('amend', { ...policy, billId: bill.id }); }}>Amend</button>
+                                <button className="action-button small-button danger" onClick={(e) => { e.stopPropagation(); openBillAuthoringModal('repeal', { ...policy, billId: bill.id }); }}>Repeal</button>
+                              </div>
+                            </li>
+                          );
+                        })}
+                      </ul>
                     </div>
-                  </li>
+                  </div>
                 );
               })}
-            </ul>
+            </div>
           ) : (
             <p>No policies currently active or being enacted.</p>
           )}
@@ -305,6 +301,12 @@ const LegislationSubTab = ({ campaignData }) => {
       {activeTab === 'archive' && (
         <section className="legislation-section archive">
           <PassedBillsArchive level={currentLevel} />
+        </section>
+      )}
+
+      {activeTab === 'failed' && (
+        <section className="legislation-section failed-archive">
+          <FailedBillsArchive level={currentLevel} />
         </section>
       )}
     </div>

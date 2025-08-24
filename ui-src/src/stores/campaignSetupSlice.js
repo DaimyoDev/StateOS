@@ -201,7 +201,11 @@ export const createCampaignSetupSlice = (set, get) => {
           activeCampaign: {
             ...state.activeCampaign,
             playerPoliticianId: playerPoliticianData.id,
-            politician: playerPoliticianData,
+            politician: {
+              ...playerPoliticianData,
+              regionId: setupState.selectedRegionId, // Add this
+              startingCity: selectedCityObject, // Add this
+            },
             countryId: setupState.selectedCountryId,
             regionId: setupState.selectedRegionId,
             partyInfo: setupState.playerPartyChoice,

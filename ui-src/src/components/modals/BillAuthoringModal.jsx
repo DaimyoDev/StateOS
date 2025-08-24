@@ -4,24 +4,13 @@ import useGameStore from "../../store";
 import "./BillAuthoringModal.css";
 
 const BillAuthoringModal = ({ onClose }) => {
-  const {
-    availablePolicies,
-    proposeBill,
-    saveBillTemplate,
-    addToast,
-    savedBillTemplates,
-    playerPolitician,
-  } = useGameStore((state) => ({
-    availablePolicies: state.availablePolicies,
-    proposeBill: state.actions.proposeBill,
-    saveBillTemplate: state.actions.saveBillTemplate,
-    addToast: state.actions.addToast,
-    savedBillTemplates: state.savedBillTemplates || [],
-    playerPolitician: state.activeCampaign.politician,
-    isOpen: state.isBillAuthoringModalOpen,
-    mode: state.billAuthoringMode,
-    targetLaw: state.billAuthoringTargetLaw,
-  }));
+  const { proposeBill, saveBillTemplate, addToast } = useGameStore((state) => state.actions);
+  const availablePolicies = useGameStore((state) => state.availablePolicies);
+  const savedBillTemplates = useGameStore((state) => state.savedBillTemplates || []);
+  const playerPolitician = useGameStore((state) => state.activeCampaign.politician);
+  const isOpen = useGameStore((state) => state.isBillAuthoringModalOpen);
+  const mode = useGameStore((state) => state.billAuthoringMode);
+  const targetLaw = useGameStore((state) => state.billAuthoringTargetLaw);
 
   const [billName, setBillName] = useState("New Legislative Initiative");
   const [policiesInBill, setPoliciesInBill] = useState([]);

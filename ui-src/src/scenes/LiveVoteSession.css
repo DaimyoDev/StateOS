@@ -27,8 +27,7 @@
 
 /* The main panel containing all the voting information */
 .live-vote-panel {
-  width: 90vw;
-  max-width: 850px; /* INCREASED from 650px to make the panel much bigger */
+  width: 80vw;
   background-color: var(--primary-bg);
   border: 1px solid var(--border-color);
   border-radius: var(--element-radius);
@@ -36,63 +35,127 @@
   padding: 25px 30px;
   display: flex;
   flex-direction: column;
-  max-height: 90vh;
+  max-height: 98vh;
+  min-height: 70vh;
 }
 
-.live-vote-panel h2 {
+/* Header section */
+.vote-session-header {
+  text-align: center;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.vote-session-header h2 {
   font-family: var(--font-heading);
   color: var(--accent-color);
-  text-align: center;
   margin: 0 0 10px 0;
   font-size: 1.8em;
   letter-spacing: 1px;
 }
 
-.live-vote-panel h3 {
-  text-align: center;
+.vote-session-header h3 {
   margin: 0 0 5px 0;
   font-size: 1.2em;
 }
 
-.live-vote-panel > p {
-  text-align: center;
+.vote-session-header p {
   color: var(--secondary-text);
-  margin: 0 0 20px 0;
+  margin: 0;
   font-style: italic;
 }
 
-/* The running Yea/Nay tally */
-.vote-tally {
-  text-align: center;
-  font-size: 1.6em;
-  font-weight: bold;
-  margin-bottom: 20px;
-  padding: 15px 0;
-  border-top: 1px solid var(--border-color);
-  border-bottom: 1px solid var(--border-color);
+/* Main content area with two panels */
+.vote-session-content {
   display: flex;
-  justify-content: center;
-  gap: 40px;
+  gap: 30px;
+  flex: 1;
+  overflow: hidden; /* Prevent content from overflowing the main panel */
 }
 
-.tally-yea {
-  color: var(--success-text, green);
-}
-.tally-nay {
-  color: var(--error-text, red);
+/* Left panel - voters list */
+.voters-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0; /* Prevents flex items from overflowing */
 }
 
-.tally-abstain {
-  color: var(--secondary-text, grey);
+.voters-panel h4 {
+  margin: 0 0 15px 0;
+  color: var(--accent-color);
+  font-size: 1.1em;
+  text-align: center;
+}
+
+/* Right panel - tallies and charts */
+.tallies-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0; /* Prevents flex items from overflowing */
+}
+
+.tallies-panel h4 {
+  margin: 0 0 10px 0;
+  color: var(--accent-color);
+  font-size: 1.1em;
+  text-align: center;
+}
+
+/* Vote tally redesign */
+.vote-tally {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.tally-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 15px;
+  border-radius: var(--element-radius);
+  background-color: var(--secondary-bg);
+  border: 1px solid var(--border-color);
+}
+
+.tally-number {
+  font-size: 2em;
+  font-weight: bold;
+  line-height: 1;
+}
+
+.tally-label {
+  font-size: 0.9em;
+  margin-top: 5px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.tally-yea .tally-number {
+  color: var(--success-text, #22c55e);
+}
+.tally-nay .tally-number {
+  color: var(--error-text, #ef4444);
+}
+.tally-abstain .tally-number {
+  color: var(--secondary-text, #6b7280);
+}
+.tally-pending .tally-number {
+  color: var(--secondary-text, #9ca3af);
 }
 
 /* The scrollable list of council members */
 .council-voter-list {
   list-style: none;
   padding: 10px;
-  margin: 0 0 20px 0;
+  margin: 0;
   overflow-y: auto;
-  max-height: 300px; /* Adjust as needed */
+  flex: 1;
   background-color: var(--secondary-bg);
   border-radius: var(--element-radius);
   border: 1px solid var(--border-color);
@@ -102,109 +165,231 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 15px;
+  padding: 12px 15px;
   border-radius: 4px;
-  margin-bottom: 5px;
+  margin-bottom: 8px;
   background-color: var(--primary-bg);
   transition: background-color 0.3s ease;
 }
 
-.council-voter-list li > span:last-child {
+.voter-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.voter-name {
+  font-weight: 600;
+  font-size: 0.95em;
+}
+
+.voter-party {
+  font-size: 0.8em;
+  color: var(--secondary-text);
+  font-style: italic;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 250px; /* Adjust as needed */
+}
+
+.vote-status {
   font-weight: bold;
   font-size: 0.9em;
+  padding: 4px 8px;
+  border-radius: 3px;
+  min-width: 70px;
+  text-align: center;
 }
 
 /* Styling for each voter's status */
-.voter-status-pending {
+.voter-status-pending .vote-status {
   color: var(--secondary-text);
+  background-color: rgba(156, 163, 175, 0.1);
 }
 .voter-status-yea {
-  background-color: rgba(var(--rgb-success-text, 0, 128, 0), 0.1);
+  background-color: rgba(34, 197, 94, 0.1);
 }
-.voter-status-yea > span:last-child {
-  color: var(--success-text);
+.voter-status-yea .vote-status {
+  color: var(--success-text, #22c55e);
+  background-color: rgba(34, 197, 94, 0.2);
 }
 .voter-status-nay {
-  background-color: rgba(var(--rgb-error-text, 255, 0, 0), 0.1);
+  background-color: rgba(239, 68, 68, 0.1);
 }
-.voter-status-nay > span:last-child {
-  color: var(--error-text);
+.voter-status-nay .vote-status {
+  color: var(--error-text, #ef4444);
+  background-color: rgba(239, 68, 68, 0.2);
 }
 .voter-status-abstain {
-  background-color: rgba(var(--rgb-secondary-text, 128, 128, 128), 0.1);
+  background-color: rgba(107, 114, 128, 0.1);
 }
-.voter-status-abstain > span:last-child {
-  color: var(--secondary-text);
+.voter-status-abstain .vote-status {
+  color: var(--secondary-text, #6b7280);
+  background-color: rgba(107, 114, 128, 0.2);
 }
 
-/* Containers for the action buttons at the bottom */
-.player-vote-actions,
-.session-controls {
+/* Chart container */
+.chart-container {
+  height: 200px;
+  margin: 10px 0;
+}
+
+/* Party breakdown */
+.party-breakdown {
   display: flex;
-  justify-content: center;
-  gap: 15px;
-  padding-top: 20px;
-  border-top: 1px solid var(--border-color);
-  flex-wrap: wrap; /* Add this line */
+  flex-direction: column;
+  flex-shrink: 1;
+  min-height: 0;
 }
 
-.player-vote-actions {
-  margin-bottom: 15px;
-  flex-wrap: wrap; /* And this line */
+.party-votes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto; /* Allow this section to scroll if needed */
+  padding-right: 5px; /* Add space for scrollbar */
 }
 
-/* Use existing button styles or create specific ones */
-.player-vote-actions button,
-.session-controls button {
-  padding: 10px 20px;
+.party-vote-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background-color: var(--secondary-bg);
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
 }
 
-.council-voter-list li > span.vote-status-indicator {
-  font-weight: bold;
+.party-name {
+  font-weight: 600;
   font-size: 0.9em;
 }
 
+.party-vote-counts {
+  display: flex;
+  gap: 12px;
+  font-size: 0.85em;
+}
+
+.party-yea {
+  color: var(--success-text, #22c55e);
+}
+.party-nay {
+  color: var(--error-text, #ef4444);
+}
+.party-abstain {
+  color: var(--secondary-text, #6b7280);
+}
+.party-pending {
+  color: var(--secondary-text, #9ca3af);
+}
+
+/* Footer section */
+.vote-session-footer {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
 .player-vote-actions {
-  margin-bottom: 15px;
+  display: flex;
+  justify-content: center;
+  gap: 15px;
   flex-wrap: wrap;
-  align-items: center; /* Center the message vertically */
-  min-height: 40px; /* Give it some height so layout doesn't jump */
+  align-items: center;
+  min-height: 40px;
 }
 
 .player-voted-message {
   font-style: italic;
   color: var(--secondary-text);
   font-size: 1.1em;
+  text-align: center;
 }
 
 .session-controls {
   display: flex;
   justify-content: center;
-  align-items: center; /* Align items vertically */
+  align-items: center;
   gap: 10px;
-  padding-top: 20px;
-  border-top: 1px solid var(--border-color);
   flex-wrap: wrap;
 }
 
 .session-controls > span {
   font-size: 0.9em;
   color: var(--secondary-text);
+  margin-right: 5px;
+}
+
+/* Button styling */
+.player-vote-actions button,
+.session-controls button {
+  padding: 10px 20px;
 }
 
 .action-button.positive {
-  background-color: var(--success-text);
-  border-color: var(--success-text);
+  background-color: var(--success-text, #22c55e);
+  border-color: var(--success-text, #22c55e);
+  color: white;
 }
 .action-button.positive:hover {
-  background-color: var(--success-text-hover);
-  border-color: var(--success-text-hover);
+  background-color: var(--success-text-hover, #16a34a);
+  border-color: var(--success-text-hover, #16a34a);
 }
 .action-button.critical {
-  background-color: var(--error-text);
-  border-color: var(--error-text);
+  background-color: var(--error-text, #ef4444);
+  border-color: var(--error-text, #ef4444);
+  color: white;
 }
 .action-button.critical:hover {
-  background-color: var(--error-text-hover);
-  border-color: var(--error-text-hover);
+  background-color: var(--error-text-hover, #dc2626);
+  border-color: var(--error-text-hover, #dc2626);
+}
+
+/* Custom Scrollbar Styling */
+.council-voter-list::-webkit-scrollbar,
+.party-votes::-webkit-scrollbar {
+  width: 6px;
+}
+
+.council-voter-list::-webkit-scrollbar-track,
+.party-votes::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+}
+
+.council-voter-list::-webkit-scrollbar-thumb,
+.party-votes::-webkit-scrollbar-thumb {
+  background-color: var(--border-color-hover, #555);
+  border-radius: 3px;
+}
+
+.council-voter-list::-webkit-scrollbar-thumb:hover,
+.party-votes::-webkit-scrollbar-thumb:hover {
+  background-color: var(--accent-color, #777);
+}
+
+/* Responsive design */
+@media (max-width: 1200px) {
+  .live-vote-panel {
+    width: 90vw;
+  }
+  
+  .vote-session-content {
+    flex-direction: column;
+    gap: 20px;
+  }
+  
+  .voters-panel,
+  .tallies-panel {
+    flex: none;
+  }
+  
+  .council-voter-list {
+    max-height: 300px;
+  }
 }

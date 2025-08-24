@@ -1,9 +1,8 @@
 import React from 'react';
 import useGameStore from "../../store";
 import { CITY_POLICIES, STATE_POLICIES, NATIONAL_POLICIES } from "../../data";
-import "./PassedBillsArchive.css";
+import "./PassedBillsArchive.css"; // Re-use the same CSS for consistency
 
-// Helper function to create readable descriptions, adapted from BillDetailsModal
 const policySets = {
   city: CITY_POLICIES,
   state: STATE_POLICIES,
@@ -48,28 +47,28 @@ const getPolicyDetailsText = (policyInBill, level) => {
   }
 };
 
-const PassedBillsArchive = ({ level = 'city' }) => {
-  const passedBills = useGameStore((state) => state[level]?.passedBillsArchive || []);
+const FailedBillsArchive = ({ level = 'city' }) => {
+  const failedBills = useGameStore((state) => state[level]?.failedBillsHistory || []);
 
-  if (passedBills.length === 0) {
+  if (failedBills.length === 0) {
     return (
       <div className="passed-bills-archive-container">
-        <p>No passed bills in the archive yet.</p>
+        <p>No failed bills in the archive yet.</p>
       </div>
     );
   }
 
   return (
     <div className="passed-bills-archive-container">
-      {passedBills.map((bill) => (
-        <div key={bill.id} className="archive-card">
+      {failedBills.map((bill) => (
+        <div key={bill.id} className="archive-card failed-bill-card">
           <div className="archive-card-header">
             <h3>{bill.name}</h3>
             <p className="archive-card-subheader">
-              Passed on{" "}
+              Failed on{" "}
               <strong>
-                {bill.datePassed?.month}/{bill.datePassed?.day}/
-                {bill.datePassed?.year}
+                {bill.dateFailed?.month}/{bill.dateFailed?.day}/
+                {bill.dateFailed?.year}
               </strong>
               {' | '}Proposed by <strong>{bill.proposerName || 'N/A'}</strong>
             </p>
@@ -89,11 +88,11 @@ const PassedBillsArchive = ({ level = 'city' }) => {
 
           <div className="final-vote-tally">
             <div className="vote-tally-item tally-yea">
-              <strong>{bill.councilVotesCast ? Object.values(bill.councilVotesCast).filter(v => v === "yea" || v === "YEA").length : 0}</strong>
+              <strong>{bill.yeaVotes}</strong>
               <span>Yea</span>
             </div>
             <div className="vote-tally-item tally-nay">
-              <strong>{bill.councilVotesCast ? Object.values(bill.councilVotesCast).filter(v => v === "nay" || v === "NAY").length : 0}</strong>
+              <strong>{bill.nayVotes}</strong>
               <span>Nay</span>
             </div>
           </div>
@@ -103,4 +102,4 @@ const PassedBillsArchive = ({ level = 'city' }) => {
   );
 };
 
-export default PassedBillsArchive;
+export default FailedBillsArchive;

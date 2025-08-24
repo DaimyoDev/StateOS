@@ -304,6 +304,13 @@ const calculateProposerRelationshipScore = (
   governmentOffices
 ) => {
   let score = 0;
+  
+  // Handle case where governmentOffices is null, undefined, or not an array
+  if (!Array.isArray(governmentOffices)) {
+    console.log(`[calculateProposerRelationshipScore Debug] Government offices is not an array:`, governmentOffices);
+    return score;
+  }
+  
   const playerPolitician = governmentOffices.find((o) => o.isPlayer);
   const playerPoliticianId = playerPolitician ? playerPolitician.id : null;
 
@@ -315,15 +322,22 @@ const calculateProposerRelationshipScore = (
   return score;
 };
 
-export const decideAIVote = (
+export function decideAIVote(
   aiPolitician,
-  bill, // The argument is now a 'bill' object
+  bill,
   cityStats,
   activeLegislation,
-  proposedLegislation,
+  proposedBills,
   governmentOffices,
-  allPolicyDefsForLevel = [] // NEW: Pass the relevant policy definitions
-) => {
+  allPolicyDefsForLevel
+) {
+  
+  // Handle null governmentOffices parameter
+  if (governmentOffices === null || governmentOffices === undefined) {
+    console.log(`[decideAIVote Debug] Government offices is null, using empty object`);
+    governmentOffices = {};
+  }
+  
   if (!bill || !bill.policies || bill.policies.length === 0) {
     console.warn(`[AI Voting] Bill object is invalid or has no policies.`);
     return "abstain";
@@ -334,7 +348,15 @@ export const decideAIVote = (
 
   // Iterate over each policy within the bill and aggregate the scores
   for (const policyInBill of bill.policies) {
-    const policyDef = allPolicyDefsForLevel.find((p) => p.id === policyInBill.policyId);
+    let policyDef;
+    
+    // For parameterized policies (ending with '_parameterized'), the policy object itself contains the definition
+    if (policyInBill.policyId && policyInBill.policyId.endsWith('_parameterized')) {
+      policyDef = policyInBill; // The policy object IS the definition for parameterized policies
+    } else {
+      // For standard policies, look them up in the global list
+      policyDef = allPolicyDefsForLevel[policyInBill.policyId];
+    }
 
     if (!policyDef) {
       console.warn(
@@ -375,18 +397,29 @@ export const decideAIVote = (
     calculateProposerRelationshipScore(aiPolitician, bill, governmentOffices) *
     0.2;
 
-  // Add a small random factor to the final bill score
-  totalVoteScore += (Math.random() - 0.5) * 0.1;
+  // Add individual variability to each politician's decision-making
+  const personalVariability = (Math.random() - 0.5) * 0.8; // Larger random factor
+  const ideologicalConsistency = Math.random() * 0.3; // Some politicians are more consistent
+  totalVoteScore += personalVariability + ideologicalConsistency;
 
-  // Decision thresholds - may need tweaking now that scores are aggregated
-  const YEA_THRESHOLD = 1.0 * bill.policies.length; // Scale threshold by number of policies
-  const NAY_THRESHOLD = -0.5 * bill.policies.length;
+  // More realistic thresholds that create divisions
+  const BASE_YEA_THRESHOLD = 0.3; // Lower threshold for more yea votes
+  const BASE_NAY_THRESHOLD = -0.3; // Higher threshold for more nay votes
+  
+  // Add some politician-specific bias
+  const politicianBias = (Math.random() - 0.5) * 0.4;
+  const YEA_THRESHOLD = BASE_YEA_THRESHOLD + politicianBias;
+  const NAY_THRESHOLD = BASE_NAY_THRESHOLD + politicianBias;
 
   if (totalVoteScore >= YEA_THRESHOLD) {
     return "yea";
   } else if (totalVoteScore <= NAY_THRESHOLD) {
     return "nay";
   } else {
+    // Reduce abstentions by making some borderline cases lean toward a decision
+    if (Math.random() < 0.6) { // 60% chance to pick a side instead of abstaining
+      return totalVoteScore > 0 ? "yea" : "nay";
+    }
     return "abstain";
   }
 };

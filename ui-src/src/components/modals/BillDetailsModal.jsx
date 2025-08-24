@@ -1,7 +1,17 @@
 import React from "react";
 import Modal from "./Modal";
 import "./BillDetailsModal.css";
-import { CITY_POLICIES } from "../../data/policyDefinitions";
+import {
+  CITY_POLICIES,
+  STATE_POLICIES,
+} from "../../data/policyDefinitions";
+import { NATIONAL_POLICIES } from "../../data/nationalPolicyDefinitions";
+
+const allPolicies = {
+  city: CITY_POLICIES,
+  state: STATE_POLICIES,
+  national: NATIONAL_POLICIES,
+};
 
 const STANCE_CLASSES = {
   leaning_yea: { text: "Leaning Yea", className: "stance-yea" },
@@ -10,10 +20,9 @@ const STANCE_CLASSES = {
 };
 
 // Helper function to create readable descriptions
-const getPolicyDetailsText = (policyInBill) => {
-  const fullPolicyData = CITY_POLICIES.find(
-    (p) => p.id === policyInBill.policyId
-  );
+const getPolicyDetailsText = (policyInBill, billLevel) => {
+  const policySet = allPolicies[billLevel] || [];
+  const fullPolicyData = policySet.find((p) => p.id === policyInBill.policyId);
   if (!fullPolicyData) return "Policy data not found.";
 
   if (!fullPolicyData.isParameterized || !policyInBill.chosenParameters) {
@@ -65,7 +74,7 @@ const BillDetailsModal = ({ isOpen, onClose, bill }) => {
             {bill.policies.map((p) => (
               <li key={p.policyId}>
                 <strong>{p.policyName}</strong>
-                <p className="policy-detail-text">{getPolicyDetailsText(p)}</p>
+                <p className="policy-detail-text">{getPolicyDetailsText(p, bill.level)}</p>
               </li>
             ))}
           </ul>
@@ -83,7 +92,7 @@ const BillDetailsModal = ({ isOpen, onClose, bill }) => {
                 return (
                   <li key={s.politicianId}>
                     <span className="opinion-politician">
-                      {s.politicianName}
+                      {s.politicianName || s.name}
                     </span>
                     <span className={`opinion-stance ${stanceInfo.className}`}>
                       {stanceInfo.text}

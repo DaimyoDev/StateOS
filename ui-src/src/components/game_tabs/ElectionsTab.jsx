@@ -819,11 +819,19 @@ function ElectionsTab({ campaignData }) {
   const {
     elections = [],
     currentDate: rawCurrentDate,
-    politician: playerPoliticianData,
     generatedPartiesSnapshot: allParties = [],
     availableCountries = [],
     countryId = null,
   } = campaignData || {};
+
+  const playerPoliticianData = campaignData?.politicians?.campaign.get(
+    campaignData?.playerPoliticianId
+  );
+  const playerStartingCity = campaignData?.startingCity;
+  // Try multiple sources for regionId
+  const playerRegionId = playerPoliticianData?.regionId || 
+                        campaignData?.politician?.regionId || 
+                        campaignData?.regionId;
 
   const countryData = useMemo(
     () => availableCountries.find((c) => c.id === countryId),
@@ -832,6 +840,7 @@ function ElectionsTab({ campaignData }) {
 
   const [selectedElectionId, setSelectedElectionId] = useState(null);
   const [regionFilter, setRegionFilter] = useState("all");
+  const [locationFilter, setLocationFilter] = useState("all");
 
   const recentPollsByElection = useGameStore(
     (state) => state.recentPollsByElection
@@ -844,6 +853,13 @@ function ElectionsTab({ campaignData }) {
   }, [selectedElectionId, recentPollsByElection]);
 
   const regionTerm = countryData?.regionTerm || "Region";
+
+  // Get the player's region name from the country data
+  const playerRegionName = useMemo(() => {
+    if (!playerRegionId || !countryData?.regions) return null;
+    const region = countryData.regions.find(r => r.id === playerRegionId);
+    return region?.name || null;
+  }, [playerRegionId, countryData]);
 
   // Memoized values from previous optimizations
   const partiesMap = useMemo(() => {
@@ -877,23 +893,40 @@ function ElectionsTab({ campaignData }) {
           return diffDays >= -7 && diffDays <= 365 * 2;
         })
         .filter((election) => {
+          const entity = election.entityDataSnapshot;
+          if (!entity) return false;
+
+          // Location Filter (Player's City/Region)
+          if (locationFilter !== "all") {
+            if (locationFilter === "playerStartingCity") {
+              if (
+                playerStartingCity?.id !== entity.id &&
+                playerStartingCity?.id !== entity.parentId
+              )
+                return false;
+            }
+            if (locationFilter === "playerCurrentRegion") {
+              if (
+                playerRegionId !== entity.id &&
+                playerRegionId !== entity.stateId &&
+                playerRegionId !== entity.parentId &&
+                !entity.id.startsWith(playerRegionId + "_")
+              )
+                return false;
+            }
+          }
+
+          // Geographic/Level Filter
           if (regionFilter === "all") return true;
           if (regionFilter === "national") {
             return election.level && election.level.startsWith("national_");
           }
 
-          const entity = election.entityDataSnapshot;
-          if (!entity) return false;
-
-          // This final check now covers all known cases:
+          // This final check now covers all known cases for state/region filtering:
           return (
-            // 1. Catches state-wide races like Senate/Governor
             entity.id === regionFilter ||
-            // 2. Catches entities with an explicit stateId (like U.S. House districts)
             entity.stateId === regionFilter ||
-            // 3. Catches entities with a parentId (a failsafe for future use)
             entity.parentId === regionFilter ||
-            // 4. NEW: Catches entities whose ID starts with the state's ID (e.g., "USA_WI_...")
             entity.id.startsWith(regionFilter + "_")
           );
         })
@@ -905,7 +938,7 @@ function ElectionsTab({ campaignData }) {
             a.electionDate.day - b.electionDate.day
         )
     );
-  }, [elections, currentDateObj, regionFilter]);
+  }, [elections, currentDateObj, regionFilter, locationFilter, playerStartingCity, playerRegionId]);
 
   useEffect(() => {
     if (!currentDateObj) return;
@@ -970,7 +1003,7 @@ function ElectionsTab({ campaignData }) {
     ) {
       const isEligible = checkCandidacyEligibility(selectedElection, {
         startingCity: campaignData.startingCity,
-        regionId: campaignData.regionId,
+        regionId: campaignData.politicians.campaign.get(campaignData.playerPoliticianId).regionId,
         countryId: campaignData.countryId,
       });
       
@@ -1012,21 +1045,37 @@ function ElectionsTab({ campaignData }) {
         <div className="upcoming-elections-panel">
           <h3>Upcoming & Recent Elections</h3>
           <div className="elections-filter-container">
-            <label htmlFor="region-filter">Filter by {regionTerm}:</label>
-            <select
-              id="region-filter"
-              className="region-filter-select"
-              value={regionFilter}
-              onChange={(e) => setRegionFilter(e.target.value)}
-            >
-              <option value="all">All {regionTerm}s</option>
-              <option value="national">National Level</option>
-              {countryData?.regions?.map((region) => (
-                <option key={region.id} value={region.id}>
-                  {region.name}
-                </option>
-              ))}
-            </select>
+            <div className="filters">
+              <select
+                value={locationFilter}
+                onChange={(e) => setLocationFilter(e.target.value)}
+                className="region-filter-select"
+              >
+                <option value="all">All Locations</option>
+                {playerStartingCity && (
+                  <option value="playerStartingCity">
+                    My City ({playerStartingCity.name})
+                  </option>
+                )}
+                {playerRegionId && playerRegionName && (
+                  <option value="playerCurrentRegion">My {regionTerm} ({playerRegionName})</option>
+                )}
+              </select>
+
+              <select
+                className="region-filter-select"
+                value={regionFilter}
+                onChange={(e) => setRegionFilter(e.target.value)}
+              >
+                <option value="all">All {regionTerm}s</option>
+                <option value="national">National</option>
+                {countryData?.regions?.map((region) => (
+                  <option key={region.id} value={region.id}>
+                    {region.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
           {displayableElections.length > 0 ? (
             <MemoizedElectionsList

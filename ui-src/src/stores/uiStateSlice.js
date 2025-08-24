@@ -267,10 +267,12 @@ export const createUISlice = (set, get) => ({
     // NEW: Action for when the player chooses to skip viewing the vote
     skipAndProcessVote: (billIdToSkip, level) => {
       console.log(`[VoteQueue] Skipping and processing vote for bill: ${billIdToSkip}`);
-      // This requires a helper function to run all AI votes instantly
-      get().actions.runAllAIVotesForBill(billIdToSkip, level);
-      get().actions.finalizeBillVote(billIdToSkip, level);
+      // Run AI votes and get the results back.
+      const aiVotes = get().actions.runAllAIVotesForBill(billIdToSkip, level);
+      // Finalize the bill with the AI votes.
+      get().actions.finalizeBillVote(billIdToSkip, level, aiVotes);
 
+      // Remove the processed vote from the queue.
       set((state) => ({
         voteQueue: state.voteQueue.filter(
           (vote) => vote.billId !== billIdToSkip
