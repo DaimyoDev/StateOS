@@ -1,0 +1,38 @@
+{
+  "prefixes": [
+    "Nou",
+    "Vechi",
+    "Mare",
+    "Mic",
+    "Sus",
+    "Jos",
+    "Nord",
+    "Sud",
+    "Est",
+    "Vest"
+  ],
+  "cores": [
+    "oraș",
+    "sat",
+    "deal",
+    "vale",
+    "râu",
+    "pădure",
+    "câmp",
+    "munte",
+    "lac",
+    "izvor"
+  ],
+  "suffixes": [
+    "ești",
+    "eni",
+    "ani",
+    "oara",
+    "ița",
+    "ului",
+    "ilor",
+    "ele",
+    "ăi",
+    "uri"
+  ]
+}

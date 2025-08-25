@@ -1,0 +1,38 @@
+{
+  "prefixes": [
+    "North",
+    "South",
+    "East",
+    "West",
+    "New",
+    "Port",
+    "Mount",
+    "Lake",
+    "Glen",
+    "Upper"
+  ],
+  "cores": [
+    "Spring",
+    "Green",
+    "Fair",
+    "River",
+    "Oak",
+    "Pine",
+    "Bay",
+    "Hill",
+    "Valley",
+    "Creek"
+  ],
+  "suffixes": [
+    "field",
+    "ville",
+    "town",
+    "burg",
+    "side",
+    "wood",
+    "view",
+    "port",
+    "creek",
+    "ton"
+  ]
+}

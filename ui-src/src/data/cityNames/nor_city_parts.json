@@ -1,0 +1,38 @@
+{
+  "prefixes": [
+    "Nord",
+    "Sør",
+    "Øst",
+    "Vest",
+    "Ny",
+    "Gamle",
+    "Store",
+    "Lille",
+    "Høy",
+    "Lav"
+  ],
+  "cores": [
+    "by",
+    "borg",
+    "havn",
+    "holm",
+    "lund",
+    "stad",
+    "dal",
+    "fjell",
+    "skog",
+    "mark"
+  ],
+  "suffixes": [
+    "by",
+    "borg",
+    "havn",
+    "holm",
+    "lund",
+    "stad",
+    "dal",
+    "fjell",
+    "skog",
+    "mark"
+  ]
+}

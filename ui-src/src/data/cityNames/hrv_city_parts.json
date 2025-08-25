@@ -1,0 +1,38 @@
+{
+  "prefixes": [
+    "Novi",
+    "Stari",
+    "Veliki",
+    "Mali",
+    "Gornji",
+    "Donji",
+    "Sjeverni",
+    "Južni",
+    "Istočni",
+    "Zapadni"
+  ],
+  "cores": [
+    "grad",
+    "selo",
+    "brdo",
+    "dolina",
+    "rijeka",
+    "šuma",
+    "polje",
+    "planina",
+    "jezero",
+    "izvor"
+  ],
+  "suffixes": [
+    "ovo",
+    "evo",
+    "ica",
+    "ane",
+    "eni",
+    "ci",
+    "ka",
+    "ko",
+    "ci",
+    "ište"
+  ]
+}

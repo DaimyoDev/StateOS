@@ -1,0 +1,38 @@
+{
+  "prefixes": [
+    "Neu",
+    "Alt",
+    "Grouss",
+    "Kleng",
+    "Uewen",
+    "Ënnen",
+    "Nord",
+    "Süd",
+    "Ost",
+    "West"
+  ],
+  "cores": [
+    "stad",
+    "duerf",
+    "bierg",
+    "dal",
+    "floss",
+    "bësch",
+    "feld",
+    "wues",
+    "quell",
+    "wiss"
+  ],
+  "suffixes": [
+    "en",
+    "ech",
+    "ange",
+    "esch",
+    "duerf",
+    "bierg",
+    "haus",
+    "hof",
+    "burg",
+    "wues"
+  ]
+}

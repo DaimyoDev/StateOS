@@ -36,6 +36,42 @@ import itaCityParts from "../data/cityNames/ita_city_parts.json";
 import gbrCityParts from "../data/cityNames/gbr_city_parts.json";
 import espCityParts from "../data/cityNames/esp_city_parts.json";
 import fraCityParts from "../data/cityNames/fra_city_parts.json";
+import sweCityParts from "../data/cityNames/swe_city_parts.json";
+import braCityParts from "../data/cityNames/bra_city_parts.json";
+import argCityParts from "../data/cityNames/arg_city_parts.json";
+import indCityParts from "../data/cityNames/ind_city_parts.json";
+import mexCityParts from "../data/cityNames/mex_city_parts.json";
+import colCityParts from "../data/cityNames/col_city_parts.json";
+import chlCityParts from "../data/cityNames/chl_city_parts.json";
+import perCityParts from "../data/cityNames/per_city_parts.json";
+import criCityParts from "../data/cityNames/cri_city_parts.json";
+import uryCityParts from "../data/cityNames/ury_city_parts.json";
+import prtCityParts from "../data/cityNames/prt_city_parts.json";
+import idnCityParts from "../data/cityNames/idn_city_parts.json";
+import nldCityParts from "../data/cityNames/nld_city_parts.json";
+import cheCityParts from "../data/cityNames/che_city_parts.json";
+import belCityParts from "../data/cityNames/bel_city_parts.json";
+import dnkCityParts from "../data/cityNames/dnk_city_parts.json";
+import finCityParts from "../data/cityNames/fin_city_parts.json";
+import norCityParts from "../data/cityNames/nor_city_parts.json";
+import irlCityParts from "../data/cityNames/irl_city_parts.json";
+import grcCityParts from "../data/cityNames/grc_city_parts.json";
+import nzlCityParts from "../data/cityNames/nzl_city_parts.json";
+import mysCityParts from "../data/cityNames/mys_city_parts.json";
+import sgpCityParts from "../data/cityNames/sgp_city_parts.json";
+import thaCityParts from "../data/cityNames/tha_city_parts.json";
+import czeCityParts from "../data/cityNames/cze_city_parts.json";
+import rouCityParts from "../data/cityNames/rou_city_parts.json";
+import bgrCityParts from "../data/cityNames/bgr_city_parts.json";
+import hrvCityParts from "../data/cityNames/hrv_city_parts.json";
+import svkCityParts from "../data/cityNames/svk_city_parts.json";
+import ltuCityParts from "../data/cityNames/ltu_city_parts.json";
+import lvaCityParts from "../data/cityNames/lva_city_parts.json";
+import estCityParts from "../data/cityNames/est_city_parts.json";
+import svnCityParts from "../data/cityNames/svn_city_parts.json";
+import luxCityParts from "../data/cityNames/lux_city_parts.json";
+import islCityParts from "../data/cityNames/isl_city_parts.json";
+import mltCityParts from "../data/cityNames/mlt_city_parts.json";
 import { NAMES_BY_COUNTRY } from "../data/namesData";
 
 const cityNamesByCountry = {
@@ -52,6 +88,42 @@ const cityNamesByCountry = {
   GBR: gbrCityParts,
   ESP: espCityParts,
   FRA: fraCityParts,
+  SWE: sweCityParts,
+  BRA: braCityParts,
+  ARG: argCityParts,
+  IND: indCityParts,
+  MEX: mexCityParts,
+  COL: colCityParts,
+  CHL: chlCityParts,
+  PER: perCityParts,
+  CRI: criCityParts,
+  URY: uryCityParts,
+  PRT: prtCityParts,
+  IDN: idnCityParts,
+  NLD: nldCityParts,
+  CHE: cheCityParts,
+  BEL: belCityParts,
+  DNK: dnkCityParts,
+  FIN: finCityParts,
+  NOR: norCityParts,
+  IRL: irlCityParts,
+  GRC: grcCityParts,
+  NZL: nzlCityParts,
+  MYS: mysCityParts,
+  SGP: sgpCityParts,
+  THA: thaCityParts,
+  CZE: czeCityParts,
+  ROU: rouCityParts,
+  BGR: bgrCityParts,
+  HRV: hrvCityParts,
+  SVK: svkCityParts,
+  LTU: ltuCityParts,
+  LVA: lvaCityParts,
+  EST: estCityParts,
+  SVN: svnCityParts,
+  LUX: luxCityParts,
+  ISL: islCityParts,
+  MLT: mltCityParts,
 };
 
 // --- City Data Structure Definition ---

@@ -1,0 +1,38 @@
+{
+  "prefixes": [
+    "Norður",
+    "Suður",
+    "Austur",
+    "Vestur",
+    "Nýja",
+    "Gamla",
+    "Stóra",
+    "Litla",
+    "Efri",
+    "Neðri"
+  ],
+  "cores": [
+    "bær",
+    "vík",
+    "fjörður",
+    "dalur",
+    "á",
+    "fell",
+    "holt",
+    "nes",
+    "vötn",
+    "eyri"
+  ],
+  "suffixes": [
+    "bær",
+    "vík",
+    "fjörður",
+    "dalur",
+    "á",
+    "fell",
+    "holt",
+    "nes",
+    "vötn",
+    "eyri"
+  ]
+}

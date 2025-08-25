@@ -1,0 +1,38 @@
+{
+  "prefixes": [
+    "Uusi",
+    "Vanha",
+    "Iso",
+    "Pieni",
+    "Pohjois",
+    "Etelä",
+    "Itä",
+    "Länsi",
+    "Ylä",
+    "Ala"
+  ],
+  "cores": [
+    "kaupunki",
+    "koski",
+    "järvi",
+    "mäki",
+    "lahti",
+    "niemi",
+    "saari",
+    "kylä",
+    "joki",
+    "metsä"
+  ],
+  "suffixes": [
+    "la",
+    "nen",
+    "ki",
+    "ma",
+    "inen",
+    "koski",
+    "järvi",
+    "lahti",
+    "niemi",
+    "saari"
+  ]
+}

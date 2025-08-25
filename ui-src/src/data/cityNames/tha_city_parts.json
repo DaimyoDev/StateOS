@@ -1,0 +1,38 @@
+{
+  "prefixes": [
+    "Mueang",
+    "Ban",
+    "Amphoe",
+    "Tambon",
+    "Khlong",
+    "Wang",
+    "Nong",
+    "Huai",
+    "Doi",
+    "Khao"
+  ],
+  "cores": [
+    "Thani",
+    "Buri",
+    "Phra",
+    "Nakhon",
+    "Sri",
+    "Chai",
+    "Rat",
+    "Sawan",
+    "Kham",
+    "Mai"
+  ],
+  "suffixes": [
+    "thani",
+    "buri",
+    "phra",
+    "nakhon",
+    "sri",
+    "chai",
+    "rat",
+    "sawan",
+    "kham",
+    "mai"
+  ]
+}

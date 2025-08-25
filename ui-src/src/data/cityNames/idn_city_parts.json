@@ -1,0 +1,38 @@
+{
+  "prefixes": [
+    "Kota",
+    "Bandar",
+    "Tanjung",
+    "Sungai",
+    "Gunung",
+    "Pulau",
+    "Teluk",
+    "Pantai",
+    "Kampung",
+    "Desa"
+  ],
+  "cores": [
+    "Baru",
+    "Indah",
+    "Jaya",
+    "Makmur",
+    "Sejahtera",
+    "Bahagia",
+    "Sentosa",
+    "Mulia",
+    "Agung",
+    "Raya"
+  ],
+  "suffixes": [
+    "pura",
+    "kota",
+    "bumi",
+    "sari",
+    "wati",
+    "ning",
+    "asri",
+    "jati",
+    "lestari",
+    "utama"
+  ]
+}

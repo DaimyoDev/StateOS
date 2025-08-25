@@ -1,0 +1,38 @@
+{
+  "prefixes": [
+    "Nea",
+    "Palaio",
+    "Mega",
+    "Mikro",
+    "Agios",
+    "Agia",
+    "Kato",
+    "Ano",
+    "Neo",
+    "Paleo"
+  ],
+  "cores": [
+    "polis",
+    "chorio",
+    "kastro",
+    "limani",
+    "vouno",
+    "potamos",
+    "nisi",
+    "kampos",
+    "lofos",
+    "thalassa"
+  ],
+  "suffixes": [
+    "polis",
+    "chorio",
+    "kastro",
+    "limani",
+    "vouno",
+    "potamos",
+    "nisi",
+    "kampos",
+    "lofos",
+    "oupoli"
+  ]
+}

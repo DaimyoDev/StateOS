@@ -1,0 +1,38 @@
+{
+  "prefixes": [
+    "San",
+    "Santa",
+    "Las",
+    "Los",
+    "Villa",
+    "Puerto",
+    "Monte",
+    "Valle",
+    "Torre",
+    "Fuente"
+  ],
+  "cores": [
+    "Nueva",
+    "Viejo",
+    "Real",
+    "Alto",
+    "Bajo",
+    "Rio",
+    "Verde",
+    "Sierra",
+    "Campo",
+    "Blanco"
+  ],
+  "suffixes": [
+    "del",
+    "de",
+    "ada",
+    "ales",
+    "ena",
+    "illa",
+    "illo",
+    "ares",
+    "os",
+    "inas"
+  ]
+}

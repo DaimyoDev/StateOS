@@ -1,0 +1,38 @@
+{
+  "prefixes": [
+    "Jaun",
+    "Vec",
+    "Liel",
+    "Maz",
+    "Augš",
+    "Zem",
+    "Ziemeļ",
+    "Dienvid",
+    "Austr",
+    "Riet"
+  ],
+  "cores": [
+    "pilsēta",
+    "ciems",
+    "kalns",
+    "ieleja",
+    "upe",
+    "mežs",
+    "lauks",
+    "ezers",
+    "avots",
+    "pļava"
+  ],
+  "suffixes": [
+    "i",
+    "eni",
+    "āni",
+    "iski",
+    "ava",
+    "ēni",
+    "muiža",
+    "kalns",
+    "ciems",
+    "upe"
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "prefixes": [
+    "Nauja",
+    "Sena",
+    "Didžioji",
+    "Mažoji",
+    "Aukštoji",
+    "Žemoji",
+    "Šiaurės",
+    "Pietų",
+    "Rytų",
+    "Vakarų"
+  ],
+  "cores": [
+    "miestas",
+    "kaimas",
+    "kalnas",
+    "slėnis",
+    "upė",
+    "miškas",
+    "laukas",
+    "ežeras",
+    "šaltinis",
+    "pievos"
+  ],
+  "suffixes": [
+    "ai",
+    "iai",
+    "ėnai",
+    "iškis",
+    "ava",
+    "iai",
+    "onys",
+    "ūnai",
+    "iškiai",
+    "ėliai"
+  ]
+}

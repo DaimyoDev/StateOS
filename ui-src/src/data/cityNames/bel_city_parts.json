@@ -1,0 +1,38 @@
+{
+  "prefixes": [
+    "Sint",
+    "Saint",
+    "Nieuw",
+    "Oud",
+    "Groot",
+    "Klein",
+    "Noord",
+    "Zuid",
+    "Oost",
+    "West"
+  ],
+  "cores": [
+    "berg",
+    "dorp",
+    "hof",
+    "veld",
+    "bos",
+    "meer",
+    "dal",
+    "haven",
+    "stad",
+    "wijk"
+  ],
+  "suffixes": [
+    "en",
+    "heim",
+    "hoven",
+    "burg",
+    "stad",
+    "dorp",
+    "wijk",
+    "zele",
+    "gem",
+    "beke"
+  ]
+}

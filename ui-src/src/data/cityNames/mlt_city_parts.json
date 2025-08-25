@@ -1,0 +1,38 @@
+{
+  "prefixes": [
+    "Il",
+    "L",
+    "Ta'",
+    "Ħal",
+    "San",
+    "Santa",
+    "Għar",
+    "Wied",
+    "Ras",
+    "Marsà"
+  ],
+  "cores": [
+    "Belt",
+    "Valletta",
+    "Qormi",
+    "Birgu",
+    "Mdina",
+    "Rabat",
+    "Żebbuġ",
+    "Siġġiewi",
+    "Dingli",
+    "Mellieħa"
+  ],
+  "suffixes": [
+    "a",
+    "i",
+    "u",
+    "ġ",
+    "x",
+    "ħ",
+    "q",
+    "w",
+    "ż",
+    "għ"
+  ]
+}

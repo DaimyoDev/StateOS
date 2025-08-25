@@ -1,0 +1,38 @@
+{
+  "prefixes": [
+    "Nové",
+    "Staré",
+    "Velké",
+    "Malé",
+    "Horní",
+    "Dolní",
+    "Severní",
+    "Jižní",
+    "Východní",
+    "Západní"
+  ],
+  "cores": [
+    "město",
+    "ves",
+    "hora",
+    "údolí",
+    "řeka",
+    "les",
+    "pole",
+    "vrch",
+    "potok",
+    "luka"
+  ],
+  "suffixes": [
+    "ice",
+    "ov",
+    "ín",
+    "any",
+    "ná",
+    "sko",
+    "itz",
+    "ec",
+    "ka",
+    "ky"
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "prefixes": [
+    "Ober",
+    "Unter",
+    "Neu",
+    "Alt",
+    "Gross",
+    "Klein",
+    "Berg",
+    "Tal",
+    "See",
+    "Bad"
+  ],
+  "cores": [
+    "dorf",
+    "stadt",
+    "berg",
+    "heim",
+    "hausen",
+    "feld",
+    "bach",
+    "brunnen",
+    "wil",
+    "ikon"
+  ],
+  "suffixes": [
+    "en",
+    "ikon",
+    "wil",
+    "dorf",
+    "berg",
+    "heim",
+    "hausen",
+    "bach",
+    "burg",
+    "tal"
+  ]
+}

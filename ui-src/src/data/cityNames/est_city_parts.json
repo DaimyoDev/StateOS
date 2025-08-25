@@ -1,0 +1,38 @@
+{
+  "prefixes": [
+    "Uus",
+    "Vana",
+    "Suur",
+    "Väike",
+    "Ülem",
+    "Alam",
+    "Põhja",
+    "Lõuna",
+    "Ida",
+    "Lääne"
+  ],
+  "cores": [
+    "linn",
+    "küla",
+    "mägi",
+    "org",
+    "jõgi",
+    "mets",
+    "väli",
+    "järv",
+    "allikas",
+    "niit"
+  ],
+  "suffixes": [
+    "maa",
+    "vere",
+    "küla",
+    "mäe",
+    "järve",
+    "jõe",
+    "metsa",
+    "välja",
+    "oja",
+    "saare"
+  ]
+}

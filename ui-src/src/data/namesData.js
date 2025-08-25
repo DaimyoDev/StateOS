@@ -69,6 +69,111 @@ import {
   BELGIAN_LAST_NAMES,
   BELGIAN_FEMALE_NAMES,
 } from "./names/belgianNames";
+import {
+  DUTCH_MALE_NAMES,
+  DUTCH_FEMALE_NAMES,
+  DUTCH_LAST_NAMES,
+} from "./names/dutchNames";
+import {
+  DANISH_MALE_NAMES,
+  DANISH_FEMALE_NAMES,
+  DANISH_LAST_NAMES,
+} from "./names/danishNames";
+import {
+  FINNISH_MALE_NAMES,
+  FINNISH_FEMALE_NAMES,
+  FINNISH_LAST_NAMES,
+} from "./names/finnishNames";
+import {
+  NORWEGIAN_MALE_NAMES,
+  NORWEGIAN_FEMALE_NAMES,
+  NORWEGIAN_LAST_NAMES,
+} from "./names/norwegianNames";
+import {
+  IRISH_MALE_NAMES,
+  IRISH_FEMALE_NAMES,
+  IRISH_LAST_NAMES,
+} from "./names/irishNames";
+import {
+  GREEK_MALE_NAMES,
+  GREEK_FEMALE_NAMES,
+  GREEK_LAST_NAMES,
+} from "./names/greekNames";
+import {
+  MALAYSIAN_MALE_NAMES,
+  MALAYSIAN_FEMALE_NAMES,
+  MALAYSIAN_LAST_NAMES,
+} from "./names/malaysianNames";
+import {
+  THAI_MALE_NAMES,
+  THAI_FEMALE_NAMES,
+  THAI_LAST_NAMES,
+} from "./names/thaiNames";
+import {
+  CZECH_MALE_NAMES,
+  CZECH_FEMALE_NAMES,
+  CZECH_LAST_NAMES,
+} from "./names/czechNames";
+import {
+  ROMANIAN_MALE_NAMES,
+  ROMANIAN_FEMALE_NAMES,
+  ROMANIAN_LAST_NAMES,
+} from "./names/romanianNames";
+import {
+  BULGARIAN_MALE_NAMES,
+  BULGARIAN_FEMALE_NAMES,
+  BULGARIAN_LAST_NAMES,
+} from "./names/bulgarianNames";
+import {
+  CROATIAN_MALE_NAMES,
+  CROATIAN_FEMALE_NAMES,
+  CROATIAN_LAST_NAMES,
+} from "./names/croatianNames";
+import {
+  SLOVAK_MALE_NAMES,
+  SLOVAK_FEMALE_NAMES,
+  SLOVAK_LAST_NAMES,
+} from "./names/slovakianNames";
+import {
+  LITHUANIAN_MALE_NAMES,
+  LITHUANIAN_FEMALE_NAMES,
+  LITHUANIAN_LAST_NAMES,
+} from "./names/lithuanianNames";
+import {
+  LATVIAN_MALE_NAMES,
+  LATVIAN_FEMALE_NAMES,
+  LATVIAN_LAST_NAMES,
+} from "./names/latvianNames";
+import {
+  ESTONIAN_MALE_NAMES,
+  ESTONIAN_FEMALE_NAMES,
+  ESTONIAN_LAST_NAMES,
+} from "./names/estonianNames";
+import {
+  SLOVENIAN_MALE_NAMES,
+  SLOVENIAN_FEMALE_NAMES,
+  SLOVENIAN_LAST_NAMES,
+} from "./names/slovenianNames";
+import {
+  LUXEMBOURGISH_MALE_NAMES,
+  LUXEMBOURGISH_FEMALE_NAMES,
+  LUXEMBOURGISH_LAST_NAMES,
+} from "./names/luxembourgianNames";
+import {
+  ICELANDIC_MALE_NAMES,
+  ICELANDIC_FEMALE_NAMES,
+  ICELANDIC_LAST_NAMES,
+} from "./names/icelandicNames";
+import {
+  MALTESE_MALE_NAMES,
+  MALTESE_FEMALE_NAMES,
+  MALTESE_LAST_NAMES,
+} from "./names/malteseNames";
+import {
+  SINGAPOREAN_MALE_NAMES,
+  SINGAPOREAN_FEMALE_NAMES,
+  SINGAPOREAN_LAST_NAMES,
+} from "./names/singaporeanNames";
 
 export const NAMES_BY_COUNTRY = {
   JPN: {
@@ -175,6 +280,157 @@ export const NAMES_BY_COUNTRY = {
     male: ENGLISH_MALE_NAMES,
     female: ENGLISH_FEMALE_NAMES,
     last: ENGLISH_LAST_NAMES,
+  },
+  NLD: {
+    male: DUTCH_MALE_NAMES,
+    female: DUTCH_FEMALE_NAMES,
+    last: DUTCH_LAST_NAMES,
+  },
+  CHE: {
+    male: GERMAN_MALE_NAMES, // Swiss German names
+    female: GERMAN_FEMALE_NAMES,
+    last: GERMAN_LAST_NAMES,
+  },
+  DNK: {
+    male: DANISH_MALE_NAMES,
+    female: DANISH_FEMALE_NAMES,
+    last: DANISH_LAST_NAMES,
+  },
+  FIN: {
+    male: FINNISH_MALE_NAMES,
+    female: FINNISH_FEMALE_NAMES,
+    last: FINNISH_LAST_NAMES,
+  },
+  NOR: {
+    male: NORWEGIAN_MALE_NAMES,
+    female: NORWEGIAN_FEMALE_NAMES,
+    last: NORWEGIAN_LAST_NAMES,
+  },
+  IRL: {
+    male: IRISH_MALE_NAMES,
+    female: IRISH_FEMALE_NAMES,
+    last: IRISH_LAST_NAMES,
+  },
+  PRT: {
+    male: PORTUGUESE_MALE_NAMES,
+    female: PORTUGUESE_FEMALE_NAMES,
+    last: PORTUGUESE_LAST_NAMES,
+  },
+  GRC: {
+    male: GREEK_MALE_NAMES,
+    female: GREEK_FEMALE_NAMES,
+    last: GREEK_LAST_NAMES,
+  },
+  NZL: {
+    male: ENGLISH_MALE_NAMES,
+    female: ENGLISH_FEMALE_NAMES,
+    last: ENGLISH_LAST_NAMES,
+  },
+  CHL: {
+    male: SPANISH_MALE_NAMES,
+    female: SPANISH_FEMALE_NAMES,
+    last: SPANISH_LAST_NAMES,
+  },
+  COL: {
+    male: SPANISH_MALE_NAMES,
+    female: SPANISH_FEMALE_NAMES,
+    last: SPANISH_LAST_NAMES,
+  },
+  PER: {
+    male: SPANISH_MALE_NAMES,
+    female: SPANISH_FEMALE_NAMES,
+    last: SPANISH_LAST_NAMES,
+  },
+  VNM: {
+    // Vietnamese names - using Chinese as placeholder
+    male: CHINESE_MALE_NAMES,
+    female: CHINESE_FEMALE_NAMES,
+    last: CHINESE_LAST_NAMES,
+  },
+  MYS: {
+    male: MALAYSIAN_MALE_NAMES,
+    female: MALAYSIAN_FEMALE_NAMES,
+    last: MALAYSIAN_LAST_NAMES,
+  },
+  SGP: {
+    male: SINGAPOREAN_MALE_NAMES,
+    female: SINGAPOREAN_FEMALE_NAMES,
+    last: SINGAPOREAN_LAST_NAMES,
+  },
+  THA: {
+    male: THAI_MALE_NAMES,
+    female: THAI_FEMALE_NAMES,
+    last: THAI_LAST_NAMES,
+  },
+  CZE: {
+    male: CZECH_MALE_NAMES,
+    female: CZECH_FEMALE_NAMES,
+    last: CZECH_LAST_NAMES,
+  },
+  ROU: {
+    male: ROMANIAN_MALE_NAMES,
+    female: ROMANIAN_FEMALE_NAMES,
+    last: ROMANIAN_LAST_NAMES,
+  },
+  BGR: {
+    male: BULGARIAN_MALE_NAMES,
+    female: BULGARIAN_FEMALE_NAMES,
+    last: BULGARIAN_LAST_NAMES,
+  },
+  HRV: {
+    male: CROATIAN_MALE_NAMES,
+    female: CROATIAN_FEMALE_NAMES,
+    last: CROATIAN_LAST_NAMES,
+  },
+  SVK: {
+    male: SLOVAK_MALE_NAMES,
+    female: SLOVAK_FEMALE_NAMES,
+    last: SLOVAK_LAST_NAMES,
+  },
+  LTU: {
+    male: LITHUANIAN_MALE_NAMES,
+    female: LITHUANIAN_FEMALE_NAMES,
+    last: LITHUANIAN_LAST_NAMES,
+  },
+  LVA: {
+    male: LATVIAN_MALE_NAMES,
+    female: LATVIAN_FEMALE_NAMES,
+    last: LATVIAN_LAST_NAMES,
+  },
+  EST: {
+    male: ESTONIAN_MALE_NAMES,
+    female: ESTONIAN_FEMALE_NAMES,
+    last: ESTONIAN_LAST_NAMES,
+  },
+  SVN: {
+    male: SLOVENIAN_MALE_NAMES,
+    female: SLOVENIAN_FEMALE_NAMES,
+    last: SLOVENIAN_LAST_NAMES,
+  },
+  LUX: {
+    male: LUXEMBOURGISH_MALE_NAMES,
+    female: LUXEMBOURGISH_FEMALE_NAMES,
+    last: LUXEMBOURGISH_LAST_NAMES,
+  },
+  ISL: {
+    male: ICELANDIC_MALE_NAMES,
+    female: ICELANDIC_FEMALE_NAMES,
+    last: ICELANDIC_LAST_NAMES,
+  },
+  CRI: {
+    male: SPANISH_MALE_NAMES,
+    female: SPANISH_FEMALE_NAMES,
+    last: SPANISH_LAST_NAMES,
+  },
+  URY: {
+    male: SPANISH_MALE_NAMES,
+    female: SPANISH_FEMALE_NAMES,
+    last: SPANISH_LAST_NAMES,
+  },
+  MLT: {
+    male: MALTESE_MALE_NAMES,
+    female: MALTESE_FEMALE_NAMES,
+    last: MALTESE_LAST_NAMES,
   },
 };
 

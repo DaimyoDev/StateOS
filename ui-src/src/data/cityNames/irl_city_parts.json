@@ -1,0 +1,38 @@
+{
+  "prefixes": [
+    "Bally",
+    "Kil",
+    "Dun",
+    "Glen",
+    "Knock",
+    "Rath",
+    "Carrick",
+    "Castle",
+    "Port",
+    "Mount"
+  ],
+  "cores": [
+    "more",
+    "bridge",
+    "town",
+    "ford",
+    "hill",
+    "wood",
+    "water",
+    "green",
+    "cross",
+    "field"
+  ],
+  "suffixes": [
+    "more",
+    "bridge",
+    "town",
+    "ford",
+    "hill",
+    "wood",
+    "water",
+    "green",
+    "cross",
+    "field"
+  ]
+}

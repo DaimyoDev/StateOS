@@ -1,0 +1,38 @@
+{
+  "prefixes": [
+    "Taman",
+    "Bukit",
+    "Ang Mo",
+    "Choa Chu",
+    "Toa",
+    "Jurong",
+    "Pasir",
+    "Sembawang",
+    "Woodlands",
+    "Yishun"
+  ],
+  "cores": [
+    "Gardens",
+    "Heights",
+    "Park",
+    "View",
+    "Central",
+    "East",
+    "West",
+    "North",
+    "South",
+    "Point"
+  ],
+  "suffixes": [
+    "Gardens",
+    "Heights",
+    "Park",
+    "View",
+    "Central",
+    "Point",
+    "Plaza",
+    "Town",
+    "Village",
+    "Estate"
+  ]
+}
