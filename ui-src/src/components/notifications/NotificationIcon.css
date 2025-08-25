@@ -1,0 +1,43 @@
+.notification-icon-container {
+  position: relative;
+  cursor: pointer;
+  color: var(--primary-text, #ffffff);
+  font-size: 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  transition: color var(--transition-speed, 0.15s ease-in-out),
+    background-color var(--transition-speed, 0.15s ease-in-out),
+    box-shadow var(--transition-speed, 0.15s ease-in-out);
+}
+
+.notification-icon-container:hover,
+.notification-icon-container:focus-visible {
+  color: var(--accent-color, #4ea1ff);
+  outline: none;
+  background-color: rgba(var(--rgb-accent-color, 78, 161, 255), 0.08);
+  box-shadow: 0 0 0 2px rgba(var(--rgb-accent-color, 78, 161, 255), 0.2);
+}
+
+.notification-badge {
+  position: absolute;
+  top: -5px;
+  right: -10px;
+  background-color: var(--accent-color, #4ea1ff);
+  color: #ffffff;
+  border-radius: 50%;
+  padding: 2px 6px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  box-sizing: border-box;
+  border: 1px solid rgba(0, 0, 0, 0.35);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}

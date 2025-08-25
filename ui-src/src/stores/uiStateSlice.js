@@ -264,25 +264,21 @@ export const createUISlice = (set, get) => ({
       }
     },
 
-    // NEW: Action for when the player chooses to skip viewing the vote
-    skipAndProcessVote: (billIdToSkip, level) => {
-      console.log(`[VoteQueue] Skipping and processing vote for bill: ${billIdToSkip}`);
-      // Run AI votes and get the results back.
-      const aiVotes = get().actions.runAllAIVotesForBill(billIdToSkip, level);
-      // Finalize the bill with the AI votes.
-      get().actions.finalizeBillVote(billIdToSkip, level, aiVotes);
-
-      // Remove the processed vote from the queue.
+    setupElectionNightDetails: (electionDate) => {
       set((state) => ({
-        voteQueue: state.voteQueue.filter(
-          (vote) => vote.billId !== billIdToSkip
-        ),
+        activeCampaign: state.activeCampaign
+          ? { ...state.activeCampaign, viewingElectionNightForDate: electionDate }
+          : null,
       }));
     },
-    openBillDetailsModal: (bill) =>
-      set({ viewingBillDetails: bill, isBillDetailsModalOpen: true }),
-    closeBillDetailsModal: () =>
-      set({ viewingBillDetails: null, isBillDetailsModalOpen: false }),
+
+    clearViewingElectionNightContext: () => {
+      set((state) => ({
+        activeCampaign: state.activeCampaign
+          ? { ...state.activeCampaign, viewingElectionNightForDate: null }
+          : null,
+      }));
+    },
     openPolicyVoteDetailsModal: (bill) =>
       set({
         viewingVoteDetailsForBill: bill,

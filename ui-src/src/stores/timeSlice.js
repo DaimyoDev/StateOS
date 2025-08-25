@@ -153,17 +153,31 @@ export const createTimeSlice = (set, get) => {
           );
 
 
-          // 6. Update Party Popularity
+          // 6. Update Party Popularity (Multi-level)
           const partyPopResult = runMonthlyPartyPopularityUpdate(
             currentCampaign,
             get
           );
-          if (partyPopResult.newPoliticalLandscape) {
+          
+          // Update city-level political landscape
+          if (partyPopResult.cityPoliticalLandscape) {
             currentCampaign = _updatePoliticalLandscapePure(
               currentCampaign,
-              partyPopResult.newPoliticalLandscape
+              partyPopResult.cityPoliticalLandscape
             );
           }
+          
+          // Update state-level political landscape
+          if (partyPopResult.statePoliticalLandscape && currentCampaign.parentState) {
+            currentCampaign = {
+              ...currentCampaign,
+              parentState: {
+                ...currentCampaign.parentState,
+                politicalLandscape: partyPopResult.statePoliticalLandscape
+              }
+            };
+          }
+          
           collectedNewsThisMonth.push(...partyPopResult.newsItems);
 
           // 7. Dispatch collected news

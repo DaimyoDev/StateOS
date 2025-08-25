@@ -197,14 +197,19 @@ export const createCampaignSetupSlice = (set, get) => {
         setLoadingGame(true, "Finalizing...");
         await pause(20);
 
+        // Find the parent state data
+        const parentStateData = currentCountryData.regions.find(
+          (region) => region.id === setupState.selectedRegionId
+        );
+
         set((state) => ({
           activeCampaign: {
             ...state.activeCampaign,
             playerPoliticianId: playerPoliticianData.id,
             politician: {
               ...playerPoliticianData,
-              regionId: setupState.selectedRegionId, // Add this
-              startingCity: selectedCityObject, // Add this
+              regionId: setupState.selectedRegionId,
+              startingCity: selectedCityObject,
             },
             countryId: setupState.selectedCountryId,
             regionId: setupState.selectedRegionId,
@@ -212,6 +217,7 @@ export const createCampaignSetupSlice = (set, get) => {
             customPartiesSnapshot: [...allCustomPartiesData],
             generatedPartiesSnapshot: [...setupState.generatedPartiesInCountry],
             startingCity: selectedCityObject,
+            parentState: parentStateData, // Add parent state data
             currentDate: { year: 2025, month: 1, day: 1 },
             elections: [],
             lastElectionYear: {},
@@ -221,7 +227,6 @@ export const createCampaignSetupSlice = (set, get) => {
             pollingFirms: [...nationalPollingFirms, ...regionalPollingFirms],
             availableCountries: availableCountriesData,
             politicianIdsWithSpentHours: new Set(),
-            // Add missing country and regions data for legislation system
             country: currentCountryData,
             regions: currentCountryData.regions,
           },

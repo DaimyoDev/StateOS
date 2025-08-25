@@ -251,9 +251,10 @@ export const createPersonnelSlice = (set, get) => ({
         ),
       }));
 
-      get().actions.addToast({
-        message: `Scouting report purchased for $${cost}. You can now review the candidate's resume.`,
+      get().actions.addNotification({
+        message: `Scouting report for purchased. You can now review the candidate's resume.`,
         type: "success",
+        category: 'Personnel',
       });
     },
 
@@ -328,9 +329,10 @@ export const createPersonnelSlice = (set, get) => ({
         ),
       }));
 
-      get().actions.addToast({
-        message: `Interview with ${staffMember.name} complete. ${hintText}`,
+      get().actions.addNotification({
+        message: `Interview with ${staffMember.name} complete.`,
         type: "success",
+        category: 'Personnel',
       });
     },
 
@@ -402,9 +404,10 @@ export const createPersonnelSlice = (set, get) => ({
         talentPool: [...state.talentPool, { ...staffToFire, isScouted: false }],
       }));
 
-      get().actions.addToast({
+      get().actions.addNotification({
         message: `${staffToFire.name} has been fired.`,
         type: "info",
+        category: 'Personnel',
       });
     },
 
@@ -434,11 +437,11 @@ export const createPersonnelSlice = (set, get) => ({
       }));
       const staffer = get().hiredStaff.find((s) => s.id === staffId);
       if (staffer) {
-        get().actions.addToast({
+        get().actions.addNotification({
           message: `${staffer.name}'s focus is now set to: ${task.replace(
             /_/g,
             " "
-          )}.`,
+          )}.`, 
           type: "info",
         });
       }

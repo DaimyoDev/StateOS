@@ -506,9 +506,7 @@ export const createElectionSlice = (set, get) => ({
           };
 
           // Generate news from up to 3 random outlets to show different perspectives
-          const outletsToReport = allOutlets
-            .sort(() => 0.5 - Math.random())
-            .slice(0, 3);
+          const outletsToReport = [...allOutlets].sort(() => 0.5 - Math.random()).slice(0, 3);
 
           outletsToReport.forEach((outlet) => {
             const article = generateNewsForEvent(event, outlet, currentDate);
@@ -561,8 +559,9 @@ export const createElectionSlice = (set, get) => ({
               return election;
             }
             if (election.playerIsCandidate) {
-              get().actions.addToast?.({
-                message: "You are already a candidate.",
+              get().actions.addNotification?.({
+                message: "You are already a candidate in this election.",
+                category: 'Election',
                 type: "info",
               });
               return election;
@@ -647,14 +646,18 @@ export const createElectionSlice = (set, get) => ({
 
             const finalCandidatesMap = new Map();
             for (const candidate of incorrectlyKeyedMap.values()) {
-              finalCandidatesMap.set(candidate.id, candidate);
+              if (candidate && candidate.id) {
+                finalCandidatesMap.set(candidate.id, candidate);
+              }
             }
 
             successfullyDeclared = true;
-            get().actions.addToast?.({
+            get().actions.addNotification?.({
               message: `Successfully declared candidacy for ${election.officeName}!`,
+              category: 'Election',
               type: "success",
             });
+
             return {
               ...election,
               candidates: finalCandidatesMap,

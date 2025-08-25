@@ -134,8 +134,9 @@ export const createLegislationSlice = (set, get) => ({
           councilVotesCast: {},
         };
 
-        get().actions.addToast?.({
-          message: `Bill Proposed at ${level} level: "${newBill.name}"`,
+        get().actions.addNotification?.({
+          message: `Bill Proposed: "${newBill.name}"`,
+          category: 'Legislation',
           type: "info",
         });
 
@@ -242,7 +243,11 @@ export const createLegislationSlice = (set, get) => ({
 
           if (bill.billType === 'repeal' && bill.targetLawId) {
             newActiveLegislationList = newActiveLegislationList.filter(law => law.id !== bill.targetLawId);
-            get().actions.addToast?.({ message: `Law "${bill.name}" has been repealed.`, type: 'success' });
+            get().actions.addNotification?.({
+              message: `Law "${bill.name}" has been repealed.`,
+              category: 'Legislation',
+              type: 'success',
+            });
           } else if (bill.billType === 'amend' && bill.targetLawId) {
             newActiveLegislationList = newActiveLegislationList.map(law => {
               if (law.id === bill.targetLawId) {
@@ -259,7 +264,11 @@ export const createLegislationSlice = (set, get) => ({
               }
               return law;
             });
-            get().actions.addToast?.({ message: `Law "${bill.name}" has been amended.`, type: 'success' });
+            get().actions.addNotification?.({
+              message: `Law "${bill.name}" has been amended.`,
+              category: 'Legislation',
+              type: 'success',
+            });
           } else { // 'new' bill type
             const newPoliciesForLaw = bill.policies.map(policyInBill => {
               const policyDef = state.availablePolicies[level].find(def => def.id === policyInBill.policyId);
@@ -300,11 +309,10 @@ export const createLegislationSlice = (set, get) => ({
 
         const updatedBills = state[level].proposedBills.filter((b) => b.id !== billId);
 
-        get().actions.addToast?.({
-          message: `Vote on "${bill.name}" (${level}) has concluded. The bill has ${
-            billDidPass ? "passed" : "failed"
-          }.`,
-          type: billDidPass ? "success" : "error",
+        get().actions.addNotification?.({
+          message: `Vote on "${bill.name}" (${level}) has concluded. The bill has ${billDidPass ? "passed" : "failed"}.`,
+          category: 'Legislation',
+          type: billDidPass ? 'success' : 'error',
         });
 
         return {
@@ -707,6 +715,12 @@ export const createLegislationSlice = (set, get) => ({
       console.log(`[runAllAIVotesForBill Debug] Final votes object:`, votes);
       console.log(`[runAllAIVotesForBill Debug] Final votes object keys:`, Object.keys(votes));
       return votes; // Return the calculated votes
+    },
+
+    skipAndProcessVote: (billId, level) => {
+      const aiVotes = get().actions.runAllAIVotesForBill?.(billId, level);
+      console.log(`[skipAndProcessVote Debug] AI votes calculated:`, aiVotes);
+      get().actions.finalizeBillVote?.(billId, level, aiVotes);
     },
 
     processImpendingVotes: () => {

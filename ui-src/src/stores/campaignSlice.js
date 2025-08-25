@@ -139,9 +139,10 @@ export const createCampaignSlice = (set, get) => ({
         );
         newDirtyList.add(playerPoliticianId);
 
-        get().actions.addToast?.({
+        get().actions.addNotification?.({
           message: `Spent ${hoursToSpend}hr(s) fundraising. Raised $${fundsRaised.toLocaleString()}!`,
           type: "success",
+          category: 'Campaign'
         });
 
         return {
@@ -222,9 +223,10 @@ export const createCampaignSlice = (set, get) => ({
         );
         newDirtyList.add(playerPoliticianId);
 
-        get().actions.addToast?.({
+        get().actions.addNotification?.({
           message: `Rally successful! Name Rec +${nameRecGain.toLocaleString()}, Buzz +${mediaBuzzGain}.`,
           type: "success",
+          category: 'Campaign'
         });
 
         // Find which elections the player is participating in to trigger polling updates
@@ -317,9 +319,10 @@ export const createCampaignSlice = (set, get) => ({
         );
         newDirtyList.add(playerPoliticianId);
 
-        get().actions.addToast?.({
+        get().actions.addNotification?.({
           message: `Door knocking: Reached ~${totalPeopleReached} people. Name Rec +${actualNewPeopleRecognized.toLocaleString()}.`,
           type: "info",
+          category: 'Campaign'
         });
 
         return {
@@ -417,9 +420,10 @@ export const createCampaignSlice = (set, get) => ({
         );
         newDirtyList.add(playerPoliticianId);
 
-        get().actions.addToast?.({
+        get().actions.addNotification?.({
           message: `Public appearance: Approval +${approvalBoost}%. Name Rec +${nameRecGain.toLocaleString()}. Buzz +${mediaBuzzGain}.`,
           type: "success",
+          category: 'Campaign'
         });
 
         return {
@@ -474,9 +478,10 @@ export const createCampaignSlice = (set, get) => ({
         );
         newDirtyList.add(playerPoliticianId);
 
-        get().actions.addToast?.({
+        get().actions.addNotification?.({
           message: `You spent ${hoursToSpend}hrs and recruited ${newVolunteers} new volunteers!`,
           type: "success",
+          category: 'Campaign'
         });
 
         return {
@@ -512,9 +517,10 @@ export const createCampaignSlice = (set, get) => ({
           advertisingBudgetMonthly: parsedAmount,
         });
 
-        get().actions.addToast?.({
+        get().actions.addNotification?.({
           message: `Monthly ad budget set to $${parsedAmount.toLocaleString()}`,
           type: "info",
+          category: 'Campaign'
         });
 
         return {
@@ -563,9 +569,10 @@ export const createCampaignSlice = (set, get) => ({
           },
         });
 
-        get().actions.addToast?.({
+        get().actions.addNotification?.({
           message: `Ongoing advertising strategy has been updated.`,
           type: "info",
+          category: 'Campaign'
         });
 
         return {
@@ -648,7 +655,7 @@ export const createCampaignSlice = (set, get) => ({
         );
         newDirtyList.add(playerPoliticianId);
 
-        get().actions.addToast?.({ message: toastMessage, type: "success" });
+        get().actions.addNotification?.({ message: toastMessage, type: "success", category: 'Campaign' });
 
         // Find which elections the player is participating in to trigger polling updates
         const playerElections = activeCampaign.elections?.filter(election => 

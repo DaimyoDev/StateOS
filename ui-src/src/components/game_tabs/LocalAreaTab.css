@@ -71,14 +71,19 @@
   display: flex;
   flex-direction: column;
   width: 100%;
-  overflow: visible; /* Allow content to expand */
+  overflow: hidden; /* Prevent content overflow */
+  min-height: 400px; /* Ensure adequate height for content */
 }
 
 .pie-chart-wrapper-local-tab {
-  width: 100%;
   display: flex;
-  flex-direction: column;
-  gap: 10px;
+  justify-content: center;
+  align-items: center;
+  flex: 1;
+  min-height: 200px;
+  margin: 10px 0;
+  width: 100%;
+  overflow: hidden;
 }
 
 .info-card {
@@ -93,4 +98,64 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
+}
+
+/* Political level sections */
+.political-level-section {
+  margin-bottom: 20px;
+  padding: 15px;
+  border: 1px solid var(--color-border-light, rgba(255, 255, 255, 0.1));
+  border-radius: 8px;
+  background-color: var(--color-background-tertiary, rgba(255, 255, 255, 0.02));
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  box-sizing: border-box;
+  flex: 1;
+}
+
+.political-level-section h4 {
+  margin: 0 0 15px 0;
+  color: var(--color-accent, #4a9eff);
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.party-popularity-details {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 6px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.party-popularity-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 8px;
+  background-color: var(--color-background-secondary, rgba(255, 255, 255, 0.05));
+  border-radius: 4px;
+  font-size: 0.85rem;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.party-name {
+  font-weight: 500;
+  color: var(--color-text-primary, #ffffff);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  margin-right: 8px;
+}
+
+.party-percentage {
+  font-weight: 600;
+  color: var(--color-accent, #4a9eff);
+  min-width: 45px;
+  text-align: right;
+  flex-shrink: 0;
 }

@@ -33,6 +33,9 @@ function LocalAreaTab({ campaignData }) {
     stats: cityStats,
     politicalLandscape,
   } = startingCity;
+  
+  // Get state information if available
+  const parentState = campaignData?.parentState;
   const { ageDistribution, educationLevels } = demographics || {};
   const { dominantIndustries, gdpPerCapita } = economicProfile || {};
   const budget = cityStats.budget;
@@ -194,9 +197,9 @@ function LocalAreaTab({ campaignData }) {
           </p>
         </div>
 
-        {/* Card 6: Political Climate */}
+        {/* Card 6: City Political Climate */}
         <div className="info-card landscape-card">
-          <h3>Local Political Climate</h3>
+          <h3>City Political Climate - {cityName}</h3>
           <div className="pie-chart-wrapper-local-tab">
             <RegionPieChart
               politicalLandscape={politicalLandscape}
@@ -204,6 +207,19 @@ function LocalAreaTab({ campaignData }) {
             />
           </div>
         </div>
+
+        {/* Card 7: State Political Climate */}
+        {campaignData?.parentState?.politicalLandscape && (
+          <div className="info-card landscape-card">
+            <h3>State Political Climate - {campaignData.parentState.name}</h3>
+            <div className="pie-chart-wrapper-local-tab">
+              <RegionPieChart
+                politicalLandscape={campaignData.parentState.politicalLandscape}
+                themeColors={currentTheme?.colors}
+              />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -21,6 +21,9 @@ import PoliticiansTab from "../components/game_tabs/PoliticiansTab";
 import ArticleViewerModal from "../components/modals/ArticleViewerModal";
 import DonationModal from "../components/modals/DonationModal";
 import PollingTab from "../components/game_tabs/PollingTab";
+import NotificationIcon from "../components/notifications/NotificationIcon";
+import NotificationPanel from "../components/notifications/NotificationPanel";
+import { useState } from "react";
 
 const TABS = [
   { id: "Dashboard", label: "Dashboard" },
@@ -36,6 +39,7 @@ const TABS = [
 ];
 
 function CampaignGameScreen() {
+  const [isNotificationPanelOpen, setIsNotificationPanelOpen] = useState(false);
   // --- Individual Selections from Zustand Store ---
   const activeMainGameTab = useGameStore((state) => state.activeMainGameTab);
   const activeCampaign = useGameStore((state) => state.activeCampaign);
@@ -193,10 +197,20 @@ function CampaignGameScreen() {
     }
   };
 
-  const playerFirstName = playerData.base?.firstName || "Player";
+  const playerFirstName = playerData?.base?.firstName || "Player";
 
   return (
     <>
+      <NotificationPanel
+        isOpen={isNotificationPanelOpen}
+        onClose={() => setIsNotificationPanelOpen(false)}
+      />
+
+      {/* Top-right global actions (notification bell) */}
+      <div className="top-right-actions">
+        <NotificationIcon onClick={() => setIsNotificationPanelOpen(true)} />
+      </div>
+
       <div className="campaign-game-screen">
         <aside className="game-sidebar">
           <div className="player-info-summary">
@@ -206,8 +220,8 @@ function CampaignGameScreen() {
               Date: {currentDate?.month}/{currentDate?.day}/{currentDate?.year}
             </p>
             <p>
-              Time Remaining: {playerData.campaign?.workingHours ?? "..."} /{" "}
-              {playerData.campaign?.maxWorkingHours ?? "..."} hrs
+              Time Remaining: {playerData?.campaign?.workingHours ?? "..."} /{" "}
+              {playerData?.campaign?.maxWorkingHours ?? "..."} hrs
             </p>
           </div>
           <nav className="tab-navigation">
@@ -217,12 +231,13 @@ function CampaignGameScreen() {
                 className={`tab-button ${
                   activeMainGameTab === tab.id ? "active" : ""
                 }`}
-                onClick={() => setActiveMainGameTab(tab.id)} // Use the selected action
+                onClick={() => setActiveMainGameTab(tab.id)}
               >
                 {tab.label}
               </button>
             ))}
           </nav>
+          {/* Notification icon moved to top-right global actions */}
           <div style={{ flexGrow: 1 }}></div>
           <div className="next-day-action">
             <button
@@ -264,8 +279,6 @@ function CampaignGameScreen() {
               className="menu-button"
               onClick={() => navigateTo("MainMenu")}
             >
-              {" "}
-              {/* Use the selected action */}
               Main Menu
             </button>
           </div>
@@ -273,14 +286,13 @@ function CampaignGameScreen() {
 
         <main className="game-content-area">{renderActiveTabContent()}</main>
 
+        {/* Modals and Alerts */}
         <Modal
           isOpen={showElectionDayModal}
           onClose={closeElectionDayModal}
           title={`Election Day!`}
         >
           <div className="election-day-modal-content">
-            {" "}
-            {/* Added a class for overall content styling */}
             <p className="modal-subtitle">
               The following elections are taking place:
             </p>
@@ -298,12 +310,11 @@ function CampaignGameScreen() {
                   Processing election day events...
                 </p>
               )}
-            </div>{" "}
-            {/* End of scrollable container */}
+            </div>
             <div className="modal-actions">
               <button
                 onClick={viewElectionResultsAndNavigate}
-                className="menu-button" // Or "action-button" based on your desired styling for primary action
+                className="menu-button"
               >
                 View Election Results
               </button>
@@ -311,8 +322,6 @@ function CampaignGameScreen() {
                 onClick={closeElectionDayModal}
                 className="action-button secondary"
               >
-                {" "}
-                {/* Added 'secondary' for styling */}
                 Dismiss & Process
               </button>
             </div>
