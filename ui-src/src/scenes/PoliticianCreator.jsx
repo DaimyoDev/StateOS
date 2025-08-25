@@ -153,7 +153,7 @@ function PoliticianCreator() {
 
   const handleAttributeChange = (attr, value) => {
     const numValue = parseInt(value, 10);
-    if (!isNaN(numValue) && numValue >= 0 && numValue <= 10) {
+    if (!isNaN(numValue) && numValue >= 0 && numValue <= 100) {
       actions.updateCreatingPoliticianAttribute(attr.toLowerCase(), numValue);
     }
   };
@@ -247,7 +247,7 @@ function PoliticianCreator() {
     // Attributes
     const newRandomAttributes = { ...creatingPolitician.attributes };
     ATTRIBUTES_LIST.forEach((attr) => {
-      newRandomAttributes[attr.toLowerCase()] = Math.floor(Math.random() * 11);
+      newRandomAttributes[attr.toLowerCase()] = Math.floor(Math.random() * 101);
     });
     actions.updateCreatingPoliticianField("attributes", newRandomAttributes);
 
@@ -413,7 +413,7 @@ function PoliticianCreator() {
               <div className="attributes-grid">
                 <div className="form-group">
                   <label htmlFor="politicalCapital">
-                    Political Capital: {creatingPolitician.politicalCapital}
+                    Political Capital: {creatingPolitician.politicalCapital ?? 0}
                   </label>
                   <input
                     type="range"
@@ -422,7 +422,7 @@ function PoliticianCreator() {
                     min="0"
                     max="100"
                     step="1"
-                    value={creatingPolitician.politicalCapital}
+                    value={creatingPolitician.politicalCapital ?? 0}
                     onChange={handleRangeInputChange}
                   />
                 </div>
@@ -430,7 +430,7 @@ function PoliticianCreator() {
                 <div className="form-group">
                   <label htmlFor="nameRecognition">
                     Name Recognition:{" "}
-                    {creatingPolitician.nameRecognition.toLocaleString()}
+                    {(creatingPolitician.nameRecognition ?? 0).toLocaleString()}
                   </label>
                   <input
                     type="range"
@@ -439,7 +439,7 @@ function PoliticianCreator() {
                     min="0"
                     max="100000"
                     step="500"
-                    value={creatingPolitician.nameRecognition}
+                    value={creatingPolitician.nameRecognition ?? 0}
                     onChange={handleRangeInputChange}
                   />
                 </div>
@@ -447,7 +447,7 @@ function PoliticianCreator() {
                 <div className="form-group">
                   <label htmlFor="treasury">
                     Personal Treasury: $
-                    {creatingPolitician.treasury.toLocaleString()}
+                    {(creatingPolitician.treasury ?? 0).toLocaleString()}
                   </label>
                   <input
                     type="range"
@@ -456,7 +456,7 @@ function PoliticianCreator() {
                     min="0"
                     max="500000"
                     step="1000"
-                    value={creatingPolitician.treasury}
+                    value={creatingPolitician.treasury ?? 0}
                     onChange={handleRangeInputChange}
                   />
                 </div>
@@ -464,7 +464,7 @@ function PoliticianCreator() {
                 <div className="form-group">
                   <label htmlFor="campaignFunds">
                     Campaign Funds: $
-                    {creatingPolitician.campaignFunds.toLocaleString()}
+                    {(creatingPolitician.campaignFunds ?? 0).toLocaleString()}
                   </label>
                   <input
                     type="range"
@@ -473,7 +473,7 @@ function PoliticianCreator() {
                     min="0"
                     max="250000"
                     step="500"
-                    value={creatingPolitician.campaignFunds}
+                    value={creatingPolitician.campaignFunds ?? 0}
                     onChange={handleRangeInputChange}
                   />
                 </div>
@@ -602,7 +602,7 @@ function PoliticianCreator() {
                       id={attr.toLowerCase()}
                       name={attr.toLowerCase()}
                       min="0"
-                      max="10"
+                      max="100"
                       value={
                         creatingPolitician.attributes[attr.toLowerCase()] || 0
                       }

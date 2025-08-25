@@ -73,7 +73,8 @@ const getServiceRatingDetails = (
  */
 export const calculateFiscalConservatismFactor = (
   aiPolitician,
-  financialState
+  financialState,
+  cityStats
 ) => {
   let factor = 0;
   switch (aiPolitician.calculatedIdeology) {
@@ -115,15 +116,25 @@ export const calculateFiscalConservatismFactor = (
     isComfortableFinancially,
   } = financialState;
 
-  if (hasDireFinances) {
-    factor = Math.min(1.0, (factor > 0 ? factor * 1.1 : 0) + 0.98);
-  } else if (isStrainedFinances) {
-    factor = Math.min(1.0, (factor > 0 ? factor * 1.05 : 0) + 0.65);
-  } else if (hasLargeSurplus) {
-    factor = Math.max(-1.0, factor - 0.95);
-  } else if (isComfortableFinancially) {
-    factor = Math.max(-1.0, factor - 0.3);
+  if (hasDireFinances) factor += 0.6;
+  else if (isStrainedFinances) factor += 0.4;
+  else if (hasLargeSurplus) {
+    // Calculate surplus magnitude to determine spending willingness
+    const budget = cityStats?.budget || {};
+    const monthlyIncome = budget.cityIncome || 0;
+    const monthlyExpenses = budget.totalExpenses || 0;
+    const monthlySurplus = monthlyIncome - monthlyExpenses;
+    const surplusRatio = monthlyIncome > 0 ? monthlySurplus / monthlyIncome : 0;
+    
+    // Larger surpluses should make AI less fiscally conservative
+    const surplusReduction = Math.min(0.5, surplusRatio * 1.2);
+    factor -= (0.2 + surplusReduction);
   }
+
+  // Add budget consciousness based on current debt levels
+  if (financialState.hasHighDebt) factor += 0.3;
+  else if (financialState.hasSignificantDeficit) factor += 0.2;
+
   return Math.max(-1.0, Math.min(1.0, factor));
 };
 
@@ -393,26 +404,34 @@ const getBudgetAdjustmentTarget = (
   pDetails,
   serviceInfo,
   fiscalConservatismFactor,
-  financialState
+  financialState,
+  cityStats
 ) => {
   const { hasDireFinances, isStrainedFinances, hasLargeSurplus } =
     financialState;
   let budgetUrgencyMultiplier = 1.0;
   let serviceQualityFactor = 0;
 
+  // Calculate surplus ratio for more nuanced decision making
+  const budget = cityStats?.budget || {};
+  const monthlyIncome = budget.cityIncome || 0;
+  const monthlyExpenses = budget.totalExpenses || 0;
+  const monthlySurplus = monthlyIncome - monthlyExpenses;
+  const surplusRatio = monthlyIncome > 0 ? monthlySurplus / monthlyIncome : 0;
+
   if (serviceInfo?.isValid) {
     if (serviceInfo.ratingIndex === 0) {
       budgetUrgencyMultiplier = hasDireFinances
         ? 1.2
         : hasLargeSurplus
-        ? 2.0
+        ? Math.min(3.0, 2.0 + surplusRatio * 2) // Scale with surplus size
         : 1.7;
       serviceQualityFactor = -1.0;
     } else if (serviceInfo.ratingIndex === 1) {
       budgetUrgencyMultiplier = hasDireFinances
         ? 1.1
         : hasLargeSurplus
-        ? 1.7
+        ? Math.min(2.5, 1.7 + surplusRatio * 1.5)
         : 1.4;
       serviceQualityFactor = -0.5;
     } else if (serviceInfo.ratingIndex === RATING_LEVELS.length - 1) {
@@ -453,10 +472,13 @@ const getBudgetAdjustmentTarget = (
       targetPointInRange = Math.max(0.5, targetPointInRange);
     }
   } else if (hasLargeSurplus) {
+    // More aggressive spending with larger surpluses
+    const surplusBonus = Math.min(0.2, surplusRatio * 0.4); // Up to 20% bonus for large surpluses
     targetPointInRange =
       0.75 +
+      surplusBonus +
       (budgetUrgencyMultiplier - 1.0) * 0.3 -
-      fiscalConservatismFactor * 0.25;
+      fiscalConservatismFactor * 0.15; // Reduced fiscal conservatism impact with surplus
     targetPointInRange -= serviceQualityFactor * 0.1;
   } else {
     // Neutral or Comfortable finances
@@ -691,9 +713,17 @@ function scorePolicyForAI(policy, aiPolitician, cityStats, financialState, conte
     (policy.tags?.includes("healthcare") ||
       pDetails?.targetBudgetLine === "publicHealthServices")
   ) {
-    if (cityStats.healthcareCoverage < 40) score += 2.5;
-    else if (cityStats.healthcareCoverage < 60) score += 1.5;
-    else if (cityStats.healthcareCoverage < 75) score += 0.8;
+    if (cityStats.healthcareCoverage >= 100) {
+      score -= 3.0; // Strongly discourage more healthcare spending at 100% coverage
+    } else if (cityStats.healthcareCoverage >= 90) {
+      score -= 1.0; // Discourage at very high coverage
+    } else if (cityStats.healthcareCoverage < 40) {
+      score += 2.5;
+    } else if (cityStats.healthcareCoverage < 60) {
+      score += 1.5;
+    } else if (cityStats.healthcareCoverage < 75) {
+      score += 0.8;
+    }
   }
 
   // 5. Detailed Fiscal Scoring
@@ -737,7 +767,8 @@ function selectOptimalParameter(
 
   const fiscalConservatismFactor = calculateFiscalConservatismFactor(
     aiPolitician,
-    financialState
+    financialState,
+    cityStats
   );
   const range = pDetails.max - pDetails.min;
 
@@ -752,7 +783,8 @@ function selectOptimalParameter(
       pDetails,
       serviceInfo,
       fiscalConservatismFactor,
-      financialState
+      financialState,
+      cityStats
     ); // Sourced from aiUtils.js
     chosenValue = pDetails.min + range * targetPointInRange;
     chosenValue = applyBudgetAdjustmentCaps(
@@ -1005,13 +1037,13 @@ export const shouldAIProposeBasedOnNeeds = (
   const bestPolicy = scoredPolicies.sort((a, b) => b.urgencyScore - a.urgencyScore)[0];
   
   // Determine urgency thresholds based on conditions
-  let urgencyThreshold = 2.0; // Base threshold
+  let urgencyThreshold = 4.0; // Much higher base threshold to reduce spam
   
   // Lower threshold (more likely to propose) in crisis situations
   if (financialState.hasDireFinances) {
-    urgencyThreshold = 1.0;
+    urgencyThreshold = 2.5; // Still high but allows crisis proposals
   } else if (financialState.isStrainedFinances) {
-    urgencyThreshold = 1.5;
+    urgencyThreshold = 3.0; // Moderate threshold for strained finances
   }
   
   // Check for service quality issues that demand attention

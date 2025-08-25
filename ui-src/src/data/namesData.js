@@ -90,11 +90,6 @@ import {
   NORWEGIAN_LAST_NAMES,
 } from "./names/norwegianNames";
 import {
-  IRISH_MALE_NAMES,
-  IRISH_FEMALE_NAMES,
-  IRISH_LAST_NAMES,
-} from "./names/irishNames";
-import {
   GREEK_MALE_NAMES,
   GREEK_FEMALE_NAMES,
   GREEK_LAST_NAMES,
@@ -155,9 +150,9 @@ import {
   SLOVENIAN_LAST_NAMES,
 } from "./names/slovenianNames";
 import {
-  LUXEMBOURGISH_MALE_NAMES,
-  LUXEMBOURGISH_FEMALE_NAMES,
-  LUXEMBOURGISH_LAST_NAMES,
+  LUXEMBOURGIAN_MALE_NAMES,
+  LUXEMBOURGIAN_FEMALE_NAMES,
+  LUXEMBOURGIAN_LAST_NAMES,
 } from "./names/luxembourgianNames";
 import {
   ICELANDIC_MALE_NAMES,
@@ -174,6 +169,16 @@ import {
   SINGAPOREAN_FEMALE_NAMES,
   SINGAPOREAN_LAST_NAMES,
 } from "./names/singaporeanNames";
+import {
+  CHINESE_MALE_NAMES,
+  CHINESE_FEMALE_NAMES,
+  CHINESE_LAST_NAMES,
+} from "./names/chineseNames";
+import {
+  VIETNAMESE_MALE_NAMES,
+  VIETNAMESE_FEMALE_NAMES,
+  VIETNAMESE_LAST_NAMES,
+} from "./names/vietnameseNames";
 
 export const NAMES_BY_COUNTRY = {
   JPN: {
@@ -218,13 +223,13 @@ export const NAMES_BY_COUNTRY = {
   },
   ARG: {
     male: SPANISH_MALE_NAMES,
-    female: SPANISH_MALE_NAMES,
+    female: SPANISH_FEMALE_NAMES,
     last: SPANISH_LAST_NAMES,
   },
   GRB: {
     male: ENGLISH_MALE_NAMES,
-    female: SPANISH_FEMALE_NAMES,
-    last: SPANISH_LAST_NAMES,
+    female: ENGLISH_FEMALE_NAMES,
+    last: ENGLISH_LAST_NAMES,
   },
   ITA: {
     male: ITALIAN_MALE_NAMES,
@@ -287,7 +292,7 @@ export const NAMES_BY_COUNTRY = {
     last: DUTCH_LAST_NAMES,
   },
   CHE: {
-    male: GERMAN_MALE_NAMES, // Swiss German names
+    male: GERMAN_MALE_NAMES,
     female: GERMAN_FEMALE_NAMES,
     last: GERMAN_LAST_NAMES,
   },
@@ -307,9 +312,9 @@ export const NAMES_BY_COUNTRY = {
     last: NORWEGIAN_LAST_NAMES,
   },
   IRL: {
-    male: IRISH_MALE_NAMES,
-    female: IRISH_FEMALE_NAMES,
-    last: IRISH_LAST_NAMES,
+    male: ENGLISH_MALE_NAMES,
+    female: ENGLISH_FEMALE_NAMES,
+    last: ENGLISH_LAST_NAMES,
   },
   PRT: {
     male: PORTUGUESE_MALE_NAMES,
@@ -342,10 +347,9 @@ export const NAMES_BY_COUNTRY = {
     last: SPANISH_LAST_NAMES,
   },
   VNM: {
-    // Vietnamese names - using Chinese as placeholder
-    male: CHINESE_MALE_NAMES,
-    female: CHINESE_FEMALE_NAMES,
-    last: CHINESE_LAST_NAMES,
+    male: VIETNAMESE_MALE_NAMES,
+    female: VIETNAMESE_FEMALE_NAMES,
+    last: VIETNAMESE_LAST_NAMES,
   },
   MYS: {
     male: MALAYSIAN_MALE_NAMES,
@@ -408,9 +412,9 @@ export const NAMES_BY_COUNTRY = {
     last: SLOVENIAN_LAST_NAMES,
   },
   LUX: {
-    male: LUXEMBOURGISH_MALE_NAMES,
-    female: LUXEMBOURGISH_FEMALE_NAMES,
-    last: LUXEMBOURGISH_LAST_NAMES,
+    male: LUXEMBOURGIAN_MALE_NAMES,
+    female: LUXEMBOURGIAN_FEMALE_NAMES,
+    last: LUXEMBOURGIAN_LAST_NAMES,
   },
   ISL: {
     male: ICELANDIC_MALE_NAMES,

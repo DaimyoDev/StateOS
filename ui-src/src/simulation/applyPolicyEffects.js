@@ -2,6 +2,10 @@
 import { adjustStatLevel } from "../utils/core.js";
 import { RATING_LEVELS, MOOD_LEVELS } from "../data/governmentData";
 
+// Cache for expensive lookups
+let _cachedStateRegion = null;
+let _lastCampaignStateId = null;
+
 const getTargetObjectAndKey = (campaignState, effect) => {
   const { level, targetStat, isBudgetItem, isTaxRate } = effect;
 
@@ -11,7 +15,12 @@ const getTargetObjectAndKey = (campaignState, effect) => {
       baseObject = campaignState.startingCity?.stats;
       break;
     case 'state':
-      baseObject = campaignState.regions?.find(r => r.id === campaignState.startingCity?.regionId)?.stats;
+      // Cache the expensive region lookup
+      if (_lastCampaignStateId !== campaignState.id || !_cachedStateRegion) {
+        _cachedStateRegion = campaignState.regions?.find(r => r.id === campaignState.startingCity?.regionId);
+        _lastCampaignStateId = campaignState.id;
+      }
+      baseObject = _cachedStateRegion?.stats;
       break;
     case 'national':
       baseObject = campaignState.country?.stats;
@@ -33,6 +42,12 @@ const getTargetObjectAndKey = (campaignState, effect) => {
     if (!baseObject.budget) baseObject.budget = {};
     if (!baseObject.budget.taxRates) baseObject.budget.taxRates = {};
     return { target: baseObject.budget.taxRates, lastKey: targetStat };
+  }
+
+  // Validate targetStat before splitting
+  if (!targetStat || typeof targetStat !== 'string') {
+    console.warn(`[getTargetObjectAndKey] Invalid targetStat: ${targetStat}`, effect);
+    return { target: null, lastKey: null };
   }
 
   const pathParts = targetStat.split('.');
@@ -62,11 +77,23 @@ const setNestedValue = (obj, path, value) => {
   return obj;
 };
 
-export const applyPolicyEffect = (currentState, effect, policyChosenParameters = {}) => {
-  if (!effect || !effect.targetStat) {
-    return currentState;
+export const applyPolicyEffect = (campaignState, effect, parameters = {}) => {
+  if (!campaignState || !effect) {
+    console.warn('[applyPolicyEffect] Missing campaignState or effect');
+    return;
   }
 
+  console.log(`[DEBUG] applyPolicyEffect called:`, {
+    targetStat: effect.targetStat,
+    change: effect.change,
+    type: effect.type,
+    isBudgetItem: effect.isBudgetItem,
+    isTaxRate: effect.isTaxRate,
+    level: effect.level,
+    parameters
+  });
+
+  const currentState = campaignState;
 
   if (effect.chance !== undefined && Math.random() > effect.chance) {
     return currentState; // Return original state if chance fails
@@ -111,12 +138,19 @@ export const applyPolicyEffect = (currentState, effect, policyChosenParameters =
         target[lastKey] = adjustStatLevel(target[lastKey], MOOD_LEVELS, actualChange);
         break;
       case "percentage_point_change":
-        target[lastKey] = (target[lastKey] || 0) + actualChange;
+        const currentValue = parseFloat(target[lastKey]) || 0;
+        const newValue = currentValue + actualChange;
+        console.log(`[DEBUG] Applying percentage_point_change: ${lastKey} from ${currentValue} to ${newValue}`);
+        target[lastKey] = isNaN(newValue) ? currentValue : newValue;
         break;
       case "absolute_change":
       case "absolute_change_recurring":
         if (typeof target[lastKey] === "number") {
+          console.log(`[DEBUG] Applying absolute change: ${lastKey} from ${target[lastKey]} to ${target[lastKey] + actualChange}`);
           target[lastKey] += actualChange;
+        } else {
+          console.log(`[DEBUG] Setting absolute value: ${lastKey} to ${actualChange} (was ${target[lastKey]})`);
+          target[lastKey] = actualChange;
         }
         break;
       case "absolute_set_rate":

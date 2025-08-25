@@ -4,18 +4,20 @@
 
 // NOTE: Import paths are updated to reflect the new refactored structure.
 import { ELECTION_TYPES_BY_COUNTRY } from "../data/electionsData.js";
-import { createDateObj, getRandomInt } from "../utils/core.js"; // Added adjustStatLevel
+import { createDateObj} from "../utils/core.js"; // Added adjustStatLevel
 import { calculateElectionOutcome } from "../elections/electionResults.js";
-import { normalizePolling } from "../General Scripts/PollingFunctions.js";
 import {
-  calculateBaseCandidateScore,
-  generateElectionParticipants,
   getElectionInstances,
+  generateElectionParticipants,
   initializeElectionObject,
+  calculateSeatDetailsForInstance,
 } from "../utils/electionUtils.js";
+import { generateOptimizedElectionParticipants } from "../General Scripts/OptimizedElectionGeneration.js";
 import { generateNewsForEvent } from "../simulation/newsGenerator.js";
 import { rehydratePolitician } from "../entities/personnel.js";
 import { _addPoliticiansToSoA_helper } from "./dataSlice.js";
+import { calculateBaseCandidateScore } from "../utils/electionUtils.js";
+import { normalizePollingOptimized } from "../General Scripts/OptimizedPollingFunctions.js";
 
 // --- Local Helper Functions (To be moved to electionManager.js later) ---
 
@@ -71,39 +73,6 @@ const cleanWinnerName = (name) => {
   return name.replace(/\s*\([^)]*List\s*#\d+\)$/, "").trim();
 };
 
-
-const calculateSeatDetailsForInstance = (electionType, entityPopulation) => {
-  if (electionType.generatesOneWinner) {
-    return { numberOfSeats: 1, seatDistributionMethod: "single_winner" };
-  }
-  let numberOfSeats = electionType.minCouncilSeats || 0;
-  if (
-    electionType.councilSeatPopulationTiers &&
-    typeof entityPopulation === "number" &&
-    entityPopulation > 0
-  ) {
-    for (const tier of electionType.councilSeatPopulationTiers) {
-      if (entityPopulation < tier.popThreshold) {
-        numberOfSeats += getRandomInt(
-          tier.extraSeatsRange[0],
-          tier.extraSeatsRange[1]
-        );
-        return { numberOfSeats, seatDistributionMethod: "multi_winner" };
-      }
-    }
-    const lastTier =
-      electionType.councilSeatPopulationTiers[
-        electionType.councilSeatPopulationTiers.length - 1
-      ];
-    if (entityPopulation >= lastTier.popThreshold) {
-      numberOfSeats += getRandomInt(
-        lastTier.extraSeatsRange[0],
-        lastTier.extraSeatsRange[1]
-      );
-    }
-  }
-  return { numberOfSeats, seatDistributionMethod: "multi_winner" };
-};
 export const createElectionSlice = (set, get) => ({
   isSimulationMode: false,
   simulatedElections: [],
@@ -149,6 +118,9 @@ export const createElectionSlice = (set, get) => ({
                 incumbentsMap.set(office.officeName, incumbents);
             }
         });
+
+        console.log(`[Election Generation] Processing ${countryElectionTypes.length} election types for ${currentDate.year}`);
+        const startTime = performance.now();
 
         countryElectionTypes.forEach((electionType) => {
           const generationCampaignContext = {
@@ -217,7 +189,8 @@ export const createElectionSlice = (set, get) => ({
               electorateLeaning: entityData.politicalLeaning || "Moderate",
             };
 
-            const participantsData = generateElectionParticipants({
+            // Try optimized generation first, fall back to original if not supported
+            let participantsData = generateOptimizedElectionParticipants({
               electionType,
               partiesInScope:
                 state.activeCampaign.generatedPartiesSnapshot || [],
@@ -225,9 +198,24 @@ export const createElectionSlice = (set, get) => ({
               numberOfSeatsToFill: seatDetails.numberOfSeats,
               countryId,
               activeCampaign: state.activeCampaign,
-              entityPopulation: entityData.population,
               electionPropertiesForScoring,
+              entityPopulation: entityData.population,
             });
+
+            // Fall back to original generation if optimized version doesn't support this election type
+            if (!participantsData) {
+              participantsData = generateElectionParticipants({
+                electionType,
+                partiesInScope:
+                  state.activeCampaign.generatedPartiesSnapshot || [],
+                incumbentInfo,
+                numberOfSeatsToFill: seatDetails.numberOfSeats,
+                countryId,
+                activeCampaign: state.activeCampaign,
+                entityPopulation: entityData.population,
+                electionPropertiesForScoring,
+              });
+            }
 
             let allCandidatesInRace = [];
             switch (participantsData.type) {
@@ -298,14 +286,18 @@ export const createElectionSlice = (set, get) => ({
           });
         });
 
+        // Batch process all new politicians at once instead of per-election
         let updatedPoliticiansSoA = state.activeCampaign.politicians;
         if (allNewlyGeneratedChallengers.length > 0) {
-          // Use the pure helper function to add them to the current SoA store
+          console.log(`[Election Generation] Adding ${allNewlyGeneratedChallengers.length} new challengers to politicians store`);
           updatedPoliticiansSoA = _addPoliticiansToSoA_helper(
             allNewlyGeneratedChallengers,
             state.activeCampaign.politicians
           );
         }
+
+        const endTime = performance.now();
+        console.log(`[Election Generation] Completed in ${(endTime - startTime).toFixed(2)}ms. Generated ${newElectionsToAdd.length} elections with ${allNewlyGeneratedChallengers.length} new candidates.`);
 
         if (newElectionsToAdd.length > 0) {
           const sortedElections = [
@@ -623,7 +615,20 @@ export const createElectionSlice = (set, get) => ({
             const soaStore = state.activeCampaign.politicians;
 
             const currentCandidatesArray = candidateIds
-              .map((id) => rehydratePolitician(id, soaStore))
+              .map((id) => {
+                const candidate = rehydratePolitician(id, soaStore);
+                if (candidate) {
+                  // Ensure the candidate has a proper name
+                  if (!candidate.name && candidate.firstName && candidate.lastName) {
+                    candidate.name = `${candidate.firstName} ${candidate.lastName}`;
+                  }
+                  // Fallback if name is still missing
+                  if (!candidate.name) {
+                    candidate.name = candidate.id || "Unknown Candidate";
+                  }
+                }
+                return candidate;
+              })
               .filter(Boolean);
 
             const newCandidateList = [
@@ -639,7 +644,7 @@ export const createElectionSlice = (set, get) => ({
                 calculateBaseCandidateScore(c, election, state.activeCampaign),
             }));
 
-            const incorrectlyKeyedMap = normalizePolling(
+            const incorrectlyKeyedMap = normalizePollingOptimized(
               candidatesWithScores,
               adultPop
             );
@@ -715,7 +720,7 @@ export const createElectionSlice = (set, get) => ({
               // --- FIX STARTS HERE ---
 
               // 1. Run the polling calculation as before.
-              const incorrectlyKeyedMap = normalizePolling(
+              const incorrectlyKeyedMap = normalizePollingOptimized(
                 election.candidates,
                 election.totalEligibleVoters // Using a more realistic population is better than 100
               );

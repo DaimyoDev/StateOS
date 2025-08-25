@@ -11,7 +11,7 @@ import { ELECTION_TYPES_BY_COUNTRY } from "../data/electionsData";
 
 // Utility imports
 import { generateNuancedColor } from "../utils/generalUtils";
-import { normalizePolling } from "../General Scripts/PollingFunctions";
+import { pollingOptimizer } from "../General Scripts/OptimizedPollingFunctions.js";
 import { getRandomElement, getRandomInt, generateId } from "../utils/core";
 import {
   calculateIdeologyFromStances,
@@ -365,10 +365,9 @@ const ElectionSimulatorScreen = () => {
       })
       .filter(Boolean);
 
-    const normalizedCandidatesMap = normalizePolling(
+    const normalizedCandidatesMap = pollingOptimizer.normalizePollingOptimized(
       newCandidates,
-      currentSetup.totalPopulation,
-      true
+      currentSetup.totalPopulation
     );
     const finalCandidates = Array.from(normalizedCandidatesMap.values());
 
@@ -412,10 +411,9 @@ const ElectionSimulatorScreen = () => {
         });
       }
     });
-    const normalized = normalizePolling(
+    const normalized = pollingOptimizer.normalizePollingOptimized(
       newCandidatesForRace,
-      currentSetup.totalPopulation,
-      true
+      currentSetup.totalPopulation
     );
     const finalCandidates = Array.from(normalized.values());
 
@@ -510,10 +508,9 @@ const ElectionSimulatorScreen = () => {
         continue;
       }
 
-      const normalizedRaceCandidates = normalizePolling(
+      const normalizedRaceCandidates = pollingOptimizer.normalizePollingOptimized(
         raceCandidates,
-        populationForSim,
-        true
+        populationForSim
       );
       const candidatesMap = new Map(
         Array.from(normalizedRaceCandidates.values()).map((c) => [c.id, c])

@@ -180,7 +180,13 @@ export const createTimeSlice = (set, get) => {
           
           collectedNewsThisMonth.push(...partyPopResult.newsItems);
 
-          // 7. Dispatch collected news
+          // 7. Run AI Bill Proposals
+          const proposedBills = runAIBillProposals(currentCampaign, get);
+          if (proposedBills.length > 0) {
+            get().actions.addProposedBills?.(proposedBills);
+          }
+
+          // 8. Dispatch collected news
           if (collectedNewsThisMonth.length > 0) {
             const datedNews = collectedNewsThisMonth.map((d) => ({
               ...d,
@@ -331,7 +337,6 @@ export const createTimeSlice = (set, get) => {
           const votesToProcess = [...voteQueue]; // Process the queue from the previous day
           votesToProcess.forEach((vote) => {
             const aiVotes = get().actions.runAllAIVotesForBill?.(vote.billId, vote.level);
-            console.log(`[TimeSlice Debug] AI votes calculated:`, aiVotes);
             get().actions.finalizeBillVote?.(vote.billId, vote.level, aiVotes);
           });
           // Clear the queue AFTER processing yesterday's votes

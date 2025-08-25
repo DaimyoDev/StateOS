@@ -14,6 +14,7 @@ import { calculateAllCityStats } from "../utils/statCalculationCore.js";
 import { runStateBudgetUpdate, runNationalBudgetUpdate } from "../utils/regionalStatCalc.js";
 import { normalizePartyPopularities } from "../utils/electionUtils.js";
 import { decideAndAuthorAIBill } from "./aiProposal.js";
+import { strategicAIBillProposal } from "./aiStrategicProposal.js";
 import { generateNewsForEvent } from "./newsGenerator.js";
 
 /**
@@ -235,18 +236,22 @@ export const runAIBillProposals = (campaign, getFromStore) => {
   let proposedBillsThisTick = [...(getFromStore().proposedBills || [])];
 
   councilMembers.forEach((aiPolitician) => {
-    if (Math.random() < 0.15) {
-      // CHANGED: Expect an object with { policies, theme }
-      const authoredBillObject = decideAndAuthorAIBill(
+    // Use strategic proposal system instead of random chance
+    try {
+      const authoredBillObject = strategicAIBillProposal(
         aiPolitician,
         availablePolicyIds,
         campaign.startingCity.stats,
         getFromStore().activeLegislation || [],
         proposedBillsThisTick,
-        getFromStore().availablePoliciesForProposal || []
+        getFromStore().availablePoliciesForProposal || [],
+        getFromStore().failedBillsHistory || [],
+        campaign.currentDate,
+        councilMembers,
+        campaign.governmentOffices
       );
 
-      // Check if the AI successfully created a bill
+      // Check if the AI strategically decided to propose a bill
       if (authoredBillObject && authoredBillObject.policies.length > 0) {
         const { policies, theme } = authoredBillObject; // Destructure the object
 
@@ -265,6 +270,9 @@ export const runAIBillProposals = (campaign, getFromStore) => {
         billsToDispatch.push(newBill);
         proposedBillsThisTick.push(newBill);
       }
+    } catch (error) {
+      console.error(`Error in strategic AI bill proposal for ${aiPolitician.firstName} ${aiPolitician.lastName}:`, error);
+      // Fall back to no proposal on error
     }
   });
 

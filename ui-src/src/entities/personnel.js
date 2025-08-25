@@ -20,7 +20,7 @@ import {
   getRandomElement,
   getRandomInt,
 } from "../utils/core.js";
-import { calculateInitialPolling } from "../General Scripts/PollingFunctions.js";
+import { calculateInitialPollingOptimized } from "../General Scripts/OptimizedPollingFunctions.js";
 import { generateNuancedColor } from "../utils/generalUtils.js";
 import { generatePartyLogo } from "../utils/logoGenerator.js";
 import { useGameStore } from "../store.js";
@@ -224,7 +224,7 @@ export const createFactionObject = (params = {}) => ({
  * @param {object} scoresB - The second set of ideology scores.
  * @returns {number} The squared distance, or Infinity if inputs are invalid.
  */
-function calculateIdeologyDistance(scoresA, scoresB) {
+export function calculateIdeologyDistance(scoresA, scoresB) {
   if (
     !scoresA ||
     !scoresB ||
@@ -788,7 +788,7 @@ export function generateFullAIPolitician(
     factionId: chosenFactionId,
   };
 
-  const calculatedPolling = calculateInitialPolling(
+  const calculatedPolling = calculateInitialPollingOptimized(
     newPolitician,
     countryId,
     allPartiesInScope,

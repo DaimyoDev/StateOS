@@ -1,5 +1,5 @@
 // src/stores/campaignSlice.js
-import { normalizePolling } from "../General Scripts/PollingFunctions.js";
+import { pollingOptimizer } from "../General Scripts/OptimizedPollingFunctions.js";
 import { getRandomInt, calculateAdultPopulation } from "../utils/core.js";
 
 /**
@@ -704,62 +704,47 @@ export const createCampaignSlice = (set, get) => ({
 
         const { politicians } = state.activeCampaign;
         
-        const updatedElections = state.activeCampaign.elections.map(
-          (election) => {
-            if (affectedIdsSet.has(election.id)) {
-              // Handle both Map and Array cases efficiently
-              let updatedCandidatesArray;
+        // Collect affected elections for batch processing
+        const affectedElections = [];
+        const electionUpdates = new Map();
+        
+        for (const election of state.activeCampaign.elections) {
+          if (affectedIdsSet.has(election.id)) {
+            // Sync politician data to election candidates efficiently
+            const updatedCandidates = new Map();
+            
+            for (const [candidateId, candidate] of election.candidates) {
+              const stateData = politicians.state.get(candidateId);
+              const attributesData = politicians.attributes.get(candidateId);
               
-              if (election.candidates instanceof Map) {
-                // Work directly with Map for better performance
-                updatedCandidatesArray = [];
-                for (const candidate of election.candidates.values()) {
-                  const stateData = politicians.state.get(candidate.id);
-                  const attributesData = politicians.attributes.get(candidate.id);
-                  
-                  if (stateData || attributesData) {
-                    updatedCandidatesArray.push({
-                      ...candidate,
-                      baseScore: stateData?.baseScore || candidate.baseScore,
-                      nameRecognition: stateData?.nameRecognition || candidate.nameRecognition,
-                      approvalRating: stateData?.approvalRating || candidate.approvalRating,
-                      mediaBuzz: stateData?.mediaBuzz || candidate.mediaBuzz,
-                      ...(attributesData && { attributes: { ...candidate.attributes, ...attributesData } })
-                    });
-                  } else {
-                    updatedCandidatesArray.push(candidate);
-                  }
-                }
-              } else {
-                // Handle array case
-                updatedCandidatesArray = election.candidates.map(candidate => {
-                  const stateData = politicians.state.get(candidate.id);
-                  const attributesData = politicians.attributes.get(candidate.id);
-                  
-                  if (stateData || attributesData) {
-                    return {
-                      ...candidate,
-                      baseScore: stateData?.baseScore || candidate.baseScore,
-                      nameRecognition: stateData?.nameRecognition || candidate.nameRecognition,
-                      approvalRating: stateData?.approvalRating || candidate.approvalRating,
-                      mediaBuzz: stateData?.mediaBuzz || candidate.mediaBuzz,
-                      ...(attributesData && { attributes: { ...candidate.attributes, ...attributesData } })
-                    };
-                  }
-                  return candidate;
+              if (stateData || attributesData) {
+                updatedCandidates.set(candidateId, {
+                  ...candidate,
+                  baseScore: stateData?.baseScore || candidate.baseScore,
+                  nameRecognition: stateData?.nameRecognition || candidate.nameRecognition,
+                  approvalRating: stateData?.approvalRating || candidate.approvalRating,
+                  mediaBuzz: stateData?.mediaBuzz || candidate.mediaBuzz,
+                  ...(attributesData && { attributes: { ...candidate.attributes, ...attributesData } })
                 });
+              } else {
+                updatedCandidates.set(candidateId, candidate);
               }
-              
-              // Re-normalize polling with updated candidate data
-              const updatedCandidates = normalizePolling(
-                updatedCandidatesArray,
-                adultPop
-              );
-              return { ...election, candidates: updatedCandidates };
             }
-            return election;
+            
+            affectedElections.push({ ...election, candidates: updatedCandidates });
           }
-        );
+        }
+        
+        // Batch process polling updates
+        const pollingResults = pollingOptimizer.batchUpdateElectionPolling(affectedElections, adultPop);
+        
+        // Apply updates
+        const updatedElections = state.activeCampaign.elections.map(election => {
+          if (pollingResults.has(election.id)) {
+            return { ...election, candidates: pollingResults.get(election.id) };
+          }
+          return election;
+        });
 
         return {
           activeCampaign: {
@@ -846,20 +831,20 @@ export const createCampaignSlice = (set, get) => ({
                   (stateData.nameRecognition || 0) / adultPop;
                 const scoreBoost = Math.round(
                   getRandomInt(
-                    actionResult.hoursSpent,
-                    actionResult.hoursSpent * 2
+                    actionResult.hoursSpent * 2,
+                    actionResult.hoursSpent * 4
                   ) +
                     attributesData.oratory / 2 +
-                    nameRecFraction * 3
+                    nameRecFraction * 5
                 );
                 const mediaBuzzGain = getRandomInt(
-                  3 * actionResult.hoursSpent,
-                  7 * actionResult.hoursSpent
+                  5 * actionResult.hoursSpent,
+                  10 * actionResult.hoursSpent
                 );
                 const nameRecGain = Math.round(
                   getRandomInt(
-                    50 * actionResult.hoursSpent,
-                    200 * actionResult.hoursSpent
+                    100 * actionResult.hoursSpent,
+                    300 * actionResult.hoursSpent
                   ) *
                     (1 + (stateData.mediaBuzz || 0) / 200)
                 );
@@ -872,7 +857,7 @@ export const createCampaignSlice = (set, get) => ({
                   adultPop,
                   (stateData.nameRecognition || 0) + nameRecGain
                 );
-                stateData.baseScore = (stateData.baseScore || 10) + scoreBoost; // Assuming baseScore is part of stateData now
+                stateData.baseScore = (stateData.baseScore || 10) + scoreBoost;
                 break;
               }
               case "recruitVolunteers": {
@@ -894,9 +879,21 @@ export const createCampaignSlice = (set, get) => ({
                   (spendAmount / 1000) *
                   (actionResult.hoursSpent / 3) *
                   (1 + ((intelligence + charisma) / 2 - 5) * 0.1);
+                const scoreBoost = Math.round(
+                  getRandomInt(2, 4) * effectivenessFactor + 
+                  (spendAmount / 5000) // Additional boost based on spending
+                );
                 stateData.baseScore =
-                  (stateData.baseScore || 10) +
-                  getRandomInt(1, 2) * effectivenessFactor;
+                  (stateData.baseScore || 10) + scoreBoost;
+                
+                // Ad campaigns also boost name recognition
+                const nameRecBoost = Math.round(
+                  (spendAmount / 100) * actionResult.hoursSpent
+                );
+                stateData.nameRecognition = Math.min(
+                  adultPop,
+                  (stateData.nameRecognition || 0) + nameRecBoost
+                );
                 break;
               }
             }
@@ -939,18 +936,22 @@ export const createCampaignSlice = (set, get) => ({
         };
       });
 
-      // After the main state update, trigger the polling update for affected elections
+      // After the main state update, trigger the polling update for affected elections (throttled to reduce overhead)
       if (affectedElectionIds.size > 0) {
-        get().actions.updatePollingForAffectedElections(
-          Array.from(affectedElectionIds)
-        );
+        // Only update polling if significant changes occurred or enough time has passed
+        const shouldUpdatePolling = get().actions.shouldUpdatePolling?.(affectedElectionIds.size);
         
-        // Generate new polls only periodically (every 3-7 days) for realism
-        const currentDate = get().activeCampaign?.currentDate;
-        if (currentDate && get().actions.shouldGenerateNewPolls?.(currentDate)) {
-          affectedElectionIds.forEach(electionId => {
-            get().actions.generateNewPollForElection?.(electionId);
-          });
+        if (shouldUpdatePolling) {
+          get().actions.updatePollingForAffectedElections(
+            Array.from(affectedElectionIds)
+          );
+          
+          // Generate new polls only periodically (every 3-7 days) for realism
+          const currentDate = get().activeCampaign?.currentDate;
+          if (currentDate && get().actions.shouldGenerateNewPolls?.(currentDate)) {
+            // Batch poll generation to reduce overhead
+            get().actions.batchGenerateNewPolls?.(Array.from(affectedElectionIds));
+          }
         }
       }
     },
@@ -992,6 +993,22 @@ export const createCampaignSlice = (set, get) => ({
       }
       
       return shouldGenerate;
+    },
+
+    shouldUpdatePolling: (affectedElectionCount) => {
+      const state = get();
+      const lastPollingUpdate = state.activeCampaign?.lastPollingUpdateTime || 0;
+      const currentTime = Date.now();
+      
+      // Throttle polling updates to at most once every 500ms for performance
+      const timeSinceLastUpdate = currentTime - lastPollingUpdate;
+      const shouldUpdate = timeSinceLastUpdate > 500 || affectedElectionCount > 3;
+      
+      if (shouldUpdate) {
+        get().actions.updateActiveCampaign({ lastPollingUpdateTime: currentTime });
+      }
+      
+      return shouldUpdate;
     },
 
     updateActiveCampaign: (updates) => {

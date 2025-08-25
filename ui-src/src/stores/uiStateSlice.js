@@ -217,19 +217,13 @@ export const createUISlice = (set, get) => ({
     setLoadingGame: (isLoading, message = "") =>
       set({ isLoadingGame: isLoading, loadingMessage: message }),
     startVotingQueue: (votesToQueue) => { // Expects [{ billId, level }]
-      console.log('[VoteQueue] Starting queue with:', votesToQueue);
       if (!votesToQueue || votesToQueue.length === 0) return;
 
       set({ voteQueue: votesToQueue });
-      get().actions.addToast({
-        message: `Legislative session has begun. ${votesToQueue.length} bill(s) are up for a vote.`,
-        type: "info",
-      });
     },
 
     // UPDATED: This now specifically opens the LiveVoteSession overlay
     startVotingSession: () => {
-      console.log('[VoteQueue] Starting session for next bill.');
       const queue = get().voteQueue;
       if (queue.length > 0) {
         set({
@@ -242,7 +236,6 @@ export const createUISlice = (set, get) => ({
     // UPDATED: This now processes the queue
     endVotingSession: () => {
       const { billId, level } = get().activeVotingSessionDetails;
-      console.log(`[VoteQueue] Ending session for bill: ${billId}`);
       get().actions.finalizeBillVote(billId, level);
 
       const remainingQueue = get().voteQueue.filter(
@@ -310,6 +303,20 @@ export const createUISlice = (set, get) => ({
     },
     closeDonationModal: () => {
       set({ isDonationModalOpen: false, donationEntity: null });
+    },
+
+    openBillDetailsModal: (bill) => {
+      set({
+        isBillDetailsModalOpen: true,
+        viewingBillDetails: bill,
+      });
+    },
+
+    closeBillDetailsModal: () => {
+      set({
+        isBillDetailsModalOpen: false,
+        viewingBillDetails: null,
+      });
     },
 
     openBillAuthoringModal: (mode = 'new', targetLaw = null) => {

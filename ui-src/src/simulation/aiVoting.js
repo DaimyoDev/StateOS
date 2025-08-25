@@ -189,8 +189,15 @@ const calculateCityIssueAddressingScore = (cityStats, policyDef) => {
       policyDef.parameterDetails?.targetBudgetLine === "publicHealthServices"; //
 
     if (isHealthcarePolicy) {
-      if (cityStats.healthcareCoverage < 40) score += 1.0; // Very low coverage
-      else if (cityStats.healthcareCoverage < 60) score += 0.6; // Low coverage
+      if (cityStats.healthcareCoverage >= 100) {
+        score -= 1.5; // Oppose more healthcare spending at 100% coverage
+      } else if (cityStats.healthcareCoverage >= 90) {
+        score -= 0.5; // Slight opposition at very high coverage
+      } else if (cityStats.healthcareCoverage < 40) {
+        score += 1.0; // Very low coverage
+      } else if (cityStats.healthcareCoverage < 60) {
+        score += 0.6; // Low coverage
+      }
     }
   }
 

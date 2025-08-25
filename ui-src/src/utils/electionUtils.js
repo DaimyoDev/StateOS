@@ -17,11 +17,10 @@ import {
   generateNationalLegislativeElectionInstances,
 } from "../elections/electionInstance.js";
 import {
-  handleFPTPParticipants,
-  handlePartyListPRParticipants,
-  handleMMDParticipants,
-  handleMMPParticipants,
-} from "../elections/electionParticipants.js";
+  generateOptimizedElectionParticipants,
+  generatePoliticiansBatch,
+} from "../General Scripts/OptimizedElectionGeneration.js";
+// MMP and MMD functions will be handled by optimized generation or fallback
 
 /**
  * Calculates the number of seats for a given election type and city population.
@@ -881,25 +880,46 @@ export const generateElectionParticipants = ({
     electorateIssueStances,
   };
 
-  switch (system) {
-    case "FPTP":
-    case "TwoRoundSystem":
-    case "ElectoralCollege":
-      return handleFPTPParticipants(handlerParams);
-    case "PartyListPR":
-      return handlePartyListPRParticipants(handlerParams);
-    case "MMP":
-      return handleMMPParticipants(handlerParams);
-    case "SNTV_MMD":
-    case "BlockVote":
-    case "PluralityMMD":
-      return handleMMDParticipants(handlerParams);
-    default:
-      console.warn(
-        `[generateElectionParticipants] Unknown electoral system: ${system}. Defaulting to FPTP participant generation logic as a fallback.`
-      );
-      return handleFPTPParticipants(handlerParams);
+  // Try optimized generation first for supported systems
+  const optimizedResult = generateOptimizedElectionParticipants({
+    electionType,
+    partiesInScope,
+    incumbentInfo,
+    numberOfSeatsToFill,
+    countryId,
+    activeCampaign,
+    electionPropertiesForScoring,
+    entityPopulation,
+  });
+
+  if (optimizedResult) {
+    return optimizedResult;
   }
+
+  // Fall back to basic FPTP-style generation for unsupported systems
+  console.warn(
+    `[generateElectionParticipants] Electoral system "${system}" not yet optimized. Using basic candidate generation as fallback.`
+  );
+  
+  // Generate basic candidates using optimized batch generation
+  const candidateCount = Math.min(numberOfSeatsToFill * 2, 8);
+  const basicCandidates = generatePoliticiansBatch(
+    candidateCount,
+    countryId,
+    partiesInScope,
+    {}
+  );
+
+  // Convert to Map format
+  const candidatesMap = new Map();
+  basicCandidates.forEach((candidate, index) => {
+    candidatesMap.set(candidate.id, {
+      ...candidate,
+      polling: Math.max(5, Math.random() * 40),
+    });
+  });
+
+  return { type: "individual_candidates", data: candidatesMap };
 };
 
 /**
