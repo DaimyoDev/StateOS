@@ -4,7 +4,7 @@
 
 // NOTE: Import paths are updated to reflect the new refactored structure.
 import { ELECTION_TYPES_BY_COUNTRY } from "../data/electionsData.js";
-import { createDateObj} from "../utils/core.js"; // Added adjustStatLevel
+import { createDateObj } from "../utils/core.js"; // Added adjustStatLevel
 import { calculateElectionOutcome } from "../elections/electionResults.js";
 import {
   getElectionInstances,
@@ -31,21 +31,28 @@ import { normalizePollingOptimized } from "../General Scripts/OptimizedPollingFu
 const checkCandidacyEligibility = (election, playerLocation) => {
   const { startingCity, regionId, countryId } = playerLocation;
   const entity = election.entityDataSnapshot;
-  
+
   if (!entity) return false;
-  
+
   // National elections - eligible if same country
   if (election.level && election.level.startsWith("national_")) {
     return entity.countryId === countryId || entity.id === countryId;
   }
-  
+
   // Local city elections - eligible if same city
-  if (election.level === "local_city" || election.level === "local_city_or_municipality") {
+  if (
+    election.level === "local_city" ||
+    election.level === "local_city_or_municipality"
+  ) {
     return entity.id === startingCity?.id;
   }
-  
+
   // State/regional elections - eligible if same state/region
-  if (election.level && (election.level.startsWith("state_") || election.level.startsWith("regional_"))) {
+  if (
+    election.level &&
+    (election.level.startsWith("state_") ||
+      election.level.startsWith("regional_"))
+  ) {
     return (
       entity.id === regionId ||
       entity.stateId === regionId ||
@@ -53,17 +60,23 @@ const checkCandidacyEligibility = (election, playerLocation) => {
       entity.id.startsWith(regionId + "_")
     );
   }
-  
+
   // District elections within state - eligible if district is in player's state
-  if (entity.stateId === regionId || entity.parentId === regionId || entity.id.startsWith(regionId + "_")) {
+  if (
+    entity.stateId === regionId ||
+    entity.parentId === regionId ||
+    entity.id.startsWith(regionId + "_")
+  ) {
     return true;
   }
-  
+
   // City council elections - eligible if same city
   if (election.level === "local_city_or_municipality_council") {
-    return entity.id === startingCity?.id || entity.parentId === startingCity?.id;
+    return (
+      entity.id === startingCity?.id || entity.parentId === startingCity?.id
+    );
   }
-  
+
   return false;
 };
 
@@ -91,36 +104,33 @@ export const createElectionSlice = (set, get) => ({
         let newElectionsToAdd = [];
         let allNewlyGeneratedChallengers = [];
 
-        // --- OPTIMIZATION: Pre-calculate last held elections --- 
+        // --- OPTIMIZATION: Pre-calculate last held elections ---
         const lastHeldElectionsMap = new Map();
-        existingElections.forEach(e => {
-            if (e.outcome?.status === "concluded") {
-                const existing = lastHeldElectionsMap.get(e.instanceIdBase);
-                if (!existing || e.electionDate.year > existing.electionDate.year) {
-                    lastHeldElectionsMap.set(e.instanceIdBase, e);
-                }
+        existingElections.forEach((e) => {
+          if (e.outcome?.status === "concluded") {
+            const existing = lastHeldElectionsMap.get(e.instanceIdBase);
+            if (!existing || e.electionDate.year > existing.electionDate.year) {
+              lastHeldElectionsMap.set(e.instanceIdBase, e);
             }
+          }
         });
 
         // --- OPTIMIZATION: Create a set of elections already scheduled for the current year ---
         const scheduledInCurrentYearSet = new Set(
-            existingElections
-                .filter(e => e.electionDate.year === currentDate.year)
-                .map(e => e.instanceIdBase)
+          existingElections
+            .filter((e) => e.electionDate.year === currentDate.year)
+            .map((e) => e.instanceIdBase)
         );
 
         // --- OPTIMIZATION: Pre-calculate incumbents by office name ---
         const incumbentsMap = new Map();
-        governmentOffices.forEach(office => {
-            if (office.holder) {
-                const incumbents = incumbentsMap.get(office.officeName) || [];
-                incumbents.push(office);
-                incumbentsMap.set(office.officeName, incumbents);
-            }
+        governmentOffices.forEach((office) => {
+          if (office.holder) {
+            const incumbents = incumbentsMap.get(office.officeName) || [];
+            incumbents.push(office);
+            incumbentsMap.set(office.officeName, incumbents);
+          }
         });
-
-        console.log(`[Election Generation] Processing ${countryElectionTypes.length} election types for ${currentDate.year}`);
-        const startTime = performance.now();
 
         countryElectionTypes.forEach((electionType) => {
           const generationCampaignContext = {
@@ -137,7 +147,7 @@ export const createElectionSlice = (set, get) => ({
             const { instanceIdBase, entityData, resolvedOfficeName } =
               instanceContext;
 
-            // --- OPTIMIZATION: Use the lookup map --- 
+            // --- OPTIMIZATION: Use the lookup map ---
             const lastHeldElection = lastHeldElectionsMap.get(instanceIdBase);
 
             const lastHeldYear = lastHeldElection
@@ -156,7 +166,8 @@ export const createElectionSlice = (set, get) => ({
               return; // Skip scheduling this election
             }
 
-            const alreadyScheduled = scheduledInCurrentYearSet.has(instanceIdBase);
+            const alreadyScheduled =
+              scheduledInCurrentYearSet.has(instanceIdBase);
 
             if (alreadyScheduled) return;
 
@@ -289,15 +300,11 @@ export const createElectionSlice = (set, get) => ({
         // Batch process all new politicians at once instead of per-election
         let updatedPoliticiansSoA = state.activeCampaign.politicians;
         if (allNewlyGeneratedChallengers.length > 0) {
-          console.log(`[Election Generation] Adding ${allNewlyGeneratedChallengers.length} new challengers to politicians store`);
           updatedPoliticiansSoA = _addPoliticiansToSoA_helper(
             allNewlyGeneratedChallengers,
             state.activeCampaign.politicians
           );
         }
-
-        const endTime = performance.now();
-        console.log(`[Election Generation] Completed in ${(endTime - startTime).toFixed(2)}ms. Generated ${newElectionsToAdd.length} elections with ${allNewlyGeneratedChallengers.length} new candidates.`);
 
         if (newElectionsToAdd.length > 0) {
           const sortedElections = [
@@ -498,7 +505,9 @@ export const createElectionSlice = (set, get) => ({
           };
 
           // Generate news from up to 3 random outlets to show different perspectives
-          const outletsToReport = [...allOutlets].sort(() => 0.5 - Math.random()).slice(0, 3);
+          const outletsToReport = [...allOutlets]
+            .sort(() => 0.5 - Math.random())
+            .slice(0, 3);
 
           outletsToReport.forEach((outlet) => {
             const article = generateNewsForEvent(event, outlet, currentDate);
@@ -553,7 +562,7 @@ export const createElectionSlice = (set, get) => ({
             if (election.playerIsCandidate) {
               get().actions.addNotification?.({
                 message: "You are already a candidate in this election.",
-                category: 'Election',
+                category: "Election",
                 type: "info",
               });
               return election;
@@ -565,10 +574,11 @@ export const createElectionSlice = (set, get) => ({
               regionId,
               countryId,
             });
-            
+
             if (!isEligible) {
               get().actions.addToast?.({
-                message: "You are not eligible to run for this office. You can only run for offices within your state or city.",
+                message:
+                  "You are not eligible to run for this office. You can only run for offices within your state or city.",
                 type: "error",
               });
               return election;
@@ -619,7 +629,11 @@ export const createElectionSlice = (set, get) => ({
                 const candidate = rehydratePolitician(id, soaStore);
                 if (candidate) {
                   // Ensure the candidate has a proper name
-                  if (!candidate.name && candidate.firstName && candidate.lastName) {
+                  if (
+                    !candidate.name &&
+                    candidate.firstName &&
+                    candidate.lastName
+                  ) {
                     candidate.name = `${candidate.firstName} ${candidate.lastName}`;
                   }
                   // Fallback if name is still missing
@@ -659,7 +673,7 @@ export const createElectionSlice = (set, get) => ({
             successfullyDeclared = true;
             get().actions.addNotification?.({
               message: `Successfully declared candidacy for ${election.officeName}!`,
-              category: 'Election',
+              category: "Election",
               type: "success",
             });
 

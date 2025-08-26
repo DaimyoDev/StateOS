@@ -11,9 +11,11 @@ import {
 } from "../data/governmentData";
 import { calculateDetailedIncomeSources } from "../entities/politicalEntities.js";
 import { calculateAllCityStats } from "../utils/statCalculationCore.js";
-import { runStateBudgetUpdate, runNationalBudgetUpdate } from "../utils/regionalStatCalc.js";
+import {
+  runStateBudgetUpdate,
+  runNationalBudgetUpdate,
+} from "../utils/regionalStatCalc.js";
 import { normalizePartyPopularities } from "../utils/electionUtils.js";
-import { decideAndAuthorAIBill } from "./aiProposal.js";
 import { strategicAIBillProposal } from "./aiStrategicProposal.js";
 import { generateNewsForEvent } from "./newsGenerator.js";
 
@@ -34,20 +36,158 @@ const deriveRatingFromValue = (value, thresholds, labels) => {
 };
 
 /**
- * Recalculates budget figures based on the current city state.
+ * Recalculates budget figures for state/region and national levels.
  * @param {object} campaign - The current activeCampaign object.
- * @returns {object} { budgetUpdates: object | null, newsItems: Array }
+ * @returns {object} { updatedRegions: object, updatedCountry: object | null, newsItems: Array }
  */
 export const runMonthlyRegionalUpdates = (campaign) => {
-  console.log('[Tick] Running monthly regional updates...');
-  // For now, return empty object since the campaign structure doesn't have regions/country
-  // The existing city budget update handles the main budget calculations
-  // TODO: Implement proper regional budget structure when campaign data model is updated
-  return {};
+  const results = {
+    updatedRegions: {},
+    updatedCountry: null,
+    newsItems: [],
+  };
+
+  // Update state/region budget
+  if (campaign?.regions && campaign?.startingCity?.regionId) {
+    const currentRegion = campaign.regions.find(
+      (r) => r.id === campaign.startingCity.regionId
+    );
+    if (currentRegion?.stats?.budget) {
+      const oldStateBudget = { ...currentRegion.stats.budget };
+      const newStateBudget = runStateBudgetUpdate(
+        currentRegion,
+        campaign.country?.stats?.budget
+      );
+
+      // Check if there were significant changes
+      if (
+        newStateBudget &&
+        (Math.abs(
+          newStateBudget.totalAnnualIncome - oldStateBudget.totalAnnualIncome
+        ) >
+          oldStateBudget.totalAnnualIncome * 0.005 ||
+          Math.abs(
+            newStateBudget.totalAnnualExpenses -
+              oldStateBudget.totalAnnualExpenses
+          ) >
+            oldStateBudget.totalAnnualExpenses * 0.005 ||
+          Math.abs(newStateBudget.balance - oldStateBudget.balance) >
+            Math.abs(oldStateBudget.balance) * 0.05)
+      ) {
+        // Update the region with new budget
+        results.updatedRegions[currentRegion.id] = {
+          ...currentRegion,
+          stats: {
+            ...currentRegion.stats,
+            budget: newStateBudget,
+          },
+        };
+
+        // Generate news for significant budget changes
+        if (newStateBudget.balance < 0 && oldStateBudget.balance >= 0) {
+          results.newsItems.push({
+            headline: `State Budget Shows Deficit`,
+            summary: `The state budget has moved into deficit territory with expenses exceeding income.`,
+            type: "budget_deficit",
+            scope: "regional",
+            impact: "negative",
+          });
+        } else if (newStateBudget.balance >= 0 && oldStateBudget.balance < 0) {
+          results.newsItems.push({
+            headline: `State Budget Returns to Surplus`,
+            summary: `The state has successfully balanced its budget, moving from deficit to surplus.`,
+            type: "budget_surplus",
+            scope: "regional",
+            impact: "positive",
+          });
+        }
+      }
+    }
+  }
+
+  if (campaign?.country?.stats?.budget && campaign?.regions) {
+    const oldNationalBudget = { ...campaign.country.stats.budget };
+    const newNationalBudget = runNationalBudgetUpdate(
+      campaign.country,
+      campaign.regions
+    );
+
+    // Check if there were significant changes
+    if (
+      newNationalBudget &&
+      (Math.abs(
+        newNationalBudget.totalAnnualIncome -
+          oldNationalBudget.totalAnnualIncome
+      ) >
+        oldNationalBudget.totalAnnualIncome * 0.003 ||
+        Math.abs(
+          newNationalBudget.totalAnnualExpenses -
+            oldNationalBudget.totalAnnualExpenses
+        ) >
+          oldNationalBudget.totalAnnualExpenses * 0.003 ||
+        Math.abs(newNationalBudget.balance - oldNationalBudget.balance) >
+          Math.abs(oldNationalBudget.balance) * 0.02)
+    ) {
+      // Update the country with new budget
+      results.updatedCountry = {
+        ...campaign.country,
+        stats: {
+          ...campaign.country.stats,
+          budget: newNationalBudget,
+        },
+      };
+
+      // Generate news for significant national budget changes
+      if (newNationalBudget.balance < 0 && oldNationalBudget.balance >= 0) {
+        results.newsItems.push({
+          headline: `National Budget Enters Deficit`,
+          summary: `Federal spending has exceeded revenue, creating a national budget deficit.`,
+          type: "budget_deficit",
+          scope: "national",
+          impact: "negative",
+        });
+      } else if (
+        newNationalBudget.balance >= 0 &&
+        oldNationalBudget.balance < 0
+      ) {
+        results.newsItems.push({
+          headline: `National Budget Achieves Surplus`,
+          summary: `The federal government has balanced its budget, achieving a rare budget surplus.`,
+          type: "budget_surplus",
+          scope: "national",
+          impact: "positive",
+        });
+      }
+
+      // News for significant debt changes
+      const debtChange =
+        newNationalBudget.accumulatedDebt - oldNationalBudget.accumulatedDebt;
+      if (Math.abs(debtChange) > oldNationalBudget.totalAnnualIncome * 0.1) {
+        if (debtChange > 0) {
+          results.newsItems.push({
+            headline: `National Debt Continues to Rise`,
+            summary: `The national debt has increased significantly this month due to budget shortfalls.`,
+            type: "debt_increase",
+            scope: "national",
+            impact: "negative",
+          });
+        } else {
+          results.newsItems.push({
+            headline: `National Debt Reduction Efforts Show Progress`,
+            summary: `The government has made progress in reducing the national debt this month.`,
+            type: "debt_reduction",
+            scope: "national",
+            impact: "positive",
+          });
+        }
+      }
+    }
+  }
+
+  return results;
 };
 
 export const runMonthlyBudgetUpdate = (campaign) => {
-  console.log('[Tick] Running monthly budget update...');
   if (!campaign?.startingCity?.stats?.budget) {
     return { budgetUpdates: null, newsItems: [] };
   }
@@ -109,7 +249,6 @@ export const runMonthlyBudgetUpdate = (campaign) => {
  * @returns {object} { statUpdates: object, newsItems: Array }
  */
 export const runMonthlyStatUpdate = (campaign) => {
-  console.log('[Tick] Running monthly stat update...');
   const statUpdates = {};
   let newsItems = []; // Changed to let
   const city = campaign.startingCity;
@@ -212,7 +351,6 @@ const generateAIBillName = (theme, currentYear) => {
 };
 
 export const runAIBillProposals = (campaign, getFromStore) => {
-  console.log('[Tick] Running AI bill proposals...');
   const billsToDispatch = [];
   if (
     !campaign?.governmentOffices ||
@@ -271,7 +409,10 @@ export const runAIBillProposals = (campaign, getFromStore) => {
         proposedBillsThisTick.push(newBill);
       }
     } catch (error) {
-      console.error(`Error in strategic AI bill proposal for ${aiPolitician.firstName} ${aiPolitician.lastName}:`, error);
+      console.error(
+        `Error in strategic AI bill proposal for ${aiPolitician.firstName} ${aiPolitician.lastName}:`,
+        error
+      );
       // Fall back to no proposal on error
     }
   });
@@ -286,22 +427,26 @@ export const runAIBillProposals = (campaign, getFromStore) => {
  * @returns {object} { cityPoliticalLandscape: Array | null, statePoliticalLandscape: Array | null, newsItems: Array }
  */
 export const runMonthlyPartyPopularityUpdate = (campaign, getFromStore) => {
-  console.log('[Tick] Running comprehensive party popularity update...');
-  
   const results = {
     cityPoliticalLandscape: null,
     statePoliticalLandscape: null,
-    newsItems: []
+    newsItems: [],
   };
 
   // Update city-level party popularity
   if (campaign?.startingCity?.politicalLandscape?.length) {
-    results.cityPoliticalLandscape = updateCityPartyPopularity(campaign, getFromStore);
+    results.cityPoliticalLandscape = updateCityPartyPopularity(
+      campaign,
+      getFromStore
+    );
   }
 
   // Update state-level party popularity (if state data exists)
   if (campaign?.parentState?.politicalLandscape?.length) {
-    results.statePoliticalLandscape = updateStatePartyPopularity(campaign, getFromStore);
+    results.statePoliticalLandscape = updateStatePartyPopularity(
+      campaign,
+      getFromStore
+    );
   }
 
   return results;
@@ -314,43 +459,55 @@ const updateCityPartyPopularity = (campaign, getFromStore) => {
   const politicalLandscape = campaign.startingCity.politicalLandscape;
   const cityStats = campaign.startingCity.stats;
   const electorateProfile = cityStats.electoratePolicyProfile || {};
-  
+
   // Get incumbent information
   const mayorOffice = campaign.governmentOffices?.find(
     (off) => off.officeNameTemplateId === "mayor"
   );
-  const councilOffices = campaign.governmentOffices?.filter(
-    (off) => off.officeNameTemplateId === "city_council" || off.officeNameTemplateId === "council_member"
-  ) || [];
-  
+  const councilOffices =
+    campaign.governmentOffices?.filter(
+      (off) =>
+        off.officeNameTemplateId === "city_council" ||
+        off.officeNameTemplateId === "council_member"
+    ) || [];
+
   const mayorPartyId = mayorOffice?.holder?.partyId;
   const councilPartyComposition = getPartyComposition(councilOffices);
-  
+
   // Get recent legislative performance
   const recentBills = getFromStore?.()?.passedBillsArchive?.slice(-6) || []; // Last 6 months
-  const billPerformance = analyzeBillPerformance(recentBills, electorateProfile);
+  const billPerformance = analyzeBillPerformance(
+    recentBills,
+    electorateProfile
+  );
 
   const newLandscape = politicalLandscape.map((party) => {
     let totalShift = getRandomInt(-15, 15) / 100; // Reduced base randomness
-    
+
     // Executive performance (Mayor)
-    const isMayorParty = party.id === mayorPartyId && mayorPartyId && !mayorPartyId.includes("independent");
+    const isMayorParty =
+      party.id === mayorPartyId &&
+      mayorPartyId &&
+      !mayorPartyId.includes("independent");
     if (isMayorParty) {
-      totalShift += calculateExecutivePerformance(cityStats, 'city');
+      totalShift += calculateExecutivePerformance(cityStats, "city");
     }
-    
+
     // Legislative performance (Council)
     const councilInfluence = councilPartyComposition[party.id] || 0;
     if (councilInfluence > 0) {
-      totalShift += calculateLegislativePerformance(billPerformance, councilInfluence);
+      totalShift += calculateLegislativePerformance(
+        billPerformance,
+        councilInfluence
+      );
     }
-    
+
     // Policy alignment with electorate
     totalShift += calculatePolicyAlignment(party, electorateProfile) * 0.3;
-    
+
     // Opposition benefit from poor governance
     if (!isMayorParty && councilInfluence < 0.3) {
-      totalShift += calculateOppositionBonus(cityStats, 'city');
+      totalShift += calculateOppositionBonus(cityStats, "city");
     }
 
     const newPopularity = Math.max(
@@ -366,44 +523,50 @@ const updateCityPartyPopularity = (campaign, getFromStore) => {
 /**
  * Updates state-level party popularity based on state performance and governance.
  */
-const updateStatePartyPopularity = (campaign, getFromStore) => {
+const updateStatePartyPopularity = (campaign) => {
   const stateLandscape = campaign.parentState.politicalLandscape;
   const stateStats = campaign.parentState.stats || {};
   const electorateProfile = stateStats.electoratePolicyProfile || {};
-  
+
   // Get state-level incumbent information (governor, state legislature)
   const governorOffice = campaign.stateGovernmentOffices?.find(
     (off) => off.officeNameTemplateId === "governor"
   );
-  const legislatureOffices = campaign.stateGovernmentOffices?.filter(
-    (off) => off.officeNameTemplateId?.includes("state_") && off.officeNameTemplateId?.includes("legislature")
-  ) || [];
-  
+  const legislatureOffices =
+    campaign.stateGovernmentOffices?.filter(
+      (off) =>
+        off.officeNameTemplateId?.includes("state_") &&
+        off.officeNameTemplateId?.includes("legislature")
+    ) || [];
+
   const governorPartyId = governorOffice?.holder?.partyId;
   const legislatureComposition = getPartyComposition(legislatureOffices);
-  
+
   const newLandscape = stateLandscape.map((party) => {
     let totalShift = getRandomInt(-10, 10) / 100; // Even less randomness at state level
-    
+
     // Executive performance (Governor)
-    const isGovernorParty = party.id === governorPartyId && governorPartyId && !governorPartyId.includes("independent");
+    const isGovernorParty =
+      party.id === governorPartyId &&
+      governorPartyId &&
+      !governorPartyId.includes("independent");
     if (isGovernorParty) {
-      totalShift += calculateExecutivePerformance(stateStats, 'state');
+      totalShift += calculateExecutivePerformance(stateStats, "state");
     }
-    
+
     // Legislative performance (State Legislature)
     const legislativeInfluence = legislatureComposition[party.id] || 0;
     if (legislativeInfluence > 0) {
       // State legislative performance would be based on state-level bills
       totalShift += legislativeInfluence * 0.2; // Placeholder
     }
-    
+
     // Policy alignment with state electorate
     totalShift += calculatePolicyAlignment(party, electorateProfile) * 0.25;
-    
+
     // Opposition benefit
     if (!isGovernorParty && legislativeInfluence < 0.3) {
-      totalShift += calculateOppositionBonus(stateStats, 'state');
+      totalShift += calculateOppositionBonus(stateStats, "state");
     }
 
     const newPopularity = Math.max(
@@ -422,36 +585,37 @@ const updateStatePartyPopularity = (campaign, getFromStore) => {
 const getPartyComposition = (offices) => {
   const composition = {};
   let totalMembers = 0;
-  
-  offices.forEach(office => {
+
+  offices.forEach((office) => {
     const members = office.members || (office.holder ? [office.holder] : []);
-    members.forEach(member => {
-      if (member.partyId && !member.partyId.includes('independent')) {
+    members.forEach((member) => {
+      if (member.partyId && !member.partyId.includes("independent")) {
         composition[member.partyId] = (composition[member.partyId] || 0) + 1;
         totalMembers++;
       }
     });
   });
-  
+
   // Convert to percentages
-  Object.keys(composition).forEach(partyId => {
-    composition[partyId] = totalMembers > 0 ? composition[partyId] / totalMembers : 0;
+  Object.keys(composition).forEach((partyId) => {
+    composition[partyId] =
+      totalMembers > 0 ? composition[partyId] / totalMembers : 0;
   });
-  
+
   return composition;
 };
 
 const analyzeBillPerformance = (recentBills, electorateProfile) => {
   if (!recentBills.length) return { successRate: 0.5, publicSupport: 0 };
-  
-  const passedBills = recentBills.filter(bill => bill.status === 'passed');
+
+  const passedBills = recentBills.filter((bill) => bill.status === "passed");
   const successRate = passedBills.length / recentBills.length;
-  
+
   // Calculate public support based on policy alignment
   let totalSupport = 0;
-  passedBills.forEach(bill => {
+  passedBills.forEach((bill) => {
     if (bill.policies) {
-      bill.policies.forEach(policy => {
+      bill.policies.forEach((policy) => {
         // Simple alignment check - in practice this would be more sophisticated
         if (electorateProfile[policy.categoryId]) {
           totalSupport += 0.1; // Each aligned policy adds support
@@ -459,100 +623,107 @@ const analyzeBillPerformance = (recentBills, electorateProfile) => {
       });
     }
   });
-  
+
   return {
     successRate,
-    publicSupport: Math.min(1, totalSupport / Math.max(1, passedBills.length))
+    publicSupport: Math.min(1, totalSupport / Math.max(1, passedBills.length)),
   };
 };
 
 const calculateExecutivePerformance = (stats, level) => {
   let performanceShift = 0;
-  
-  if (level === 'city') {
+
+  if (level === "city") {
     // City-level executive performance
     if (stats.povertyRate > 20) performanceShift -= 0.6;
     else if (stats.povertyRate < 12) performanceShift += 0.4;
-    
+
     if (stats.crimeRatePer1000 > 55) performanceShift -= 0.7;
     else if (stats.crimeRatePer1000 < 25) performanceShift += 0.5;
-    
+
     if (stats.unemploymentRate > 7.5) performanceShift -= 0.5;
     else if (stats.unemploymentRate < 4.0) performanceShift += 0.4;
-    
+
     // Budget performance
     if (stats.budget?.balance < -stats.budget?.totalAnnualIncome * 0.1) {
       performanceShift -= 0.3; // Large deficit hurts
     } else if (stats.budget?.balance > 0) {
       performanceShift += 0.2; // Surplus helps
     }
-    
+
     // Citizen mood
-    const moodLevels = ['Angry', 'Frustrated', 'Neutral', 'Content', 'Happy', 'Euphoric'];
+    const moodLevels = [
+      "Angry",
+      "Frustrated",
+      "Neutral",
+      "Content",
+      "Happy",
+      "Euphoric",
+    ];
     const moodIndex = moodLevels.indexOf(stats.overallCitizenMood);
     if (moodIndex >= 0) {
       performanceShift += (moodIndex - 2.5) * 0.15; // -0.375 to +0.525
     }
-  } else if (level === 'state') {
+  } else if (level === "state") {
     // State-level executive performance (similar but different thresholds)
     if (stats.unemploymentRate > 8) performanceShift -= 0.4;
     else if (stats.unemploymentRate < 5) performanceShift += 0.3;
-    
+
     if (stats.economicGrowth < -1) performanceShift -= 0.5;
     else if (stats.economicGrowth > 3) performanceShift += 0.4;
   }
-  
+
   return performanceShift;
 };
 
 const calculateLegislativePerformance = (billPerformance, partyInfluence) => {
   let performanceShift = 0;
-  
+
   // Reward successful legislation
   if (billPerformance.successRate > 0.7) {
     performanceShift += 0.3 * partyInfluence;
   } else if (billPerformance.successRate < 0.3) {
     performanceShift -= 0.4 * partyInfluence;
   }
-  
+
   // Reward popular legislation
   if (billPerformance.publicSupport > 0.6) {
     performanceShift += 0.2 * partyInfluence;
   } else if (billPerformance.publicSupport < 0.3) {
     performanceShift -= 0.3 * partyInfluence;
   }
-  
+
   return performanceShift;
 };
 
-const calculatePolicyAlignment = (party, electorateProfile) => {
-  // Optimized: Use cached random values instead of expensive getRandomInt calls
-  // This function is called hundreds of times during monthly updates
+const calculatePolicyAlignment = () => {
   const cachedValues = [-0.1, -0.08, -0.05, -0.03, 0, 0.02, 0.05, 0.07, 0.1];
   return cachedValues[Math.floor(Math.random() * cachedValues.length)];
 };
 
 const calculateOppositionBonus = (stats, level) => {
   let bonus = 0;
-  
-  if (level === 'city') {
+
+  if (level === "city") {
     // Opposition benefits when things are going poorly
     if (stats.povertyRate > 20) bonus += 0.3;
     if (stats.crimeRatePer1000 > 55) bonus += 0.4;
     if (stats.unemploymentRate > 7.5) bonus += 0.25;
-    if (stats.overallCitizenMood === 'Angry' || stats.overallCitizenMood === 'Frustrated') {
+    if (
+      stats.overallCitizenMood === "Angry" ||
+      stats.overallCitizenMood === "Frustrated"
+    ) {
       bonus += 0.3;
     }
-  } else if (level === 'state') {
+  } else if (level === "state") {
     if (stats.unemploymentRate > 8) bonus += 0.2;
     if (stats.economicGrowth < -1) bonus += 0.3;
   }
-  
+
   return Math.min(0.5, bonus); // Cap opposition bonus
 };
 
 export const runMonthlyPlayerApprovalUpdate = (campaign) => {
-  console.log('[Tick] Running monthly player approval update...');
   const cityStats = campaign.startingCity?.stats;
   const playerPoliticianId = campaign.playerPoliticianId;
   const politiciansStore = campaign.politicians;

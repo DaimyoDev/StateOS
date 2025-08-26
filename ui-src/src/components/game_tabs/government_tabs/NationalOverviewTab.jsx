@@ -17,6 +17,12 @@ const NationalOverviewTab = ({ campaignData }) => {
   const { openViewPoliticianModal } = useGameStore((state) => state.actions);
 
   const countryData = useMemo(() => {
+    // First try to get the live country data (updated by budget calculations)
+    if (campaignData.country) {
+      return campaignData.country;
+    }
+    
+    // Fallback to static data from availableCountries if live data not available
     return campaignData.availableCountries.find(
       (c) => c.id === campaignData.countryId
     );

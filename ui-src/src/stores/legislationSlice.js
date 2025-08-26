@@ -14,6 +14,41 @@ import {
   getLegislatureDetails,
   getStatsForLevel,
 } from "../utils/legislationUtils";
+import { 
+  runStateBudgetUpdate, 
+  runNationalBudgetUpdate 
+} from "../utils/regionalStatCalc.js";
+
+// Helper function to recalculate budgets after policy effects
+const recalculateBudgetsForLevel = (campaignState, level) => {
+  console.log(`[DEBUG] Recalculating budgets for level: ${level}`);
+  
+  try {
+    if (level === 'state') {
+      // Find the current region (state)
+      const currentRegion = campaignState.regions?.find(r => r.id === campaignState.startingCity?.regionId);
+      if (currentRegion?.stats?.budget) {
+        const newStateBudget = runStateBudgetUpdate(currentRegion, campaignState.country?.stats?.budget);
+        if (newStateBudget && currentRegion.stats) {
+          currentRegion.stats.budget = newStateBudget;
+          console.log(`[DEBUG] Updated state budget after policy effects`);
+        }
+      }
+    } else if (level === 'national') {
+      // Update national budget
+      if (campaignState.country?.stats?.budget && campaignState.regions) {
+        const newNationalBudget = runNationalBudgetUpdate(campaignState.country, campaignState.regions);
+        if (newNationalBudget && campaignState.country.stats) {
+          campaignState.country.stats.budget = newNationalBudget;
+          console.log(`[DEBUG] Updated national budget after policy effects`);
+        }
+      }
+    }
+    // City-level budget updates are handled by monthly tick
+  } catch (error) {
+    console.error(`[ERROR] Failed to recalculate budget for level ${level}:`, error);
+  }
+};
 
 const getInitialLegislationState = () => ({
   city: {
@@ -617,6 +652,19 @@ export const createLegislationSlice = (set, get) => ({
                   policyId: policy.id,
                 });
               });
+            });
+            
+            // Recalculate budgets for affected levels after policy effects are applied
+            const affectedLevels = new Set();
+            effectsToApplyNow.forEach(law => {
+              if (law.level) {
+                affectedLevels.add(law.level);
+              }
+            });
+            
+            // Trigger budget recalculation for each affected level
+            affectedLevels.forEach(level => {
+              recalculateBudgetsForLevel(state.activeCampaign, level);
             });
           }
         }

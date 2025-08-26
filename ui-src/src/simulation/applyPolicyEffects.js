@@ -123,19 +123,53 @@ export const applyPolicyEffect = (campaignState, effect, parameters = {}) => {
     if (!target || !lastKey) return draft; // Guard against invalid target
 
     let actualChange = effect.change || 0;
-    if (effect.type.includes("by_param") || effect.type.includes("by_tax_change")) {
-      // Parameterized logic here...
+    
+    // Handle parameterized effects
+    if (effect.type.includes("by_param") && parameters) {
+      const paramValue = Object.values(parameters)[0]; // Get first parameter value
+      if (paramValue !== undefined) {
+        // Scale the change based on parameter value vs default
+        const defaultValue = effect.base_change_for_default || 1;
+        const scalingFactor = Math.abs(paramValue) / Math.abs(defaultValue);
+        actualChange = (effect.change_direction || 1) * scalingFactor;
+      }
+    }
+    
+    // Handle tax-change-based effects
+    if (effect.type.includes("by_tax_change") && parameters) {
+      const taxChangeValue = Object.values(parameters)[0]; // Get tax change value
+      if (taxChangeValue !== undefined) {
+        // For tax increases, negative mood/approval; for decreases, positive
+        if (effect.type.includes("mood") || effect.type.includes("approval")) {
+          actualChange = taxChangeValue > 0 ? -Math.abs(effect.change || 1) : Math.abs(effect.change || 1);
+        } else {
+          // For economic effects, tax cuts might boost economy
+          actualChange = taxChangeValue < 0 ? Math.abs(effect.change || 1) : -Math.abs(effect.change || 1);
+        }
+      }
     }
 
     switch (effect.type) {
       case "level_change":
       case "conditional_level_change_by_param":
+      case "conditional_level_change_by_tax_change":
         target[lastKey] = adjustStatLevel(target[lastKey], RATING_LEVELS, actualChange);
         break;
       case "mood_shift":
       case "conditional_mood_shift":
       case "conditional_mood_shift_by_tax_change":
         target[lastKey] = adjustStatLevel(target[lastKey], MOOD_LEVELS, actualChange);
+        break;
+      case "conditional_approval_shift":
+      case "conditional_approval_shift_by_tax_change":
+        // Handle approval changes (typically stored as numeric values, not level-based)
+        if (typeof target[lastKey] === "number") {
+          console.log(`[DEBUG] Applying approval shift: ${lastKey} from ${target[lastKey]} to ${target[lastKey] + actualChange}`);
+          target[lastKey] += actualChange;
+        } else {
+          console.log(`[DEBUG] Setting approval value: ${lastKey} to ${actualChange} (was ${target[lastKey]})`);
+          target[lastKey] = actualChange;
+        }
         break;
       case "percentage_point_change":
         const currentValue = parseFloat(target[lastKey]) || 0;
@@ -155,6 +189,38 @@ export const applyPolicyEffect = (campaignState, effect, parameters = {}) => {
         break;
       case "absolute_set_rate":
         target[lastKey] = actualChange;
+        break;
+      case "formula_absolute_change":
+        // Evaluate the changeFormula using stats from the current state
+        if (effect.changeFormula) {
+          try {
+            // Create context with available stats for formula evaluation
+            const formulaContext = {
+              population: currentState.population || 0,
+              gdpPerCapita: currentState.gdpPerCapita || 0,
+              ...currentState.budget || {},
+              ...parameters
+            };
+            
+            // Simple formula evaluation - replace variables and evaluate
+            let formulaStr = effect.changeFormula;
+            Object.keys(formulaContext).forEach(key => {
+              const regex = new RegExp(`\\b${key}\\b`, 'g');
+              formulaStr = formulaStr.replace(regex, formulaContext[key] || 0);
+            });
+            
+            const calculatedChange = eval(formulaStr);
+            console.log(`[DEBUG] Formula evaluation: ${effect.changeFormula} = ${calculatedChange}`);
+            
+            if (typeof target[lastKey] === "number") {
+              target[lastKey] += calculatedChange;
+            } else {
+              target[lastKey] = calculatedChange;
+            }
+          } catch (error) {
+            console.warn(`[applyPolicyEffect] Error evaluating formula: ${effect.changeFormula}`, error);
+          }
+        }
         break;
       default:
         console.warn(`[applyPolicyEffect] Unknown or unhandled effect type: ${effect.type}`);

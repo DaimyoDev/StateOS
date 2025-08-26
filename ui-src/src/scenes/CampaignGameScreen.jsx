@@ -15,7 +15,6 @@ import ElectionsTab from "../components/game_tabs/ElectionsTab";
 import CareerActionsTab from "../components/game_tabs/CareerActionsTab";
 import GovernmentTab from "../components/game_tabs/GovernmentTab";
 import CampaignTab from "../components/game_tabs/CampaignTab";
-import NewsEventsTab from "../components/game_tabs/NewsEventsTab";
 import PoliticalEntitiesTab from "../components/game_tabs/PoliticalEntitiesTab";
 import PoliticiansTab from "../components/game_tabs/PoliticiansTab";
 import ArticleViewerModal from "../components/modals/ArticleViewerModal";
@@ -32,7 +31,6 @@ const TABS = [
   { id: "Career", label: "Career & Actions" },
   { id: "Government", label: "Government" },
   { id: "Campaign", label: "Campaign" },
-  { id: "NewsEvents", label: "News & Events" },
   { id: "PoliticalEntities", label: "Political Entities" },
   { id: "Politicians", label: "Politicians" },
   { id: "Polling", label: "Polling" },
@@ -186,8 +184,6 @@ function CampaignGameScreen() {
         return <PoliticiansTab />;
       case "Campaign":
         return <CampaignTab campaignData={activeCampaign} />;
-      case "NewsEvents":
-        return <NewsEventsTab campaignData={activeCampaign} />;
       case "PoliticalEntities":
         return <PoliticalEntitiesTab campaignData={activeCampaign} />;
       case "Polling":

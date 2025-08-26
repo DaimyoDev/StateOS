@@ -97,6 +97,13 @@ const StateOverviewTab = ({ campaignData }) => {
   const playerCountryId = campaignData.countryId;
 
   const activeState = useMemo(() => {
+    // First try to get the live region data from campaign.regions (updated by budget calculations)
+    const liveRegion = campaignData.regions?.find((r) => r.id === campaignData.regionId);
+    if (liveRegion) {
+      return liveRegion;
+    }
+    
+    // Fallback to static data from availableCountries if live data not available
     const countryData = campaignData.availableCountries.find(
       (c) => c.id === playerCountryId
     );

@@ -1149,15 +1149,19 @@ export const generateStateBudget = ({ population, gdpPerCapita, countryId }) => 
 
   const totalAnnualIncome = Object.values(incomeSources).reduce((sum, val) => sum + val, 0);
 
-  // State-level expense allocations (different from city expenses)
+  // State-level expense allocations with realistic budget imbalance
+  // Add random variation (±10-20%) to create realistic surpluses/deficits
+  const budgetImbalanceFactor = 1 + (Math.random() - 0.3) * 0.3; // -30% to +0% (tends toward deficit)
+  const adjustedBudgetBase = totalAnnualIncome * budgetImbalanceFactor;
+  
   const expenseAllocations = {
-    publicEducation: Math.floor(totalAnnualIncome * 0.35), // 35% of budget
-    publicHealthServices: Math.floor(totalAnnualIncome * 0.20), // 20% of budget
-    transportationInfrastructure: Math.floor(totalAnnualIncome * 0.15), // 15% of budget
-    socialWelfarePrograms: Math.floor(totalAnnualIncome * 0.12), // 12% of budget
-    publicSafety: Math.floor(totalAnnualIncome * 0.08), // 8% of budget
-    environmentalProtection: Math.floor(totalAnnualIncome * 0.05), // 5% of budget
-    generalAdministration: Math.floor(totalAnnualIncome * 0.05), // 5% of budget
+    publicEducation: Math.floor(adjustedBudgetBase * 0.35), // 35% of budget
+    publicHealthServices: Math.floor(adjustedBudgetBase * 0.20), // 20% of budget
+    transportationInfrastructure: Math.floor(adjustedBudgetBase * 0.15), // 15% of budget
+    socialWelfarePrograms: Math.floor(adjustedBudgetBase * 0.12), // 12% of budget
+    publicSafety: Math.floor(adjustedBudgetBase * 0.08), // 8% of budget
+    environmentalProtection: Math.floor(adjustedBudgetBase * 0.05), // 5% of budget
+    generalAdministration: Math.floor(adjustedBudgetBase * 0.05), // 5% of budget
   };
 
   const totalAnnualExpenses = Object.values(expenseAllocations).reduce((sum, val) => sum + val, 0);
@@ -1195,6 +1199,60 @@ export const generateNationalDemographics = (countryId) => {
   return demographics;
 };
 
+/**
+ * Generates budget data for a country/nation
+ */
+export const generateNationalBudget = ({ population, gdpPerCapita, countryId }) => {
+  // National-level tax rates (different from state/city rates)
+  const taxRates = {
+    corporate: 0.21, // 21% corporate tax
+    income: 0.25, // 25% federal income tax
+    importTariffs: 0.03, // 3% average tariff rate
+  };
+
+  // Calculate income sources based on population and economic factors
+  const incomeSources = {
+    corporateTaxes: Math.floor(population * gdpPerCapita * 0.4 * taxRates.corporate),
+    incomeTaxes: Math.floor(population * gdpPerCapita * 0.5 * taxRates.income),
+    tariffs: Math.floor(population * gdpPerCapita * 0.1 * taxRates.importTariffs),
+  };
+
+  const totalAnnualIncome = Object.values(incomeSources).reduce((sum, val) => sum + val, 0);
+
+  // National-level expense allocations with realistic budget imbalance
+  // Add random variation (±15-25%) to create realistic surpluses/deficits
+  const budgetImbalanceFactor = 1 + (Math.random() - 0.2) * 0.4; // -20% to +20% (balanced tendency)
+  const adjustedBudgetBase = totalAnnualIncome * budgetImbalanceFactor;
+  
+  const expenseAllocations = {
+    defense: Math.floor(adjustedBudgetBase * 0.25), // 25% of budget
+    socialSecurity: Math.floor(adjustedBudgetBase * 0.20), // 20% of budget
+    healthcare: Math.floor(adjustedBudgetBase * 0.15), // 15% of budget
+    education: Math.floor(adjustedBudgetBase * 0.10), // 10% of budget
+    infrastructure: Math.floor(adjustedBudgetBase * 0.08), // 8% of budget
+    interestOnDebt: Math.floor(adjustedBudgetBase * 0.07), // 7% of budget
+    veteransAffairs: Math.floor(adjustedBudgetBase * 0.05), // 5% of budget
+    foreignAid: Math.floor(adjustedBudgetBase * 0.02), // 2% of budget
+    generalGovernment: Math.floor(adjustedBudgetBase * 0.08), // 8% of budget
+  };
+
+  const totalAnnualExpenses = Object.values(expenseAllocations).reduce((sum, val) => sum + val, 0);
+  const balance = totalAnnualIncome - totalAnnualExpenses;
+
+  // National debt (typically substantial for developed countries)
+  const accumulatedDebt = Math.floor(totalAnnualIncome * (getRandomInt(80, 120) / 100)); // 80-120% of annual income
+
+  return {
+    totalAnnualIncome,
+    totalAnnualExpenses,
+    balance,
+    accumulatedDebt,
+    taxRates,
+    incomeSources,
+    expenseAllocations,
+  };
+};
+
 export const generateInitialNationalStats = (countryData) => {
   console.log(countryData.economicProfile);
   const stats = generateInitialCityStats(
@@ -1209,6 +1267,14 @@ export const generateInitialNationalStats = (countryData) => {
     ["Economic Growth", "Healthcare", "Defense Spending"],
     ["Trade Deficit", "Climate Change", "Social Security"],
   ]);
+  
+  // Replace city budget with proper national budget
+  stats.budget = generateNationalBudget({
+    population: countryData.population,
+    gdpPerCapita: countryData.gdpPerCapita,
+    countryId: countryData.id,
+  });
+  
   return stats;
 };
 

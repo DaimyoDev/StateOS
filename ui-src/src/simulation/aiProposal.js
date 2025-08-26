@@ -23,7 +23,7 @@ const getFinancialState = (cityStats) => {
   const balanceToIncomeRatio = cityBalance / cityIncome;
   const debtToIncomeRatio = cityDebt / cityIncome;
 
-  return {
+  const financialState = {
     hasLargeSurplus: balanceToIncomeRatio > 0.15 && debtToIncomeRatio < 0.2,
     isComfortableFinancially:
       balanceToIncomeRatio > 0.05 && debtToIncomeRatio < 0.4,
@@ -34,6 +34,8 @@ const getFinancialState = (cityStats) => {
       (balanceToIncomeRatio < -0.075 || debtToIncomeRatio > 0.85) &&
       !(balanceToIncomeRatio < -0.12 || debtToIncomeRatio > 1.2),
   };
+
+  return financialState;
 };
 
 /**
@@ -109,12 +111,8 @@ export const calculateFiscalConservatismFactor = (
       factor = 0;
   }
 
-  const {
-    hasDireFinances,
-    isStrainedFinances,
-    hasLargeSurplus,
-    isComfortableFinancially,
-  } = financialState;
+  const { hasDireFinances, isStrainedFinances, hasLargeSurplus } =
+    financialState;
 
   if (hasDireFinances) factor += 0.6;
   else if (isStrainedFinances) factor += 0.4;
@@ -125,10 +123,10 @@ export const calculateFiscalConservatismFactor = (
     const monthlyExpenses = budget.totalExpenses || 0;
     const monthlySurplus = monthlyIncome - monthlyExpenses;
     const surplusRatio = monthlyIncome > 0 ? monthlySurplus / monthlyIncome : 0;
-    
+
     // Larger surpluses should make AI less fiscally conservative
     const surplusReduction = Math.min(0.5, surplusRatio * 1.2);
-    factor -= (0.2 + surplusReduction);
+    factor -= 0.2 + surplusReduction;
   }
 
   // Add budget consciousness based on current debt levels
@@ -313,13 +311,17 @@ const calculateDetailedFiscalScore = (
 let _lockedTargetsCache = null;
 let _lastProposedLegislationHash = null;
 
-const getLockedTargets = (proposedLegislationThisCycle, currentAiId, allPolicyDefs) => {
+const getLockedTargets = (
+  proposedLegislationThisCycle,
+  currentAiId,
+  allPolicyDefs
+) => {
   // Create a simple hash of the proposed legislation to detect changes
   const proposedHash = (proposedLegislationThisCycle || [])
-    .map(b => `${b.id}:${b.proposerId}`)
+    .map((b) => `${b.id}:${b.proposerId}`)
     .sort()
-    .join('|');
-  
+    .join("|");
+
   // Return cached result if nothing changed
   if (_lockedTargetsCache && _lastProposedLegislationHash === proposedHash) {
     return _lockedTargetsCache;
@@ -349,11 +351,12 @@ const getLockedTargets = (proposedLegislationThisCycle, currentAiId, allPolicyDe
   // Process bills by others
   for (const bill of proposedLegislationThisCycle) {
     if (bill.proposerId === currentAiId) continue;
-    
+
     for (const policyInBill of bill.policies) {
       const pDetails = policyDefMap.get(policyInBill.policyId);
       if (pDetails) {
-        if (pDetails.targetBudgetLine) budgetLines.add(pDetails.targetBudgetLine);
+        if (pDetails.targetBudgetLine)
+          budgetLines.add(pDetails.targetBudgetLine);
         if (pDetails.targetTaxRate) taxRates.add(pDetails.targetTaxRate);
       }
     }
@@ -385,8 +388,8 @@ function getValidPolicyCandidates(
           policyDef &&
           (policyDef.parameterDetails?.targetBudgetLine ||
             policyDef.parameterDetails?.targetTaxRate ||
-            law.status === 'enacted' || // Include enacted but not yet implemented
-            law.status === 'active')    // Include currently active policies
+            law.status === "enacted" || // Include enacted but not yet implemented
+            law.status === "active") // Include currently active policies
         );
       })
       .map((p) => p.policyId)
@@ -479,13 +482,20 @@ const getBudgetAdjustmentTarget = (
       (pDetails.adjustmentType === "decrease" ||
         pDetails.adjustmentType === "increase_or_decrease")
     ) {
+      // MUCH more aggressive cuts in dire finances - aim for 40% to 90% of the range for cuts
       targetPointInRange =
-        0.01 + 0.3 * Math.random() * (serviceInfo?.ratingIndex === 0 ? 0.5 : 1);
+        0.4 + 0.5 * Math.random() * (serviceInfo?.ratingIndex === 0 ? 0.6 : 1);
+      console.log(
+        `[DEBUG] DIRE FINANCES CUT: targetPointInRange = ${targetPointInRange}`
+      );
     } else {
       targetPointInRange =
         serviceInfo?.ratingIndex === 0 && budgetUrgencyMultiplier > 1.1
-          ? 0.03 + 0.03 * Math.random()
-          : 0.01;
+          ? 0.15 + 0.15 * Math.random() // More aggressive spending on failed services
+          : 0.08; // Still conservative on spending increases
+      console.log(
+        `[DEBUG] DIRE FINANCES SPEND: targetPointInRange = ${targetPointInRange}`
+      );
     }
   } else if (isStrainedFinances) {
     if (
@@ -621,7 +631,7 @@ const applyBudgetAdjustmentCaps = (
 
   if (chosenValue > 0) {
     let maxAffordableSpend = 0;
-        // TODO: Enhance contextualData to include a map of pending budget adjustments for more precise capping.
+    // TODO: Enhance contextualData to include a map of pending budget adjustments for more precise capping.
     const contextualIncreaseDetails = null; // Placeholder
     const totalAlreadyAllocatedOrProposedIncrease =
       contextualIncreaseDetails?.totalIncreaseAmount || 0;
@@ -637,9 +647,15 @@ const applyBudgetAdjustmentCaps = (
     )
       maxAffordableSpend = cityIncome * 0.025;
     else if (isStrainedFinances && isServiceVeryPoorForCap)
-      maxAffordableSpend = cityIncome * 0.01;
+      maxAffordableSpend = cityIncome * 0.08;
+    // Increased from 1% to 8% for essential services
     else if (hasDireFinances && isServiceVeryPoorForCap)
-      maxAffordableSpend = cityIncome * 0.005;
+      maxAffordableSpend = cityIncome * 0.05;
+    // Increased from 0.5% to 5% - much more aggressive
+    else if (isStrainedFinances) maxAffordableSpend = cityIncome * 0.03;
+    // 3% for non-essential in strained finances
+    else if (hasDireFinances) maxAffordableSpend = cityIncome * 0.015;
+    // 1.5% for non-essential in dire finances
     else maxAffordableSpend = 0;
 
     maxAffordableSpend = Math.max(0, maxAffordableSpend);
@@ -678,18 +694,29 @@ const applyBudgetAdjustmentCaps = (
 let _policyScoringCache = new Map();
 let _lastCityStatsHash = null;
 
-function scorePolicyForAI(policy, aiPolitician, cityStats, financialState, contextualData) {
+function scorePolicyForAI(
+  policy,
+  aiPolitician,
+  cityStats,
+  financialState,
+  contextualData
+) {
   // Create cache key
   const cacheKey = `${policy.id}:${aiPolitician.id}:${aiPolitician.calculatedIdeology}`;
-  
+
   // Simple hash of city stats to detect changes
-  const cityStatsHash = `${cityStats.budget?.balance || 0}:${cityStats.mainIssues?.join(',') || ''}`;
-  
+  const cityStatsHash = `${cityStats.budget?.balance || 0}:${
+    cityStats.mainIssues?.join(",") || ""
+  }`;
+
   // Return cached result if city stats haven't changed significantly
-  if (_lastCityStatsHash === cityStatsHash && _policyScoringCache.has(cacheKey)) {
+  if (
+    _lastCityStatsHash === cityStatsHash &&
+    _policyScoringCache.has(cacheKey)
+  ) {
     return _policyScoringCache.get(cacheKey);
   }
-  
+
   // Clear cache if city stats changed
   if (_lastCityStatsHash !== cityStatsHash) {
     _policyScoringCache.clear();
@@ -788,17 +815,27 @@ function scorePolicyForAI(policy, aiPolitician, cityStats, financialState, conte
   // 6. Contextual Redundancy Penalty (Softer check)
   // 6. Contextual Redundancy Penalty (Softer check)
   if (pDetails?.targetBudgetLine || pDetails?.targetTaxRate) {
-    const lockedTargets = getLockedTargets(contextualData.proposedLegislation, aiPolitician.id, contextualData.allPolicyDefs);
-    if (pDetails.targetBudgetLine && lockedTargets.budgetLines.has(pDetails.targetBudgetLine)) {
+    const lockedTargets = getLockedTargets(
+      contextualData.proposedLegislation,
+      aiPolitician.id,
+      contextualData.allPolicyDefs
+    );
+    if (
+      pDetails.targetBudgetLine &&
+      lockedTargets.budgetLines.has(pDetails.targetBudgetLine)
+    ) {
       score -= 3.0; // Strong penalty for targeting an already-addressed budget line
     }
-    if (pDetails.targetTaxRate && lockedTargets.taxRates.has(pDetails.targetTaxRate)) {
+    if (
+      pDetails.targetTaxRate &&
+      lockedTargets.taxRates.has(pDetails.targetTaxRate)
+    ) {
       score -= 3.0; // Strong penalty for targeting an already-addressed tax rate
     }
   }
 
   score += Math.random() * 0.1 - 0.05;
-  
+
   // Cache the result
   _policyScoringCache.set(cacheKey, score);
   return score;
@@ -840,6 +877,12 @@ function selectOptimalParameter(
       cityStats
     ); // Sourced from aiUtils.js
     chosenValue = pDetails.min + range * targetPointInRange;
+    console.log(`[DEBUG] Budget adjustment calculation: ${
+      pDetails.targetBudgetLine
+    }
+      Range: ${pDetails.min} to ${pDetails.max} (${range})
+      Target point: ${targetPointInRange.toFixed(3)}
+      Pre-cap value: ${chosenValue}`);
     chosenValue = applyBudgetAdjustmentCaps(
       chosenValue,
       pDetails,
@@ -848,6 +891,7 @@ function selectOptimalParameter(
       serviceInfo,
       financialState
     ); // Sourced from aiUtils.js
+    console.log(`[DEBUG] Post-cap value: ${chosenValue}`);
   } else if (pDetails.targetTaxRate) {
     const targetPointInRange = getTaxAdjustmentTarget(
       pDetails,
@@ -894,7 +938,9 @@ export const decideAndAuthorAIBill = (
   // --- PHASE 1: FILTERING & SCORING (Re-uses existing logic) ---
   const candidatePolicies = getValidPolicyCandidates(
     aiPolitician,
-    (allPolicyDefsForLevel || []).filter((p) => availablePolicyIds.includes(p.id)),
+    (allPolicyDefsForLevel || []).filter((p) =>
+      availablePolicyIds.includes(p.id)
+    ),
     activeLegislation,
     proposedLegislation
   );
@@ -922,7 +968,11 @@ export const decideAndAuthorAIBill = (
 
   const bestPolicy = scoredPolicies[0];
   // Stricter threshold if finances are good, to avoid spam.
-  const proposalThreshold = financialState.hasDireFinances ? 0.1 : (financialState.isStrainedFinances ? 1.0 : 1.5);
+  const proposalThreshold = financialState.hasDireFinances
+    ? 0.1
+    : financialState.isStrainedFinances
+    ? 1.0
+    : 1.5;
   if (!bestPolicy || bestPolicy.proposalScore < proposalThreshold) {
     return null; // No single policy is good enough to even start a bill
   }
@@ -988,29 +1038,42 @@ const shouldAvoidPolicyDueToFailures = (
   if (!failedBillsHistory?.length) return false;
 
   // Find recent failed bills by this AI that contained this policy
-  const relevantFailures = failedBillsHistory.filter(failedBill => 
-    failedBill.proposerId === aiPolitician.id &&
-    failedBill.policies?.some(p => p.policyId === policyId)
+  const relevantFailures = failedBillsHistory.filter(
+    (failedBill) =>
+      failedBill.proposerId === aiPolitician.id &&
+      failedBill.policies?.some((p) => p.policyId === policyId)
   );
 
   if (relevantFailures.length === 0) return false;
 
   // Get the most recent failure for this policy
-  const mostRecentFailure = relevantFailures
-    .sort((a, b) => {
-      const dateA = new Date(a.dateFailed.year, a.dateFailed.month - 1, a.dateFailed.day);
-      const dateB = new Date(b.dateFailed.year, b.dateFailed.month - 1, b.dateFailed.day);
-      return dateB - dateA;
-    })[0];
+  const mostRecentFailure = relevantFailures.sort((a, b) => {
+    const dateA = new Date(
+      a.dateFailed.year,
+      a.dateFailed.month - 1,
+      a.dateFailed.day
+    );
+    const dateB = new Date(
+      b.dateFailed.year,
+      b.dateFailed.month - 1,
+      b.dateFailed.day
+    );
+    return dateB - dateA;
+  })[0];
 
   // Calculate months since the failure
   const failureDate = new Date(
-    mostRecentFailure.dateFailed.year, 
-    mostRecentFailure.dateFailed.month - 1, 
+    mostRecentFailure.dateFailed.year,
+    mostRecentFailure.dateFailed.month - 1,
     mostRecentFailure.dateFailed.day
   );
-  const currentDateObj = new Date(currentDate.year, currentDate.month - 1, currentDate.day);
-  const monthsSinceFailure = (currentDateObj - failureDate) / (1000 * 60 * 60 * 24 * 30.44); // Approximate months
+  const currentDateObj = new Date(
+    currentDate.year,
+    currentDate.month - 1,
+    currentDate.day
+  );
+  const monthsSinceFailure =
+    (currentDateObj - failureDate) / (1000 * 60 * 60 * 24 * 30.44); // Approximate months
 
   // Determine cooldown period based on margin of defeat
   const marginOfDefeat = mostRecentFailure.marginOfDefeat || 0;
@@ -1061,7 +1124,9 @@ export const shouldAIProposeBasedOnNeeds = (
   // Get valid policy candidates
   const candidatePolicies = getValidPolicyCandidates(
     aiPolitician,
-    (allPolicyDefsForLevel || []).filter((p) => availablePolicyIds.includes(p.id)),
+    (allPolicyDefsForLevel || []).filter((p) =>
+      availablePolicyIds.includes(p.id)
+    ),
     activeLegislation,
     proposedLegislation
   );
@@ -1069,8 +1134,14 @@ export const shouldAIProposeBasedOnNeeds = (
   if (candidatePolicies.length === 0) return false;
 
   // Filter out policies that the AI should avoid due to recent failures
-  const viablePolicies = candidatePolicies.filter(policy => 
-    !shouldAvoidPolicyDueToFailures(aiPolitician, policy.id, failedBillsHistory, currentDate)
+  const viablePolicies = candidatePolicies.filter(
+    (policy) =>
+      !shouldAvoidPolicyDueToFailures(
+        aiPolitician,
+        policy.id,
+        failedBillsHistory,
+        currentDate
+      )
   );
 
   if (viablePolicies.length === 0) return false;
@@ -1078,10 +1149,10 @@ export const shouldAIProposeBasedOnNeeds = (
   // Score policies with early exit optimization - only score until we find a good enough policy
   let bestPolicy = null;
   let bestScore = -Infinity;
-  
+
   // Determine urgency thresholds based on conditions first
   let urgencyThreshold = 4.0; // Much higher base threshold to reduce spam
-  
+
   // Lower threshold (more likely to propose) in crisis situations
   if (financialState.hasDireFinances) {
     urgencyThreshold = 2.5; // Still high but allows crisis proposals
@@ -1100,44 +1171,48 @@ export const shouldAIProposeBasedOnNeeds = (
       financialState,
       contextualData
     );
-    
+
     if (urgencyScore > bestScore) {
       bestScore = urgencyScore;
       bestPolicy = { ...policy, urgencyScore };
     }
-    
+
     // Early exit if we found a policy that exceeds threshold by a good margin
     if (urgencyScore >= urgencyThreshold + 1.0) {
       bestPolicy = { ...policy, urgencyScore };
       break;
     }
   }
-  
+
   if (!bestPolicy) return false;
-  
+
   // Check for service quality issues that demand attention
-  const hasServiceCrisis = Object.values(cityStats.services || {}).some(service => 
-    service.rating === 'F' || service.rating === 'D-'
+  const hasServiceCrisis = Object.values(cityStats.services || {}).some(
+    (service) => service.rating === "F" || service.rating === "D-"
   );
-  
+
   if (hasServiceCrisis) {
     urgencyThreshold *= 0.7; // Make more likely to propose
   }
-  
+
   // Check for economic indicators that suggest action is needed
-  const economicConcerns = 
-    cityStats.budget?.cityBalance < 0 || 
-    (cityStats.budget?.cityIncome < cityStats.budget?.expenses * 0.9);
-    
+  const economicConcerns =
+    cityStats.budget?.cityBalance < 0 ||
+    cityStats.budget?.cityIncome < cityStats.budget?.expenses * 0.9;
+
   if (economicConcerns) {
     urgencyThreshold *= 0.8;
   }
-  
+
   // AI ideology affects willingness to propose
-  const ideologyFactor = aiPolitician.ideology === 'progressive' ? 0.9 : 
-                        aiPolitician.ideology === 'conservative' ? 1.1 : 1.0;
+  const ideologyFactor =
+    aiPolitician.ideology === "progressive"
+      ? 0.9
+      : aiPolitician.ideology === "conservative"
+      ? 1.1
+      : 1.0;
   urgencyThreshold *= ideologyFactor;
-  
+
   // Return true if the best policy exceeds the urgency threshold
   return bestPolicy && bestPolicy.urgencyScore >= urgencyThreshold;
 };

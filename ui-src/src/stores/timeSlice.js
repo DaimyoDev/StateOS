@@ -132,6 +132,7 @@ export const createTimeSlice = (set, get) => {
           if (regionalResult.updatedCountry) {
             currentCampaign = _updateCountryPure(currentCampaign, regionalResult.updatedCountry);
           }
+          collectedNewsThisMonth.push(...regionalResult.newsItems);
 
           // 3. Simulate and update all city stats
           const statResult = runMonthlyStatUpdate(currentCampaign);
