@@ -36,6 +36,7 @@ export const createUISlice = (set, get) => ({
   isViewPoliticianModalOpen: false,
   themeToEdit: null,
   viewingCountryId: null,
+  viewingStateId: null,
   isLoadingGame: false,
   loadingMessage: "",
   isVotingSessionActive: false,
@@ -71,12 +72,18 @@ export const createUISlice = (set, get) => ({
       get().actions.navigateTo("CountryDetailsScreen");
     },
 
-    // UPDATE navigateBack to clear the viewingCountryId
+    navigateToStateDetails: (stateId) => {
+      set({ viewingStateId: stateId });
+      get().actions.navigateTo("StateDetailsScreen");
+    },
+
+    // UPDATE navigateBack to clear viewing IDs
     navigateBack: () =>
       set((state) => ({
         currentScene: state.previousScene || "MainMenu", // Uses stored scene to go back
         previousScene: null, // Clears the previous scene
         viewingCountryId: null, // Ensure this is cleared when navigating back
+        viewingStateId: null, // Ensure this is cleared when navigating back
       })),
 
     setActiveTheme: (themeName) => {

@@ -1,16 +1,14 @@
 import React from "react";
 import Modal from "./Modal";
 import "./BillDetailsModal.css";
-import {
-  CITY_POLICIES,
-  STATE_POLICIES,
-} from "../../data/policyDefinitions";
-import { NATIONAL_POLICIES } from "../../data/nationalPolicyDefinitions";
+import { CITY_POLICIES } from "../../data/cityPolicyDefinitions";
+import { STATE_POLICIES } from "../../data/statePolicyDefinitions";
+import { FEDERAL_POLICIES } from "../../data/nationalPolicyDefinitions";
 
 const allPolicies = {
   city: CITY_POLICIES,
   state: STATE_POLICIES,
-  national: NATIONAL_POLICIES,
+  national: FEDERAL_POLICIES,
 };
 
 const STANCE_CLASSES = {

@@ -1,7 +1,7 @@
 // src/simulation/newsGenerator.js
 import { createNewsArticleObject } from "../entities/organizationEntities";
 import { getRandomElement } from "../utils/core";
-import { CITY_POLICIES } from "../data/policyDefinitions";
+import { CITY_POLICIES } from "../data/cityPolicyDefinitions";
 
 const ARTICLE_COMPONENTS = {
   positive_adjectives: [

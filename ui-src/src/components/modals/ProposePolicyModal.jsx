@@ -1,9 +1,7 @@
 import React, { useState, useMemo } from "react";
 import Modal from "./Modal";
 import useGameStore from "../../store"; // To get available policies
-import {
-  POLICY_AREAS, // Assuming POLICY_AREAS is exported from policyDefinitions
-} from "../../data/policyDefinitions"; // Adjust path
+import { POLICY_AREAS } from "../../data/policyAreas";
 import "./ProposePolicyModal.css"; // Create this CSS file
 
 const ProposePolicyModal = ({ isOpen, onClose, onPropose }) => {

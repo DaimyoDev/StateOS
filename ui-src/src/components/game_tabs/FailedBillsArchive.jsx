@@ -1,12 +1,12 @@
 import React from 'react';
 import useGameStore from "../../store";
-import { CITY_POLICIES, STATE_POLICIES, NATIONAL_POLICIES } from "../../data";
+import { CITY_POLICIES, STATE_POLICIES, FEDERAL_POLICIES } from "../../data";
 import "./PassedBillsArchive.css"; // Re-use the same CSS for consistency
 
 const policySets = {
   city: CITY_POLICIES,
   state: STATE_POLICIES,
-  national: NATIONAL_POLICIES,
+  national: FEDERAL_POLICIES,
 };
 
 const getPolicyDetailsText = (policyInBill, level) => {

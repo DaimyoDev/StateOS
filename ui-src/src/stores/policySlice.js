@@ -3,7 +3,7 @@ import {
   MOOD_LEVELS,
   ECONOMIC_OUTLOOK_LEVELS,
 } from "../data/governmentData";
-import { CITY_POLICIES } from "../data/policyDefinitions";
+import { CITY_POLICIES } from "../data/cityPolicyDefinitions";
 import {
   formatPercentage,
   formatBudgetKey,

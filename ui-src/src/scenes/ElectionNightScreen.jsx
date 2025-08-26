@@ -13,6 +13,32 @@ const SIMULATION_SPEEDS = {
   fast: 1500,
 };
 
+const generateRandomColor = () => {
+  const colors = [
+    "#FF6B6B",
+    "#4ECDC4",
+    "#45B7D1",
+    "#96CEB4",
+    "#FECA57",
+    "#FF9FF3",
+    "#54A0FF",
+    "#5F27CD",
+    "#00D2D3",
+    "#FF9F43",
+    "#10AC84",
+    "#EE5A24",
+    "#0984E3",
+    "#6C5CE7",
+    "#A29BFE",
+    "#FD79A8",
+    "#FDCB6E",
+    "#E17055",
+    "#74B9FF",
+    "#81ECEC",
+  ];
+  return colors[Math.floor(Math.random() * colors.length)];
+};
+
 const distributeVoteChunkProportionally = (candidates, voteChunk) => {
   let processedCandidates = candidates.map((c) => ({
     ...c,
@@ -82,6 +108,23 @@ const distributeVoteChunkProportionally = (candidates, voteChunk) => {
 };
 
 const FeaturedElectionCard = ({ election }) => {
+  const candidateColors = useMemo(() => {
+    if (!election?.candidates) return {};
+    const colorMap = {};
+    election.candidates.forEach((candidate) => {
+      if (
+        candidate.partyName === "Independent" ||
+        !candidate.partyName ||
+        candidate.partyColor === "#888888" ||
+        candidate.partyColor === "#CCCCCC"
+      ) {
+        const randomColor = generateRandomColor();
+        colorMap[candidate.id] = randomColor;
+      }
+    });
+    return colorMap;
+  }, [election?.id]);
+
   const sortedCandidates = useMemo(() => {
     if (!election?.candidates || election.candidates.length === 0) return [];
     return [...election.candidates]
@@ -203,8 +246,13 @@ const FeaturedElectionCard = ({ election }) => {
                   className="vote-bar"
                   style={{
                     width: `${Math.min(100, percentage)}%`,
-                    backgroundColor:
-                      candidate.partyColor || "var(--disabled-bg, #ccc)",
+                    backgroundColor: (() => {
+                      const finalColor =
+                        candidateColors[candidate.id] ||
+                        candidate.partyColor ||
+                        "var(--disabled-bg, #ccc)";
+                      return finalColor;
+                    })(),
                   }}
                 ></div>
               </div>
@@ -403,9 +451,6 @@ const ElectionNightScreen = () => {
           }
         } else {
           // Existing logic for campaign elections (PartyListPR, MMP, other systems)
-          console.log(
-            `--- [SimSetup] Processing: ${election.officeName} (ID: ${election.id}, System: ${election.electoralSystem}) ---`
-          );
           if (election.electoralSystem === "PartyListPR") {
             console.log(`   PartyListPR: Populating parties for simulation.`);
             if (

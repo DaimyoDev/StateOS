@@ -1,13 +1,13 @@
 // ui-src/src/data/nationalPolicyDefinitions.js
 import { POLICY_AREAS } from "./policyAreas";
 
-export const NATIONAL_POLICIES = [
+export const FEDERAL_POLICIES = [
   {
     id: "n_fp001",
     name: "Sign International Climate Accord",
     area: POLICY_AREAS.FOREIGN_POLICY,
     description: "Commit the nation to an international agreement aimed at reducing carbon emissions.",
-    tags: ["foreign_policy", "environment", "climate_change", "treaty"],
+    tags: ["foreign_policy", "environment", "climate_change", "treaty", "federal_only"],
     baseSupport: { Green: 0.9, Progressive: 0.7, Liberal: 0.5, Nationalist: -0.6, Conservative: -0.4 },
     cost: { politicalCapital: 8 },
     durationToImplement: 6,
@@ -145,5 +145,219 @@ export const NATIONAL_POLICIES = [
             scope: "national"
         }
     ],
-  }
+  },
+  {
+    id: "n_immigration001",
+    name: "Comprehensive Immigration Reform",
+    area: POLICY_AREAS.FOREIGN_POLICY,
+    description: "Implement comprehensive immigration reform including pathway to citizenship and border security measures.",
+    tags: ["immigration", "foreign_policy", "border_security", "federal_only"],
+    baseSupport: { 
+      Progressive: 0.8, 
+      Liberal: 0.6, 
+      Conservative: -0.4, 
+      Nationalist: -0.8, 
+      Populist: -0.3 
+    },
+    cost: { politicalCapital: 15 },
+    durationToImplement: 24,
+    effects: [
+      {
+        targetStat: "economicOutlook",
+        change: 1,
+        type: "level_change",
+        chance: 0.6,
+        delay: 18,
+        scope: "national"
+      },
+      {
+        targetStat: "socialCohesion",
+        change: -1,
+        type: "level_change",
+        chance: 0.3,
+        delay: 6,
+        scope: "national"
+      }
+    ],
+  },
+  {
+    id: "n_trade001_parameterized",
+    name: "Adjust Federal Trade Tariffs",
+    area: POLICY_AREAS.ECONOMY,
+    description: "Modify tariff rates on imported goods to protect domestic industries or encourage free trade.",
+    tags: ["trade", "economy", "tariffs", "federal_only", "parameterized"],
+    cost: { politicalCapital: 12 },
+    durationToImplement: 3,
+    isParameterized: true,
+    parameterDetails: {
+      key: "tariffAdjustment",
+      targetStat: "nationalLaws.averageTariffRate",
+      adjustmentType: "increase_or_decrease",
+      valueType: "percentage_point",
+      min: -10.0,
+      max: 25.0,
+      step: 0.5,
+      defaultValue: 2.0,
+      unit: "pp",
+      prompt: "Enter tariff rate change (percentage points):",
+    },
+    effects: [
+      {
+        targetStat: "economicOutlook",
+        type: "conditional_level_change_by_param",
+        chance: 0.7,
+        delay: 6,
+        scope: "national"
+      },
+      {
+        targetStat: "internationalRelations",
+        type: "conditional_level_change_by_param",
+        change_direction: -1,
+        chance: 0.5,
+        delay: 3,
+        scope: "national"
+      }
+    ],
+  },
+  {
+    id: "n_social001",
+    name: "Establish Universal Basic Income Pilot Program",
+    area: POLICY_AREAS.SOCIAL_SERVICES,
+    description: "Launch a nationwide pilot program providing basic income to select demographics to study economic effects.",
+    tags: ["social_welfare", "pilot_program", "basic_income", "federal_only"],
+    baseSupport: {
+      Socialist: 0.9,
+      Progressive: 0.8,
+      Liberal: 0.4,
+      Technocratic: 0.3,
+      Centrist: -0.2,
+      Conservative: -0.8,
+      Libertarian: -0.9,
+    },
+    cost: { politicalCapital: 18 },
+    durationToImplement: 12,
+    effects: [
+      {
+        targetStat: "povertyRate",
+        change: -2.0,
+        type: "percentage_point_change",
+        chance: 0.8,
+        delay: 6,
+        scope: "national"
+      },
+      {
+        targetStat: "economicOutlook",
+        change: -1,
+        type: "level_change",
+        chance: 0.4,
+        delay: 12,
+        scope: "national"
+      },
+      {
+        targetStat: "budget.expenseAllocations.socialPrograms",
+        changeFormula: "nationalPopulation * 200",
+        type: "formula_absolute_change",
+      }
+    ],
+  },
+  {
+    id: "n_space001_parameterized",
+    name: "Adjust Federal Space Program Funding",
+    area: POLICY_AREAS.SCIENCE_TECHNOLOGY,
+    description: "Modify funding for the national space agency and space exploration programs.",
+    tags: ["science", "space", "technology", "federal_only", "parameterized"],
+    baseSupport: {
+      Technocratic: 0.9,
+      Progressive: 0.5,
+      Liberal: 0.3,
+      Conservative: 0.2,
+      Centrist: 0.4,
+    },
+    cost: { politicalCapital: 6 },
+    durationToImplement: 1,
+    isParameterized: true,
+    parameterDetails: {
+      key: "budgetAdjustmentAmount",
+      targetBudgetLine: "spaceProgramFunding",
+      adjustmentType: "increase_or_decrease",
+      valueType: "absolute_amount",
+      min: -5000000000,
+      max: 20000000000,
+      step: 100000000,
+      defaultValue: 2000000000,
+      unit: "$",
+      prompt: "Enter amount to change Space Program budget by:",
+    },
+    effects: [
+      {
+        targetStat: "technologicalAdvancement",
+        type: "conditional_level_change_by_param",
+        change_direction: 1,
+        base_change_for_default: 1,
+        chance: 0.6,
+        delay: 24,
+        scope: "national"
+      },
+      {
+        targetStat: "internationalPrestige",
+        type: "conditional_level_change_by_param",
+        change_direction: 1,
+        base_change_for_default: 1,
+        chance: 0.4,
+        delay: 18,
+        scope: "national"
+      }
+    ],
+  },
+  {
+    id: "n_fed_minimum_wage",
+    name: "Set Federal Minimum Wage",
+    area: POLICY_AREAS.ECONOMY,
+    description: "Establish or change the federal minimum wage. This sets the nationwide floor for minimum wages and affects all states.",
+    tags: ["economy", "labor", "regulation", "minimum_wage", "federal_only", "parameterized"],
+    baseSupport: {
+      Socialist: 0.95,
+      Progressive: 0.85,
+      Liberal: 0.5,
+      Centrist: 0.0,
+      Conservative: -0.7,
+      Libertarian: -0.9,
+    },
+    cost: { politicalCapital: 12 },
+    durationToImplement: 6,
+    isParameterized: true,
+    setsSimulationVariable: true,
+    parameterDetails: {
+      key: "wageRate",
+      targetStat: "nationalLaws.federalMinimumWage",
+      adjustmentType: "set_value",
+      valueType: "absolute_amount",
+      min: 0,
+      max: 50,
+      step: 0.25,
+      defaultValue: 15.0,
+      unit: "$/hour",
+      prompt: "Set the new federal minimum wage (per hour):",
+    },
+    effects: [
+      {
+        targetStat: "povertyRate",
+        type: "percentage_point_change",
+        change: -1.0,
+        chance: 0.9,
+        delay: 4,
+        scope: "national"
+      },
+      {
+        targetStat: "unemploymentRate",
+        type: "percentage_point_change",
+        change: 0.1,
+        chance: 0.3,
+        delay: 8,
+        scope: "national"
+      },
+    ],
+  },
+  // Note: General policies are imported separately to avoid circular dependencies
+  // They can be combined at the application level if needed
 ];

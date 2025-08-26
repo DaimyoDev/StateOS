@@ -1,0 +1,158 @@
+// ui-src/src/data/cityPolicyDefinitions.js
+
+import { POLICY_AREAS } from "./policyAreas";
+
+export const CITY_POLICIES = [
+  {
+    id: "ps001_parameterized",
+    name: "Adjust Police Department Funding",
+    area: POLICY_AREAS.PUBLIC_SAFETY,
+    description: "Modify the annual budget allocation for the Police Department.",
+    tags: ["public_safety", "budget", "spending", "parameterized", "city_only"],
+    baseSupport: {
+      Conservative: 0.6,
+      Nationalist: 0.5,
+      Liberal: -0.1,
+      Socialist: -0.3,
+      Centrist: 0.1,
+      Libertarian: -0.2,
+    },
+    cost: { politicalCapital: 4 },
+    durationToImplement: 1,
+    isParameterized: true,
+    parameterDetails: {
+      key: "budgetAdjustmentAmount",
+      targetBudgetLine: "policeDepartment",
+      adjustmentType: "increase_or_decrease",
+      valueType: "absolute_amount",
+      min: -500000000,
+      max: 800000000,
+      step: 1,
+      defaultValue: 100000,
+      unit: "$",
+      prompt: "Enter amount to change Police Dept. budget by (e.g., 100000 or -50000):",
+    },
+    effects: [
+      {
+        targetStat: "overallCitizenMood",
+        type: "conditional_mood_shift",
+        chance: 0.4,
+        description_template: "Citizen mood may shift based on changes to police funding.",
+      },
+      {
+        targetStat: "playerApproval",
+        type: "conditional_approval_shift",
+        chance: 0.5,
+        ifPlayerProposer: true,
+        description_template: "Your approval may change based on your proposed police budget adjustment.",
+      },
+    ],
+  },
+  {
+    id: "city_parking001_parameterized",
+    name: "Implement Paid Parking System",
+    area: POLICY_AREAS.TRANSPORTATION,
+    description: "Install parking meters and implement paid parking in downtown areas to manage congestion and generate revenue.",
+    tags: ["transportation", "revenue", "urban_planning", "city_only", "parameterized"],
+    baseSupport: {
+      Technocratic: 0.6,
+      Liberal: 0.3,
+      Centrist: 0.2,
+      Conservative: -0.2,
+      Populist: -0.5,
+    },
+    cost: { politicalCapital: 5 },
+    durationToImplement: 6,
+    isParameterized: true,
+    parameterDetails: {
+      key: "hourlyRate",
+      targetStat: "cityLaws.parkingRate",
+      adjustmentType: "set_value",
+      valueType: "absolute_amount",
+      min: 0.5,
+      max: 10.0,
+      step: 0.25,
+      defaultValue: 2.5,
+      unit: "$/hour",
+      prompt: "Set hourly parking rate:",
+    },
+    effects: [
+      {
+        targetStat: "budget.incomeSources.parkingRevenue",
+        changeFormula: "population * 0.05 * parameterValue * 8 * 250",
+        type: "formula_absolute_change",
+      },
+      {
+        targetStat: "overallCitizenMood",
+        change: -1,
+        type: "mood_shift",
+        chance: 0.6,
+      },
+    ],
+  },
+  {
+    id: "city_noise001",
+    name: "Implement Noise Ordinance",
+    area: POLICY_AREAS.PUBLIC_SAFETY,
+    description: "Establish strict noise regulations for construction, businesses, and residential areas.",
+    tags: ["public_safety", "regulation", "quality_of_life", "city_only"],
+    baseSupport: {
+      Liberal: 0.5,
+      Centrist: 0.4,
+      Conservative: 0.3,
+      Libertarian: -0.4,
+    },
+    cost: { politicalCapital: 3 },
+    durationToImplement: 2,
+    effects: [
+      {
+        targetStat: "overallCitizenMood",
+        change: 1,
+        type: "mood_shift",
+        chance: 0.4,
+        condition: "high_population_density",
+      },
+      {
+        targetStat: "economicOutlook",
+        change: -1,
+        type: "level_change",
+        chance: 0.2,
+        delay: 6,
+      },
+    ],
+  },
+  {
+    id: "city_zoning001",
+    name: "Rezone Industrial Areas for Mixed-Use Development",
+    area: POLICY_AREAS.HOUSING,
+    description: "Convert old industrial zones to allow residential, commercial, and light industrial mixed-use development.",
+    tags: ["housing", "urban_planning", "zoning", "city_only"],
+    baseSupport: {
+      Liberal: 0.6,
+      Progressive: 0.5,
+      Technocratic: 0.7,
+      Conservative: -0.3,
+      Green: -0.2,
+    },
+    cost: { politicalCapital: 6 },
+    durationToImplement: 12,
+    effects: [
+      {
+        targetStat: "economicOutlook",
+        change: 1,
+        type: "level_change",
+        chance: 0.5,
+        delay: 18,
+      },
+      {
+        targetStat: "population",
+        change: 0.02,
+        type: "percentage_change",
+        chance: 0.3,
+        delay: 24,
+      },
+    ],
+  },
+  // Note: General policies are imported separately to avoid circular dependencies
+  // They can be combined at the application level if needed
+];

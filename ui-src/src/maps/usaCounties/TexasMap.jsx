@@ -1,4 +1,6 @@
-import React from "react";
+import React, { useState, useMemo } from "react";
+import useGameStore from "../../store";
+import { parseColor } from "../../utils/core";
 import "../JapanMap.css";
 
 const COUNTY_DATA = {
@@ -994,7 +996,65 @@ const countyOrderFromSVG = [
   "Tom Green",
 ];
 
-function TexasMap({ onSelectCounty, selectedCountyGameId }) {
+function TexasMap({ onSelectCounty, selectedCountyGameId, heatmapData, viewType }) {
+  const currentTheme = useGameStore(
+    (state) => state.availableThemes[state.activeThemeName]
+  );
+
+  // Extract theme colors properly from theme colors object
+  const mapTheme = currentTheme.colors || {};
+  
+  const landColor = mapTheme["--map-region-default-fill"] || "#cccccc";
+  const borderColor = mapTheme["--map-region-border"] || "#ffffff";
+  const hoverColor = mapTheme["--map-region-hover-fill"] || "#FFD700";
+  const selectedColor = mapTheme["--accent-color"] || "yellow";
+  const actionColor = mapTheme["--button-action-bg"] || "#e74c3c";
+
+  // Heatmap gradient from land to action color
+  const heatMapStartColor = parseColor(landColor);
+  const heatMapEndColor = parseColor(actionColor);
+
+  // Calculate min/max for heatmap normalization
+  const { min, max } = useMemo(() => {
+    if (!heatmapData || viewType === "party_popularity")
+      return { min: 0, max: 1 };
+    const values = heatmapData
+      .map((d) => d.value)
+      .filter((v) => typeof v === "number");
+    if (values.length === 0) return { min: 0, max: 1 };
+    return { min: Math.min(...values), max: Math.max(...values) };
+  }, [heatmapData, viewType]);
+
+  const getCountyStyle = (svgId) => {
+    if (!heatmapData || heatmapData.length === 0) {
+      return null; // Use CSS classes for base styling
+    }
+
+    const countyInfo = COUNTY_DATA[svgId];
+    if (!countyInfo) return null;
+
+    const data = heatmapData?.find((d) => d.id === countyInfo.gameId);
+    if (data) {
+      if (viewType === "party_popularity") {
+        return { fill: data.color || null };
+      } else if (typeof data.value === "number") {
+        const ratio = max > min ? (data.value - min) / (max - min) : 0;
+        const r = Math.round(
+          heatMapStartColor.r + (heatMapEndColor.r - heatMapStartColor.r) * ratio
+        );
+        const g = Math.round(
+          heatMapStartColor.g + (heatMapEndColor.g - heatMapStartColor.g) * ratio
+        );
+        const b = Math.round(
+          heatMapStartColor.b + (heatMapEndColor.b - heatMapStartColor.b) * ratio
+        );
+        return { fill: `rgb(${r}, ${g}, ${b})` };
+      }
+    }
+    
+    return null;
+  };
+
   const handleCountyClick = (svgId) => {
     const county = COUNTY_DATA[svgId];
     if (county && onSelectCounty) {
@@ -1023,6 +1083,7 @@ function TexasMap({ onSelectCounty, selectedCountyGameId }) {
         className={`prefecture-path ${
           selectedCountyGameId === countyInfo.gameId ? "selected" : ""
         }`}
+        style={getCountyStyle(svgId)}
         onClick={() => handleCountyClick(svgId)}
         d={pathD}
       />

@@ -1366,14 +1366,22 @@ function CampaignSetupScreen() {
               )}
             </div>
           )}
-        <button
-          className="menu-button view-details-button"
-          style={{ marginTop: "1rem" }}
-          // --- FIX: Use the correct variable for the confirmed country ---
-          onClick={() => actions.navigateToCountryDetails(selectedCountryId)}
-        >
-          View Full Details & Maps
-        </button>
+        <div className="view-details-buttons" style={{ marginTop: "1rem", display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+          <button
+            className="menu-button view-details-button"
+            onClick={() => actions.navigateToCountryDetails(selectedCountryId)}
+          >
+            View Country Details & Maps
+          </button>
+          {selectedRegionId && (
+            <button
+              className="menu-button view-details-button"
+              onClick={() => actions.navigateToStateDetails(selectedRegionId)}
+            >
+              View State Details & Maps
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Right Column: Information & Actions */}

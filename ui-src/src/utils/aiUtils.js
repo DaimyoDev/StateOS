@@ -1,4 +1,4 @@
-import { CITY_POLICIES } from "../data/policyDefinitions";
+import { CITY_POLICIES } from "../data/cityPolicyDefinitions";
 import { RATING_LEVELS } from "../data/governmentData";
 import { calculateAdultPopulation, getRandomInt } from "./core";
 

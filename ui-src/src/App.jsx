@@ -14,6 +14,7 @@ import ElectionSimulatorScreen from "./scenes/ElectionSimulatorScreen";
 import CreatorHub from "./scenes/CreatorHub";
 import PartyCreatorScreen from "./scenes/PartyCreatorScreen";
 import CountryDetailsScreen from "./scenes/CountryDetailsScreen";
+import StateDetailsScreen from "./scenes/StateDetailsScreen";
 import LoadingScreen from "./scenes/LoadingScreen";
 import WikiScene from "./scenes/WikiScene";
 import "./App.css";
@@ -63,6 +64,8 @@ function App() {
         return <PartyCreatorScreen />;
       case "CountryDetailsScreen":
         return <CountryDetailsScreen />;
+      case "StateDetailsScreen":
+        return <StateDetailsScreen />;
       case "LoadingScreen":
         return <LoadingScreen />;
       case "WikiScene":

@@ -3,8 +3,9 @@
 // It contains the full logic for AI voting and applying policy effects to the campaign state.
 
 import { generateId, getRandomInt } from "../utils/core.js";
-import { CITY_POLICIES, STATE_POLICIES } from "../data/policyDefinitions";
-import { NATIONAL_POLICIES } from "../data/nationalPolicyDefinitions";
+import { CITY_POLICIES } from "../data/cityPolicyDefinitions";
+import { STATE_POLICIES } from "../data/statePolicyDefinitions";
+import { FEDERAL_POLICIES } from "../data/nationalPolicyDefinitions";
 import { produce } from "immer";
 import { applyPolicyEffect } from "../simulation/applyPolicyEffects.js";
 import {
@@ -119,7 +120,7 @@ export const createLegislationSlice = (set, get) => ({
   availablePolicies: {
     city: CITY_POLICIES,
     state: STATE_POLICIES,
-    national: NATIONAL_POLICIES,
+    national: FEDERAL_POLICIES,
   },
 
   actions: {
@@ -129,7 +130,7 @@ export const createLegislationSlice = (set, get) => ({
         availablePolicies: {
           city: CITY_POLICIES,
           state: STATE_POLICIES,
-          national: NATIONAL_POLICIES,
+          national: FEDERAL_POLICIES,
         },
       }),
 

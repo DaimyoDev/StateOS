@@ -138,6 +138,7 @@ export const createCityObject = (params = {}) => ({
   stats: params.stats || {},
   cityLaws: params.cityLaws || {},
   politicalLandscape: params.politicalLandscape || [],
+  isCapital: params.isCapital || false,
 });
 
 // --- State Data Structure Definition ---
@@ -146,6 +147,7 @@ export const createStateObject = (params = {}) => ({
   name: params.name || "New State",
   countryId: params.countryId || null,
   capitalCityId: params.capitalCityId || null,
+  capital: params.capital || null,
   legislativeDistricts: params.legislativeDistricts || null,
   cities: params.cities || [],
   secondAdminRegions: params.secondAdminRegions || [],
@@ -177,8 +179,16 @@ export const createGovernmentOffice = (params = {}) => ({
 export const generateFullSecondAdminRegionData = (params = {}) => {
   const { baseRegionData, parentStateData, countryId } = params;
 
-  // Use the population from the static file (e.g., usaCounties.js)
-  const population = baseRegionData.population || getRandomInt(10000, 100000);
+  // Convert populationWeight to actual population (e.g., from usaCounties.js)
+  // PopulationWeight represents population in thousands
+  let population;
+  if (baseRegionData.populationWeight !== undefined) {
+    population = baseRegionData.populationWeight * 1000;
+  } else if (baseRegionData.population !== undefined) {
+    population = baseRegionData.population;
+  } else {
+    population = getRandomInt(10000, 100000);
+  }
 
   // Generate demographics and economic profile, potentially influenced by the parent state
   const demographics = generateCityDemographics(); // Can reuse city logic for this
@@ -198,6 +208,21 @@ export const generateFullSecondAdminRegionData = (params = {}) => {
     economicProfile
   );
 
+  // Generate political landscape similar to cities, with variation from parent state
+  let politicalLandscape = [];
+  if (parentStateData?.politicalLandscape && Array.isArray(parentStateData.politicalLandscape)) {
+    politicalLandscape = parentStateData.politicalLandscape.map((party) => {
+      const newParty = deepCopy(party);
+      const shift = getRandomInt(-8, 8); // Smaller variation than states (-8% to +8%)
+      const basePopularity = newParty.popularity || 0;
+      newParty.popularity = Math.max(0, Math.min(100, basePopularity + shift));
+      return newParty;
+    });
+    
+    // Normalize the political landscape to ensure percentages add up to 100%
+    politicalLandscape = normalizePartyPopularities(politicalLandscape);
+  }
+
   // Create the final object
   return {
     ...baseRegionData, // Includes id, name, stateId from the original file
@@ -206,6 +231,7 @@ export const generateFullSecondAdminRegionData = (params = {}) => {
     demographics,
     economicProfile,
     stats,
+    politicalLandscape,
     // Note: Laws would likely be inherited from the state or country level
     // and are not generated here for simplicity.
   };
@@ -893,6 +919,7 @@ export const generateFullCityData = (params = {}) => {
     stats,
     cityLaws,
     politicalLandscape: normalizedLandscape,
+    isCapital: params.isCapital || false,
   });
 };
 
@@ -1034,7 +1061,10 @@ export const generateFullStateData = (params = {}) => {
   });
   const finalPoliticalLandscape = Object.values(aggregatedLandscape);
 
-  const capitalCity = cities.sort((a, b) => b.population - a.population)[0];
+  // Find the designated capital city, or fallback to the largest city
+  const capitalCity = cities.find(city => city.isCapital) || cities.sort((a, b) => b.population - a.population)[0];
+  
+  console.log(`[State Generation] Setting capital for ${params.name}: ${capitalCity?.name || 'None'} (isCapital: ${capitalCity?.isCapital || false})`);
 
   const stateLaws = generateInitialStateLaws({
     countryId: params.countryId,
@@ -1131,6 +1161,7 @@ export const generateFullStateData = (params = {}) => {
     cities: cities,
     stateLaws: stateLaws,
     capitalCityId: capitalCity ? capitalCity.id : null,
+    capital: capitalCity ? capitalCity.name : null,
     demographics: aggregatedDemographics,
     economicProfile: aggregatedEconomicProfile,
     politicalLandscape: normalizePartyPopularities(finalPoliticalLandscape),

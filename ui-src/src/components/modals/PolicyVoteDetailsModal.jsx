@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import Modal from "./Modal";
 import useGameStore from "../../store";
 import "./PolicyVoteDetailsModal.css";
-import { CITY_POLICIES } from "../../data/policyDefinitions";
+import { CITY_POLICIES } from "../../data/cityPolicyDefinitions";
 
 const getPolicyDetailsText = (policyInBill) => {
   const fullPolicyData = CITY_POLICIES.find(
