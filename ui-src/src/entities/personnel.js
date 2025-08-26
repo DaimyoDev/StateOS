@@ -140,7 +140,7 @@ export const rehydratePolitician = (politicianId, soaStore) => {
   return {
     ...base,
     attributes,
-    policyStances: Object.fromEntries(policyStances),
+    policyStances: policyStances instanceof Map ? Object.fromEntries(policyStances) : (policyStances || {}),
     ideologyScores,
     ...state,
     ...finances,

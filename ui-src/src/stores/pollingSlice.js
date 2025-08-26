@@ -1,4 +1,4 @@
-import { pollingOptimizer, normalizePollingOptimized} from "../General Scripts/OptimizedPollingFunctions.js";
+import { normalizePollingOptimized, calculateCoalitionBasedPolling } from "../General Scripts/OptimizedPollingFunctions.js";
 
 export const createPollingSlice = (set) => ({
   // --- State ---
@@ -16,9 +16,13 @@ export const createPollingSlice = (set) => ({
         const { activeCampaign } = state;
         if (!activeCampaign) return {};
 
-        const election = activeCampaign.elections.find(
-          (e) => e.id === electionId
-        );
+        // Create election lookup for O(1) access
+        const electionLookup = new Map();
+        for (const election of activeCampaign.elections) {
+          electionLookup.set(election.id, election);
+        }
+        
+        const election = electionLookup.get(electionId);
         const allPollsters = activeCampaign.pollingFirms || [];
         if (!election || allPollsters.length === 0) return {};
 
@@ -48,10 +52,11 @@ export const createPollingSlice = (set) => ({
           }
         }
 
-        // 3. Get the "Ground Truth" polling using updated candidate data
-        const groundTruthPollingMap = normalizePollingOptimized(
-          updatedCandidates,
-          election.entityDataSnapshot.population
+        // 3. Use coalition-based polling for better performance
+        const groundTruthPollingMap = calculateCoalitionBasedPolling(
+          election,
+          { startingCity: activeCampaign.startingCity, activeCampaign },
+          politicians
         );
 
         // 4. Apply the pollster's bias to the ground truth
@@ -121,12 +126,11 @@ export const createPollingSlice = (set) => ({
 
       set((state) => {
         const { activeCampaign } = state;
-        if (!activeCampaign) return {};
+        if (!activeCampaign) return state;
 
         const allPollsters = activeCampaign.pollingFirms || [];
-        if (allPollsters.length === 0) return {};
+        if (allPollsters.length === 0) return state;
 
-        const newRecentPollsMap = new Map(state.recentPollsByElection);
         const { politicians } = activeCampaign;
 
         // Pre-cache politician data to avoid repeated lookups
@@ -136,8 +140,17 @@ export const createPollingSlice = (set) => ({
           politicianCache.set(id, { stateData, attributesData });
         }
 
+        // Only update elections that need updates - avoid full state copy
+        // Create election lookup index for O(1) access instead of O(n) find operations
+        const electionLookup = new Map();
+        for (const election of activeCampaign.elections) {
+          electionLookup.set(election.id, election);
+        }
+        
+        const updatedElections = {};
+        
         for (const electionId of electionIds) {
-          const election = activeCampaign.elections.find(e => e.id === electionId);
+          const election = electionLookup.get(electionId);
           if (!election) continue;
 
           // Select a random pollster
@@ -164,10 +177,11 @@ export const createPollingSlice = (set) => ({
             }
           }
 
-          // Generate ground truth polling
-          const groundTruthPollingMap = normalizePollingOptimized(
-            updatedCandidates,
-            election.entityDataSnapshot.population
+          // Use coalition-based polling for better performance
+          const groundTruthPollingMap = calculateCoalitionBasedPolling(
+            election,
+            { startingCity: activeCampaign.startingCity, activeCampaign },
+            politicians
           );
 
           // Apply pollster bias efficiently
@@ -203,12 +217,17 @@ export const createPollingSlice = (set) => ({
             results: normalizedBiasedPolls,
           };
 
-          const recentPolls = newRecentPollsMap.get(electionId) || [];
-          const updatedRecentPolls = [newPoll, ...recentPolls].slice(0, 5);
-          newRecentPollsMap.set(electionId, updatedRecentPolls);
+          const existingPolls = state.recentPollsByElection.get(electionId) || [];
+          const updatedRecentPolls = [newPoll, ...existingPolls].slice(0, 5);
+          updatedElections[electionId] = updatedRecentPolls;
         }
 
-        return { recentPollsByElection: newRecentPollsMap };
+        // Direct mutation approach - only update changed elections
+        for (const [electionId, polls] of Object.entries(updatedElections)) {
+          state.recentPollsByElection.set(electionId, polls);
+        }
+
+        return state;
       });
     },
   },

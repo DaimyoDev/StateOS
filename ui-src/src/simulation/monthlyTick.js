@@ -526,10 +526,10 @@ const calculateLegislativePerformance = (billPerformance, partyInfluence) => {
 };
 
 const calculatePolicyAlignment = (party, electorateProfile) => {
-  // This would compare party ideology/positions with electorate preferences
-  // For now, return a small random alignment factor
-  // In practice, this would use party ideology scores and electorate policy preferences
-  return getRandomInt(-10, 10) / 100;
+  // Optimized: Use cached random values instead of expensive getRandomInt calls
+  // This function is called hundreds of times during monthly updates
+  const cachedValues = [-0.1, -0.08, -0.05, -0.03, 0, 0.02, 0.05, 0.07, 0.1];
+  return cachedValues[Math.floor(Math.random() * cachedValues.length)];
 };
 
 const calculateOppositionBonus = (stats, level) => {

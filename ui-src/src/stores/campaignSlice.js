@@ -695,6 +695,8 @@ export const createCampaignSlice = (set, get) => ({
         if (!state.activeCampaign?.elections) return {};
 
         const affectedIdsSet = new Set(affectedElectionIds);
+        const totalElections = state.activeCampaign.elections.length;
+        
         const city = state.activeCampaign.startingCity;
         const adultPop =
           calculateAdultPopulation(
@@ -704,60 +706,66 @@ export const createCampaignSlice = (set, get) => ({
 
         const { politicians } = state.activeCampaign;
         
+        // Create election lookup index for O(1) access instead of O(n) find operations
+        const electionLookup = new Map();
+        const electionIndexLookup = new Map();
+        for (let i = 0; i < state.activeCampaign.elections.length; i++) {
+          const election = state.activeCampaign.elections[i];
+          electionLookup.set(election.id, election);
+          electionIndexLookup.set(election.id, i);
+        }
+        
         // Collect affected elections for batch processing
         const affectedElections = [];
         const electionUpdates = new Map();
         
-        for (const election of state.activeCampaign.elections) {
-          if (affectedIdsSet.has(election.id)) {
-            // Sync politician data to election candidates efficiently
-            const updatedCandidates = new Map();
+        for (const electionId of affectedIdsSet) {
+          const election = electionLookup.get(electionId);
+          if (!election) continue;
+          
+          // Sync politician data to election candidates efficiently
+          const updatedCandidates = new Map();
+          
+          for (const [candidateId, candidate] of election.candidates) {
+            const stateData = politicians.state.get(candidateId);
+            const attributesData = politicians.attributes.get(candidateId);
             
-            for (const [candidateId, candidate] of election.candidates) {
-              const stateData = politicians.state.get(candidateId);
-              const attributesData = politicians.attributes.get(candidateId);
-              
-              if (stateData || attributesData) {
-                updatedCandidates.set(candidateId, {
-                  ...candidate,
-                  baseScore: stateData?.baseScore || candidate.baseScore,
-                  nameRecognition: stateData?.nameRecognition || candidate.nameRecognition,
-                  approvalRating: stateData?.approvalRating || candidate.approvalRating,
-                  mediaBuzz: stateData?.mediaBuzz || candidate.mediaBuzz,
-                  ...(attributesData && { attributes: { ...candidate.attributes, ...attributesData } })
-                });
-              } else {
-                updatedCandidates.set(candidateId, candidate);
-              }
+            if (stateData || attributesData) {
+              updatedCandidates.set(candidateId, {
+                ...candidate,
+                baseScore: stateData?.baseScore || candidate.baseScore,
+                nameRecognition: stateData?.nameRecognition || candidate.nameRecognition,
+                approvalRating: stateData?.approvalRating || candidate.approvalRating,
+                mediaBuzz: stateData?.mediaBuzz || candidate.mediaBuzz,
+                ...(attributesData && { attributes: { ...candidate.attributes, ...attributesData } })
+              });
+            } else {
+              updatedCandidates.set(candidateId, candidate);
             }
-            
-            affectedElections.push({ ...election, candidates: updatedCandidates });
           }
+          
+          affectedElections.push({ ...election, candidates: updatedCandidates });
         }
         
         // Batch process polling updates
         const pollingResults = pollingOptimizer.batchUpdateElectionPolling(affectedElections, adultPop);
         
-        // Apply updates
-        const updatedElections = state.activeCampaign.elections.map(election => {
-          if (pollingResults.has(election.id)) {
-            return { ...election, candidates: pollingResults.get(election.id) };
+        // Direct mutation approach - use O(1) lookup instead of O(n) findIndex
+        for (const [electionId, updatedCandidates] of pollingResults) {
+          const electionIndex = electionIndexLookup.get(electionId);
+          if (electionIndex !== undefined) {
+            state.activeCampaign.elections[electionIndex].candidates = updatedCandidates;
           }
-          return election;
-        });
+        }
 
-        return {
-          activeCampaign: {
-            ...state.activeCampaign,
-            elections: updatedElections,
-          },
-        };
+        return state;
       });
     },
     applyDailyAICampaignResults: (allAIResults) => {
       if (!allAIResults || allAIResults.length === 0) return;
 
       const affectedElectionIds = new Set();
+      
 
       set((state) => {
         if (!state.activeCampaign?.politicians) return state;

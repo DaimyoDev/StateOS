@@ -243,11 +243,40 @@ export const createCampaignSetupSlice = (set, get) => {
         setLoadingGame(true, "Creating elections and candidates...");
         await pause(30);
 
+        setLoadingGame(true, "Generating coalition systems...");
+        await pause(20);
+        
+        // Generate coalitions during campaign setup to avoid runtime regeneration
+        const coalitionSystems = {};
+        const { generateCoalitions } = await import("../General Scripts/CoalitionSystem.js");
+        
+        // Generate coalitions for the starting city
+        const electorateProfile = selectedCityObject?.stats?.electoratePolicyProfile;
+        const demographics = selectedCityObject?.demographics;
+        
+        if (electorateProfile && demographics) {
+          const availableParties = [...setupState.generatedPartiesInCountry, ...allCustomPartiesData];
+          coalitionSystems[selectedCityObject.id] = generateCoalitions(
+            electorateProfile,
+            demographics,
+            availableParties
+          );
+        }
+
         navigateTo("CampaignGameScreen");
         setActiveMainGameTab("Dashboard");
         resetCampaignSetup?.();
         generateScheduledElections();
         resetLegislationState();
+        
+        // Store pre-generated coalitions in activeCampaign
+        set((state) => ({
+          activeCampaign: {
+            ...state.activeCampaign,
+            coalitionSystems
+          }
+        }));
+        
         // Don't clear temporary politicians - they're referenced by government offices
         // clearTemporaryPoliticians();
 

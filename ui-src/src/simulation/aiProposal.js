@@ -309,29 +309,60 @@ const calculateDetailedFiscalScore = (
  * @param {string} currentAiId - The ID of the AI we are checking for, to exclude their own proposals.
  * @returns {object} { budgetLines: Set, taxRates: Set }
  */
+// Cache for locked targets to avoid repeated computation
+let _lockedTargetsCache = null;
+let _lastProposedLegislationHash = null;
+
 const getLockedTargets = (proposedLegislationThisCycle, currentAiId, allPolicyDefs) => {
+  // Create a simple hash of the proposed legislation to detect changes
+  const proposedHash = (proposedLegislationThisCycle || [])
+    .map(b => `${b.id}:${b.proposerId}`)
+    .sort()
+    .join('|');
+  
+  // Return cached result if nothing changed
+  if (_lockedTargetsCache && _lastProposedLegislationHash === proposedHash) {
+    return _lockedTargetsCache;
+  }
+
   const budgetLines = new Set();
   const taxRates = new Set();
 
-  // Filter out bills proposed by the current AI
-  const billsByOthers = (proposedLegislationThisCycle || []).filter(
-    (b) => b.proposerId !== currentAiId
-  );
+  // Early exit if no proposed legislation
+  if (!proposedLegislationThisCycle?.length) {
+    const result = { budgetLines, taxRates };
+    _lockedTargetsCache = result;
+    _lastProposedLegislationHash = proposedHash;
+    return result;
+  }
 
-  // Flatten the list of all policies from all other bills
-  const policiesByOthers = billsByOthers.flatMap((b) => b.policies);
-
-  policiesByOthers.forEach((policyInBill) => {
-    // We need the full policy definition to check its details
-    const policyDef = allPolicyDefs?.find((p) => p.id === policyInBill.policyId);
-    if (policyDef?.isParameterized && policyDef.parameterDetails) {
-      const pDetails = policyDef.parameterDetails;
-      if (pDetails.targetBudgetLine) budgetLines.add(pDetails.targetBudgetLine);
-      if (pDetails.targetTaxRate) taxRates.add(pDetails.targetTaxRate);
+  // Create policy definition lookup map for O(1) access
+  const policyDefMap = new Map();
+  if (allPolicyDefs) {
+    for (const policyDef of allPolicyDefs) {
+      if (policyDef.isParameterized && policyDef.parameterDetails) {
+        policyDefMap.set(policyDef.id, policyDef.parameterDetails);
+      }
     }
-  });
+  }
 
-  return { budgetLines, taxRates };
+  // Process bills by others
+  for (const bill of proposedLegislationThisCycle) {
+    if (bill.proposerId === currentAiId) continue;
+    
+    for (const policyInBill of bill.policies) {
+      const pDetails = policyDefMap.get(policyInBill.policyId);
+      if (pDetails) {
+        if (pDetails.targetBudgetLine) budgetLines.add(pDetails.targetBudgetLine);
+        if (pDetails.targetTaxRate) taxRates.add(pDetails.targetTaxRate);
+      }
+    }
+  }
+
+  const result = { budgetLines, taxRates };
+  _lockedTargetsCache = result;
+  _lastProposedLegislationHash = proposedHash;
+  return result;
 };
 
 // --- REFACTORED PIPELINE FUNCTIONS ---
@@ -643,38 +674,57 @@ const applyBudgetAdjustmentCaps = (
  * **PIPELINE STEP 2:** Calculates a proposal score for a single policy.
  * @returns {number} The calculated proposal score.
  */
+// Cache for policy scores to avoid repeated computation
+let _policyScoringCache = new Map();
+let _lastCityStatsHash = null;
+
 function scorePolicyForAI(policy, aiPolitician, cityStats, financialState, contextualData) {
+  // Create cache key
+  const cacheKey = `${policy.id}:${aiPolitician.id}:${aiPolitician.calculatedIdeology}`;
+  
+  // Simple hash of city stats to detect changes
+  const cityStatsHash = `${cityStats.budget?.balance || 0}:${cityStats.mainIssues?.join(',') || ''}`;
+  
+  // Return cached result if city stats haven't changed significantly
+  if (_lastCityStatsHash === cityStatsHash && _policyScoringCache.has(cacheKey)) {
+    return _policyScoringCache.get(cacheKey);
+  }
+  
+  // Clear cache if city stats changed
+  if (_lastCityStatsHash !== cityStatsHash) {
+    _policyScoringCache.clear();
+    _lastCityStatsHash = cityStatsHash;
+  }
+
   let score = 1.0;
   const pDetails = policy.parameterDetails;
 
   // 1. Ideological Factor
   score += (policy.baseSupport?.[aiPolitician.calculatedIdeology] || 0) * 1.1;
 
-  // 2. Addressing Key City Issues
-  if (cityStats.mainIssues && policy.tags) {
-    cityStats.mainIssues.forEach((issue) => {
-      if (
-        policy.tags.some(
-          (tag) =>
-            issue.toLowerCase().includes(tag) ||
-            tag.toLowerCase().includes(issue.toLowerCase())
-        )
-      ) {
-        score += 0.8;
+  // 2. Addressing Key City Issues - optimized with early exit
+  if (cityStats.mainIssues?.length && policy.tags?.length) {
+    for (const issue of cityStats.mainIssues) {
+      const issueLower = issue.toLowerCase();
+      for (const tag of policy.tags) {
+        const tagLower = tag.toLowerCase();
+        if (issueLower.includes(tagLower) || tagLower.includes(issueLower)) {
+          score += 0.8;
+          break; // Found match, no need to check more tags for this issue
+        }
       }
-    });
+    }
   }
 
-  // 3. AI Politician's Policy Focus
-  if (aiPolitician.policyFocus && policy.tags) {
-    if (
-      policy.tags.some(
-        (tag) =>
-          aiPolitician.policyFocus.toLowerCase().includes(tag) ||
-          tag.toLowerCase().includes(aiPolitician.policyFocus.toLowerCase())
-      )
-    ) {
-      score += 0.6;
+  // 3. AI Politician's Policy Focus - optimized
+  if (aiPolitician.policyFocus && policy.tags?.length) {
+    const focusLower = aiPolitician.policyFocus.toLowerCase();
+    for (const tag of policy.tags) {
+      const tagLower = tag.toLowerCase();
+      if (focusLower.includes(tagLower) || tagLower.includes(focusLower)) {
+        score += 0.6;
+        break; // Found match, exit early
+      }
     }
   }
 
@@ -748,6 +798,9 @@ function scorePolicyForAI(policy, aiPolitician, cityStats, financialState, conte
   }
 
   score += Math.random() * 0.1 - 0.05;
+  
+  // Cache the result
+  _policyScoringCache.set(cacheKey, score);
   return score;
 }
 
@@ -1022,21 +1075,11 @@ export const shouldAIProposeBasedOnNeeds = (
 
   if (viablePolicies.length === 0) return false;
 
-  // Score all viable policies to find the most urgent needs
-  const scoredPolicies = viablePolicies.map((policy) => ({
-    ...policy,
-    urgencyScore: scorePolicyForAI(
-      policy,
-      aiPolitician,
-      cityStats,
-      financialState,
-      contextualData
-    ),
-  }));
-
-  const bestPolicy = scoredPolicies.sort((a, b) => b.urgencyScore - a.urgencyScore)[0];
+  // Score policies with early exit optimization - only score until we find a good enough policy
+  let bestPolicy = null;
+  let bestScore = -Infinity;
   
-  // Determine urgency thresholds based on conditions
+  // Determine urgency thresholds based on conditions first
   let urgencyThreshold = 4.0; // Much higher base threshold to reduce spam
   
   // Lower threshold (more likely to propose) in crisis situations
@@ -1044,7 +1087,33 @@ export const shouldAIProposeBasedOnNeeds = (
     urgencyThreshold = 2.5; // Still high but allows crisis proposals
   } else if (financialState.isStrainedFinances) {
     urgencyThreshold = 3.0; // Moderate threshold for strained finances
+  } else if (financialState.hasLargeSurplus) {
+    urgencyThreshold = 3.5; // Slightly lower threshold with surplus
   }
+
+  // Score policies with early exit when we find a good enough candidate
+  for (const policy of viablePolicies) {
+    const urgencyScore = scorePolicyForAI(
+      policy,
+      aiPolitician,
+      cityStats,
+      financialState,
+      contextualData
+    );
+    
+    if (urgencyScore > bestScore) {
+      bestScore = urgencyScore;
+      bestPolicy = { ...policy, urgencyScore };
+    }
+    
+    // Early exit if we found a policy that exceeds threshold by a good margin
+    if (urgencyScore >= urgencyThreshold + 1.0) {
+      bestPolicy = { ...policy, urgencyScore };
+      break;
+    }
+  }
+  
+  if (!bestPolicy) return false;
   
   // Check for service quality issues that demand attention
   const hasServiceCrisis = Object.values(cityStats.services || {}).some(service => 

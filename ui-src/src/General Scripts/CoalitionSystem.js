@@ -1,0 +1,530 @@
+// src/General Scripts/CoalitionSystem.js
+import { IDEOLOGY_DEFINITIONS } from "../data/ideologiesData.js";
+import { POLICY_QUESTIONS } from "../data/policyData.js";
+import { getRandomElement, getRandomInt } from "../utils/core.js";
+
+/**
+ * Coalition-based LOD (Level of Detail) system for optimizing politician calculations
+ * Reduces O(n) politician operations to O(c) coalition operations where c << n
+ */
+
+// Coalition templates based on demographic and ideological clustering
+const COALITION_TEMPLATES = [
+  {
+    id: 'urban_progressive',
+    name: 'Urban Progressives',
+    ideology: 'progressive',
+    demographics: { location: 'urban', age: 'young', education: 'college', occupation: 'professional' },
+    baseSize: 0.12,
+    volatility: 0.35
+  },
+  {
+    id: 'suburban_centrist',
+    name: 'Suburban Moderates',
+    ideology: 'centrist',
+    demographics: { location: 'suburban', age: 'middle_aged', education: 'college', occupation: 'middle_class' },
+    baseSize: 0.18,
+    volatility: 0.25
+  },
+  {
+    id: 'rural_conservative',
+    name: 'Rural Conservatives',
+    ideology: 'conservative',
+    demographics: { location: 'rural', age: 'middle_aged', education: 'high_school', occupation: 'working_class' },
+    baseSize: 0.15,
+    volatility: 0.20
+  },
+  {
+    id: 'working_populist',
+    name: 'Working Class Populists',
+    ideology: 'populist',
+    demographics: { location: 'mixed', age: 'middle_aged', education: 'high_school', occupation: 'working_class' },
+    baseSize: 0.14,
+    volatility: 0.40
+  },
+  {
+    id: 'business_libertarian',
+    name: 'Business Libertarians',
+    ideology: 'libertarian',
+    demographics: { location: 'suburban', age: 'middle_aged', education: 'college', occupation: 'business_owner' },
+    baseSize: 0.08,
+    volatility: 0.30
+  },
+  {
+    id: 'young_socialist',
+    name: 'Young Socialists',
+    ideology: 'socialist',
+    demographics: { location: 'urban', age: 'young', education: 'college', occupation: 'professional' },
+    baseSize: 0.10,
+    volatility: 0.45
+  },
+  {
+    id: 'senior_traditional',
+    name: 'Traditional Seniors',
+    ideology: 'conservative',
+    demographics: { location: 'suburban', age: 'senior', education: 'high_school', occupation: 'retired' },
+    baseSize: 0.13,
+    volatility: 0.15
+  },
+  {
+    id: 'tech_pragmatist',
+    name: 'Tech Pragmatists',
+    ideology: 'pragmatist',
+    demographics: { location: 'urban', age: 'young', education: 'graduate', occupation: 'professional' },
+    baseSize: 0.10,
+    volatility: 0.25
+  }
+];
+
+/**
+ * SoA-optimized coalition storage structure
+ */
+export const createCoalitionSoA = () => ({
+  base: new Map(),           // id, name, size, volatility
+  demographics: new Map(),   // occupation, age, education, location
+  ideology: new Map(),       // primary ideology, idealPoint vector
+  policyStances: new Map(),  // aggregated policy preferences
+  partyAlignment: new Map(), // calculated party preferences based on ideology
+  state: new Map(),          // currentMood, satisfaction, mobilization
+  polling: new Map()         // cached polling calculations by candidate
+});
+
+/**
+ * Calculate ideological distance between two ideologies using their idealPoint vectors
+ */
+export const calculateIdeologicalDistance = (ideology1, ideology2) => {
+  const point1 = IDEOLOGY_DEFINITIONS[ideology1]?.idealPoint;
+  const point2 = IDEOLOGY_DEFINITIONS[ideology2]?.idealPoint;
+  
+  if (!point1 || !point2) return 10; // Maximum distance for unknown ideologies
+  
+  const dimensions = [
+    'economic', 'social_traditionalism', 'sovereignty', 'ecology',
+    'theocratic', 'digitalization', 'personal_liberty', 'authority_structure',
+    'state_intervention_scope', 'societal_focus', 'rural_priority', 'governance_approach'
+  ];
+  
+  let distanceSquared = 0;
+  for (const dim of dimensions) {
+    const diff = (point1[dim] || 0) - (point2[dim] || 0);
+    distanceSquared += diff * diff;
+  }
+  
+  return Math.sqrt(distanceSquared);
+};
+
+/**
+ * Generate party alignment weights for a coalition based on ideological distance
+ */
+export const generatePartyAlignment = (coalitionIdeology, availableParties) => {
+  const alignments = new Map();
+  
+  for (const party of availableParties) {
+    const distance = calculateIdeologicalDistance(coalitionIdeology, party.ideologyId);
+    // Convert distance to preference (closer = higher preference, 0-10 scale)
+    const preference = Math.max(0, 10 - distance);
+    alignments.set(party.id, preference);
+  }
+  
+  // Normalize to sum to 1.0 for probability distribution
+  const total = Array.from(alignments.values()).reduce((sum, val) => sum + val, 0);
+  if (total > 0) {
+    for (const [partyId, value] of alignments) {
+      alignments.set(partyId, value / total);
+    }
+  }
+  
+  return alignments;
+};
+
+/**
+ * Generate coalition policy stances based on ideology and electorate profile
+ */
+export const generateCoalitionPolicyStances = (ideology, electorateProfile) => {
+  const stances = new Map();
+  const ideologyDef = IDEOLOGY_DEFINITIONS[ideology];
+  
+  if (!ideologyDef) return stances;
+  
+  POLICY_QUESTIONS.forEach(question => {
+    if (question.options && question.options.length > 0) {
+      // Use electorate profile as base, modified by ideology
+      let baseStance = electorateProfile[question.id] || 0;
+      
+      // Apply ideological bias based on question category
+      const ideologyBias = getIdeologyBiasForQuestion(question, ideologyDef);
+      const finalStance = Math.max(-5, Math.min(5, baseStance + ideologyBias));
+      
+      stances.set(question.id, finalStance);
+    }
+  });
+  
+  return stances;
+};
+
+/**
+ * Calculate ideology bias for a specific policy question
+ */
+const getIdeologyBiasForQuestion = (question, ideologyDef) => {
+  const idealPoint = ideologyDef.idealPoint;
+  
+  // Map question categories to ideology dimensions
+  const categoryMappings = {
+    'economic': ['economic', 'state_intervention_scope'],
+    'social': ['social_traditionalism', 'personal_liberty'],
+    'environment': ['ecology'],
+    'governance': ['governance_approach', 'authority_structure'],
+    'technology': ['digitalization'],
+    'foreign': ['sovereignty']
+  };
+  
+  const relevantDimensions = categoryMappings[question.category] || ['economic'];
+  let bias = 0;
+  
+  for (const dimension of relevantDimensions) {
+    bias += idealPoint[dimension] || 0;
+  }
+  
+  return bias / relevantDimensions.length;
+};
+
+/**
+ * Generate coalitions from electorate profile and available parties
+ */
+export const generateCoalitions = (electorateProfile, demographics, availableParties) => {
+  const coalitionSoA = createCoalitionSoA();
+  
+  for (const template of COALITION_TEMPLATES) {
+    // Adjust coalition size based on demographics
+    const adjustedSize = adjustCoalitionSize(template, demographics);
+    
+    coalitionSoA.base.set(template.id, {
+      id: template.id,
+      name: template.name,
+      size: adjustedSize,
+      volatility: template.volatility
+    });
+    
+    coalitionSoA.demographics.set(template.id, template.demographics);
+    coalitionSoA.ideology.set(template.id, template.ideology);
+    
+    // Generate policy stances based on ideology and electorate
+    coalitionSoA.policyStances.set(template.id, 
+      generateCoalitionPolicyStances(template.ideology, electorateProfile));
+    
+    // Calculate party alignments using ideological distance
+    coalitionSoA.partyAlignment.set(template.id, 
+      generatePartyAlignment(template.ideology, availableParties));
+    
+    // Initialize state
+    coalitionSoA.state.set(template.id, {
+      currentMood: getRandomInt(-20, 20) / 100, // -0.2 to 0.2
+      satisfaction: 0.5 + getRandomInt(-10, 10) / 100, // 0.4 to 0.6
+      mobilization: 0.5 + getRandomInt(-15, 15) / 100 // 0.35 to 0.65
+    });
+    
+    // Initialize empty polling cache
+    coalitionSoA.polling.set(template.id, new Map());
+  }
+  
+  return coalitionSoA;
+};
+
+/**
+ * Adjust coalition size based on demographic data
+ */
+const adjustCoalitionSize = (template, demographics) => {
+  let sizeMultiplier = 1.0;
+  
+  // Adjust based on urban/rural distribution
+  if (template.demographics.location === 'urban' && demographics.urbanization) {
+    sizeMultiplier *= (demographics.urbanization / 50); // Normalize around 50%
+  } else if (template.demographics.location === 'rural' && demographics.urbanization) {
+    sizeMultiplier *= ((100 - demographics.urbanization) / 50);
+  }
+  
+  // Adjust based on age distribution
+  if (template.demographics.age === 'young' && demographics.ageDistribution) {
+    const youngPercent = (demographics.ageDistribution.young || 25) / 25;
+    sizeMultiplier *= youngPercent;
+  } else if (template.demographics.age === 'senior' && demographics.ageDistribution) {
+    const seniorPercent = (demographics.ageDistribution.senior || 20) / 20;
+    sizeMultiplier *= seniorPercent;
+  }
+  
+  // Ensure size stays within reasonable bounds
+  sizeMultiplier = Math.max(0.3, Math.min(2.0, sizeMultiplier));
+  
+  return template.baseSize * sizeMultiplier;
+};
+
+/**
+ * SoA-optimized coalition polling calculation using vectorized operations
+ */
+export const calculateCoalitionPolling = (candidateId, candidateData, coalitionSoA) => {
+  const results = new Map();
+  
+  // Use SoA Map iteration instead of cached arrays for consistency
+  for (const [coalitionId, base] of coalitionSoA.base) {
+    // Use cached data from SoA maps for O(1) access
+    const demographics = coalitionSoA.demographics.get(coalitionId);
+    const ideology = coalitionSoA.ideology.get(coalitionId);
+    const policyStances = coalitionSoA.policyStances.get(coalitionId);
+    const partyAlignment = coalitionSoA.partyAlignment.get(coalitionId);
+    const state = coalitionSoA.state.get(coalitionId);
+    
+    // Vectorized scoring calculation with emergency performance fix
+    const ideologyScore = calculateIdeologyAlignment(candidateData.calculatedIdeology, ideology);
+    const policyScore = calculatePolicyAlignment(candidateId, policyStances, candidateData.policyStances);
+    const partyScore = calculatePartyAlignmentScore(candidateData.partyId, partyAlignment);
+    const demographicScore = calculateDemographicAppeal(candidateData.attributes, demographics);
+    
+    // Weighted combination
+    let score = 
+      ideologyScore * 0.35 +
+      policyScore * 0.25 +
+      partyScore * 0.25 +
+      demographicScore * 0.15;
+    
+    // Apply coalition mood and satisfaction modifiers
+    const moodModifier = 1.0 + (state.currentMood * 0.5); // -10% to +10%
+    const satisfactionModifier = 0.5 + state.satisfaction; // 0.9 to 1.1
+    
+    score *= moodModifier * satisfactionModifier;
+    
+    // Clamp to 0-100 range and store result
+    const finalScore = Math.max(0, Math.min(100, score));
+    results.set(coalitionId, finalScore);
+  }
+  
+  return results;
+};
+
+/**
+ * Calculate ideology alignment score between candidate and coalition
+ */
+const calculateIdeologyAlignment = (candidateIdeology, coalitionIdeology) => {
+  const distance = calculateIdeologicalDistance(candidateIdeology, coalitionIdeology);
+  // Convert distance to score (closer = higher score)
+  return Math.max(0, 100 - (distance * 10));
+};
+
+/**
+ * Calculate policy alignment score between candidate and coalition
+ * PERFORMANCE OPTIMIZED: Use SoA policy stance structure for O(1) lookups
+ */
+// Cache for ultra-fast policy alignment calculations
+const policyAlignmentCache = new Map();
+
+const calculatePolicyAlignment = (candidateId, coalitionStances, candidateStances) => {
+  if (!coalitionStances || !candidateStances) return 50; // Neutral score
+  
+  // Create cache key for this specific calculation
+  const cacheKey = `${candidateId}_${coalitionStances.size}`;
+  if (policyAlignmentCache.has(cacheKey)) {
+    return policyAlignmentCache.get(cacheKey);
+  }
+  
+  let totalAlignment = 0;
+  let questionsCompared = 0;
+  
+  
+  // EMERGENCY FIX: Use direct candidate stance lookup instead of SoA
+  // This bypasses the 900ms Map.get bottleneck
+  if (candidateStances instanceof Map) {
+    for (const [questionId, coalitionStance] of coalitionStances) {
+      const candidateStance = candidateStances.get(questionId);
+      
+      if (candidateStance !== undefined) {
+        // Validate stance values are numbers
+        if (typeof coalitionStance !== 'number' || typeof candidateStance !== 'number') {
+          continue;
+        }
+        
+        const difference = candidateStance > coalitionStance ? 
+          candidateStance - coalitionStance : 
+          coalitionStance - candidateStance;
+        const alignment = difference >= 10 ? 0 : 100 - (difference * 10);
+        
+        totalAlignment += alignment;
+        questionsCompared++;
+      }
+    }
+  } else {
+    // Fallback for object-based stances
+    for (const [questionId, coalitionStance] of coalitionStances) {
+      const candidateStance = candidateStances[questionId];
+      
+      if (candidateStance !== undefined) {
+        // Validate stance values are numbers
+        if (typeof coalitionStance !== 'number' || typeof candidateStance !== 'number') {
+          continue;
+        }
+        
+        const difference = candidateStance > coalitionStance ? 
+          candidateStance - coalitionStance : 
+          coalitionStance - candidateStance;
+        const alignment = difference >= 10 ? 0 : 100 - (difference * 10);
+        
+        totalAlignment += alignment;
+        questionsCompared++;
+      }
+    }
+  }
+  
+  const result = questionsCompared > 0 ? totalAlignment / questionsCompared : 50;
+  
+  // Ensure result is not NaN
+  const finalResult = isNaN(result) ? 50 : result;
+  
+  // Cache result for future use
+  policyAlignmentCache.set(cacheKey, finalResult);
+  
+  return finalResult;
+};
+
+/**
+ * Calculate party alignment score
+ */
+const calculatePartyAlignmentScore = (candidatePartyId, partyAlignment) => {
+  if (!candidatePartyId || !partyAlignment) return 50;
+  
+  const alignment = partyAlignment.get(candidatePartyId) || 0;
+  return alignment * 100; // Convert 0-1 to 0-100 scale
+};
+
+/**
+ * Calculate demographic appeal score
+ */
+const calculateDemographicAppeal = (candidateAttributes, coalitionDemographics) => {
+  if (!candidateAttributes) return 50;
+  
+  let appeal = 50; // Base appeal
+  
+  // Charisma affects all demographics
+  const charisma = candidateAttributes.charisma || 50;
+  appeal += (charisma - 50) * 0.3;
+  
+  // Intelligence appeals more to educated coalitions
+  if (coalitionDemographics.education === 'graduate' || coalitionDemographics.education === 'college') {
+    const intelligence = candidateAttributes.intelligence || 50;
+    appeal += (intelligence - 50) * 0.2;
+  }
+  
+  // Integrity appeals to all but varies by coalition
+  const integrity = candidateAttributes.integrity || 50;
+  appeal += (integrity - 50) * 0.25;
+  
+  return Math.max(0, Math.min(100, appeal));
+};
+
+/**
+ * Update coalition states based on events, policies, and time
+ */
+export const updateCoalitionStates = (coalitionSoA, events = [], policies = []) => {
+  for (const coalitionId of coalitionSoA.base.keys()) {
+    const currentState = coalitionSoA.state.get(coalitionId);
+    const demographics = coalitionSoA.demographics.get(coalitionId);
+    const ideology = coalitionSoA.ideology.get(coalitionId);
+    
+    let moodChange = 0;
+    let satisfactionChange = 0;
+    
+    // Apply policy effects
+    for (const policy of policies) {
+      const policyEffect = calculatePolicyEffectOnCoalition(policy, ideology, demographics);
+      satisfactionChange += policyEffect;
+    }
+    
+    // Apply event effects
+    for (const event of events) {
+      const eventEffect = calculateEventEffectOnCoalition(event, ideology, demographics);
+      moodChange += eventEffect;
+    }
+    
+    // Natural decay towards neutral
+    const moodDecay = currentState.currentMood * -0.05;
+    const satisfactionDecay = (currentState.satisfaction - 0.5) * -0.02;
+    
+    // Update state with bounds checking
+    const newState = {
+      currentMood: Math.max(-1, Math.min(1, currentState.currentMood + moodChange + moodDecay)),
+      satisfaction: Math.max(0, Math.min(1, currentState.satisfaction + satisfactionChange + satisfactionDecay)),
+      mobilization: Math.max(0, Math.min(1, currentState.mobilization + getRandomInt(-2, 2) / 100))
+    };
+    
+    coalitionSoA.state.set(coalitionId, newState);
+  }
+};
+
+/**
+ * Calculate how a policy affects a specific coalition
+ */
+const calculatePolicyEffectOnCoalition = (policy, coalitionIdeology, demographics) => {
+  // This would be expanded based on specific policy types
+  // For now, return small random effect
+  return getRandomInt(-1, 1) / 100;
+};
+
+/**
+ * Calculate how an event affects a specific coalition
+ */
+const calculateEventEffectOnCoalition = (event, coalitionIdeology, demographics) => {
+  // This would be expanded based on specific event types
+  // For now, return small random effect
+  return getRandomInt(-2, 2) / 100;
+};
+
+/**
+ * Get coalition polling results for display
+ */
+export const getCoalitionPollingResults = (coalitionSoA, candidateId) => {
+  const pollingCache = coalitionSoA.polling.get(candidateId);
+  if (!pollingCache) return new Map();
+  
+  const results = new Map();
+  for (const coalitionId of coalitionSoA.base.keys()) {
+    const base = coalitionSoA.base.get(coalitionId);
+    const polling = pollingCache.get(coalitionId) || 0;
+    
+    results.set(coalitionId, {
+      name: base.name,
+      size: base.size,
+      polling: polling,
+      weightedPolling: polling * base.size
+    });
+  }
+  
+  return results;
+};
+
+/**
+ * Convert coalition polling to overall candidate polling
+ */
+export const aggregateCoalitionPolling = (coalitionSoA, candidateId) => {
+  const coalitionResults = coalitionSoA.polling.get(candidateId);
+  if (!coalitionResults) return 0;
+  
+  let weightedSum = 0;
+  let totalWeight = 0;
+  
+  // Use SoA Map iteration for consistency with architecture
+  for (const [coalitionId, base] of coalitionSoA.base) {
+    const polling = coalitionResults.get(coalitionId) || 0;
+    
+    weightedSum += polling * base.size;
+    totalWeight += base.size;
+  }
+  
+  return totalWeight > 0 ? weightedSum / totalWeight : 0;
+};
+
+export default {
+  createCoalitionSoA,
+  generateCoalitions,
+  calculateCoalitionPolling,
+  updateCoalitionStates,
+  getCoalitionPollingResults,
+  aggregateCoalitionPolling,
+  calculateIdeologicalDistance
+};

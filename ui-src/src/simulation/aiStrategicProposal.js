@@ -235,7 +235,6 @@ export const strategicAIBillProposal = (
   governmentOffices
 ) => {
   // First check if AI should propose based on needs
-  console.log(`[Strategic AI] ${aiPolitician.firstName} ${aiPolitician.lastName} evaluating proposal...`);
   
   const shouldPropose = shouldAIProposeBasedOnNeeds(
     aiPolitician,
@@ -248,10 +247,8 @@ export const strategicAIBillProposal = (
     currentDate
   );
 
-  console.log(`[Strategic AI] ${aiPolitician.firstName} should propose: ${shouldPropose}`);
 
   if (!shouldPropose) {
-    console.log(`[Strategic AI] ${aiPolitician.firstName} decided not to propose - no urgent need`);
     return null; // No urgent need to propose
   }
 
@@ -290,12 +287,10 @@ export const strategicAIBillProposal = (
   );
 
   const { passProb } = voteAnalysis;
-  console.log(`[Strategic AI] ${aiPolitician.firstName} bill pass probability: ${(passProb * 100).toFixed(1)}%`);
 
   // Decision logic based on pass probability
   if (passProb >= 0.6) {
     // High chance of passing - propose it
-    console.log(`[Strategic AI] ${aiPolitician.firstName} proposing bill - high pass probability (${(passProb * 100).toFixed(1)}%)`);
     return initialBill;
   } else if (passProb >= 0.4) {
     // Moderate chance - try to modify the bill
@@ -341,6 +336,5 @@ export const strategicAIBillProposal = (
   }
 
   // Too low chance of passing - don't propose
-  console.log(`[Strategic AI] ${aiPolitician.firstName} decided not to propose - pass probability too low (${(passProb * 100).toFixed(1)}%)`);
   return null;
 };

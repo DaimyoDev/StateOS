@@ -1,26 +1,19 @@
 import { politicians as temporaryPoliticianStore } from "../entities/personnel";
 
 // The initial state for a Struct of Arrays (SoA) data store for politicians.
-const getInitialPoliticianSoA = () => ({
-  base: new Map(),
-  attributes: new Map(),
-  policyStances: new Map(),
-  ideologyScores: new Map(),
-  state: new Map(),
-  finances: new Map(),
-  background: new Map(),
-  campaign: new Map(),
-  staff: new Map(),
-});
-
-const replacer = (key, value) => {
-  if (value instanceof Map) {
-    return { __type: "Map", value: Array.from(value.entries()) };
+const getInitialPoliticianSoA = () => {
+  return {
+    base: new Map(),
+    attributes: new Map(),
+    policyStances: new Map(),
+    policyStancesByQuestion: new Map(), // SoA optimization: questionId -> Map(politicianId -> stance)
+    ideologyScores: new Map(),
+    finances: new Map(),
+    background: new Map(),
+    state: new Map(),
+    campaignData: new Map(),
+    staff: new Map(),
   }
-  if (value instanceof Set) {
-    return { __type: "Set", value: Array.from(value.values()) };
-  }
-  return value;
 };
 
 const reviver = (key, value) => {
@@ -44,6 +37,7 @@ export const _addPoliticiansToSoA_helper = (
     base: new Map(targetSoAStore.base),
     attributes: new Map(targetSoAStore.attributes),
     policyStances: new Map(targetSoAStore.policyStances),
+    policyStancesByQuestion: new Map(targetSoAStore.policyStancesByQuestion),
     ideologyScores: new Map(targetSoAStore.ideologyScores),
     state: new Map(targetSoAStore.state),
     finances: new Map(targetSoAStore.finances),
@@ -61,20 +55,29 @@ export const _addPoliticiansToSoA_helper = (
         id: politicianData.id,
         firstName: politicianData.firstName,
         lastName: politicianData.lastName,
-        name: `${politicianData.firstName} ${politicianData.lastName}`,
+        name: politicianData.name || `${politicianData.firstName} ${politicianData.lastName}`,
         age: politicianData.age,
         sex: politicianData.sex,
         isPlayer: politicianData.isPlayer || false,
         partyId: politicianData.partyId || null,
+        partyName: politicianData.partyName || "Independent",
+        partyColor: politicianData.partyColor || "#888888",
         factionId: politicianData.factionId || null,
         currentOffice: politicianData.currentOffice || null,
         calculatedIdeology: politicianData.calculatedIdeology,
       });
       newSoA.attributes.set(id, politicianData.attributes);
-      newSoA.policyStances.set(
-        id,
-        new Map(Object.entries(politicianData.policyStances || {}))
-      );
+      // Store policy stances in SoA format for better performance
+      const policyStances = politicianData.policyStances || {};
+      newSoA.policyStances.set(id, policyStances);
+      
+      // Build optimized SoA policy stance structure for coalition calculations
+      for (const [questionId, stance] of Object.entries(policyStances)) {
+        if (!newSoA.policyStancesByQuestion.has(questionId)) {
+          newSoA.policyStancesByQuestion.set(questionId, new Map());
+        }
+        newSoA.policyStancesByQuestion.get(questionId).set(id, stance);
+      }
       newSoA.ideologyScores.set(id, politicianData.ideologyScores);
       newSoA.finances.set(id, {
         treasury: politicianData.treasury,
@@ -90,21 +93,13 @@ export const _addPoliticiansToSoA_helper = (
         polling: politicianData.polling,
       });
       newSoA.campaign.set(id, {
-        isInCampaign: politicianData.isInCampaign,
-        workingHours: politicianData.workingHours,
-        maxWorkingHours: politicianData.maxWorkingHours,
-        campaignHoursPerDay: politicianData.campaignHoursPerDay,
-        campaignHoursRemainingToday: politicianData.campaignHoursRemainingToday,
-        volunteerCount: politicianData.volunteerCount,
-        currentAdStrategy: politicianData.currentAdStrategy,
-      });
-      newSoA.state.set(id, {
-        politicalCapital: politicianData.politicalCapital,
-        nameRecognition: politicianData.nameRecognition,
-        approvalRating: politicianData.approvalRating,
-        mediaBuzz: politicianData.mediaBuzz,
-        partySupport: politicianData.partySupport,
-        polling: politicianData.polling,
+        isInCampaign: politicianData.isInCampaign || false,
+        workingHours: politicianData.workingHours || 8,
+        maxWorkingHours: politicianData.maxWorkingHours || 16,
+        campaignHoursPerDay: politicianData.campaignHoursPerDay || 8,
+        campaignHoursRemainingToday: politicianData.campaignHoursRemainingToday || 8,
+        volunteerCount: politicianData.volunteerCount || 0,
+        currentAdStrategy: politicianData.currentAdStrategy || null,
       });
     }
   });
