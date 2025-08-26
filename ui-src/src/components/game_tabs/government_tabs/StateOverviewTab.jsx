@@ -901,6 +901,7 @@ const StateOverviewTab = ({ campaignData }) => {
             {" "}
             {/* Using city-section & city-laws-section */}
             <h4>Current {regionType}-Level Legislation</h4>
+            {console.log("[StateOverviewTab] stateLaws:", stateLaws)}
             {stateLaws &&
             typeof stateLaws === "object" &&
             Object.keys(stateLaws).length > 0 ? (
@@ -920,6 +921,7 @@ const StateOverviewTab = ({ campaignData }) => {
               <p>
                 No specific {regionType} laws data available or data is not an
                 object.
+                {stateLaws && <span> (Type: {typeof stateLaws}, Keys: {Object.keys(stateLaws || {}).length})</span>}
               </p>
             )}
           </section>

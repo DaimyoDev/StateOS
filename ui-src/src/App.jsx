@@ -15,6 +15,7 @@ import CreatorHub from "./scenes/CreatorHub";
 import PartyCreatorScreen from "./scenes/PartyCreatorScreen";
 import CountryDetailsScreen from "./scenes/CountryDetailsScreen";
 import LoadingScreen from "./scenes/LoadingScreen";
+import WikiScene from "./scenes/WikiScene";
 import "./App.css";
 import ToastContainer from "./components/toasts/ToastContainer";
 
@@ -64,6 +65,8 @@ function App() {
         return <CountryDetailsScreen />;
       case "LoadingScreen":
         return <LoadingScreen />;
+      case "WikiScene":
+        return <WikiScene />;
       default:
         console.warn(`Unknown scene: ${currentScene}, defaulting to MainMenu.`);
         return <MainMenu />; // Default to main menu

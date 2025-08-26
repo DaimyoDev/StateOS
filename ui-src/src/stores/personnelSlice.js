@@ -204,14 +204,25 @@ export const createPersonnelSlice = (set, get) => ({
     generateTalentPool: (countryId) => {
       const roles = [
         "Campaign Manager",
-        "Communications Director",
+        "Communications Director", 
         "Fundraising Manager",
         "Policy Advisor",
         "HR Director",
+        "Field Organizer",
+        "Data Analyst",
+        "Social Media Manager",
+        "Event Coordinator",
+        "Volunteer Coordinator",
+        "Press Secretary",
+        "Research Director",
+        "Digital Director",
+        "Finance Director",
+        "Operations Manager"
       ];
       const newTalentPool = [];
-      for (let i = 0; i < 15; i++) {
-        // Generate 15 initial candidates
+      
+      // Generate 50 candidates for a larger talent pool
+      for (let i = 0; i < 50; i++) {
         const staffName = get().actions.generateDynamicName({ countryId });
         newTalentPool.push(
           createStaffObject({
@@ -221,6 +232,20 @@ export const createPersonnelSlice = (set, get) => ({
         );
       }
       set({ talentPool: newTalentPool, hiredStaff: [] });
+    },
+    
+    getFilteredTalentPool: (roleFilter = null) => {
+      const talentPool = get().talentPool;
+      if (!roleFilter || roleFilter === "all") {
+        return talentPool;
+      }
+      return talentPool.filter(staff => staff.role === roleFilter);
+    },
+    
+    getAvailableRoles: () => {
+      const talentPool = get().talentPool;
+      const roles = [...new Set(talentPool.map(staff => staff.role))];
+      return roles.sort();
     },
     scoutStaffCandidate: (staffId) => {
       const cost = 250;

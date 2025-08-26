@@ -51,6 +51,7 @@ export const _addPoliticiansToSoA_helper = (
     const { id } = politicianData;
     if (id) {
       // This is the full "dehydration" logic from your original action
+      
       newSoA.base.set(id, {
         id: politicianData.id,
         firstName: politicianData.firstName,

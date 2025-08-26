@@ -72,11 +72,14 @@ const CityOverviewTab = () => {
 
   const activeCampaign = useGameStore((state) => state.activeCampaign);
   const { openViewPoliticianModal } = useGameStore((state) => state.actions);
+  const { getCurrentCityGovernmentOffices } = useGameStore((state) => state.actions);
   const currentTheme = useGameStore(
     (state) => state.availableThemes[state.activeThemeName]
   );
 
-  const { startingCity, governmentOffices = [] } = activeCampaign || {};
+  const { startingCity } = activeCampaign || {};
+  const governmentOffices = getCurrentCityGovernmentOffices() || [];
+  
   const {
     id: cityId,
     name: cityName,
@@ -86,6 +89,7 @@ const CityOverviewTab = () => {
     stats,
     cityLaws,
   } = startingCity || {};
+
 
   const {
     type,
@@ -113,7 +117,8 @@ const CityOverviewTab = () => {
 
   const mayorOffice = useMemo(() => {
     if (!governmentOffices || !cityId) return null;
-    return governmentOffices.find(
+    
+    const mayorCandidate = governmentOffices.find(
       (office) =>
         office.level.includes("local_city") &&
         office.officeNameTemplateId &&
@@ -122,6 +127,9 @@ const CityOverviewTab = () => {
         office.holder &&
         office.cityId === cityId
     );
+    
+    
+    return mayorCandidate;
   }, [governmentOffices, cityId]);
 
   const viceMayorOffice = useMemo(() => {
@@ -903,6 +911,7 @@ const CityOverviewTab = () => {
             ) : (
               <p>
                 No specific city laws data available or data is not an object.
+                {cityLaws && <span> (Type: {typeof cityLaws}, Keys: {Object.keys(cityLaws || {}).length})</span>}
               </p>
             )}
           </section>

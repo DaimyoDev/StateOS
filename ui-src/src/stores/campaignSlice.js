@@ -114,13 +114,27 @@ export const createCampaignSlice = (set, get) => ({
           return state;
         }
 
-        let fundsRaised = Math.round(
+        let baseFundsRaised = Math.round(
           getRandomInt(500, 1500) *
             hoursToSpend *
             ((attributesData.fundraising || 5) / 4)
         );
 
-        // Note: Staff boost logic would need to be refactored here
+        // Apply staff boosts
+        const staffBoosts = get().actions.calculateStaffBoosts?.("personalFundraisingActivity", { fundsRaised: baseFundsRaised });
+        const fundsRaised = staffBoosts?.boostedEffects?.fundsRaised || baseFundsRaised;
+        
+        // Show staff contributions if any
+        if (staffBoosts?.contributions?.length > 0) {
+          const boostMessage = staffBoosts.contributions.map(c => 
+            `${c.staffName}: +${Math.round(c.boost * 100)}%`
+          ).join(", ");
+          get().actions.addNotification?.({
+            message: `Staff Assistance: ${boostMessage}`,
+            type: "info",
+            category: "Campaign Staff"
+          });
+        }
 
         const newCampaignMap = new Map(politicians.campaign);
         newCampaignMap.set(playerPoliticianId, {
@@ -190,13 +204,36 @@ export const createCampaignSlice = (set, get) => ({
         }
 
         const oratoryFactor = Math.max(0.6, (attributesData.oratory || 3) / 5);
-        const nameRecGain = Math.round(
+        const baseNameRecGain = Math.round(
           getRandomInt(100 * hoursToSpend, 250 * hoursToSpend) * oratoryFactor
         );
-        const mediaBuzzGain = Math.round(
+        const baseMediaBuzzGain = Math.round(
           getRandomInt(5 * hoursToSpend, 10 * hoursToSpend) * oratoryFactor
         );
-        const pollingBoost = Math.round(getRandomInt(0, 2) * oratoryFactor); // Small polling boost
+        const basePollingBoost = Math.round(getRandomInt(0, 2) * oratoryFactor);
+        
+        // Apply staff boosts
+        const staffBoosts = get().actions.calculateStaffBoosts?.("holdRallyActivity", {
+          nameRecGain: baseNameRecGain,
+          mediaBuzzGain: baseMediaBuzzGain,
+          pollingBoost: basePollingBoost
+        });
+        
+        const nameRecGain = staffBoosts?.boostedEffects?.nameRecGain || baseNameRecGain;
+        const mediaBuzzGain = staffBoosts?.boostedEffects?.mediaBuzzGain || baseMediaBuzzGain;
+        const pollingBoost = staffBoosts?.boostedEffects?.pollingBoost || basePollingBoost;
+        
+        // Show staff contributions if any
+        if (staffBoosts?.contributions?.length > 0) {
+          const boostMessage = staffBoosts.contributions.map(c => 
+            `${c.staffName}: +${Math.round(c.boost * 100)}%`
+          ).join(", ");
+          get().actions.addNotification?.({
+            message: `Rally Staff Assistance: ${boostMessage}`,
+            type: "info",
+            category: "Campaign Staff"
+          });
+        }
 
         const newCampaignMap = new Map(politicians.campaign);
         newCampaignMap.set(playerPoliticianId, {
@@ -292,15 +329,34 @@ export const createCampaignSlice = (set, get) => ({
           10 + ((attributesData?.charisma || 5) - 5) * 2;
         const peopleReachedByVolunteers =
           (campaignData.volunteerCount || 0) * 3 * hoursToSpend;
-        const totalPeopleReached = Math.round(
+        const baseTotalPeopleReached = Math.round(
           reachPerPlayerHour * hoursToSpend + peopleReachedByVolunteers
         );
+        
+        // Apply staff boosts
+        const staffBoosts = get().actions.calculateStaffBoosts?.("goDoorKnocking", {
+          totalPeopleReached: baseTotalPeopleReached
+        });
+        const totalPeopleReached = staffBoosts?.boostedEffects?.totalPeopleReached || baseTotalPeopleReached;
+        
         const currentRecognition = stateData.nameRecognition || 0;
         const potentialNewReach = Math.max(0, adultPop - currentRecognition);
         const actualNewPeopleRecognized = Math.min(
           potentialNewReach,
           totalPeopleReached
         );
+        
+        // Show staff contributions if any
+        if (staffBoosts?.contributions?.length > 0) {
+          const boostMessage = staffBoosts.contributions.map(c => 
+            `${c.staffName}: +${Math.round(c.boost * 100)}%`
+          ).join(", ");
+          get().actions.addNotification?.({
+            message: `Door Knocking Staff Assistance: ${boostMessage}`,
+            type: "info",
+            category: "Campaign Staff"
+          });
+        }
 
         const newCampaignMap = new Map(politicians.campaign);
         newCampaignMap.set(playerPoliticianId, {
@@ -461,9 +517,27 @@ export const createCampaignSlice = (set, get) => ({
         }
 
         const charismaFactor = 1 + ((attributesData.charisma || 5) - 5) * 0.1;
-        const newVolunteers = Math.round(
+        const baseNewVolunteers = Math.round(
           getRandomInt(3, 8) * hoursToSpend * charismaFactor
         );
+        
+        // Apply staff boosts
+        const staffBoosts = get().actions.calculateStaffBoosts?.("recruitVolunteers", {
+          newVolunteers: baseNewVolunteers
+        });
+        const newVolunteers = staffBoosts?.boostedEffects?.newVolunteers || baseNewVolunteers;
+        
+        // Show staff contributions if any
+        if (staffBoosts?.contributions?.length > 0) {
+          const boostMessage = staffBoosts.contributions.map(c => 
+            `${c.staffName}: +${Math.round(c.boost * 100)}%`
+          ).join(", ");
+          get().actions.addNotification?.({
+            message: `Volunteer Recruitment Staff Assistance: ${boostMessage}`,
+            type: "info",
+            category: "Campaign Staff"
+          });
+        }
 
         const newCampaignMap = new Map(politicians.campaign);
         newCampaignMap.set(playerPoliticianId, {
@@ -754,13 +828,94 @@ export const createCampaignSlice = (set, get) => ({
         for (const [electionId, updatedCandidates] of pollingResults) {
           const electionIndex = electionIndexLookup.get(electionId);
           if (electionIndex !== undefined) {
-            state.activeCampaign.elections[electionIndex].candidates = updatedCandidates;
+            // Update both polling and sync the underlying candidate data
+            const election = state.activeCampaign.elections[electionIndex];
+            const syncedCandidates = new Map();
+            
+            // Ensure candidate data is synchronized with SoA store
+            for (const [candidateId, pollingCandidate] of updatedCandidates) {
+              const stateData = politicians.state.get(candidateId);
+              const attributesData = politicians.attributes.get(candidateId);
+              
+              syncedCandidates.set(candidateId, {
+                ...pollingCandidate, // Keep the updated polling values
+                // Sync with latest SoA data to prevent stale values
+                baseScore: stateData?.baseScore || pollingCandidate.baseScore,
+                nameRecognition: stateData?.nameRecognition || pollingCandidate.nameRecognition,
+                approvalRating: stateData?.approvalRating || pollingCandidate.approvalRating,
+                mediaBuzz: stateData?.mediaBuzz || pollingCandidate.mediaBuzz,
+                ...(attributesData && { attributes: { ...pollingCandidate.attributes, ...attributesData } })
+              });
+            }
+            
+            state.activeCampaign.elections[electionIndex].candidates = syncedCandidates;
           }
         }
 
         return state;
       });
     },
+
+    /**
+     * Sync candidate data for a specific player election only
+     */
+    syncPlayerElectionCandidateData: () => {
+      set((state) => {
+        const { activeCampaign } = state;
+        if (!activeCampaign) return state;
+
+        // Find the player's active election
+        const playerElection = activeCampaign.elections.find(
+          (election) => election.playerIsCandidate && election.outcome?.status === "upcoming"
+        );
+        
+        if (!playerElection) return state;
+
+        const { politicians } = activeCampaign;
+        const syncedCandidates = new Map();
+        
+        // Update candidate data with fresh SoA values
+        for (const [candidateId, candidate] of playerElection.candidates) {
+          const stateData = politicians.state.get(candidateId);
+          const attributesData = politicians.attributes.get(candidateId);
+          
+          syncedCandidates.set(candidateId, {
+            ...candidate,
+            // Sync with latest SoA data
+            baseScore: stateData?.baseScore || candidate.baseScore,
+            nameRecognition: stateData?.nameRecognition || candidate.nameRecognition,
+            approvalRating: stateData?.approvalRating || candidate.approvalRating,
+            mediaBuzz: stateData?.mediaBuzz || candidate.mediaBuzz,
+            ...(attributesData && { attributes: { ...candidate.attributes, ...attributesData } })
+          });
+        }
+
+        // Find and update only this specific election
+        const electionIndex = activeCampaign.elections.findIndex(e => e.id === playerElection.id);
+        if (electionIndex !== -1) {
+          state.activeCampaign.elections[electionIndex].candidates = syncedCandidates;
+          
+          // Trigger a new poll if there have been significant changes in candidate standings
+          const hasSignificantChanges = Array.from(syncedCandidates.values()).some((candidate, index) => {
+            const originalCandidate = Array.from(playerElection.candidates.values())[index];
+            const pollingDiff = Math.abs((candidate.polling || 0) - (originalCandidate?.polling || 0));
+            const nameRecDiff = Math.abs((candidate.nameRecognition || 0) - (originalCandidate?.nameRecognition || 0));
+            return pollingDiff > 5 || nameRecDiff > 10000; // Threshold for significant change
+          });
+          
+          if (hasSignificantChanges) {
+            // Generate a fresh poll to reflect current campaign dynamics
+            setTimeout(() => {
+              const actions = get().actions;
+              actions.generateNewPollForElection?.(playerElection.id);
+            }, 0);
+          }
+        }
+
+        return state;
+      });
+    },
+
     applyDailyAICampaignResults: (allAIResults) => {
       if (!allAIResults || allAIResults.length === 0) return;
 

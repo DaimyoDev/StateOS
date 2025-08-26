@@ -46,7 +46,16 @@ export const chamberTiers = {
         { popThreshold: 0, numDistrictsRange: [5, 15] },
       ],
     },
-    LOCAL: {},
+    LOCAL: {
+      USA_CITY_COUNCIL_TIERS: [
+        { popThreshold: 1000000, numDistrictsRange: [12, 20] },
+        { popThreshold: 500000, numDistrictsRange: [9, 15] },
+        { popThreshold: 200000, numDistrictsRange: [7, 12] },
+        { popThreshold: 100000, numDistrictsRange: [5, 9] },
+        { popThreshold: 50000, numDistrictsRange: [4, 7] },
+        { popThreshold: 0, numDistrictsRange: [3, 5] },
+      ],
+    },
   },
   PHL: {
     NATIONAL: {

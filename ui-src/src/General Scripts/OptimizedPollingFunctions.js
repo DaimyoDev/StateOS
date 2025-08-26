@@ -204,14 +204,10 @@ export class PollingOptimizer {
     const resultMap = new Map();
     for (let i = 0; i < numCandidates; i++) {
       const candidate = candidatesList[i];
-      // Avoid spread operator - directly set properties for better performance
+      // Preserve all original candidate data and only update polling-related fields
       const result = {
-        id: candidate.id,
-        name: candidate.name,
-        party: candidate.party,
+        ...candidate, // Preserve all original data
         baseScore: baseScores[i],
-        nameRecognition: candidate.nameRecognition,
-        ideology: candidate.ideology,
         processedBaseScore: baseScores[i],
         effectiveWeight: effectiveWeights[i],
         polling: pollingValues[i]
@@ -499,5 +495,6 @@ export function calculateCoalitionBasedPolling(election, campaignData, politicia
  * Drop-in replacement for the original normalizePolling function
  */
 export function normalizePollingOptimized(candidates, totalPopulationContext = 0, isSimulationMode = false) {
-  return pollingOptimizer.normalizePollingFast(candidates, totalPopulationContext, isSimulationMode);
+  // For player elections, bypass cache to ensure fresh calculations
+  return pollingOptimizer.normalizePollingFast(candidates, totalPopulationContext, isSimulationMode, null);
 }

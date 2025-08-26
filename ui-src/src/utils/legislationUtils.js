@@ -10,13 +10,6 @@ export const getLegislatureDetails = (campaign, level) => {
   };
 
   const officeName = officeMapping[level];
-  (`[getLegislatureDetails] Looking for office named: "${officeName}"`);
-  
-  // Debug: Show all office levels and names for this level
-  const relevantOffices = campaign.governmentOffices?.filter(o => 
-    (level === "state" && (o.level?.includes("state") || o.level?.includes("regional"))) ||
-    (level === "national" && o.level?.includes("national"))
-  );
   
   const office = campaign.governmentOffices?.find((o) => o && o.name === officeName);
 

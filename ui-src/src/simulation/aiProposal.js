@@ -434,258 +434,6 @@ function getValidPolicyCandidates(
   return validPolicies;
 }
 
-const getBudgetAdjustmentTarget = (
-  pDetails,
-  serviceInfo,
-  fiscalConservatismFactor,
-  financialState,
-  cityStats
-) => {
-  const { hasDireFinances, isStrainedFinances, hasLargeSurplus } =
-    financialState;
-  let budgetUrgencyMultiplier = 1.0;
-  let serviceQualityFactor = 0;
-
-  // Calculate surplus ratio for more nuanced decision making
-  const budget = cityStats?.budget || {};
-  const monthlyIncome = budget.cityIncome || 0;
-  const monthlyExpenses = budget.totalExpenses || 0;
-  const monthlySurplus = monthlyIncome - monthlyExpenses;
-  const surplusRatio = monthlyIncome > 0 ? monthlySurplus / monthlyIncome : 0;
-
-  if (serviceInfo?.isValid) {
-    if (serviceInfo.ratingIndex === 0) {
-      budgetUrgencyMultiplier = hasDireFinances
-        ? 1.2
-        : hasLargeSurplus
-        ? Math.min(3.0, 2.0 + surplusRatio * 2) // Scale with surplus size
-        : 1.7;
-      serviceQualityFactor = -1.0;
-    } else if (serviceInfo.ratingIndex === 1) {
-      budgetUrgencyMultiplier = hasDireFinances
-        ? 1.1
-        : hasLargeSurplus
-        ? Math.min(2.5, 1.7 + surplusRatio * 1.5)
-        : 1.4;
-      serviceQualityFactor = -0.5;
-    } else if (serviceInfo.ratingIndex === RATING_LEVELS.length - 1) {
-      serviceQualityFactor = 1.0;
-    } else if (serviceInfo.ratingIndex === RATING_LEVELS.length - 2) {
-      serviceQualityFactor = 0.5;
-    }
-  }
-
-  let targetPointInRange;
-  if (hasDireFinances) {
-    if (
-      pDetails.min < 0 &&
-      (pDetails.adjustmentType === "decrease" ||
-        pDetails.adjustmentType === "increase_or_decrease")
-    ) {
-      // MUCH more aggressive cuts in dire finances - aim for 40% to 90% of the range for cuts
-      targetPointInRange =
-        0.4 + 0.5 * Math.random() * (serviceInfo?.ratingIndex === 0 ? 0.6 : 1);
-      console.log(
-        `[DEBUG] DIRE FINANCES CUT: targetPointInRange = ${targetPointInRange}`
-      );
-    } else {
-      targetPointInRange =
-        serviceInfo?.ratingIndex === 0 && budgetUrgencyMultiplier > 1.1
-          ? 0.15 + 0.15 * Math.random() // More aggressive spending on failed services
-          : 0.08; // Still conservative on spending increases
-      console.log(
-        `[DEBUG] DIRE FINANCES SPEND: targetPointInRange = ${targetPointInRange}`
-      );
-    }
-  } else if (isStrainedFinances) {
-    if (
-      pDetails.adjustmentType === "decrease" ||
-      (pDetails.adjustmentType === "increase_or_decrease" &&
-        fiscalConservatismFactor > 0.2)
-    ) {
-      targetPointInRange =
-        0.3 - serviceQualityFactor * 0.2 - fiscalConservatismFactor * 0.15;
-    } else {
-      targetPointInRange =
-        0.5 +
-        (budgetUrgencyMultiplier - 1.0) * 0.2 -
-        fiscalConservatismFactor * 0.2;
-      targetPointInRange = Math.max(0.5, targetPointInRange);
-    }
-  } else if (hasLargeSurplus) {
-    // More aggressive spending with larger surpluses
-    const surplusBonus = Math.min(0.2, surplusRatio * 0.4); // Up to 20% bonus for large surpluses
-    targetPointInRange =
-      0.75 +
-      surplusBonus +
-      (budgetUrgencyMultiplier - 1.0) * 0.3 -
-      fiscalConservatismFactor * 0.15; // Reduced fiscal conservatism impact with surplus
-    targetPointInRange -= serviceQualityFactor * 0.1;
-  } else {
-    // Neutral or Comfortable finances
-    let base = 0.5;
-    if (pDetails.adjustmentType === "increase") base = 0.6;
-    else if (pDetails.adjustmentType === "decrease") base = 0.4;
-    const FCF_WEIGHT = 0.3,
-      BUM_WEIGHT = 0.25,
-      SQF_WEIGHT = 0.15;
-    targetPointInRange =
-      base -
-      fiscalConservatismFactor * FCF_WEIGHT +
-      (budgetUrgencyMultiplier - 1.0) * BUM_WEIGHT -
-      serviceQualityFactor * SQF_WEIGHT;
-  }
-  return Math.max(0.01, Math.min(0.99, targetPointInRange));
-};
-
-// Refactored Helper: Get Target Point for Tax Adjustments
-const getTaxAdjustmentTarget = (
-  pDetails,
-  cityStats,
-  fiscalConservatismFactor,
-  financialState
-) => {
-  const {
-    hasDireFinances,
-    isStrainedFinances,
-    hasLargeSurplus,
-    isComfortableFinancially,
-  } = financialState;
-  const { balanceToIncomeRatio, cityBalance } = cityStats.budget;
-
-  let targetPointInRange;
-  if (hasDireFinances) {
-    targetPointInRange = 0.9 + 0.09 * Math.random();
-  } else if (hasLargeSurplus) {
-    targetPointInRange = 0.01 + 0.09 * Math.random();
-  } else {
-    let current_FCF_Impact_Multiplier = 0.5;
-    if (isStrainedFinances) current_FCF_Impact_Multiplier = 0.3;
-    else if (
-      isComfortableFinancially &&
-      balanceToIncomeRatio < 0.02 &&
-      cityBalance > 0
-    )
-      current_FCF_Impact_Multiplier = 0.4;
-    targetPointInRange =
-      0.5 - fiscalConservatismFactor * current_FCF_Impact_Multiplier;
-
-    if (isStrainedFinances)
-      targetPointInRange = Math.min(0.98, targetPointInRange + 0.6);
-    else if (
-      isComfortableFinancially &&
-      balanceToIncomeRatio < 0.02 &&
-      cityBalance > 0
-    )
-      targetPointInRange = Math.min(0.8, targetPointInRange + 0.25);
-    else if (cityBalance <= 0 && !isStrainedFinances && !hasDireFinances)
-      targetPointInRange = Math.min(0.7, targetPointInRange + 0.15);
-
-    if (!hasDireFinances && !isStrainedFinances) {
-      const currentTaxRateVal =
-        cityStats.budget.taxRates[pDetails.targetTaxRate] || 0;
-      const taxRateKeyVal = pDetails.targetTaxRate;
-      const highTaxThresh =
-        taxRateKeyVal === "property"
-          ? 0.025
-          : taxRateKeyVal === "sales"
-          ? 0.08
-          : 0.06;
-      const lowTaxThresh =
-        taxRateKeyVal === "property"
-          ? 0.007
-          : taxRateKeyVal === "sales"
-          ? 0.03
-          : 0.02;
-      if (currentTaxRateVal > highTaxThresh && targetPointInRange > 0.7)
-        targetPointInRange = Math.max(
-          0.55,
-          targetPointInRange - (currentTaxRateVal - highTaxThresh) * 10
-        );
-      if (currentTaxRateVal < lowTaxThresh && targetPointInRange < 0.3)
-        targetPointInRange = Math.min(
-          0.45,
-          targetPointInRange + (lowTaxThresh - currentTaxRateVal) * 10
-        );
-    }
-  }
-  return Math.max(0.01, Math.min(0.99, targetPointInRange));
-};
-
-// Refactored Helper: Apply Budget Adjustment Caps and Cuts
-const applyBudgetAdjustmentCaps = (
-  chosenValue,
-  pDetails,
-  cityStats,
-  contextualData,
-  serviceInfo,
-  financialState
-) => {
-  const {
-    hasDireFinances,
-    isStrainedFinances,
-    hasLargeSurplus,
-    isComfortableFinancially,
-  } = financialState;
-  const { cityBalance, cityIncome } = cityStats.budget;
-
-  if (chosenValue > 0) {
-    let maxAffordableSpend = 0;
-    // TODO: Enhance contextualData to include a map of pending budget adjustments for more precise capping.
-    const contextualIncreaseDetails = null; // Placeholder
-    const totalAlreadyAllocatedOrProposedIncrease =
-      contextualIncreaseDetails?.totalIncreaseAmount || 0;
-    const isServiceVeryPoorForCap =
-      serviceInfo?.isValid && serviceInfo.ratingIndex === 0;
-
-    if (hasLargeSurplus) maxAffordableSpend = cityBalance * 0.6;
-    else if (isComfortableFinancially)
-      maxAffordableSpend = Math.max(0, cityBalance * 0.3);
-    else if (
-      !financialState.hasSignificantDeficit &&
-      !financialState.hasHighDebt
-    )
-      maxAffordableSpend = cityIncome * 0.025;
-    else if (isStrainedFinances && isServiceVeryPoorForCap)
-      maxAffordableSpend = cityIncome * 0.08;
-    // Increased from 1% to 8% for essential services
-    else if (hasDireFinances && isServiceVeryPoorForCap)
-      maxAffordableSpend = cityIncome * 0.05;
-    // Increased from 0.5% to 5% - much more aggressive
-    else if (isStrainedFinances) maxAffordableSpend = cityIncome * 0.03;
-    // 3% for non-essential in strained finances
-    else if (hasDireFinances) maxAffordableSpend = cityIncome * 0.015;
-    // 1.5% for non-essential in dire finances
-    else maxAffordableSpend = 0;
-
-    maxAffordableSpend = Math.max(0, maxAffordableSpend);
-    const remainingAffordableCap = Math.max(
-      0,
-      maxAffordableSpend - totalAlreadyAllocatedOrProposedIncrease
-    );
-
-    if (chosenValue > remainingAffordableCap) {
-      chosenValue = remainingAffordableCap;
-    }
-    if (chosenValue <= 0 && pDetails.adjustmentType === "increase") {
-      let minPossibleIncrease =
-        pDetails.min > 0 ? pDetails.min : pDetails.step || 1;
-      chosenValue =
-        minPossibleIncrease <= remainingAffordableCap ? minPossibleIncrease : 0;
-    }
-  } else if (chosenValue < 0) {
-    const budgetLineName = pDetails.targetBudgetLine;
-    const currentActualBudgetForLine =
-      cityStats.budget.expenseAllocations?.[budgetLineName] || 0;
-    if (currentActualBudgetForLine <= 0) {
-      chosenValue = 0;
-    } else if (Math.abs(chosenValue) > currentActualBudgetForLine) {
-      chosenValue = -currentActualBudgetForLine;
-    }
-  }
-  return chosenValue;
-};
-
 /**
  * **PIPELINE STEP 2:** Calculates a proposal score for a single policy.
  * @returns {number} The calculated proposal score.
@@ -742,6 +490,7 @@ function scorePolicyForAI(
       }
     }
   }
+
 
   // 3. AI Politician's Policy Focus - optimized
   if (aiPolitician.policyFocus && policy.tags?.length) {
@@ -877,12 +626,6 @@ function selectOptimalParameter(
       cityStats
     ); // Sourced from aiUtils.js
     chosenValue = pDetails.min + range * targetPointInRange;
-    console.log(`[DEBUG] Budget adjustment calculation: ${
-      pDetails.targetBudgetLine
-    }
-      Range: ${pDetails.min} to ${pDetails.max} (${range})
-      Target point: ${targetPointInRange.toFixed(3)}
-      Pre-cap value: ${chosenValue}`);
     chosenValue = applyBudgetAdjustmentCaps(
       chosenValue,
       pDetails,
@@ -891,7 +634,6 @@ function selectOptimalParameter(
       serviceInfo,
       financialState
     ); // Sourced from aiUtils.js
-    console.log(`[DEBUG] Post-cap value: ${chosenValue}`);
   } else if (pDetails.targetTaxRate) {
     const targetPointInRange = getTaxAdjustmentTarget(
       pDetails,
@@ -1151,15 +893,15 @@ export const shouldAIProposeBasedOnNeeds = (
   let bestScore = -Infinity;
 
   // Determine urgency thresholds based on conditions first
-  let urgencyThreshold = 4.0; // Much higher base threshold to reduce spam
+  let urgencyThreshold = 3.0; // Moderate base threshold to reduce spam
 
   // Lower threshold (more likely to propose) in crisis situations
   if (financialState.hasDireFinances) {
-    urgencyThreshold = 2.5; // Still high but allows crisis proposals
+    urgencyThreshold = 1.5; // Lower threshold for dire finances
   } else if (financialState.isStrainedFinances) {
-    urgencyThreshold = 3.0; // Moderate threshold for strained finances
+    urgencyThreshold = 2.0; // Moderate threshold for strained finances
   } else if (financialState.hasLargeSurplus) {
-    urgencyThreshold = 3.5; // Slightly lower threshold with surplus
+    urgencyThreshold = 2.5; // Slightly lower threshold with surplus
   }
 
   // Score policies with early exit when we find a good enough candidate
@@ -1217,6 +959,95 @@ export const shouldAIProposeBasedOnNeeds = (
   return bestPolicy && bestPolicy.urgencyScore >= urgencyThreshold;
 };
 
-// NOTE: The smaller helper functions used by selectOptimalParameter like getBudgetAdjustmentTarget,
-// getTaxAdjustmentTarget, and applyBudgetAdjustmentCaps would also need to be included in this file for it to be complete.
-// They have been omitted here for brevity but are sourced from the original aiUtils.js.
+/**
+ * Determines target point in parameter range for budget adjustments
+ */
+function getBudgetAdjustmentTarget(pDetails, serviceInfo, fiscalConservatismFactor, financialState, cityStats) {
+  let targetPoint = 0.5; // Default to middle of range
+  
+  // If service rating is poor, be more aggressive with spending
+  if (serviceInfo.ratingIndex >= 0) {
+    const ratingLevels = Object.values(RATING_LEVELS);
+    const normalizedRating = serviceInfo.ratingIndex / (ratingLevels.length - 1);
+    
+    // Poor ratings (0-0.3) -> aggressive spending (0.7-1.0)
+    // Good ratings (0.7-1.0) -> conservative spending (0.1-0.4)
+    targetPoint = Math.max(0.1, Math.min(0.9, 1.0 - normalizedRating + 0.2));
+  }
+  
+  // Adjust based on financial state
+  if (financialState.hasLargeSurplus) {
+    targetPoint = Math.min(0.9, targetPoint + 0.3); // Spend more with surplus
+  } else if (financialState.hasDireFinances) {
+    // For dire finances, consider spending cuts (below 0.5 = cuts)
+    targetPoint = Math.max(0.1, targetPoint - 0.4); // Aggressive spending cuts
+  } else if (financialState.isStrainedFinances) {
+    targetPoint = Math.max(0.2, targetPoint - 0.2); // Moderate spending cuts
+  }
+  
+  // Apply conservatism factor
+  targetPoint = targetPoint * (1 - fiscalConservatismFactor) + 0.5 * fiscalConservatismFactor;
+  
+  return Math.max(0.1, Math.min(0.9, targetPoint));
+}
+
+/**
+ * Determines target point in parameter range for tax adjustments
+ */
+function getTaxAdjustmentTarget(pDetails, cityStats, fiscalConservatismFactor, financialState) {
+  let targetPoint = 0.5; // Default to middle of range
+  
+  // Be more aggressive with tax increases when finances are bad
+  if (financialState.hasDireFinances) {
+    targetPoint = 0.8; // Aggressive tax increases
+  } else if (financialState.isStrainedFinances) {
+    targetPoint = 0.7; // Moderate tax increases
+  } else if (financialState.hasLargeSurplus) {
+    targetPoint = 0.3; // Consider tax cuts with surplus
+  }
+  
+  // Apply conservatism factor - conservatives less likely to raise taxes
+  if (fiscalConservatismFactor > 0.6) {
+    targetPoint = Math.max(0.2, targetPoint - 0.3);
+  }
+  
+  return Math.max(0.1, Math.min(0.9, targetPoint));
+}
+
+/**
+ * Applies caps to budget adjustments to prevent extreme values
+ */
+function applyBudgetAdjustmentCaps(chosenValue, pDetails, cityStats, contextualData, serviceInfo, financialState) {
+  const cityIncome = cityStats.budget.totalAnnualIncome || cityStats.budget.annualIncome || 1;
+  
+  // Set much more aggressive caps based on city income - scale with billions
+  let maxSpending = cityIncome * 0.15; // Up to 15% of annual income for major programs
+  let minSpending = Math.max(pDetails.min, cityIncome * 0.001); // At least 0.1% of income
+  
+  // Adjust caps based on service type with higher limits
+  if (pDetails.targetBudgetLine === 'policeDepartment' || pDetails.targetBudgetLine === 'publicEducation') {
+    maxSpending = cityIncome * 0.25; // Up to 25% for critical services
+  } else if (pDetails.targetBudgetLine === 'parksAndRecreation' || pDetails.targetBudgetLine === 'librariesAndCulture') {
+    maxSpending = cityIncome * 0.08; // 8% for non-essential services
+  } else if (pDetails.targetBudgetLine === 'infrastructure') {
+    maxSpending = cityIncome * 0.20; // 20% for infrastructure
+  }
+  
+  // With large surplus, allow even more aggressive spending
+  if (financialState.hasLargeSurplus) {
+    maxSpending *= 2.0; // Double the spending cap with surplus
+  }
+  
+  // With dire finances, allow deeper cuts but reduce maximum spending
+  if (financialState.hasDireFinances) {
+    maxSpending *= 0.4; // Reduce max spending significantly
+    minSpending = Math.max(pDetails.min, cityIncome * 0.0005); // Allow deeper cuts
+  } else if (financialState.isStrainedFinances) {
+    maxSpending *= 0.7; // Moderate reduction in max spending
+    minSpending = Math.max(pDetails.min, cityIncome * 0.0008); // Allow some cuts
+  }
+  
+  return Math.max(minSpending, Math.min(maxSpending, chosenValue));
+}
+
+

@@ -202,7 +202,8 @@ export const runMonthlyBudgetUpdate = (campaign) => {
     gdpPerCapita,
     budget.taxRates,
     cityType,
-    dominantIndustries
+    dominantIndustries,
+    city.cityLaws
   );
   const newTotalAnnualIncome = Math.floor(
     Object.values(newIncomeSources).reduce((sum, val) => sum + val, 0)
@@ -264,15 +265,26 @@ export const runMonthlyStatUpdate = (campaign) => {
   const newStats = { ...oldStats, ...statUpdates };
 
   // Check for significant unemployment change
-  if (Math.abs(newStats.unemploymentRate - oldStats.unemploymentRate) > 0.5) {
+  // Ensure unemployment rates are valid numbers before comparison
+  const oldUnemployment = parseFloat(oldStats.unemploymentRate) || 6.0;
+  const newUnemployment = parseFloat(newStats.unemploymentRate) || 6.0;
+  
+  // Fix any NaN unemployment values
+  if (isNaN(newStats.unemploymentRate) || !isFinite(newStats.unemploymentRate)) {
+    console.warn(`[monthlyTick] Fixed NaN unemployment rate, resetting to ${oldUnemployment}`);
+    newStats.unemploymentRate = oldUnemployment;
+    statUpdates.unemploymentRate = oldUnemployment;
+  }
+  
+  if (Math.abs(newUnemployment - oldUnemployment) > 0.5) {
     const event = {
       type: "economic_update",
       context: {
         stat: "unemployment rate",
-        oldValue: oldStats.unemploymentRate.toFixed(1),
-        newValue: newStats.unemploymentRate.toFixed(1),
+        oldValue: oldUnemployment.toFixed(1),
+        newValue: newUnemployment.toFixed(1),
         direction:
-          newStats.unemploymentRate < oldStats.unemploymentRate
+          newUnemployment < oldUnemployment
             ? "positive"
             : "negative",
       },

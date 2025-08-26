@@ -2,6 +2,7 @@
 import React, { useMemo } from "react";
 import useGameStore from "../../store";
 import { getTimeUntil, createDateObj } from "../../utils/generalUtils.js";
+import CitySelector from "../CitySelector.jsx";
 import "./TabStyles.css";
 import "./DashboardTab.css";
 
@@ -53,14 +54,21 @@ function DashboardTab({ campaignData }) {
 
   return (
     <div className="tab-content-container ui-panel dashboard-tab">
-      <h2 className="tab-title">Dashboard</h2>
-      <p className="welcome-message">
-        Welcome back,{" "}
-        {playerPolitician.currentOffice || playerPolitician.firstName}!
-      </p>
-      <p className="current-date-dashboard">
-        Current Date: {currentDate.month}/{currentDate.day}/{currentDate.year}
-      </p>
+      <div className="dashboard-header">
+        <div className="dashboard-title-section">
+          <h2 className="tab-title">Dashboard</h2>
+          <p className="welcome-message">
+            Welcome back,{" "}
+            {playerPolitician.currentOffice || playerPolitician.firstName}!
+          </p>
+          <p className="current-date-dashboard">
+            Current Date: {currentDate.month}/{currentDate.day}/{currentDate.year}
+          </p>
+        </div>
+        <div className="dashboard-controls">
+          <CitySelector />
+        </div>
+      </div>
 
       <div className="dashboard-grid">
         {/* Player Status Card - UPDATED */}

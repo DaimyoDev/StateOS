@@ -52,12 +52,26 @@ export const createPollingSlice = (set) => ({
           }
         }
 
-        // 3. Use coalition-based polling for better performance
-        const groundTruthPollingMap = calculateCoalitionBasedPolling(
-          election,
-          { startingCity: activeCampaign.startingCity, activeCampaign },
-          politicians
-        );
+        // 3. Use different polling methods based on whether player is candidate
+        let groundTruthPollingMap;
+        if (election.playerIsCandidate) {
+          // For player elections, use regular normalized polling (not coalition-based)
+          // Add timestamp to candidate data to force fresh calculation
+          const candidatesArray = Array.from(updatedCandidates.values()).map(candidate => ({
+            ...candidate,
+            _pollTimestamp: Date.now() // Force cache miss
+          }));
+          const adultPop = election.totalEligibleVoters / 0.7;
+          
+          groundTruthPollingMap = normalizePollingOptimized(candidatesArray, adultPop, false);
+        } else {
+          // For non-player elections, use coalition-based polling for better performance
+          groundTruthPollingMap = calculateCoalitionBasedPolling(
+            election,
+            { startingCity: activeCampaign.startingCity, activeCampaign },
+            politicians
+          );
+        }
 
         // 4. Apply the pollster's bias to the ground truth
         const finalPollResults = new Map();
@@ -177,12 +191,25 @@ export const createPollingSlice = (set) => ({
             }
           }
 
-          // Use coalition-based polling for better performance
-          const groundTruthPollingMap = calculateCoalitionBasedPolling(
-            election,
-            { startingCity: activeCampaign.startingCity, activeCampaign },
-            politicians
-          );
+          // Use different polling methods based on whether player is candidate
+          let groundTruthPollingMap;
+          if (election.playerIsCandidate) {
+            // For player elections, use regular normalized polling (not coalition-based)
+            // Add timestamp to candidate data to force fresh calculation
+            const candidatesArray = Array.from(updatedCandidates.values()).map(candidate => ({
+              ...candidate,
+              _pollTimestamp: Date.now() // Force cache miss
+            }));
+            const adultPop = election.totalEligibleVoters / 0.7;
+            groundTruthPollingMap = normalizePollingOptimized(candidatesArray, adultPop, false);
+          } else {
+            // For non-player elections, use coalition-based polling for better performance
+            groundTruthPollingMap = calculateCoalitionBasedPolling(
+              election,
+              { startingCity: activeCampaign.startingCity, activeCampaign },
+              politicians
+            );
+          }
 
           // Apply pollster bias efficiently
           const finalPollResults = new Map();

@@ -17,7 +17,7 @@ import { generateNewsForEvent } from "../simulation/newsGenerator.js";
 import { rehydratePolitician } from "../entities/personnel.js";
 import { _addPoliticiansToSoA_helper } from "./dataSlice.js";
 import { calculateBaseCandidateScore } from "../utils/electionUtils.js";
-import { normalizePollingOptimized } from "../General Scripts/OptimizedPollingFunctions.js";
+import { normalizePollingOptimized, pollingOptimizer } from "../General Scripts/OptimizedPollingFunctions.js";
 
 // --- Local Helper Functions (To be moved to electionManager.js later) ---
 
@@ -537,7 +537,7 @@ export const createElectionSlice = (set, get) => ({
           elections,
           customPartiesSnapshot,
           generatedPartiesSnapshot,
-          politicians: politiciansSoA, // Get the SoA store
+          politicians: politiciansSoA,
           playerPoliticianId,
           startingCity,
           regionId,
@@ -640,6 +640,21 @@ export const createElectionSlice = (set, get) => ({
                   if (!candidate.name) {
                     candidate.name = candidate.id || "Unknown Candidate";
                   }
+                  
+                  // Fix corrupted party data during candidacy declaration
+                  if (candidate.partyId && candidate.partyName === "Independent") {
+                    const allParties = [
+                      ...(generatedPartiesSnapshot || []),
+                      ...(customPartiesSnapshot || [])
+                    ];
+                    
+                    const correctParty = allParties.find(p => p.id === candidate.partyId);
+                    if (correctParty) {
+                      candidate.partyName = correctParty.name;
+                      candidate.partyColor = correctParty.color;
+                      console.log(`Fixed party data for ${candidate.name}: ${correctParty.name}`);
+                    }
+                  }
                 }
                 return candidate;
               })
@@ -663,6 +678,8 @@ export const createElectionSlice = (set, get) => ({
               adultPop
             );
 
+
+
             const finalCandidatesMap = new Map();
             for (const candidate of incorrectlyKeyedMap.values()) {
               if (candidate && candidate.id) {
@@ -676,6 +693,11 @@ export const createElectionSlice = (set, get) => ({
               category: "Election",
               type: "success",
             });
+
+            // Invalidate coalition cache since candidate composition has changed
+            pollingOptimizer.invalidateCoalitionCache(election.id);
+
+            //final candidates map is incorrect. Initial candidates map is correct.
 
             return {
               ...election,

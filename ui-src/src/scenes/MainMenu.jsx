@@ -92,6 +92,12 @@ function MainMenu() {
             Settings
           </button>
           <button
+            className="menu-button"
+            onClick={() => actions.navigateTo("WikiScene")}
+          >
+            Wiki
+          </button>
+          <button
             className="action-button"
             onClick={() => {
               if (window.electron && window.electron.ipcRenderer) {

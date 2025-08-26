@@ -352,7 +352,8 @@ export const calculateDetailedIncomeSources = (
   gdpPerCapita,
   taxRates,
   cityType,
-  dominantIndustries
+  dominantIndustries,
+  cityLaws = {}
 ) => {
   // ... implementation from governmentUtils.js ...
   const incomeSources = {
@@ -374,7 +375,18 @@ export const calculateDetailedIncomeSources = (
     propertyValueBase * (taxRates.property || 0)
   );
   const consumerSpendingPerCapita = gdpPerCapita * (getRandomInt(25, 35) / 100);
-  const totalSalesVolume = population * consumerSpendingPerCapita;
+  
+  // Calculate minimum wage impact on consumer spending
+  let minimumWageMultiplier = 1.0;
+  if (cityLaws.minimumWage) {
+    const federalMinimumWage = 7.25; // Base federal minimum wage
+    const wageRatio = cityLaws.minimumWage / federalMinimumWage;
+    // Higher minimum wage increases consumer spending (more disposable income)
+    // Multiplier ranges from 1.0 (at federal minimum) to ~1.4 (at $15/hr)
+    minimumWageMultiplier = Math.min(1.0 + (wageRatio - 1.0) * 0.4, 1.5);
+  }
+  
+  const totalSalesVolume = population * consumerSpendingPerCapita * minimumWageMultiplier;
   incomeSources.salesTaxRevenue = Math.floor(
     totalSalesVolume * (taxRates.sales || 0)
   );
@@ -421,7 +433,8 @@ export const generateInitialBudget = (
   wealthLevel,
   dominantIndustries,
   mainIssues,
-  cityType
+  cityType,
+  cityLaws = {}
 ) => {
   // ... implementation from governmentUtils.js ...
   const incomeSources = calculateDetailedIncomeSources(
@@ -429,7 +442,8 @@ export const generateInitialBudget = (
     gdpPerCapita,
     initialTaxRates,
     cityType,
-    dominantIndustries
+    dominantIndustries,
+    cityLaws
   );
   const totalAnnualIncome = Math.floor(
     Object.values(incomeSources).reduce((sum, val) => sum + val, 0)
@@ -1086,7 +1100,10 @@ export const generateFullStateData = (params = {}) => {
     cities.map((c) => ({ value: c.stats?.crimeRatePer1000, weight: c.population }))
   );
   const unemploymentRateAvg = weightedAverage(
-    cities.map((c) => ({ value: parseFloat(c.stats?.unemploymentRate), weight: c.population }))
+    cities.map((c) => ({ 
+      value: isNaN(parseFloat(c.stats?.unemploymentRate)) ? 6.0 : parseFloat(c.stats?.unemploymentRate), 
+      weight: c.population 
+    }))
   );
 
   const aggregatedServiceStats = {

@@ -1,6 +1,7 @@
 // ui-src/src/stores/uiStateSlice.js
 import { themes, defaultTheme } from "../themes";
 import { generateId } from "../utils/core";
+import { rehydratePolitician } from "../entities/personnel";
 
 const applyThemeToDocument = (themeData) => {
   if (!themeData) return;
@@ -164,29 +165,42 @@ export const createUISlice = (set, get) => ({
       set((state) => {
         if (!politician) return state;
 
-        // --- THIS IS THE FIX ---
-        // Get the full list of parties from the active campaign
-        const allParties = [
-          ...(state.activeCampaign.generatedPartiesSnapshot || []),
-          ...(state.activeCampaign.customPartiesSnapshot || []),
-        ];
-        const partiesMap = new Map(allParties.map((p) => [p.id, p]));
+        
+        // Try to get the complete politician data from SoA store first
+        let fullPolitician = politician;
+        
+        if (state.activeCampaign?.politicians && politician.id) {
+          const rehydratedPolitician = rehydratePolitician(politician.id, state.activeCampaign.politicians);
+          if (rehydratedPolitician) {
+            fullPolitician = rehydratedPolitician;
+            console.log(`Successfully rehydrated politician ${politician.id} for modal`);
+          } else {
+            console.warn(`Failed to rehydrate politician ${politician.id}, using original data`);
+          }
+        }
 
-        // Find the politician's party details using their partyId
-        const partyDetails = partiesMap.get(politician.partyId);
+        // If rehydration failed or party data is still corrupted, fix party data manually
+        if (fullPolitician.partyId && fullPolitician.partyId !== "independent" && fullPolitician.partyName === "Independent") {
+          const allParties = [
+            ...(state.activeCampaign.generatedPartiesSnapshot || []),
+            ...(state.activeCampaign.customPartiesSnapshot || []),
+          ];
+          const partyDetails = allParties.find(p => p.id === fullPolitician.partyId);
+          
+          if (partyDetails) {
+            fullPolitician = {
+              ...fullPolitician,
+              partyName: partyDetails.name,
+              partyColor: partyDetails.color,
+            };
+            console.log(`Fixed party data for politician ${politician.id}: ${partyDetails.name}`);
+          }
+        }
 
-        // Create an "enriched" politician object with the party name and color
-        const enrichedPolitician = {
-          ...politician,
-          partyName: partyDetails?.name || "Independent",
-          partyColor: partyDetails?.color || "#888888",
-        };
-        // --- END OF FIX ---
-
-        // Set the enriched object into state for the modal to display
+        // Set the complete politician object into state for the modal to display
         return {
           isViewPoliticianModalOpen: true,
-          viewingPolitician: enrichedPolitician,
+          viewingPolitician: fullPolitician,
         };
       });
     },

@@ -86,8 +86,8 @@ export const CITY_POLICIES = [
       targetBudgetLine: "policeDepartment",
       adjustmentType: "increase_or_decrease",
       valueType: "absolute_amount",
-      min: -50000000,
-      max: 50000000,
+      min: -500000000,
+      max: 800000000,
       step: 1,
       defaultValue: 100000,
       unit: "$",
@@ -647,12 +647,12 @@ export const CITY_POLICIES = [
       targetBudgetLine: "publicEducation",
       adjustmentType: "increase_or_decrease",
       valueType: "absolute_amount",
-      min: -5000000,
-      max: 10000000,
-      step: 1000,
-      defaultValue: 600000,
+      min: -200000000,
+      max: 600000000,
+      step: 1,
+      defaultValue: 10000000,
       unit: "$",
-      prompt: "Enter amount to change School Funding by:",
+      prompt: "Enter amount to change Education budget by (e.g., 50000000 or -20000000):",
     },
     effects: [
       // Direct effect on educationQuality will be simulated monthly based on new funding level
@@ -866,8 +866,8 @@ export const CITY_POLICIES = [
       targetTaxRate: "property", // Which rate in budget.taxRates
       adjustmentType: "increase_or_decrease",
       valueType: "percentage_point", // The input is in percentage points (e.g., 0.2 for 0.2pp)
-      min: -0.03, // Min change: -0.5pp (e.g., from 1.0% to 0.5%)
-      max: 0.03, // Max change: +0.5pp (e.g., from 1.0% to 1.5%)
+      min: -2.0, // Min change: -2.0pp (e.g., from 5.0% to 3.0%)
+      max: 3.0, // Max change: +3.0pp (e.g., from 5.0% to 8.0%)
       step: 0.001, // Increments of 0.05pp
       defaultValue: 0.005, // Default suggestion: +0.1pp
       unit: "pp", // Percentage Points
@@ -937,8 +937,8 @@ export const CITY_POLICIES = [
       targetTaxRate: "sales",
       adjustmentType: "increase_or_decrease",
       valueType: "percentage_point",
-      min: -0.03, // Min change: -1.0pp
-      max: 0.03, // Max change: +1.0pp
+      min: -3.0, // Min change: -3.0pp
+      max: 4.0, // Max change: +4.0pp
       step: 0.001,
       defaultValue: -0.02, // Default suggestion: -0.2pp cut
       unit: "pp",
@@ -1001,8 +1001,8 @@ export const CITY_POLICIES = [
       targetTaxRate: "business",
       adjustmentType: "increase_or_decrease",
       valueType: "percentage_point",
-      min: -0.03, // Min change: -2.0pp
-      max: 0.03, // Max change: +2.0pp
+      min: -2.5, // Min change: -2.5pp
+      max: 2.5, // Max change: +2.5pp
       step: 0.001,
       defaultValue: -0.002, // Default suggestion: -0.5pp cut
       unit: "pp",
@@ -1618,8 +1618,117 @@ export const CITY_POLICIES = [
   },
 ];
 
+const STATE_MINIMUM_WAGE_POLICY = {
+  id: "state_econ004_parameterized",
+  name: "Set State Minimum Wage",
+  area: POLICY_AREAS.ECONOMY,
+  description: "Establish or change the state minimum wage. This overrides local minimum wages and affects unemployment, business costs, and worker income statewide.",
+  tags: ["economy", "labor", "regulation", "minimum_wage", "parameterized", "state"],
+  baseSupport: {
+    Socialist: 0.9,
+    Progressive: 0.8,
+    Liberal: 0.4,
+    Centrist: -0.1,
+    Conservative: -0.6,
+    Libertarian: -0.8,
+  },
+  cost: { politicalCapital: 8 }, // Higher cost for state-level policy
+  durationToImplement: 3,
+  isParameterized: true,
+  setsSimulationVariable: true, 
+  parameterDetails: {
+    key: "wageRate",
+    targetStat: "stateLaws.stateMinimumWage", 
+    adjustmentType: "set_value",
+    valueType: "absolute_amount",
+    min: 0,
+    max: 50,
+    step: 0.25,
+    defaultValue: 18.00, // Higher default for state level
+    unit: "$/hour",
+    prompt: "Set the new state minimum wage (per hour):",
+  },
+  effects: [
+    {
+      targetStat: "povertyRate",
+      type: "percentage_point_change",
+      change: -0.7, // Stronger effect at state level
+      chance: 0.8,
+      delay: 3,
+    },
+    {
+      targetStat: "overallCitizenMood",
+      type: "mood_shift",
+      change: 1,
+      chance: 0.6,
+      delay: 2,
+    },
+    {
+      targetStat: "unemploymentRate",
+      type: "percentage_point_change",
+      change: 0.08, // Slightly higher unemployment effect
+      chance: 0.25,
+      delay: 6,
+    },
+  ],
+};
+
 export const STATE_POLICIES = [
-  // For now, state can have the same policies. This can be customized later.
-  ...CITY_POLICIES,
+  // State-specific policies
+  STATE_MINIMUM_WAGE_POLICY,
+  // Include relevant city policies that also apply at state level
+  ...CITY_POLICIES.filter(policy => 
+    !policy.tags?.includes("city_only") && 
+    policy.id !== "econ004_parameterized" // Exclude city minimum wage to avoid duplication
+  ),
 ];
+
+// Federal-level law framework for future implementation
+const FEDERAL_MINIMUM_WAGE_POLICY = {
+  id: "federal_econ004_parameterized",
+  name: "Set Federal Minimum Wage",
+  area: POLICY_AREAS.ECONOMY,
+  description: "Establish or change the federal minimum wage. This sets the nationwide floor for minimum wages and affects all states.",
+  tags: ["economy", "labor", "regulation", "minimum_wage", "parameterized", "federal"],
+  baseSupport: {
+    Socialist: 0.95,
+    Progressive: 0.85,
+    Liberal: 0.5,
+    Centrist: 0.0,
+    Conservative: -0.7,
+    Libertarian: -0.9,
+  },
+  cost: { politicalCapital: 12 }, // Highest cost for federal policy
+  durationToImplement: 6,
+  isParameterized: true,
+  setsSimulationVariable: true, 
+  parameterDetails: {
+    key: "wageRate",
+    targetStat: "nationalLaws.federalMinimumWage", 
+    adjustmentType: "set_value",
+    valueType: "absolute_amount",
+    min: 0,
+    max: 50,
+    step: 0.25,
+    defaultValue: 15.00,
+    unit: "$/hour",
+    prompt: "Set the new federal minimum wage (per hour):",
+  },
+  effects: [
+    {
+      targetStat: "povertyRate",
+      type: "percentage_point_change",
+      change: -1.0, // Strongest effect at federal level
+      chance: 0.9,
+      delay: 4,
+    },
+    {
+      targetStat: "unemploymentRate",
+      type: "percentage_point_change",
+      change: 0.1, // Potential unemployment effect
+      chance: 0.3,
+      delay: 8,
+    },
+  ],
+};
 

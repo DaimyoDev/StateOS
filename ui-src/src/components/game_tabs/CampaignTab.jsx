@@ -7,10 +7,11 @@ import {
   calculateAdultPopulation,
 } from "../../utils/generalUtils";
 import { rehydratePolitician } from "../../entities/personnel";
+import { STAFF_TASK_OPTIONS } from "../../stores/campaignStaffSlice";
 
 // --- SUB-TAB COMPONENTS ---
 
-const RecentPollingSection = React.memo(({ electionId, recentPolls }) => {
+const RecentPollingSection = React.memo(({ electionId, recentPolls, partiesMap }) => {
   if (!recentPolls || recentPolls.length === 0) {
     return (
       <section className="info-card polling-section">
@@ -37,6 +38,20 @@ const RecentPollingSection = React.memo(({ electionId, recentPolls }) => {
             <ul className="poll-results-list">
               {Array.from(poll.results.values())
                 .sort((a, b) => (b.polling || 0) - (a.polling || 0))
+                .map((candidate) => {
+                  // Fix corrupted party data using passed partiesMap
+                  if (candidate.partyId && candidate.partyId !== "independent") {
+                    const partyDetails = partiesMap.get(candidate.partyId);
+                    if (partyDetails) {
+                      return {
+                        ...candidate,
+                        partyName: partyDetails.name,
+                        partyColor: partyDetails.color,
+                      };
+                    }
+                  }
+                  return candidate;
+                })
                 .map((candidate) => (
                   <li key={candidate.id} className="poll-result-item">
                     <span className="candidate-info">
@@ -72,6 +87,7 @@ const CampaignOverviewSubTab = ({
   politician,
   campaignData,
   openViewPoliticianModal,
+  partiesMap,
 }) => {
   const recentPollsByElection = useGameStore((state) => state.recentPollsByElection || new Map());
   const startingCity = campaignData.startingCity || {};
@@ -150,28 +166,28 @@ const CampaignOverviewSubTab = ({
             <h4>Current Race Standing</h4>
             <ul>
               {Array.from(playerActiveElection.candidates.values())
-                .sort((a, b) => (b.polling || 0) - (a.polling || 0))
-                .map((candidate) => (
-                  <li
-                    key={candidate.id}
-                    onClick={() =>
-                      !candidate.isPlayer && openViewPoliticianModal(candidate)
+                .map((candidate) => {
+                  // Fix corrupted party data using passed partiesMap
+                  if (candidate.partyId && candidate.partyId !== "independent") {
+                    const partyDetails = partiesMap.get(candidate.partyId);
+                    if (partyDetails) {
+                      return {
+                        ...candidate,
+                        partyName: partyDetails.name,
+                        partyColor: partyDetails.color,
+                      };
                     }
-                    style={{ cursor: candidate.isPlayer ? "default" : "pointer" }}
-                  >
-                    <span className="candidate-info">
-                      <span
-                        style={{
-                          color: candidate.isPlayer
-                            ? "var(--accent-color)"
-                            : "inherit",
-                        }}
-                        className={
-                          candidate.isPlayer ? "player-candidate-name" : ""
-                        }
-                      >
-                        {candidate.name}
-                      </span>
+                  }
+                  return candidate;
+                })
+                .map((candidate) => (
+                  <li key={candidate.id} className="candidate-item">
+                    <span
+                      className="candidate-name politician-name-link"
+                      onClick={() => openViewPoliticianModal(candidate)}
+                      title={`View profile of ${candidate.name}`}
+                    >
+                      {candidate.name}
                       <span className="party-name-display">
                         {" "}
                         ({candidate.partyName || "Independent"})
@@ -180,56 +196,31 @@ const CampaignOverviewSubTab = ({
                         <span className="incumbent-marker">(Incumbent)</span>
                       )}
                     </span>
-                    <span className="candidate-polling">
-                      Current: ~{getDisplayedPolling(candidate.polling)}%
-                    </span>
                   </li>
                 ))}
             </ul>
           </section>
-          
-          <RecentPollingSection 
+
+          <RecentPollingSection
             electionId={playerActiveElection.id}
-            recentPolls={recentPollsByElection.get(playerActiveElection.id) || []}
+            recentPolls={recentPollsByElection.get(playerActiveElection.id)}
+            partiesMap={partiesMap}
           />
+
         </>
       )}
     </div>
   );
 };
-
 const StaffSubTab = () => {
-  // This now reads the CORRECT list of hired staff from the unified personnelSlice!
+  // Read staff from personnel slice (where they're actually stored)
   const hiredStaff = useGameStore((state) => state.hiredStaff || []);
   const { setStaffDelegatedTask } = useGameStore((state) => state.actions);
 
-  const getTaskOptionsForRole = (role) => {
-    const commonTasks = [{ value: "idle", label: "Idle (Assist Player)" }];
-    switch (role) {
-      case "Campaign Manager":
-        return [
-          ...commonTasks,
-          { value: "oversee_operations", label: "Oversee Operations" },
-        ];
-      case "Communications Director":
-        return [
-          ...commonTasks,
-          { value: "run_advertising", label: "Run Advertising" },
-          { value: "media_outreach", label: "Media Outreach" },
-        ];
-      case "Fundraising Manager":
-        return [
-          ...commonTasks,
-          { value: "manage_donors", label: "Manage Donors" },
-        ];
-      case "Policy Advisor":
-        return [
-          ...commonTasks,
-          { value: "research_issues", label: "Research Issues" },
-        ];
-      default:
-        return commonTasks;
-    }
+  const getTaskOptionsForRole = (roleId) => {
+    return STAFF_TASK_OPTIONS[roleId] || [
+      { value: "idle", label: "Idle (Assist Player)", description: "Provides general assistance" }
+    ];
   };
 
   return (
@@ -239,26 +230,33 @@ const StaffSubTab = () => {
         <p>
           Your hired team. Assign their primary focus here. Staff assigned to a
           task can perform related major actions without costing you time. Idle
-          staff provide boosts to your manual actions.
         </p>
         {hiredStaff.length > 0 ? (
-          <ul className="staff-list">
+          <div className="staff-list">
             {hiredStaff.map((staff) => (
-              <li key={staff.id} className="staff-list-item">
-                <div className="staff-info">
-                  <span className="staff-name">
-                    {staff.name}{" "}
-                    <span className="staff-role">({staff.role})</span>
-                  </span>
-                  <span className="staff-details">
-                    STR: {staff.attributes.strategy} | COM:{" "}
-                    {staff.attributes.communication} | FUN:{" "}
-                    {staff.attributes.fundraising} | LOY:{" "}
-                    {staff.attributes.loyalty}
-                  </span>
-                  <span className="staff-salary">
-                    Salary: ${staff.salary.toLocaleString()}/month
-                  </span>
+              <div key={staff.id} className="staff-member-card">
+                <div className="staff-header">
+                  <h4>{staff.name}</h4>
+                  <span className="staff-role">{staff.role}</span>
+                  <span className="staff-salary">${staff.salary?.toLocaleString() || 0}/month</span>
+                </div>
+                
+                <div className="staff-attributes">
+                  <div className="attribute">
+                    <strong>Strategy:</strong> {staff.attributes?.strategy || 'N/A'}/10
+                  </div>
+                  <div className="attribute">
+                    <strong>Communication:</strong> {staff.attributes?.communication || 'N/A'}/10
+                  </div>
+                  <div className="attribute">
+                    <strong>Fundraising:</strong> {staff.attributes?.fundraising || 'N/A'}/10
+                  </div>
+                  <div className="attribute">
+                    <strong>Loyalty:</strong> {staff.attributes?.loyalty || 'N/A'}/10
+                  </div>
+                  <div className="attribute">
+                    <strong>Judgement:</strong> {staff.attributes?.judgement || 'N/A'}/10
+                  </div>
                 </div>
                 <div className="staff-delegation-controls">
                   <label htmlFor={`task-${staff.id}`}>Focus:</label>
@@ -269,21 +267,38 @@ const StaffSubTab = () => {
                       setStaffDelegatedTask(staff.id, e.target.value)
                     }
                   >
-                    {getTaskOptionsForRole(staff.role).map((task) => (
-                      <option key={task.value} value={task.value}>
-                        {task.label}
-                      </option>
-                    ))}
+                    <option value="idle">Idle (Assist Player)</option>
+                    <option value="fundraising">Focus on Fundraising</option>
+                    <option value="communications">Focus on Communications</option>
+                    <option value="strategy">Focus on Strategy</option>
+                    <option value="volunteer_recruitment">Focus on Volunteer Recruitment</option>
                   </select>
+                  <div className="task-description" style={{ fontSize: "0.8em", color: "var(--secondary-text)", marginTop: "5px" }}>
+                    {staff.delegatedTask === "idle" && "Provides general assistance to player actions"}
+                    {staff.delegatedTask === "fundraising" && "Autonomously raises campaign funds"}
+                    {staff.delegatedTask === "communications" && "Manages media relations and messaging"}
+                    {staff.delegatedTask === "strategy" && "Develops campaign strategy and planning"}
+                    {staff.delegatedTask === "volunteer_recruitment" && "Recruits and manages volunteers"}
+                  </div>
                 </div>
-              </li>
+              </div>
             ))}
-          </ul>
+          </div>
         ) : (
           <p>
             You have not hired any staff. Visit the "Career & Actions" tab to
             scout and hire candidates.
           </p>
+        )}
+        
+        {hiredStaff.length > 0 && (
+          <div className="staff-summary" style={{ marginTop: "20px", padding: "15px", backgroundColor: "var(--card-background)", borderRadius: "8px" }}>
+            <h4>Staff Summary</h4>
+            <p><strong>Total Staff:</strong> {hiredStaff.length}</p>
+            <p><strong>Monthly Costs:</strong> ${hiredStaff.reduce((sum, staff) => sum + (staff.salary || 0), 0).toLocaleString()}</p>
+            <p><strong>Active Tasks:</strong> {hiredStaff.filter(s => s.delegatedTask !== "idle").length}</p>
+            <p><strong>Assisting Player:</strong> {hiredStaff.filter(s => s.delegatedTask === "idle").length}</p>
+          </div>
         )}
       </section>
     </div>
@@ -1148,7 +1163,7 @@ const PollingSubTab = ({ politician, campaignData, actions }) => {
 function CampaignTab({ campaignData }) {
   const [activeSubTab, setActiveSubTab] = useState("Overview");
   const storeActions = useGameStore((state) => state.actions);
-  const { openViewPoliticianModal } = storeActions; // Destructure only once
+  const { openViewPoliticianModal, syncPlayerElectionCandidateData } = storeActions;
 
   const cityKeyIssues = useMemo(
     () => campaignData?.startingCity?.stats?.mainIssues || [],
@@ -1161,6 +1176,17 @@ function CampaignTab({ campaignData }) {
   const politiciansSoA = useGameStore(
     (state) => state.activeCampaign?.politicians
   );
+
+  // Get party data for fixing corrupted candidate party information
+  const activeCampaign = useGameStore((state) => state.activeCampaign);
+  const partiesMap = useMemo(() => {
+    if (!activeCampaign) return new Map();
+    const allParties = [
+      ...(activeCampaign.generatedPartiesSnapshot || []),
+      ...(activeCampaign.customPartiesSnapshot || []),
+    ];
+    return new Map(allParties.map((p) => [p.id, p]));
+  }, [activeCampaign]);
 
   // 2. Use a 'useMemo' hook to rehydrate a fresh, up-to-date politician object whenever the data changes.
   const politician = useMemo(() => {
@@ -1180,6 +1206,13 @@ function CampaignTab({ campaignData }) {
       previousDayRef.current = campaignData?.currentDate?.day;
     }
   }, [campaignData?.currentDate?.day, storeActions]);
+
+  // Effect to sync player election candidate data when component mounts or politician changes
+  useEffect(() => {
+    if (politician.id && politician.isInCampaign) {
+      syncPlayerElectionCandidateData?.();
+    }
+  }, [politician.id, politician.isInCampaign, syncPlayerElectionCandidateData]);
 
   if (!campaignData || !politician.id) {
     return (
@@ -1209,6 +1242,7 @@ function CampaignTab({ campaignData }) {
           <CampaignOverviewSubTab
             {...subTabProps}
             openViewPoliticianModal={openViewPoliticianModal}
+            partiesMap={partiesMap}
           />
         );
       case "Staff":
@@ -1226,6 +1260,7 @@ function CampaignTab({ campaignData }) {
           <CampaignOverviewSubTab
             {...subTabProps}
             openViewPoliticianModal={openViewPoliticianModal}
+            partiesMap={partiesMap}
           />
         );
     }

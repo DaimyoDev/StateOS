@@ -10,6 +10,7 @@ import {
 } from "../simulation/monthlyTick.js";
 import { simulateAICampaignDayForPolitician } from "../utils/aiUtils.js";
 import { rehydrateLeanCampaigner } from "../entities/personnel.js";
+import { pollingOptimizer } from "../General Scripts/OptimizedPollingFunctions.js";
 
 const _updateCityStatsPure = (campaign, statUpdates) => {
   if (!campaign?.startingCity?.stats) return campaign;
@@ -166,6 +167,12 @@ export const createTimeSlice = (set, get) => {
               currentCampaign,
               partyPopResult.cityPoliticalLandscape
             );
+            
+            // Invalidate coalition cache for all city elections due to party popularity changes
+            const cityElections = currentCampaign.elections?.filter(e => e.level === 'city') || [];
+            cityElections.forEach(election => {
+              pollingOptimizer.invalidateCoalitionCache(election.id);
+            });
           }
           
           // Update state-level political landscape
@@ -177,6 +184,12 @@ export const createTimeSlice = (set, get) => {
                 politicalLandscape: partyPopResult.statePoliticalLandscape
               }
             };
+            
+            // Invalidate coalition cache for all state elections due to party popularity changes
+            const stateElections = currentCampaign.elections?.filter(e => e.level === 'state') || [];
+            stateElections.forEach(election => {
+              pollingOptimizer.invalidateCoalitionCache(election.id);
+            });
           }
           
           collectedNewsThisMonth.push(...partyPopResult.newsItems);
@@ -306,6 +319,9 @@ export const createTimeSlice = (set, get) => {
 
         // This action now correctly resets hours for ALL politicians, including the player
         get().actions.resetDailyCampaignHours();
+        
+        // Process daily staff tasks before AI actions
+        get().actions.processDailyStaffTasks?.();
 
         // --- PHASE 3: Post-date-advancement operations (using the NEW date) ---
         // Get the campaign state AFTER the date advancement. This is crucial for monthly updates and AI.
@@ -373,7 +389,8 @@ export const createTimeSlice = (set, get) => {
           for (const election of campaignForAILoop.elections) {
             if (
               election.outcome?.status === "upcoming" &&
-              election.candidates
+              election.candidates &&
+              election.playerIsCandidate // Only process elections where player is a candidate
             ) {
               // Pre-compute the full candidate list for this election once
               const candidatesInElection = Array.from(

@@ -23,6 +23,7 @@ import { createPersonnelSlice } from "./stores/personnelSlice.js";
 import { createDataSlice } from "./stores/dataSlice.js";
 import { createPollingSlice } from "./stores/pollingSlice.js";
 import { createNotificationSlice } from "./stores/notificationSlice.js";
+import { createCityManagementSlice } from "./stores/cityManagementSlice.js";
 
 // --- Helper Functions (to be moved to relevant slices or utils later) ---
 
@@ -58,6 +59,7 @@ export const useGameStore = create(
       const dataSliceData = createDataSlice(set, get);
             const pollingSliceData = createPollingSlice(set, get);
       const notificationSlice = createNotificationSlice(set, get);
+      const cityManagementSlice = createCityManagementSlice(set, get);
 
       return {
         savedPoliticians: dataSliceData.savedPoliticians,
@@ -92,6 +94,11 @@ export const useGameStore = create(
         politicianIntel: personnelSlice.politicianIntel,
                 recentPollsByElection: pollingSliceData.recentPollsByElection,
         notifications: notificationSlice.notifications,
+        
+        // City Management
+        availableCities: cityManagementSlice.availableCities,
+        currentCityId: cityManagementSlice.currentCityId,
+        cityManagement: cityManagementSlice,
 
         currentCampaignSetup: getInitialCampaignSetupState(),
         hasAcknowledgedDisclaimer: false,
@@ -113,6 +120,7 @@ export const useGameStore = create(
           ...dataSliceData.actions,
                     ...pollingSliceData.actions,
           ...notificationSlice.actions,
+          ...cityManagementSlice.actions,
 
           acknowledgeDisclaimer: () => set({ hasAcknowledgedDisclaimer: true }),
 

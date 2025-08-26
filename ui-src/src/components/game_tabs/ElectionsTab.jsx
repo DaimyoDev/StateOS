@@ -85,6 +85,20 @@ const MemoizedElectionDetails = React.memo(function MemoizedElectionDetails({
       .filter(
         (cand) => cand && cand.name !== undefined && cand.id !== undefined
       )
+      .map((candidate) => {
+        // Fix corrupted party data
+        if (candidate.partyId && candidate.partyId !== "independent") {
+          const partyDetails = partiesMap.get(candidate.partyId);
+          if (partyDetails) {
+            return {
+              ...candidate,
+              partyName: partyDetails.name,
+              partyColor: partyDetails.color,
+            };
+          }
+        }
+        return candidate;
+      })
       .sort((a, b) => (b.polling || 0) - (a.polling || 0));
 
     if (isConcluded) {

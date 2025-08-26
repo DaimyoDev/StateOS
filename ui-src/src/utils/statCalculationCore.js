@@ -337,6 +337,38 @@ export const calculateAllCityStats = (city) => {
     // activePolicies: city.cityLaws,
   });
 
+  // Calculate unemployment rate based on economic factors
+  const calculateUnemploymentRate = (economicProfile, povertyRate, cityType) => {
+    let baseUnemploymentRate = 6.0; // National average baseline
+    
+    // Adjust based on GDP per capita
+    const gdpPerCapita = economicProfile?.gdpPerCapita || 40000;
+    if (gdpPerCapita > 60000) baseUnemploymentRate -= 1.5;
+    else if (gdpPerCapita > 45000) baseUnemploymentRate -= 0.8;
+    else if (gdpPerCapita < 30000) baseUnemploymentRate += 1.2;
+    else if (gdpPerCapita < 35000) baseUnemploymentRate += 0.6;
+    
+    // Poverty rate correlation
+    baseUnemploymentRate += (povertyRate - 15.0) * 0.15;
+    
+    // City type adjustments
+    if (cityType === "Metropolitan") baseUnemploymentRate += 0.3;
+    else if (cityType === "Rural") baseUnemploymentRate += 0.8;
+    else if (cityType === "Suburban") baseUnemploymentRate -= 0.2;
+    
+    // Economic outlook influence
+    const economicOutlook = economicProfile?.economicOutlook;
+    if (economicOutlook === "Booming") baseUnemploymentRate -= 1.5;
+    else if (economicOutlook === "Strong Growth") baseUnemploymentRate -= 0.8;
+    else if (economicOutlook === "Stagnant") baseUnemploymentRate += 0.8;
+    else if (economicOutlook === "Recession") baseUnemploymentRate += 2.0;
+    
+    // Clamp between reasonable bounds
+    return Math.max(1.0, Math.min(25.0, baseUnemploymentRate));
+  };
+
+  const unemploymentRate = calculateUnemploymentRate(economicProfile, povertyRate, stats.type);
+
   // --- Step 2: Return an object with all the updated stats ---
   // This can be spread onto the existing stats object in the monthly tick.
   return {
@@ -344,6 +376,7 @@ export const calculateAllCityStats = (city) => {
     healthcareCostPerPerson,
     povertyRate,
     crimeRatePer1000,
+    unemploymentRate: parseFloat(unemploymentRate.toFixed(1)),
     // Add any other future calculated stats here
   };
 };
