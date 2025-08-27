@@ -1,53 +1,128 @@
 /* ui-src/src/scenes/ElectionSimulatorScreen.css */
 
+/* --- Modern Header & Branding --- */
+.election-simulator-header {
+  background: var(--ui-panel-bg, #ffffff);
+  color: var(--primary-text);
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--panel-shadow);
+}
+
+.election-simulator-header .header-content {
+  position: relative;
+  z-index: 1;
+}
+
+.election-simulator-header h1 {
+  font-family: var(--font-heading);
+  font-size: 1.8rem;
+  margin: 0 0 0.25rem 0;
+  font-weight: 700;
+  color: var(--accent-color);
+}
+
+.election-simulator-header .subtitle {
+  font-size: 0.9rem;
+  color: var(--secondary-text);
+  font-weight: 400;
+  margin: 0;
+}
+
 /* --- Main Container & Layout --- */
 .election-simulator-screen-container {
   display: flex;
   flex-direction: column;
-  padding: 20px;
-  gap: 20px;
+  padding: 1.5rem;
+  gap: 1.5rem;
   background-color: var(--primary-bg, #f4f4f4);
   color: var(--primary-text);
   font-family: var(--font-main);
   min-height: 100vh;
 }
 
-.tab-title {
-  font-size: 2.2em;
-  color: var(--accent-color);
-  margin-bottom: 25px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid var(--border-color);
+/* --- Quick Actions Bar --- */
+.quick-actions-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--ui-panel-bg);
+  padding: 1rem 1.5rem;
+  border-radius: 12px;
+  box-shadow: var(--panel-shadow);
+  border: 1px solid var(--border-color);
+  margin-bottom: 1rem;
+}
+
+.quick-actions-bar .scenario-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.quick-actions-bar .scenario-title {
+  font-family: var(--font-heading);
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--primary-text);
+}
+
+.quick-actions-bar .scenario-meta {
+  font-size: 0.9rem;
+  color: var(--secondary-text);
+}
+
+.quick-actions-bar .quick-buttons {
+  display: flex;
+  gap: 0.75rem;
 }
 
 .simulator-layout {
   display: flex;
-  gap: 20px;
+  flex-direction: column;
+  gap: 1.5rem;
   flex-grow: 1;
-  overflow: hidden; /* Prevent content overflow from expanding layout */
+  min-height: 0;
 }
 
 .simulation-setup-panel {
-  flex: 2; /* Setup panel takes more space */
-  min-width: 450px;
-  background-color: var(--ui-panel-bg, #ffffff);
+  background: var(--ui-panel-bg, #ffffff);
   border: 1px solid var(--border-color);
-  border-radius: var(--element-radius);
-  padding: 20px; /* Padding for the entire panel, tabs content will have their own */
-  box-shadow: var(--panel-shadow);
-  display: flex; /* Enable flexbox for internal layout (tabs header, content, buttons) */
-  flex-direction: column; /* Stack children vertically */
-  overflow: hidden; /* Hide overflow for tab content transition/scrolling */
+  border-radius: 16px;
+  padding: 0;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  backdrop-filter: blur(10px);
 }
 
 .simulation-results-panel {
-  flex: 1; /* Results panel takes less space */
-  background-color: var(--ui-panel-bg, #ffffff);
+  background: var(--ui-panel-bg, #ffffff);
   border: 1px solid var(--border-color);
-  border-radius: var(--element-radius);
-  padding: 20px;
-  box-shadow: var(--panel-shadow);
-  overflow-y: auto; /* Allow scrolling for results if they get long */
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  overflow-y: auto;
+  backdrop-filter: blur(10px);
+  width: 100%;
+  min-height: 300px;
+  margin-top: 1.5rem;
+}
+
+/* Scenario management buttons */
+.scenario-management-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  padding: 1rem 0;
+  margin-top: 1rem;
+}
+
+.scenario-management-buttons .action-button {
+  min-width: 150px;
 }
 
 .simulation-results-panel h3 {
@@ -59,98 +134,164 @@
   padding-bottom: 5px;
 }
 
-/* --- Tab Styles --- */
+/* --- Modern Tab Styles --- */
 .setup-tabs-header {
   display: flex;
-  border-bottom: 1px solid var(--border-color);
-  margin-bottom: 15px;
-  flex-shrink: 0; /* Prevent header from shrinking */
+  background: var(--secondary-bg);
+  border-radius: 12px;
+  padding: 0.5rem;
+  margin: 1.5rem;
+  margin-bottom: 0;
+  flex-shrink: 0;
+  gap: 0.25rem;
 }
 
 .setup-tabs-header .tab-button {
-  background-color: var(--secondary-bg, #e0e0e0);
-  border: 1px solid var(--border-color);
-  border-bottom: none; /* Remove bottom border to align with content border */
-  padding: 10px 15px;
+  background: transparent;
+  border: none;
+  padding: 0.75rem 1.25rem;
   cursor: pointer;
-  font-weight: bold;
+  font-weight: 500;
   color: var(--secondary-text);
-  border-radius: var(--element-radius) var(--element-radius) 0 0; /* Rounded top corners */
-  transition: background-color 0.2s, color 0.2s;
-  margin-right: 5px; /* Space between tabs */
-  flex-grow: 1; /* Distribute tabs evenly */
+  border-radius: 8px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  flex: 1;
   text-align: center;
+  position: relative;
+  overflow: hidden;
+  font-size: 0.9rem;
 }
 
 .setup-tabs-header .tab-button:hover {
-  background-color: var(--highlight-bg);
+  background: var(--highlight-bg);
+  color: var(--primary-text);
+  transform: translateY(-1px);
 }
 
 .setup-tabs-header .tab-button.active {
-  background-color: var(
-    --ui-panel-bg
-  ); /* Active tab matches content background */
-  color: var(--accent-color);
-  border-color: var(--accent-color); /* Highlight border */
-  border-bottom: 1px solid var(--ui-panel-bg); /* "Cut out" the bottom border to blend with content */
-  z-index: 1; /* Bring active tab slightly forward */
+  background: var(--accent-color);
+  color: var(--accent-text);
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transform: translateY(-1px);
+}
+
+.setup-tabs-header .tab-button.active::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255,255,255,0.1);
+  pointer-events: none;
 }
 
 .setup-tabs-content {
-  flex-grow: 1; /* Tab content takes all remaining vertical space */
-  overflow-y: auto; /* Make tab content itself scrollable */
-  padding-right: 10px; /* Space for scrollbar */
+  flex-grow: 1;
+  overflow-y: auto;
+  padding: 1.5rem;
+  background: var(--ui-panel-bg);
 }
 
 .tab-pane {
-  /* Styles applied to each tab's content */
-  padding-bottom: 10px; /* Space at bottom of tab content */
+  animation: fadeIn 0.3s ease-in-out;
+  padding-bottom: 1rem;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .tab-pane h3 {
-  font-size: 1.4em;
-  color: var(--secondary-accent-color);
-  margin-top: 0; /* Remove default top margin */
-  margin-bottom: 15px;
-  border-bottom: 1px dashed var(--border-color-light);
-  padding-bottom: 5px;
+  font-family: var(--font-heading);
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--primary-text);
+  margin: 0 0 1.5rem 0;
+  position: relative;
+  padding-bottom: 0.75rem;
 }
 
-/* --- General Configuration Group Styling --- */
+.tab-pane h3::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 3rem;
+  height: 3px;
+  background: var(--accent-color);
+  border-radius: 2px;
+}
+
+/* --- Modern Configuration Group Styling --- */
 .config-group {
-  margin-bottom: 15px;
+  margin-bottom: 1.5rem;
+  position: relative;
 }
 
 .config-group label {
   display: block;
-  margin-bottom: 5px;
-  font-weight: bold;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
   color: var(--primary-text);
+  font-size: 0.9rem;
+  letter-spacing: 0.025em;
 }
 
 .config-group select,
 .config-group input[type="text"],
-.config-group input[type="number"],
-.config-group input[type="range"] {
+.config-group input[type="number"] {
   width: 100%;
-  padding: 8px;
-  border: 1px solid var(--border-color);
-  border-radius: var(--element-radius);
+  padding: 0.75rem 1rem;
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
   background-color: var(--input-bg, #fdfdfd);
   color: var(--input-text);
+  font-family: var(--font-main);
+  font-size: 0.95rem;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-/* Range slider thumb and track styling */
+.config-group select:focus,
+.config-group input[type="text"]:focus,
+.config-group input[type="number"]:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px var(--input-focus-shadow-color, rgba(59, 130, 246, 0.1));
+  transform: translateY(-1px);
+}
+
+.config-group select:hover,
+.config-group input[type="text"]:hover,
+.config-group input[type="number"]:hover {
+  border-color: var(--accent-color);
+}
+
+/* Modern Range slider styling */
 .config-group input[type="range"] {
   -webkit-appearance: none;
   appearance: none;
-  height: 8px;
+  width: 100%;
+  height: 6px;
   background: var(--progress-track-bg, #e0e0e0);
   outline: none;
-  opacity: 0.7;
-  transition: opacity 0.2s;
-  margin-top: 10px;
-  margin-bottom: 5px;
+  border-radius: 3px;
+  transition: all 0.2s ease;
+  margin: 0.75rem 0 0.5rem 0;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.config-group input[type="range"]:hover {
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.15);
 }
 
 .config-group input[type="range"]::-webkit-slider-thumb {
@@ -159,25 +300,41 @@
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: var(--accent-color, #f59e0b);
+  background: var(--accent-color);
   cursor: grab;
-  border: 2px solid var(--border-color-dark);
+  border: 3px solid #ffffff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
+}
+
+.config-group input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+}
+
+.config-group input[type="range"]::-webkit-slider-thumb:active {
+  cursor: grabbing;
+  transform: scale(1.15);
 }
 
 .config-group input[type="range"]::-moz-range-thumb {
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: var(--accent-color, #f59e0b);
+  background: var(--accent-color);
   cursor: grab;
-  border: 2px solid var(--border-color-dark);
+  border: 3px solid #ffffff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 
 .config-group input[type="range"] + span {
   display: inline-block;
   margin-left: 10px;
-  font-weight: bold;
-  color: var(--primary-text);
+  font-weight: 600;
+  color: var(--accent-color);
+  font-size: 0.9rem;
+  min-width: 2.5rem;
+  text-align: center;
 }
 
 /* Ideology sliders specific alignment */
@@ -191,43 +348,65 @@
   min-width: 60px; /* Ensure space for labels like "Center:" and values */
 }
 
-/* --- Party Management Styling (within 'parties-tab') --- */
+/* --- Modern Party Management Styling --- */
 .party-management {
   padding: 0;
 }
 
 .party-management h4 {
-  margin-top: 0;
-  font-size: 1.2em;
+  margin: 0 0 1.5rem 0;
+  font-family: var(--font-heading);
+  font-size: 1.2rem;
+  font-weight: 700;
   color: var(--primary-text);
-  border-bottom: 1px dotted var(--border-color-light);
-  padding-bottom: 5px;
-  margin-bottom: 10px;
+  position: relative;
+  padding-bottom: 0.75rem;
+}
+
+.party-management h4::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 2.5rem;
+  height: 3px;
+  background: var(--accent-color);
+  border-radius: 2px;
 }
 
 .party-list {
   list-style: none;
   padding: 0;
-  margin: 10px 0;
+  margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px; /* Add space between party bars */
+  gap: 0.75rem;
 }
 
-/* New styles for the party popularity bar */
 .party-list-item {
   width: 100%;
+  transition: transform 0.2s ease;
+}
+
+.party-list-item:hover {
+  transform: translateX(4px);
 }
 
 .party-bar-background {
   position: relative;
   width: 100%;
-  height: 36px; /* Set a fixed height for the bar */
-  background-color: var(--progress-track-bg, #e0e0e0);
-  border-radius: var(--element-radius);
-  overflow: hidden; /* Keep foreground bar contained */
-  border: 1px solid var(--border-color-light);
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+  height: 48px;
+  background: var(--secondary-bg);
+  border-radius: 12px;
+  overflow: hidden;
+  border: 2px solid var(--border-color);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.party-bar-background:hover {
+  border-color: var(--accent-color);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .party-bar-foreground {
@@ -235,32 +414,699 @@
   top: 0;
   left: 0;
   height: 100%;
-  border-radius: var(--element-radius);
-  transition: width 0.3s ease-in-out;
-  opacity: 0.7; /* Make it slightly transparent to see text better */
+  border-radius: 10px;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 0.8;
+  background: var(--party-color, var(--accent-color));
 }
 
 .party-bar-content {
-  position: relative; /* Sit on top of the foreground/background */
+  position: relative;
   z-index: 2;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 12px;
+  padding: 0 1rem;
   height: 100%;
-  color: var(--primary-text); /* Ensure text is readable */
+  color: var(--primary-text);
 }
 
 .party-bar-text {
-  font-weight: bold;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2); /* Add shadow for readability */
+  font-weight: 600;
+  font-size: 0.95rem;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.party-color-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 /* Ensure party actions (edit/del buttons) are aligned */
 .party-actions {
   display: flex;
-  gap: 5px;
+  gap: 8px;
   flex-shrink: 0;
+  margin-left: 12px;
+}
+
+.party-actions .action-button,
+.party-actions .button-delete {
+  margin: 0;
+  padding: 6px 12px;
+  font-size: 0.8rem;
+}
+
+/* --- Candidate List Actions --- */
+.candidate-actions {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.candidate-actions .small-button {
+  padding: 4px 8px;
+  font-size: 0.8em;
+  min-width: auto;
+  margin: 0;
+}
+
+.candidate-list-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-color-light);
+  border-radius: var(--element-radius);
+  background-color: var(--ui-panel-bg);
+  margin-bottom: 8px;
+}
+
+/* --- Edit Candidate Modal --- */
+.edit-candidate-modal {
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: 0;
+}
+
+.edit-candidate-modal .form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.edit-candidate-modal .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.edit-candidate-modal .form-group label {
+  font-weight: bold;
+  color: var(--primary-text);
+  font-size: 0.9em;
+}
+
+.edit-candidate-modal .form-group input,
+.edit-candidate-modal .form-group select {
+  padding: 8px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--element-radius);
+  background-color: var(--input-bg, #fdfdfd);
+  color: var(--input-text);
+}
+
+.edit-candidate-modal .attributes-section {
+  margin-bottom: 20px;
+  padding: 15px;
+  background-color: var(--secondary-bg, #f8f8f8);
+  border-radius: var(--element-radius);
+  border: 1px solid var(--border-color-light);
+}
+
+.edit-candidate-modal .attributes-section h4 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  color: var(--secondary-accent-color);
+  border-bottom: 1px dashed var(--border-color-light);
+  padding-bottom: 5px;
+}
+
+.edit-candidate-modal .attributes-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.edit-candidate-modal .attribute-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.edit-candidate-modal .attribute-group label {
+  font-size: 0.85em;
+  font-weight: 500;
+}
+
+.edit-candidate-modal .slider-with-value {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.edit-candidate-modal .slider-with-value input[type="range"] {
+  flex: 1;
+  margin: 0;
+}
+
+.edit-candidate-modal .slider-with-value span {
+  min-width: 35px;
+  text-align: center;
+  font-weight: bold;
+  font-size: 0.9em;
+  color: var(--accent-color);
+}
+
+.action-button.secondary {
+  background-color: var(--secondary-bg, #e0e0e0);
+  color: var(--secondary-text);
+  border-color: var(--border-color);
+}
+
+.action-button.secondary:hover {
+  background-color: var(--highlight-bg);
+}
+
+/* --- Scenario Management Modal --- */
+.scenario-management-modal {
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.scenario-selection-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.scenario-selection-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--ui-panel-bg);
+  transition: all 0.2s ease;
+}
+
+.scenario-selection-item:hover {
+  border-color: var(--accent-color);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.scenario-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-grow: 1;
+}
+
+.scenario-name {
+  font-weight: 600;
+  color: var(--primary-text);
+  font-size: 1rem;
+}
+
+.scenario-details {
+  font-size: 0.85rem;
+  color: var(--secondary-text);
+}
+
+.scenario-selection-item .scenario-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: 16px;
+}
+
+.scenario-selection-item .scenario-actions .action-button,
+.scenario-selection-item .scenario-actions .button-delete {
+  margin: 0;
+  padding: 8px 16px;
+  font-size: 0.85rem;
+}
+
+.empty-scenarios {
+  text-align: center;
+  padding: 2rem;
+  color: var(--secondary-text);
+}
+
+.empty-scenarios p {
+  margin: 0.5rem 0;
+}
+
+/* --- Simulation Choice Modal --- */
+.simulation-choice-modal {
+  padding: 0;
+  max-width: 600px;
+}
+
+.choice-description {
+  text-align: center;
+  margin-bottom: 2rem;
+  padding: 0 1rem;
+}
+
+.choice-description p {
+  margin: 0.5rem 0;
+  color: var(--primary-text);
+}
+
+.choice-description p:first-child {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.choice-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.choice-option {
+  display: flex;
+  flex-direction: column;
+}
+
+.choice-button {
+  background: var(--ui-panel-bg);
+  border: 2px solid var(--border-color);
+  border-radius: 12px;
+  padding: 1.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.choice-button:hover {
+  border-color: var(--accent-color);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.choice-button.direct-simulation:hover {
+  border-color: #10b981;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+}
+
+.choice-button.election-night:hover {
+  border-color: #8b5cf6;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.2);
+}
+
+.choice-icon {
+  display: none;
+}
+
+.choice-content {
+  text-align: center;
+  flex-grow: 1;
+}
+
+.choice-content h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--primary-text);
+}
+
+.choice-content p {
+  margin: 0 0 1rem 0;
+  color: var(--secondary-text);
+  font-size: 0.9rem;
+}
+
+.choice-content ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  text-align: left;
+}
+
+.choice-content li {
+  color: var(--secondary-text);
+  font-size: 0.85rem;
+  margin: 0.25rem 0;
+  padding-left: 1rem;
+  position: relative;
+}
+
+.choice-content li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: var(--accent-color);
+  font-weight: bold;
+}
+
+.direct-simulation .choice-content li::before {
+  color: #10b981;
+}
+
+.election-night .choice-content li::before {
+  color: #8b5cf6;
+}
+
+@media (max-width: 768px) {
+  .choice-options {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .choice-button {
+    padding: 1rem;
+  }
+  
+  .choice-icon {
+    font-size: 2.5rem;
+  }
+}
+
+/* --- Simulation Results Styling --- */
+.results-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.results-count {
+  font-size: 0.9rem;
+  color: var(--secondary-text);
+  font-weight: normal;
+  margin-left: 0.5rem;
+}
+
+.results-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.results-actions .action-button {
+  margin: 0;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+}
+
+.simulation-results-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-top: 1rem;
+}
+
+.election-result {
+  background: var(--secondary-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 1.5rem;
+  transition: all 0.2s ease;
+}
+
+.election-result:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.election-info h4 {
+  margin: 0 0 1rem 0;
+  color: var(--primary-text);
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.election-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.election-details span {
+  background: var(--ui-panel-bg);
+  padding: 0.25rem 0.75rem;
+  border-radius: 16px;
+  font-size: 0.85rem;
+  color: var(--secondary-text);
+  border: 1px solid var(--border-color);
+}
+
+.candidates-results h5 {
+  margin: 0 0 1rem 0;
+  color: var(--accent-color);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.candidate-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.candidate-result-card {
+  background: var(--ui-panel-bg);
+  border: 1px solid var(--border-color);
+  border-left: 4px solid var(--accent-color);
+  border-radius: 8px;
+  padding: 1rem;
+  transition: all 0.2s ease;
+}
+
+.candidate-result-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.candidate-info {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0.75rem;
+}
+
+.candidate-name {
+  font-weight: 600;
+  color: var(--primary-text);
+  font-size: 0.95rem;
+}
+
+.candidate-party {
+  color: var(--secondary-text);
+  font-size: 0.85rem;
+  margin-top: 0.25rem;
+}
+
+.candidate-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.stat {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.stat-label {
+  font-size: 0.8rem;
+  color: var(--secondary-text);
+  font-weight: 500;
+}
+
+.stat-value {
+  font-size: 0.85rem;
+  color: var(--primary-text);
+  font-weight: 600;
+}
+
+.election-system-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.system-badge,
+.status-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 16px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.system-badge {
+  background: var(--accent-color);
+  color: var(--accent-text);
+}
+
+.status-badge {
+  background: var(--highlight-bg);
+  color: var(--secondary-text);
+  border: 1px solid var(--border-color);
+}
+
+/* --- Enhanced Visual Elements --- */
+.config-section {
+  background: var(--ui-panel-bg);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  border: 1px solid var(--border-color);
+  transition: all 0.2s ease;
+}
+
+.config-section:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border-color: var(--accent-color);
+}
+
+.section-divider {
+  height: 1px;
+  background: var(--border-color);
+  margin: 2rem 0;
+}
+
+/* Progress indicators for multi-step processes */
+.progress-steps {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 2rem 0;
+  gap: 1rem;
+}
+
+.progress-step {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.8rem;
+  transition: all 0.2s ease;
+}
+
+.progress-step.completed {
+  background: var(--accent-color);
+  color: var(--accent-text);
+}
+
+.progress-step.active {
+  background: var(--secondary-accent-color, var(--accent-color));
+  color: var(--accent-text);
+  box-shadow: 0 0 0 3px var(--input-focus-shadow-color);
+}
+
+.progress-step.pending {
+  background: var(--secondary-bg);
+  color: var(--secondary-text);
+}
+
+.progress-connector {
+  width: 2rem;
+  height: 2px;
+  background: var(--border-color);
+  transition: background-color 0.2s ease;
+}
+
+.progress-connector.completed {
+  background: var(--accent-color);
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .simulator-layout {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .election-simulator-header h1 {
+    font-size: 2rem;
+  }
+  
+  .quick-actions-bar {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+  
+  .quick-buttons {
+    align-self: stretch;
+    justify-content: space-between;
+  }
+}
+
+@media (max-width: 768px) {
+  .election-simulator-screen-container {
+    padding: 1rem;
+    gap: 1rem;
+  }
+  
+  .election-simulator-header {
+    padding: 1.5rem;
+  }
+  
+  .election-simulator-header h1 {
+    font-size: 1.8rem;
+  }
+  
+  .setup-tabs-header {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  
+  .setup-tabs-header .tab-button {
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+  }
+  
+  .edit-candidate-modal .form-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .edit-candidate-modal .attributes-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .setup-action-buttons {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+}
+
+/* --- Loading States --- */
+.loading-spinner {
+  display: inline-block;
+  width: 1.2rem;
+  height: 1.2rem;
+  border: 2px solid var(--border-color);
+  border-top: 2px solid var(--accent-color);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.action-button:disabled .loading-spinner {
+  margin-right: 0.5rem;
 }
 
 /* --- Other CSS --- */
@@ -339,16 +1185,125 @@
   margin-top: 15px;
 }
 
-/* --- Action Buttons (Run/Reset) --- */
+.electorate-controls {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-start;
+  margin-top: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.electorate-controls .action-button {
+  margin: 0;
+  min-width: 140px;
+}
+
+/* --- Modern Action Buttons --- */
 .setup-action-buttons {
   display: flex;
-  justify-content: flex-end; /* Align buttons to the right */
-  gap: 10px;
-  margin-top: 20px;
-  padding-top: 15px;
-  border-top: 1px solid var(--border-color-light);
-  flex-shrink: 0; /* Prevent buttons area from shrinking */
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: var(--secondary-bg);
+  border-radius: 0 0 16px 16px;
+  border-top: 1px solid var(--border-color);
+  flex-shrink: 0;
 }
+
+/* Enhanced button styles */
+.action-button {
+  position: relative;
+  overflow: hidden;
+  font-weight: 600;
+  letter-spacing: 0.025em;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.action-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.action-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.action-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.1);
+  transition: left 0.5s;
+}
+
+.action-button:hover::before {
+  left: 100%;
+}
+
+/* Primary action button */
+.action-button.primary {
+  background: var(--accent-color);
+  color: var(--accent-text);
+  border: none;
+}
+
+/* Results panel styling */
+.simulation-results-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.results-header {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid var(--border-color);
+}
+
+.results-header h3 {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--primary-text);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.results-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  background: var(--accent-color);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent-text);
+  font-size: 0.8rem;
+  font-weight: bold;
+}
+
+/* Empty state styling */
+.empty-results {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--secondary-text);
+}
+
 
 /* --- Modal Specific Styles (re-confirm from previous step) --- */
 .party-editor-modal-custom {

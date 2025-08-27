@@ -255,4 +255,146 @@ export const GENERAL_POLICIES = [
       },
     ],
   },
+  {
+    id: "tax001_parameterized",
+    name: "Adjust Property Tax Rate",
+    area: POLICY_AREAS.TAXATION,
+    description: "Modify the property tax rate to increase or decrease city revenue from property taxes.",
+    tags: ["taxation", "property_tax", "revenue", "parameterized"],
+    baseSupport: {
+      Conservative: -0.3,
+      Libertarian: -0.7,
+      Liberal: 0.2,
+      Progressive: 0.4,
+      Socialist: 0.6,
+      Centrist: 0.0,
+    },
+    cost: { politicalCapital: 6 },
+    durationToImplement: 2,
+    isParameterized: true,
+    parameterDetails: {
+      key: "taxRateChange",
+      targetTaxRate: "property",
+      adjustmentType: "increase_or_decrease",
+      valueType: "percentage_point",
+      min: -0.02, // -2 percentage points
+      max: 0.03,  // +3 percentage points
+      step: 0.001,
+      defaultValue: 0.005, // +0.5 percentage points
+      unit: "pp",
+      prompt: "Enter property tax rate change (in percentage points):",
+    },
+    effects: [
+      {
+        targetStat: "budget.taxRates.property",
+        type: "percentage_point_change_by_param",
+        chance: 1.0,
+      },
+      {
+        targetStat: "overallCitizenMood",
+        type: "conditional_mood_shift_by_tax_change",
+        chance: 0.7,
+        delay: 1,
+      },
+    ],
+  },
+  {
+    id: "tax002_parameterized",
+    name: "Adjust Sales Tax Rate",
+    area: POLICY_AREAS.TAXATION,
+    description: "Modify the sales tax rate to increase or decrease city revenue from sales taxes.",
+    tags: ["taxation", "sales_tax", "revenue", "parameterized"],
+    baseSupport: {
+      Conservative: -0.2,
+      Libertarian: -0.6,
+      Liberal: 0.1,
+      Progressive: 0.3,
+      Socialist: 0.5,
+      Centrist: 0.0,
+    },
+    cost: { politicalCapital: 5 },
+    durationToImplement: 1,
+    isParameterized: true,
+    parameterDetails: {
+      key: "taxRateChange",
+      targetTaxRate: "sales",
+      adjustmentType: "increase_or_decrease",
+      valueType: "percentage_point",
+      min: -0.03, // -3 percentage points
+      max: 0.04,  // +4 percentage points
+      step: 0.0025,
+      defaultValue: 0.01, // +1 percentage point
+      unit: "pp",
+      prompt: "Enter sales tax rate change (in percentage points):",
+    },
+    effects: [
+      {
+        targetStat: "budget.taxRates.sales",
+        type: "percentage_point_change_by_param",
+        chance: 1.0,
+      },
+      {
+        targetStat: "overallCitizenMood",
+        type: "conditional_mood_shift_by_tax_change",
+        chance: 0.6,
+        delay: 1,
+      },
+      {
+        targetStat: "economicOutlook",
+        type: "conditional_level_change_by_tax_change",
+        chance: 0.3,
+        delay: 3,
+      },
+    ],
+  },
+  {
+    id: "tax003_parameterized",
+    name: "Adjust Business Tax Rate",
+    area: POLICY_AREAS.TAXATION,
+    description: "Modify the business tax rate to increase or decrease city revenue from business taxes.",
+    tags: ["taxation", "business_tax", "revenue", "economy", "parameterized"],
+    baseSupport: {
+      Conservative: -0.4,
+      Libertarian: -0.8,
+      Liberal: 0.3,
+      Progressive: 0.5,
+      Socialist: 0.7,
+      Centrist: 0.1,
+      Technocratic: 0.2,
+    },
+    cost: { politicalCapital: 7 },
+    durationToImplement: 2,
+    isParameterized: true,
+    parameterDetails: {
+      key: "taxRateChange",
+      targetTaxRate: "business",
+      adjustmentType: "increase_or_decrease",
+      valueType: "percentage_point",
+      min: -0.025, // -2.5 percentage points
+      max: 0.035,  // +3.5 percentage points
+      step: 0.0025,
+      defaultValue: 0.01, // +1 percentage point
+      unit: "pp",
+      prompt: "Enter business tax rate change (in percentage points):",
+    },
+    effects: [
+      {
+        targetStat: "budget.taxRates.business",
+        type: "percentage_point_change_by_param",
+        chance: 1.0,
+      },
+      {
+        targetStat: "economicOutlook",
+        type: "conditional_level_change_by_tax_change",
+        chance: 0.8,
+        delay: 2,
+      },
+      {
+        targetStat: "unemploymentRate",
+        type: "conditional_percentage_change_by_tax_change",
+        chance: 0.4,
+        delay: 6,
+      },
+    ],
+  },
 ];

@@ -1,5 +1,7 @@
-import React from "react";
-import "../JapanMap.css"; // Using the global CSS file as requested
+import React, { useState, useMemo } from "react";
+import useGameStore from "../../store";
+import { getMapThemeColors, getRegionStyle, calculateHeatmapRange } from "../../utils/mapHeatmapUtils";
+import "../JapanMap.css";
 
 const COUNTY_DATA = {
   Orange: { gameId: "USA_FL_095", name: "Orange" },
@@ -270,7 +272,28 @@ const countyOrderFromSVG = [
   "Indian River",
 ];
 
-function FloridaMap({ onSelectCounty, selectedCountyGameId }) {
+function FloridaMap({ onSelectCounty, selectedCountyGameId, heatmapData, viewType }) {
+  const [hoveredCountyId, setHoveredCountyId] = useState(null);
+  const currentTheme = useGameStore(
+    (state) => state.availableThemes[state.activeThemeName]
+  );
+
+  const themeColors = getMapThemeColors(currentTheme);
+  const { min, max } = useMemo(() => calculateHeatmapRange(heatmapData, viewType), [heatmapData, viewType]);
+
+  const getCountyStyle = (svgId) => {
+    return getRegionStyle({
+      regionId: null,
+      svgId,
+      regionData: COUNTY_DATA,
+      heatmapData,
+      viewType,
+      theme: themeColors,
+      hoveredId: hoveredCountyId,
+      selectedId: selectedCountyGameId,
+      isClickable: !!onSelectCounty
+    });
+  };
   const handleCountyClick = (svgId) => {
     const county = COUNTY_DATA[svgId];
     if (county && onSelectCounty) {
@@ -302,6 +325,9 @@ function FloridaMap({ onSelectCounty, selectedCountyGameId }) {
         className={`prefecture-path ${
           selectedCountyGameId === countyInfo.gameId ? "selected" : ""
         }`}
+        style={getCountyStyle(svgId)}
+        onMouseEnter={() => setHoveredCountyId(COUNTY_DATA[svgId]?.gameId)}
+        onMouseLeave={() => setHoveredCountyId(null)}
         onClick={() => handleCountyClick(svgId)}
         d={pathD}
       />

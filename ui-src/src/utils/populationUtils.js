@@ -28,14 +28,18 @@ export const assignPopulationToCountry = (country, countryPopulationRanges) => {
     });
   }
 
-  // 3. Assign Populations to Secondary Regions (if they exist)
-  if (country.provinces && country.provinces.length > 0) {
-    const provincePopulations = distributeValueProportionally(
-      country.population * 0.9,
-      country.provinces
-    );
-    country.provinces.forEach((province, index) => {
-      province.population = provincePopulations[index] || 0;
+  // 3. Assign Populations to Secondary Regions within their parent regions
+  if (country.regions && country.regions.length > 0) {
+    country.regions.forEach((region) => {
+      if (region.provinces && region.provinces.length > 0) {
+        const provincePopulations = distributeValueProportionally(
+          region.population,
+          region.provinces
+        );
+        region.provinces.forEach((province, index) => {
+          province.population = provincePopulations[index] || 0;
+        });
+      }
     });
   }
 

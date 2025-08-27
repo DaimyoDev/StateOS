@@ -522,6 +522,29 @@ export const useGameStore = create(
               },
             }));
           },
+
+          // Election Setup Actions
+          saveElectionSetup: (setupData) => {
+            set((state) => ({
+              savedElectionSetups: [...state.savedElectionSetups, setupData],
+            }));
+          },
+
+          updateElectionSetup: (setupData) => {
+            set((state) => ({
+              savedElectionSetups: state.savedElectionSetups.map((setup) =>
+                setup.id === setupData.id ? setupData : setup
+              ),
+            }));
+          },
+
+          deleteElectionSetup: (setupId) => {
+            set((state) => ({
+              savedElectionSetups: state.savedElectionSetups.filter(
+                (setup) => setup.id !== setupId
+              ),
+            }));
+          },
         },
       };
     },
@@ -564,6 +587,7 @@ export const useGameStore = create(
       partialize: (state) => ({
         activeThemeName: state.activeThemeName,
         hasAcknowledgedDisclaimer: state.hasAcknowledgedDisclaimer,
+        savedElectionSetups: state.savedElectionSetups,
       }),
       onRehydrateStorage: () => {
         return (hydratedState, error) => {

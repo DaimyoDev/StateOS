@@ -3,9 +3,19 @@ import Modal from "./Modal";
 import useGameStore from "../../store";
 import "./PolicyVoteDetailsModal.css";
 import { CITY_POLICIES } from "../../data/cityPolicyDefinitions";
+import { STATE_POLICIES } from "../../data/statePolicyDefinitions";
+import { FEDERAL_POLICIES } from "../../data/nationalPolicyDefinitions";
+import { GENERAL_POLICIES } from "../../data/generalPolicyDefinitions";
 
-const getPolicyDetailsText = (policyInBill) => {
-  const fullPolicyData = CITY_POLICIES.find(
+const allPolicies = {
+  city: [...CITY_POLICIES, ...GENERAL_POLICIES],
+  state: [...STATE_POLICIES, ...GENERAL_POLICIES],
+  national: [...FEDERAL_POLICIES, ...GENERAL_POLICIES],
+};
+
+const getPolicyDetailsText = (policyInBill, billLevel = 'city') => {
+  const policySet = allPolicies[billLevel] || allPolicies.city;
+  const fullPolicyData = policySet.find(
     (p) => p.id === policyInBill.policyId
   );
   if (!fullPolicyData) return "Policy data not found.";

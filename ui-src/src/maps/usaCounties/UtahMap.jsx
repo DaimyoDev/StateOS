@@ -1,4 +1,6 @@
-import React from "react";
+import React, { useState, useMemo } from "react";
+import useGameStore from "../../store";
+import { getMapThemeColors, getRegionStyle, calculateHeatmapRange } from "../../utils/mapHeatmapUtils";
 import "../JapanMap.css";
 
 const COUNTY_DATA = {
@@ -120,40 +122,67 @@ const countyOrderFromSVG = [
   "Iron",
   "Washington",
 ];
-function UtahMap({ onSelectCounty, selectedCountyGameId }) {
-  const handleCountyClick = (svgId) => {
-    const county = COUNTY_DATA[svgId];
-    if (county && onSelectCounty) {
-      onSelectCounty(county.gameId, county.name);
-    } else {
-      console.warn(`No game data found for SVG ID: ${svgId}`);
-    }
-  };
-
-  const renderCountyPath = (svgId) => {
-    const countyInfo = COUNTY_DATA[svgId];
-    if (!countyInfo) return null;
-
-    const pathD = countyPathData[svgId];
-
-    if (!pathD) {
-      console.warn(`Path data (d attribute) missing for ${svgId}`);
-      return null;
-    }
-
-    return (
-      <path
-        key={svgId}
-        id={svgId}
-        title={countyInfo.name}
-        className={`prefecture-path ${
-          selectedCountyGameId === countyInfo.gameId ? "selected" : ""
-        }`}
-        onClick={() => handleCountyClick(svgId)}
-        d={pathD}
-      />
-    );
-  };
+function UtahMap({ onSelectCounty, selectedCountyGameId, heatmapData, viewType}) {
+   const [hoveredCountyId, setHoveredCountyId] = useState(null);
+   const currentTheme = useGameStore(
+     (state) => state.availableThemes[state.activeThemeName]
+   );
+ 
+   const themeColors = getMapThemeColors(currentTheme);
+   const { min, max } = useMemo(() => calculateHeatmapRange(heatmapData, viewType), [heatmapData, viewType]);
+ 
+   const getCountyStyle = (svgId) => {
+     return getRegionStyle({
+       regionId: null,
+       svgId,
+       regionData: COUNTY_DATA,
+       heatmapData,
+       viewType,
+       theme: themeColors,
+       hoveredId: hoveredCountyId,
+       selectedId: selectedCountyGameId,
+       isClickable: !!onSelectCounty
+     });
+   };
+   const handleCountyClick = (svgId) => {
+     const county = COUNTY_DATA[svgId];
+     if (county && onSelectCounty) {
+       onSelectCounty(county.gameId, county.name);
+     } else {
+       console.warn(`No game data found for SVG ID: ${svgId}`);
+     }
+   };
+ 
+   const renderCountyPath = (svgId) => {
+     const countyInfo = COUNTY_DATA[svgId];
+     if (!countyInfo) {
+       console.warn(`No COUNTY_DATA found for SVG ID: ${svgId}`);
+       return null;
+     }
+ 
+     const pathD = countyPathData[svgId];
+ 
+     if (!pathD) {
+       console.warn(`Path data (d attribute) missing for ${svgId}`);
+       return null;
+     }
+ 
+     return (
+       <path
+         key={svgId}
+         id={svgId}
+         title={countyInfo.name}
+         className={`prefecture-path ${
+           selectedCountyGameId === countyInfo.gameId ? "selected" : ""
+         }`}
+         style={getCountyStyle(svgId)}
+         onMouseEnter={() => setHoveredCountyId(COUNTY_DATA[svgId]?.gameId)}
+         onMouseLeave={() => setHoveredCountyId(null)}
+         onClick={() => handleCountyClick(svgId)}
+         d={pathD}
+       />
+     );
+   };
 
   return (
     <svg

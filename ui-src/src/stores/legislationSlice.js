@@ -6,7 +6,7 @@ import { generateId, getRandomInt } from "../utils/core.js";
 import { CITY_POLICIES } from "../data/cityPolicyDefinitions";
 import { STATE_POLICIES } from "../data/statePolicyDefinitions";
 import { FEDERAL_POLICIES } from "../data/nationalPolicyDefinitions";
-import { produce } from "immer";
+import { GENERAL_POLICIES } from "../data/generalPolicyDefinitions";
 import { applyPolicyEffect } from "../simulation/applyPolicyEffects.js";
 import {
   decideAndAuthorAIBill,
@@ -118,9 +118,9 @@ const generateAIBillName = (currentYear) => {
 export const createLegislationSlice = (set, get) => ({
   ...getInitialLegislationState(),
   availablePolicies: {
-    city: CITY_POLICIES,
-    state: STATE_POLICIES,
-    national: FEDERAL_POLICIES,
+    city: [...CITY_POLICIES, ...GENERAL_POLICIES],
+    state: [...STATE_POLICIES, ...GENERAL_POLICIES],
+    national: [...FEDERAL_POLICIES, ...GENERAL_POLICIES],
   },
 
   actions: {
@@ -128,9 +128,9 @@ export const createLegislationSlice = (set, get) => ({
       set({
         ...getInitialLegislationState(),
         availablePolicies: {
-          city: CITY_POLICIES,
-          state: STATE_POLICIES,
-          national: FEDERAL_POLICIES,
+          city: [...CITY_POLICIES, ...GENERAL_POLICIES],
+          state: [...STATE_POLICIES, ...GENERAL_POLICIES],
+          national: [...FEDERAL_POLICIES, ...GENERAL_POLICIES],
         },
       }),
 
