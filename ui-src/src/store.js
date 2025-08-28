@@ -92,6 +92,7 @@ export const useGameStore = create(
         savedElectionSetups: customEntitySlice.savedElectionSetups,
         politicianRelationships: personnelSlice.politicianRelationships,
         politicianIntel: personnelSlice.politicianIntel,
+        favoritePoliticians: personnelSlice.favoritePoliticians,
                 recentPollsByElection: pollingSliceData.recentPollsByElection,
         notifications: notificationSlice.notifications,
         

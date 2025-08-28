@@ -125,3 +125,107 @@
   flex-wrap: wrap; /* Allow buttons to wrap on smaller screens */
   gap: 10px;
 }
+
+/* Tab navigation styles */
+.politician-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.politician-tabs button {
+  padding: 10px 20px;
+  background: var(--secondary-bg);
+  border: 1px solid var(--border-color);
+  color: var(--secondary-text);
+  cursor: pointer;
+  border-radius: var(--element-radius) var(--element-radius) 0 0;
+  transition: all 0.2s ease;
+}
+
+.politician-tabs button:hover {
+  background: var(--button-hover-bg);
+  color: var(--primary-text);
+}
+
+.politician-tabs button.active {
+  background: var(--accent-color);
+  color: var(--button-text);
+  border-bottom-color: var(--accent-color);
+}
+
+/* Filter styles */
+.politician-filters {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 20px;
+  padding: 15px;
+  background: var(--secondary-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--element-radius);
+  flex-wrap: wrap;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 150px;
+}
+
+.filter-group label {
+  font-size: 0.9em;
+  color: var(--secondary-text);
+  font-weight: 500;
+}
+
+.filter-group select {
+  padding: 8px;
+  background: var(--primary-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--element-radius);
+  color: var(--primary-text);
+  font-size: 0.9em;
+}
+
+.filter-group select:focus {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
+}
+
+/* Favorite button styles */
+.favorite-button {
+  background: none;
+  border: none;
+  font-size: 1.5em;
+  color: var(--secondary-text);
+  cursor: pointer;
+  padding: 5px;
+  border-radius: var(--element-radius);
+  transition: all 0.2s ease;
+}
+
+.favorite-button:hover {
+  background: var(--button-hover-bg);
+  transform: scale(1.1);
+}
+
+.favorite-button.favorited {
+  color: var(--warning-text, #ffd700);
+}
+
+/* Updated politician card header */
+.politician-actions-header {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.politician-age {
+  font-size: 0.85em;
+  color: var(--secondary-text);
+  background: var(--primary-bg);
+  padding: 2px 8px;
+  border-radius: var(--element-radius);
+}

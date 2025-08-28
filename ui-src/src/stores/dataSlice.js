@@ -26,6 +26,16 @@ const reviver = (key, value) => {
   return value;
 };
 
+const replacer = (key, value) => {
+  if (value instanceof Map) {
+    return { __type: "Map", value: Array.from(value.entries()) };
+  }
+  if (value instanceof Set) {
+    return { __type: "Set", value: Array.from(value) };
+  }
+  return value;
+};
+
 export const _addPoliticiansToSoA_helper = (
   politiciansArray,
   targetSoAStore

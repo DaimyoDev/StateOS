@@ -2,21 +2,28 @@ import { parseColor } from "./core.js";
 
 /**
  * Calculates heatmap min/max values from heatmap data
- * @param {Array} heatmapData - Array of objects with value properties
- * @param {string} viewType - The view type (e.g., "party_popularity")
+ * @param {Array|Object} heatmapData - Array of objects with numeric `value` properties, or
+ *   an object for special views (e.g., congressional districts) where range is not needed.
+ * @param {string} viewType - The view type (e.g., "party_popularity", "congressional_districts")
  * @returns {Object} Object with min and max values
  */
 export const calculateHeatmapRange = (heatmapData, viewType) => {
-  if (!heatmapData || viewType === "party_popularity") {
+  // For categorical or district views, or when data is missing/non-array, use a safe default
+  if (
+    !heatmapData ||
+    viewType === "party_popularity" ||
+    viewType === "congressional_districts" ||
+    !Array.isArray(heatmapData)
+  ) {
     return { min: 0, max: 1 };
   }
-  
+
   const values = heatmapData
     .map((d) => d.value)
     .filter((v) => typeof v === "number");
-    
+
   if (values.length === 0) return { min: 0, max: 1 };
-  
+
   return { min: Math.min(...values), max: Math.max(...values) };
 };
 

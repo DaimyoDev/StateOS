@@ -447,6 +447,7 @@ export const createTimeSlice = (set, get) => {
           effectiveDate.year > yearBeforeAdvance
         ) {
           get().actions.generateScheduledElections?.();
+          get().actions.agePoliticians?.();
         }
       },
 

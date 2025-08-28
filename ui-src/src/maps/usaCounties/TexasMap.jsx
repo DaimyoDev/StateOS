@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from "react";
 import useGameStore from "../../store";
 import { getMapThemeColors, getRegionStyle, calculateHeatmapRange } from "../../utils/mapHeatmapUtils";
+import { getDistrictRegionStyle } from "../../utils/mapDistrictUtils";
 import "../JapanMap.css";
 
 const COUNTY_DATA = {
@@ -1006,6 +1007,22 @@ function TexasMap({ onSelectCounty, selectedCountyGameId, heatmapData, viewType 
   const { min, max } = useMemo(() => calculateHeatmapRange(heatmapData, viewType), [heatmapData, viewType]);
 
   const getCountyStyle = (svgId) => {
+    // Use district styling if viewType is congressional_districts
+    if (viewType === "congressional_districts" && heatmapData?.districtData) {
+      return getDistrictRegionStyle({
+        countyId: null,
+        svgId,
+        countyData: COUNTY_DATA,
+        districtData: heatmapData.districtData,
+        districtColors: heatmapData.districtColors,
+        selectedDistrictId: heatmapData.selectedDistrictId,
+        theme: themeColors,
+        hoveredId: hoveredCountyId,
+        isClickable: !!onSelectCounty
+      });
+    }
+    
+    // Default heatmap styling
     return getRegionStyle({
       regionId: null,
       svgId,
@@ -1077,3 +1094,4 @@ function TexasMap({ onSelectCounty, selectedCountyGameId, heatmapData, viewType 
 }
 
 export default TexasMap;
+export { countyPathData };

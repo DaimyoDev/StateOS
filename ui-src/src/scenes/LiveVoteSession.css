@@ -261,11 +261,6 @@
   border: 1px solid var(--border-color);
 }
 
-.party-name {
-  font-weight: 600;
-  font-size: 0.9em;
-}
-
 .party-vote-counts {
   display: flex;
   gap: 12px;

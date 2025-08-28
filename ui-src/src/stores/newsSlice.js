@@ -37,11 +37,12 @@ export const createNewsSlice = (set, get) => ({
     },
 
     generateAndAddNewsForAllOutlets: (event) => {
-      const { newsOutlets, currentDate } = get().activeCampaign;
+      const { newsOutlets, currentDate, startingCity } = get().activeCampaign;
       if (!newsOutlets || !currentDate) return;
-
+      
+      const cityName = startingCity?.name || null;
       const newArticles = newsOutlets.map((outlet) =>
-        generateNewsForEvent(event, outlet, currentDate)
+        generateNewsForEvent(event, outlet, currentDate, [], cityName)
       );
 
       set((state) => ({

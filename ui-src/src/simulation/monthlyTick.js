@@ -292,8 +292,9 @@ export const runMonthlyStatUpdate = (campaign) => {
     // Generate a story from a random outlet
     if (allOutlets.length > 0) {
       const reportingOutlet = getRandomElement(allOutlets);
+      const cityName = campaign.startingCity?.name || null;
       newsItems.push(
-        generateNewsForEvent(event, reportingOutlet, campaign.currentDate)
+        generateNewsForEvent(event, reportingOutlet, campaign.currentDate, [], cityName)
       );
     }
   }

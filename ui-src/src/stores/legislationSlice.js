@@ -278,6 +278,7 @@ export const createLegislationSlice = (set, get) => ({
             yeaVotes: yeaVotes,
             nayVotes: nayVotes,
             level: level,
+            governmentOffices: state.activeCampaign?.governmentOffices || [],
           },
         };
         get().actions.generateAndAddNewsForAllOutlets?.(voteEvent);

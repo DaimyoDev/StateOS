@@ -144,7 +144,7 @@
 
 .party-name {
   font-weight: 500;
-  color: var(--color-text-primary, #ffffff);
+  color: var(--primary-text, #ffffff);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

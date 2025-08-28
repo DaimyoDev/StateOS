@@ -484,6 +484,7 @@ export const createElectionSlice = (set, get) => ({
         const { newsContext } = outcome;
         const allOutlets = state.activeCampaign.newsOutlets || [];
         const currentDate = state.activeCampaign.currentDate;
+        const cityName = state.activeCampaign.startingCity?.name || null;
         let newNewsItems = [...state.newsItems];
 
         if (
@@ -510,7 +511,7 @@ export const createElectionSlice = (set, get) => ({
             .slice(0, 3);
 
           outletsToReport.forEach((outlet) => {
-            const article = generateNewsForEvent(event, outlet, currentDate);
+            const article = generateNewsForEvent(event, outlet, currentDate, [], cityName);
             newNewsItems.unshift(article); // Add new article to the top of the list
           });
         }

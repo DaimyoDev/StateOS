@@ -524,6 +524,78 @@ export const createPersonnelSlice = (set, get) => ({
         };
       });
     },
+
+    /**
+     * Toggle a politician's favorite status
+     * @param {string} politicianId - The ID of the politician to favorite/unfavorite
+     */
+    toggleFavoritePolitician: (politicianId) => {
+      set((state) => {
+        const currentFavorites = state.favoritePoliticians || [];
+        const isFavorite = currentFavorites.includes(politicianId);
+        
+        const newFavorites = isFavorite
+          ? currentFavorites.filter(id => id !== politicianId)
+          : [...currentFavorites, politicianId];
+        
+        const targetPolitician = state.activeCampaign.governmentOffices
+          .flatMap((o) => o.members || (o.holder ? [o.holder] : []))
+          .find((p) => p && p.id === politicianId);
+        
+        if (targetPolitician) {
+          get().actions.addToast({
+            message: `${targetPolitician.name} ${isFavorite ? 'removed from' : 'added to'} favorites.`,
+            type: "info",
+          });
+        }
+        
+        return {
+          favoritePoliticians: newFavorites,
+        };
+      });
+    },
+
+    /**
+     * Age all politicians by one year (called on year advance)
+     */
+    agePoliticians: () => {
+      set((state) => {
+        const newGovernmentOffices = state.activeCampaign.governmentOffices.map(office => {
+          const updatedOffice = { ...office };
+          
+          // Age office holder
+          if (office.holder && !office.holder.isPlayer) {
+            updatedOffice.holder = {
+              ...office.holder,
+              age: office.holder.age + 1
+            };
+          }
+          
+          // Age office members
+          if (office.members) {
+            updatedOffice.members = office.members.map(member => {
+              if (member && !member.isPlayer) {
+                return {
+                  ...member,
+                  age: member.age + 1
+                };
+              }
+              return member;
+            });
+          }
+          
+          return updatedOffice;
+        });
+        
+        return {
+          activeCampaign: {
+            ...state.activeCampaign,
+            governmentOffices: newGovernmentOffices,
+          },
+        };
+      });
+    },
+
     beginNegotiation: (staffId) => {
       const staffMember = get().talentPool.find((s) => s.id === staffId);
       if (!staffMember || staffMember.scoutingLevel !== "interviewed") {

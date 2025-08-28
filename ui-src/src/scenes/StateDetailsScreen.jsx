@@ -2,6 +2,8 @@
 
 import React, { useState, useMemo } from "react";
 import useGameStore from "../store";
+import { createDistrictMapData } from "../utils/mapDistrictUtils";
+import { countyPathData as texasCountyPathData } from "../maps/usaCounties/TexasMap";
 
 // Import county maps for US states
 import AlabamaMap from "../maps/usaCounties/AlabamaMap";
@@ -55,12 +57,14 @@ import WisconsinMap from "../maps/usaCounties/WisconsinMap";
 import "./CountryDetailsScreen.css"; // Reuse country details styles
 
 function StateDetailsScreen() {
+  console.log("StateDetailsScreen is rendering!");
   const actions = useGameStore((state) => state.actions);
   const viewingStateId = useGameStore((state) => state.viewingStateId);
   const availableCountries = useGameStore((state) => state.availableCountries);
   
   const [mapView, setMapView] = useState("population");
   const [activeDataTab, setActiveDataTab] = useState("county");
+  const [selectedDistrictId, setSelectedDistrictId] = useState(null);
 
   // Find the country and state/region
   const { country, region: state } = useMemo(() => {
@@ -83,7 +87,27 @@ function StateDetailsScreen() {
       .sort((a, b) => (b.population || 0) - (a.population || 0));
   }, [country, state]);
 
+  // Create district data for congressional districts view
+  const districtMapData = useMemo(() => {
+    if (!state || !counties || counties.length === 0) {
+      return { districtData: [], districtColors: [], mapData: [], selectedDistrictId: null };
+    }
+    // Import county path data for Texas to enable contiguity analysis
+    let countyPathData = null;
+    if (state.id === "USA_TX") {
+      countyPathData = texasCountyPathData;
+    }
+    
+    const data = createDistrictMapData(state, counties, selectedDistrictId, countyPathData);
+    return { ...data, selectedDistrictId };
+  }, [state, counties, selectedDistrictId]);
+
   const mapData = useMemo(() => {
+    if (mapView === "congressional_districts") {
+      // Pass the full district object. TexasMap guards range calc for this view.
+      return districtMapData;
+    }
+
     if (!counties || counties.length === 0) return [];
 
     const populations = counties.map((c) => c.population || 0);
@@ -134,7 +158,7 @@ function StateDetailsScreen() {
           };
         });
     }
-  }, [counties, mapView]);
+  }, [counties, mapView, districtMapData]);
 
   const renderMap = () => {
     if (!state || !country) {
@@ -281,64 +305,107 @@ function StateDetailsScreen() {
         <h1 className="important-heading">
           {state.name}, {country.name}
         </h1>
-        <button className="menu-button" onClick={actions.navigateBack}>
-          Back to Campaign Setup
-        </button>
+        <div className="header-buttons">
+          <button className="menu-button" onClick={actions.navigateBack}>
+            Back to Campaign Setup
+          </button>
+        </div>
       </div>
 
       <div className="country-details-content-area">
-        {/* Map view for counties */}
-        {activeDataTab === "county" && (
-          <div className="map-view-container ui-panel">
-            <div className="map-controls">
-              <h3>County Map Views</h3>
-              <button
-                onClick={() => setMapView("population")}
-                className={`menu-button ${
-                  mapView === "population" ? "active" : ""
-                }`}
-              >
-                Population
-              </button>
-              <button
-                onClick={() => setMapView("party_popularity")}
-                className={`menu-button ${
-                  mapView === "party_popularity" ? "active" : ""
-                }`}
-              >
-                Political Leanings
-              </button>
-              <button
-                onClick={() => setMapView("gdp")}
-                className={`menu-button ${mapView === "gdp" ? "active" : ""}`}
-              >
-                GDP per Capita
-              </button>
+        <div className="country-details-main-panels">
+          {/* Map view for counties */}
+          {activeDataTab === "county" && (
+            <div className="map-view-container ui-panel">
+              <div className="map-controls">
+                <h3>County Map Views</h3>
+                {console.log("Rendering map controls, country:", country?.id, "state:", state?.id)}
+                <button
+                  onClick={() => setMapView("population")}
+                  className={`menu-button ${
+                    mapView === "population" ? "active" : ""
+                  }`}
+                >
+                  Population
+                </button>
+                <button
+                  onClick={() => setMapView("party_popularity")}
+                  className={`menu-button ${
+                    mapView === "party_popularity" ? "active" : ""
+                  }`}
+                >
+                  Political Leanings
+                </button>
+                <button
+                  onClick={() => setMapView("gdp")}
+                  className={`menu-button ${mapView === "gdp" ? "active" : ""}`}
+                >
+                  GDP per Capita
+                </button>
+                <button
+                  onClick={() => setMapView("congressional_districts")}
+                  className={`menu-button ${
+                    mapView === "congressional_districts" ? "active" : ""
+                  }`}
+                >
+                  Congressional Districts
+                </button>
+              </div>
+              <div className="map-render-wrapper-details">{renderMap()}</div>
             </div>
-            <div className="map-render-wrapper-details">{renderMap()}</div>
-          </div>
-        )}
+          )}
 
-        {/* Data container with tabs */}
-        <div
-          className={`data-table-container ui-panel ${
-            activeDataTab === "state" ? "full-width" : ""
-          }`}
-        >
-          <div className="data-tab-navigation">
-            <button
-              onClick={() => setActiveDataTab("county")}
-              className={activeDataTab === "county" ? "active" : ""}
+          {/* Data container with tabs - replaced by district selection in congressional view */}
+          {mapView === "congressional_districts" && activeDataTab === "county" ? (
+            <div className="districts-selection-panel-right ui-panel">
+              <h3>Congressional Districts</h3>
+              <div className="districts-buttons">
+                <button
+                  onClick={() => setSelectedDistrictId(null)}
+                  className={`district-button ${selectedDistrictId === null ? "active" : ""}`}
+                >
+                  All Districts
+                </button>
+                {districtMapData.districtData.map((district, index) => (
+                  <button
+                    key={district.id}
+                    onClick={() => setSelectedDistrictId(district.id)}
+                    className={`district-button ${selectedDistrictId === district.id ? "active" : ""}`}
+                    style={{
+                      borderLeft: `4px solid ${districtMapData.districtColors[index]}`,
+                    }}
+                  >
+                    District {district.id}
+                    <span className="district-population">
+                      {district.population.toLocaleString()}
+                    </span>
+                    <div className="district-counties">
+                      {district.counties.length} counties
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div
+              className={`data-table-container ui-panel ${
+                activeDataTab === "state" ? "full-width" : ""
+              }`}
             >
-              County Data
-            </button>
-            <button
-              onClick={() => setActiveDataTab("state")}
-              className={activeDataTab === "state" ? "active" : ""}
-            >
-              State Overview
-            </button>
-          </div>
+              <div className="data-tab-navigation">
+                <button
+                  onClick={() => setActiveDataTab("county")}
+                  className={activeDataTab === "county" ? "active" : ""}
+                >
+                  County Data
+                </button>
+                <button
+                  onClick={() => setActiveDataTab("state")}
+                  className={activeDataTab === "state" ? "active" : ""}
+                >
+                  State Overview
+                </button>
+              </div>
 
           {activeDataTab === "state" && (
             <div className="data-tab-content">
@@ -418,6 +485,8 @@ function StateDetailsScreen() {
                   <p>No county data available for this state.</p>
                 )}
               </div>
+            </div>
+          )}
             </div>
           )}
         </div>

@@ -2,7 +2,10 @@ import React, { useState, useEffect, useMemo } from "react";
 import useGameStore from "../store";
 import { decideAIVote } from "../simulation/aiVoting";
 import { getLegislatureDetails, getStatsForLevel } from "../utils/legislationUtils";
-import { POLICY_QUESTIONS } from "../data/policyData";
+import { CITY_POLICIES } from "../data/cityPolicyDefinitions";
+import { STATE_POLICIES } from "../data/statePolicyDefinitions";
+import { FEDERAL_POLICIES } from "../data/nationalPolicyDefinitions";
+import { GENERAL_POLICIES } from "../data/generalPolicyDefinitions";
 import { Pie } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, Title } from "chart.js";
 import "./LiveVoteSession.css";
@@ -38,6 +41,20 @@ const LiveVoteSession = () => {
   const proposedBillsForLevel = useGameStore((state) => (session ? state[session.level]?.proposedBills : []));
   const relevantStats = useMemo(() => (session ? getStatsForLevel(activeCampaign, session.level) : null), [activeCampaign, session]);
 
+  // Get policy definitions for the current level
+  const getPolicyDefinitionsForLevel = (level) => {
+    const allPolicies = [...CITY_POLICIES, ...STATE_POLICIES, ...FEDERAL_POLICIES, ...GENERAL_POLICIES];
+    const policyMap = {};
+    allPolicies.forEach(policy => {
+      policyMap[policy.id] = policy;
+    });
+    return policyMap;
+  };
+
+  const allPolicyDefsForLevel = useMemo(() => {
+    return session ? getPolicyDefinitionsForLevel(session.level) : {};
+  }, [session]);
+
   // --- Component State & Effects ---
   const [timeScale, setTimeScale] = useState(1);
 
@@ -59,7 +76,7 @@ const LiveVoteSession = () => {
           activeLegislation,
           proposedBillsForLevel,
           governmentOffices,
-          POLICY_QUESTIONS
+          allPolicyDefsForLevel
         );
         recordCouncilVote(bill.id, memberToVote.id, voteChoice);
       }
@@ -74,6 +91,7 @@ const LiveVoteSession = () => {
     activeLegislation,
     proposedBillsForLevel,
     governmentOffices,
+    allPolicyDefsForLevel,
     recordCouncilVote,
     playerId,
     session,
@@ -108,7 +126,7 @@ const LiveVoteSession = () => {
           activeLegislation,
           proposedBillsForLevel,
           governmentOffices,
-          POLICY_QUESTIONS
+          allPolicyDefsForLevel
         );
         recordCouncilVote(bill.id, m.id, voteChoice);
       }
@@ -136,12 +154,29 @@ const LiveVoteSession = () => {
   const abstainCount = bill.votes?.abstain?.length || 0;
 
   // Chart data for overall vote distribution
+  const pendingCount = councilMembers.length - yeaCount - nayCount - abstainCount;
+
+  // Resolve theme colors from CSS variables (with sensible fallbacks)
+  const rootStyles = typeof window !== 'undefined' ? getComputedStyle(document.documentElement) : null;
+  const cssVar = (name, fallback) => {
+    if (!rootStyles) return fallback;
+    const v = rootStyles.getPropertyValue(name).trim();
+    return v || fallback;
+  };
+
+  const colorSuccess = cssVar('--success-text', '#22c55e');
+  const colorSuccessHover = cssVar('--success-text-hover', colorSuccess);
+  const colorError = cssVar('--error-text', '#ef4444');
+  const colorErrorHover = cssVar('--error-text-hover', colorError);
+  const colorSecondary = cssVar('--secondary-text', '#6b7280');
+  const colorDisabled = cssVar('--disabled-text', '#9ca3af');
+
   const voteChartData = {
     labels: ['Yea', 'Nay', 'Abstain', 'Pending'],
     datasets: [{
-      data: [yeaCount, nayCount, abstainCount, councilMembers.length - yeaCount - nayCount - abstainCount],
-      backgroundColor: ['#22c55e', '#ef4444', '#6b7280', '#d1d5db'],
-      borderColor: ['#16a34a', '#dc2626', '#4b5563', '#9ca3af'],
+      data: [yeaCount, nayCount, abstainCount, pendingCount],
+      backgroundColor: [colorSuccess, colorError, colorSecondary, colorDisabled],
+      borderColor: [colorSuccessHover, colorErrorHover, colorSecondary, colorDisabled],
       borderWidth: 2
     }]
   };
@@ -154,14 +189,16 @@ const LiveVoteSession = () => {
       legend: {
         position: 'bottom',
         labels: {
-          color: '#e5e7eb',
+          color: cssVar('--secondary-text', '#e5e7eb'),
           font: { size: 12 }
         }
       },
       tooltip: {
-        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-        titleColor: '#e5e7eb',
-        bodyColor: '#e5e7eb'
+        backgroundColor: cssVar('--ui-panel-bg', 'rgba(0, 0, 0, 0.85)'),
+        titleColor: cssVar('--primary-text', '#e5e7eb'),
+        bodyColor: cssVar('--primary-text', '#e5e7eb'),
+        borderColor: cssVar('--border-color', '#4b5563'),
+        borderWidth: 1
       }
     }
   };
