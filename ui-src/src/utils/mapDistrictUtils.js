@@ -1,6 +1,10 @@
 // District styling utilities for congressional district maps
-import { calculateCongressionalDistricts, getCongressionalDistrictCount, generateDistrictColors } from "./congressionalDistricts";
-import { usaCounties } from "../data/states/adminRegions2/usaCounties";
+import {
+  calculateCongressionalDistricts,
+  getCongressionalDistrictCount,
+  generateDistrictColors,
+} from "./congressionalDistricts.js";
+import { usaCounties } from "../data/states/adminRegions2/usaCounties.js";
 
 // Create a mapping from gameId to county name for all USA counties
 const COUNTY_NAME_MAP = usaCounties.reduce((acc, county) => {
@@ -9,18 +13,59 @@ const COUNTY_NAME_MAP = usaCounties.reduce((acc, county) => {
 }, {});
 
 /**
- * Gets the fill color for a county based on district assignment
- * @param {string} countyId - The game ID of the county
- * @param {Array} districtData - Array of district objects with county assignments
- * @param {Array} districtColors - Array of colors for each district
- * @param {string} selectedDistrictId - Currently selected district ID (null for all)
- * @param {string} defaultColor - Default color when no district assignment
- * @param {boolean} isSplit - Whether the county is split across multiple districts
- * @param {Array} splitDetails - Array of district objects this county belongs to (for split counties)
- * @returns {string} The calculated fill color
+ * Creates a gradient color from multiple district colors based on allocations
  */
-// Replace the existing getDistrictFillColor function with this one
-export const getDistrictFillColor = (countyId, districtData, districtColors, selectedDistrictId, defaultColor, isSplit = false, splitDetails = null) => {
+export const createGradientColor = (allocations, districtData, districtColors) => {
+  const allocationEntries = Object.entries(allocations)
+    .map(([districtId, allocation]) => {
+      const districtIndex = districtData.findIndex(d => d.id === parseInt(districtId, 10));
+      return {
+        districtId: parseInt(districtId, 10),
+        allocation: allocation,
+        color: districtIndex !== -1 ? districtColors[districtIndex] : '#cccccc',
+        index: districtIndex
+      };
+    })
+    .filter(entry => entry.allocation > 0)
+    .sort((a, b) => b.allocation - a.allocation);
+
+  if (allocationEntries.length === 1) {
+    return allocationEntries[0].color;
+  }
+
+  if (allocationEntries.length === 2) {
+    // Create a simple two-color gradient
+    const [first, second] = allocationEntries;
+    const firstPercent = Math.round(first.allocation * 100);
+    const secondPercent = Math.round(second.allocation * 100);
+    
+    return `linear-gradient(45deg, ${first.color} 0%, ${first.color} ${firstPercent}%, ${second.color} ${firstPercent}%, ${second.color} 100%)`;
+  }
+
+  // For more than 2 districts, create a multi-stop gradient
+  let gradientStops = [];
+  let currentPercent = 0;
+  
+  for (const entry of allocationEntries) {
+    const percent = Math.round(entry.allocation * 100);
+    gradientStops.push(`${entry.color} ${currentPercent}%`);
+    currentPercent += percent;
+    gradientStops.push(`${entry.color} ${currentPercent}%`);
+  }
+  
+  return `linear-gradient(45deg, ${gradientStops.join(', ')})`;
+};
+
+/**
+ * Gets the fill color for a county based on district assignment
+ */
+export const getDistrictFillColor = (
+  countyId,
+  districtData,
+  districtColors,
+  selectedDistrictId,
+  defaultColor
+) => {
   if (!districtData || districtData.length === 0) {
     return defaultColor;
   }
@@ -28,42 +73,61 @@ export const getDistrictFillColor = (countyId, districtData, districtColors, sel
   const countyName = COUNTY_NAME_MAP[countyId];
   if (!countyName) return defaultColor;
 
-  // Handle split counties
-  if (isSplit && splitDetails) {
-    if (selectedDistrictId !== null) {
-      // Check if the selected district is one of the districts this split county belongs to
-      const belongsToSelectedDistrict = splitDetails.some(d => d.districtId === selectedDistrictId);
-      
-      console.log(`🎨 Split county ${countyName}: belongs to selected district ${selectedDistrictId}?`, belongsToSelectedDistrict);
-      
-      if (belongsToSelectedDistrict) {
-        // Find the color index for the selected district
-        const selectedDistrictIndex = districtData.findIndex(d => d.id === selectedDistrictId);
-        const color = selectedDistrictIndex !== -1 ? districtColors[selectedDistrictIndex] : 'var(--accent-color, #ff6b35)';
-        console.log(`🎨 Using district color for split county ${countyName}:`, color);
-        return color;
-      } else {
-        // County is split but doesn't belong to selected district - use muted accent color
-        console.log(`🎨 Split county ${countyName} doesn't belong to selected district, using muted accent`);
-        return 'var(--accent-color-muted, #ff6b3580)';
-      }
-    } else {
-      // No district selected, use default accent color for split counties
-      return 'var(--accent-color, #ff6b35)';
+  let allocations = null;
+
+  // Find the county's allocation data. We need to find the full county object
+  // which is now consistent across all district references to it.
+  for (const district of districtData) {
+    const county = district.counties.find((c) => c.name === countyName);
+    if (county) {
+      allocations = county.allocations;
+      break;
     }
   }
 
-  // Handle non-split counties
-  for (let i = 0; i < districtData.length; i++) {
-    const district = districtData[i];
-    if (district.counties.some(c => c.name === countyName)) {
-      if (selectedDistrictId !== null) {
-        return district.id === selectedDistrictId ? districtColors[i] : '#f0f0f0';
-      }
-      return districtColors[i] || defaultColor;
+  if (!allocations) {
+    return defaultColor;
+  }
+
+  // If a district is selected, we color the county with the SELECTED district's color
+  // if it has any allocation there. Otherwise, it's grayed out.
+  if (selectedDistrictId !== null) {
+    const belongsToSelected = allocations[selectedDistrictId] > 0;
+    if (belongsToSelected) {
+      const selectedDistrictIndex = districtData.findIndex(
+        (d) => d.id === selectedDistrictId
+      );
+      return selectedDistrictIndex !== -1
+        ? districtColors[selectedDistrictIndex]
+        : defaultColor;
+    }
+    return "#e0e0e0"; // Gray out if not part of the selected district
+  }
+
+  // Check if county is split across multiple districts
+  const allocationCount = Object.keys(allocations).length;
+  
+  if (allocationCount > 1) {
+    // Create gradient for split counties
+    return createGradientColor(allocations, districtData, districtColors);
+  }
+
+  // If no district is selected and county is not split, color by the primary district
+  let primaryDistrictId = -1;
+  let maxAllocation = 0;
+  for (const [dId, alloc] of Object.entries(allocations)) {
+    if (alloc > maxAllocation) {
+      maxAllocation = alloc;
+      primaryDistrictId = parseInt(dId, 10);
     }
   }
-  return defaultColor;
+
+  const districtIndex = districtData.findIndex(
+    (d) => d.id === primaryDistrictId
+  );
+  if (districtIndex === -1) return defaultColor;
+
+  return districtColors[districtIndex] || defaultColor;
 };
 
 // Cache for district calculations to prevent duplicate generation
@@ -71,65 +135,69 @@ let districtCache = new Map();
 
 /**
  * Creates district styling data for a state's counties
- * @param {Object} state - State object with population data
- * @param {Array} counties - Array of county objects
- * @param {number|null} selectedDistrictId - Currently selected district ID
- * @param {Object} countyPathData - Optional SVG path data for adjacency calculation
- * @param {Object} countryData - Optional country data for getting district count
- * @returns {Object} Object with districtData, districtColors, and mapData
  */
-export const createDistrictMapData = (state, counties, selectedDistrictId, countyPathData, countryData = null) => {
+export const createDistrictMapData = (
+  state,
+  counties,
+  selectedDistrictId,
+  countyPathData,
+  countryData = null
+) => {
   if (!state || !counties || counties.length === 0) {
     return { districtData: [], districtColors: [], mapData: [] };
   }
 
   const numDistricts = getCongressionalDistrictCount(state.id);
-  const totalPopulation = state.population || counties.reduce((sum, c) => sum + (c.population || 0), 0);
-  
-  // Create cache key based on state and county data
-  const cacheKey = `${state.id}_${totalPopulation}_${numDistricts}_${counties.length}`;
-  
-  // Check if we already have calculated districts for this state
+  const totalPopulation =
+    state.population ||
+    counties.reduce((sum, c) => sum + (c.population || 0), 0);
+
+  const cacheKey = `${state.id}_${totalPopulation}_${numDistricts}_${counties.length}_${countryData ? 'generated' : 'rl'}`;
+
   let districtData;
   if (districtCache.has(cacheKey)) {
     districtData = districtCache.get(cacheKey);
   } else {
-    districtData = calculateCongressionalDistricts(counties, totalPopulation, numDistricts, countyPathData);
+    districtData = calculateCongressionalDistricts(
+      counties,
+      totalPopulation,
+      numDistricts,
+      countyPathData,
+      state.id,
+      countryData
+    );
     districtCache.set(cacheKey, districtData);
   }
-  
+
   const districtColors = generateDistrictColors(numDistricts);
-  
-  // Identify split counties after district generation
+
   const splitCountyInfo = identifySplitCounties(districtData, counties);
-  
-  // Create map data for each county
-  const mapData = counties.map(county => {
-    const splitInfo = splitCountyInfo[county.name] || null;
-    const isSplit = splitInfo !== null;
-    const splitDetails = splitInfo ? splitInfo.districts : null;
-    const color = getDistrictFillColor(county.id, districtData, districtColors, selectedDistrictId, '#cccccc', isSplit, splitDetails);
+
+  const mapData = counties.map((county) => {
+    const isSplit = !!splitCountyInfo[county.name];
+    const splitDetails = splitCountyInfo[county.name]
+      ? splitCountyInfo[county.name].districts
+      : null;
+    const color = getDistrictFillColor(
+      county.id,
+      districtData,
+      districtColors,
+      selectedDistrictId,
+      "#cccccc"
+    );
     const label = getDistrictLabel(county.id, districtData);
     const districtId = getCountyDistrictId(county.id, districtData);
-    
-    // Debug logging for split counties
-    if (isSplit) {
-      console.log(`🗺️ MapData for split county ${county.name}:`, {
-        id: county.id,
-        color: color,
-        isSplit: isSplit,
-        selectedDistrictId: selectedDistrictId,
-        splitDetails: splitDetails
-      });
-    }
-    
+
     return {
       id: county.id,
       color: color,
       value: label,
       districtId: districtId,
       isSplit: isSplit,
-      splitDetails: splitDetails
+      splitDetails: splitDetails,
+      // Add gradient information for CSS-based rendering
+      isGradient: color && color.startsWith('linear-gradient'),
+      backgroundImage: color && color.startsWith('linear-gradient') ? color : null,
     };
   });
 
@@ -137,130 +205,67 @@ export const createDistrictMapData = (state, counties, selectedDistrictId, count
 };
 
 /**
- * Identifies counties that are split across multiple districts
- * @param {Array} districtData - Array of district objects
- * @param {Array} counties - Array of county objects
- * @returns {Object} Object mapping county names to split information
+ * Identifies counties that are split across multiple districts.
  */
-function identifySplitCounties(districtData, counties) {
-  console.log(`🔍 IDENTIFYING SPLIT COUNTIES`);
-  const splitCounties = {};
-  
-  // Track which districts each county appears in
-  const countyDistrictMap = {};
-  
+function identifySplitCounties(districtData, allCounties) {
+  const countyAllocations = {};
+
   for (const district of districtData) {
     for (const county of district.counties) {
-      if (!countyDistrictMap[county.name]) {
-        countyDistrictMap[county.name] = [];
-      }
-      
-      if (county.splitInfo) {
-        console.log(`🔄 Found county with splitInfo: ${county.name}`, county.splitInfo);
-      }
-      
-      const assignedPopulation = county.splitInfo ? 
-        (county.splitInfo.districtPopulations?.[district.id] || 0) : 
-        county.population;
-      
-      countyDistrictMap[county.name].push({
-        districtId: district.id,
-        population: assignedPopulation,
-        splitInfo: county.splitInfo
-      });
-    }
-  }
-  
-  console.log(`📊 County district map:`, Object.keys(countyDistrictMap).length, 'counties tracked');
-  
-  // Identify counties that appear in multiple districts OR have splitInfo
-  for (const [countyName, districts] of Object.entries(countyDistrictMap)) {
-    const hasSplitInfo = districts.some(d => d.splitInfo && d.splitInfo.districtPopulations);
-    
-    if (districts.length > 1 || hasSplitInfo) {
-      const originalCounty = counties.find(c => c.name === countyName);
-      const totalPopulation = originalCounty?.population || 0;
-      
-      // If county has splitInfo, extract all district populations from it
-      if (hasSplitInfo) {
-        const splitInfo = districts.find(d => d.splitInfo)?.splitInfo;
-        if (splitInfo && splitInfo.districtPopulations) {
-          const splitDistricts = Object.entries(splitInfo.districtPopulations)
-            .filter(([districtId, population]) => population > 0)
-            .map(([districtId, population]) => ({
-              districtId: parseInt(districtId),
-              population: population
-            }));
-          
-          if (splitDistricts.length > 1) {
-            console.log(`✅ Adding split county ${countyName}:`, splitDistricts);
-            splitCounties[countyName] = {
-              totalPopulation: totalPopulation,
-              districts: splitDistricts
-            };
-          } else {
-            console.log(`⚠️ County ${countyName} has splitInfo but only ${splitDistricts.length} districts with population`);
-          }
-        }
-      } else if (districts.length > 1) {
-        // Fallback for counties appearing in multiple districts without splitInfo
-        splitCounties[countyName] = {
-          totalPopulation: totalPopulation,
-          districts: districts.map(d => ({
-            districtId: d.districtId,
-            population: d.population
-          }))
+      if (!countyAllocations[county.name]) {
+        countyAllocations[county.name] = {
+          allocations: county.allocations,
         };
       }
     }
   }
-  
-  console.log(`🏁 Final split counties found:`, Object.keys(splitCounties).length);
-  Object.entries(splitCounties).forEach(([name, info]) => {
-    console.log(`   ${name}: ${info.districts.length} districts, total pop: ${info.totalPopulation.toLocaleString()}`);
-  });
-  
+
+  const splitCounties = {};
+  for (const [countyName, data] of Object.entries(countyAllocations)) {
+    const allocationKeys = Object.keys(data.allocations);
+    if (allocationKeys.length > 1) {
+      const originalCounty = allCounties.find((c) => c.name === countyName);
+      if (!originalCounty) continue;
+
+      const totalPopulation = originalCounty.population;
+
+      splitCounties[countyName] = {
+        totalPopulation: totalPopulation,
+        districts: allocationKeys.map((districtId) => ({
+          districtId: parseInt(districtId, 10),
+          population: totalPopulation * data.allocations[districtId],
+        })),
+      };
+    }
+  }
+
   return splitCounties;
 }
 
 /**
  * Gets the district label for a county
- * @param {string} countyId - County ID
- * @param {Array} districtData - District data array
- * @returns {string} District label
  */
 export const getDistrictLabel = (countyId, districtData) => {
-  // Convert gameId to county name for matching with district data
   const countyName = COUNTY_NAME_MAP[countyId];
-  if (!countyName) {
-    return 'No District';
-  }
+  if (!countyName) return "No District";
 
   for (const district of districtData) {
-    const foundCounty = district.counties.find(c => (c.id || c.name) === countyName);
-    if (foundCounty) {
+    if (district.counties.some((c) => c.name === countyName)) {
       return `District ${district.id}`;
     }
   }
-  return 'No District';
+  return "No District";
 };
 
 /**
  * Gets the primary district ID for a county
- * @param {string} countyId - County ID
- * @param {Array} districtData - District data array
- * @returns {number|null} Primary district ID
  */
 export const getCountyDistrictId = (countyId, districtData) => {
-  // Convert gameId to county name for matching with district data
   const countyName = COUNTY_NAME_MAP[countyId];
-  if (!countyName) {
-    return null;
-  }
+  if (!countyName) return null;
 
   for (const district of districtData) {
-    const foundCounty = district.counties.find(c => (c.id || c.name) === countyName);
-    if (foundCounty) {
+    if (district.counties.some((c) => c.name === countyName)) {
       return district.id;
     }
   }
@@ -269,18 +274,6 @@ export const getCountyDistrictId = (countyId, districtData) => {
 
 /**
  * Creates a standardized region style object for district maps
- * @param {Object} params - Parameters object
- * @param {string} params.countyId - The game ID of the county
- * @param {string} params.svgId - The SVG element ID
- * @param {Object} params.countyData - Mapping object for SVG ID to game data
- * @param {Array} params.districtData - District data array
- * @param {Array} params.districtColors - District colors array
- * @param {string} params.selectedDistrictId - Currently selected district ID
- * @param {Object} params.theme - Theme colors object
- * @param {string} params.hoveredId - Currently hovered county ID
- * @param {boolean} params.isClickable - Whether the county is clickable
- * @param {boolean} params.isSplit - Whether the county is split across districts
- * @returns {Object} Style object for the county
  */
 export const getDistrictRegionStyle = ({
   countyId,
@@ -292,17 +285,11 @@ export const getDistrictRegionStyle = ({
   theme,
   hoveredId,
   isClickable = false,
-  isSplit = false,
-  splitDetails = null
 }) => {
   const countyInfo = countyData[svgId];
   if (!countyInfo) return {};
 
-  const {
-    borderColor = "#ffffff", 
-    hoverColor = "#FFD700",
-    accentColor = theme.selectedColor || "#ff6b35"
-  } = theme;
+  const { borderColor = "#ffffff", hoverColor = "#FFD700" } = theme;
 
   const style = {
     stroke: borderColor,
@@ -317,18 +304,54 @@ export const getDistrictRegionStyle = ({
     style.fill = hoverColor;
     style.strokeWidth = "2px";
   } else {
-    // Apply district coloring with split county handling
-    style.fill = getDistrictFillColor(
-      countyInfo.gameId, 
-      districtData, 
-      districtColors, 
-      selectedDistrictId, 
-      '#cccccc',
-      isSplit,
-      splitDetails
+    const fillColor = getDistrictFillColor(
+      countyInfo.gameId,
+      districtData,
+      districtColors,
+      selectedDistrictId,
+      "#cccccc"
     );
     
-    // Remove the override - let getDistrictFillColor handle split county coloring
+    // Check if it's a gradient color (for split counties)
+    if (fillColor.startsWith('linear-gradient')) {
+      // For SVG, we need to create a pattern or use a different approach
+      // For now, fall back to the primary district color for SVG compatibility
+      const countyName = COUNTY_NAME_MAP[countyInfo.gameId];
+      if (countyName) {
+        let allocations = null;
+        for (const district of districtData) {
+          const county = district.counties.find((c) => c.name === countyName);
+          if (county) {
+            allocations = county.allocations;
+            break;
+          }
+        }
+        
+        if (allocations && Object.keys(allocations).length > 1) {
+          // For split counties in SVG, use a striped pattern effect
+          // This is a fallback - in a real implementation you'd create SVG patterns
+          const allocationEntries = Object.entries(allocations)
+            .map(([districtId, allocation]) => ({
+              districtId: parseInt(districtId, 10),
+              allocation: allocation
+            }))
+            .sort((a, b) => b.allocation - a.allocation);
+          
+          const primaryDistrictIndex = districtData.findIndex(d => d.id === allocationEntries[0].districtId);
+          style.fill = primaryDistrictIndex !== -1 ? districtColors[primaryDistrictIndex] : "#cccccc";
+          
+          // Add a visual indicator for split counties
+          style.strokeWidth = "2px";
+          style.strokeDasharray = "3,2";
+        } else {
+          style.fill = fillColor;
+        }
+      } else {
+        style.fill = fillColor;
+      }
+    } else {
+      style.fill = fillColor;
+    }
   }
 
   return style;
