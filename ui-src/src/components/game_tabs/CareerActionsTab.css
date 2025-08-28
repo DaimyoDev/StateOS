@@ -368,3 +368,103 @@
   width: 100%;
   margin-top: 4px;
 }
+
+/* Jobs Section Styling */
+.current-job-card,
+.available-jobs-card {
+  background-color: var(--secondary-bg);
+  padding: 20px;
+  border-radius: var(--element-radius);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--panel-shadow);
+  margin-bottom: 20px;
+}
+
+.jobs-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.job-list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 15px 0;
+  border-bottom: 1px dashed var(--border-color);
+  gap: 15px;
+}
+
+.job-list-item:last-child {
+  border-bottom: none;
+}
+
+.job-info {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.job-title {
+  font-weight: bold;
+  color: var(--primary-text);
+  font-size: 1.1em;
+  display: inline-block;
+}
+
+.job-category {
+  font-style: italic;
+  color: var(--accent-color);
+  margin-left: 8px;
+  font-size: 0.9em;
+}
+
+.job-details {
+  margin: 8px 0;
+}
+
+.job-details p {
+  margin: 4px 0;
+  font-size: 0.9em;
+  color: var(--secondary-text);
+}
+
+.job-description {
+  font-size: 0.85em;
+  color: var(--secondary-text);
+  line-height: 1.4;
+  margin-top: 8px;
+  font-style: italic;
+}
+
+.job-list-item .action-button.small-button {
+  padding: 8px 16px;
+  font-size: 0.9em;
+  min-width: 80px;
+  flex-shrink: 0;
+  align-self: flex-start;
+}
+
+.job-list-item .action-button.small-button:disabled {
+  background-color: var(--success-bg, #4caf50);
+  color: var(--success-text, white);
+  cursor: default;
+}
+
+.current-job-card .job-details {
+  background-color: var(--tertiary-bg, var(--primary-bg));
+  padding: 15px;
+  border-radius: var(--element-radius);
+  margin: 10px 0;
+  border: 1px solid var(--border-color);
+}
+
+.current-job-card .job-details p {
+  margin: 6px 0;
+  color: var(--primary-text);
+}
+
+.current-job-card .button-delete {
+  margin-top: 10px;
+}

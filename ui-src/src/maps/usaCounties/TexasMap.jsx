@@ -4,6 +4,7 @@ import { getMapThemeColors, getRegionStyle, calculateHeatmapRange } from "../../
 import { getDistrictRegionStyle } from "../../utils/mapDistrictUtils";
 import "../JapanMap.css";
 
+
 const COUNTY_DATA = {
   Anderson: { gameId: "USA_TX_001", name: "Anderson" },
   Andrews: { gameId: "USA_TX_003", name: "Andrews" },
@@ -1015,7 +1016,6 @@ function TexasMap({ onSelectCounty, selectedCountyGameId, heatmapData, viewType 
       const mapDataItem = heatmapData.mapData?.find(item => item.id === countyInfo?.gameId);
       
       return getDistrictRegionStyle({
-        countyId: null,
         svgId,
         countyData: COUNTY_DATA,
         districtData: heatmapData.districtData,
@@ -1128,6 +1128,7 @@ function TexasMap({ onSelectCounty, selectedCountyGameId, heatmapData, viewType 
         className="interactive-japan-map"
         preserveAspectRatio="xMidYMid meet"
       >
+        
         <g
           id="texas-counties-group"
           transform="translate(5,5)"

@@ -407,9 +407,21 @@ export function calculateCongressionalDistricts(
 }
 
 /**
- * Get the number of congressional districts for a US state
+ * Get the number of congressional districts for a US state from procedurally generated data
+ * Falls back to hardcoded values if no generated data is available
  */
-export function getCongressionalDistrictCount(stateId) {
+export function getCongressionalDistrictCount(stateId, countryData = null) {
+  // First, try to get the count from procedurally generated data
+  if (countryData && countryData.nationalLowerHouseDistricts) {
+    const stateDistricts = countryData.nationalLowerHouseDistricts.filter(
+      district => district.stateId === stateId
+    );
+    if (stateDistricts.length > 0) {
+      return stateDistricts.length;
+    }
+  }
+
+  // Fallback to hardcoded values for backwards compatibility
   const districtCounts = {
     USA_AL: 7,
     USA_AK: 1,

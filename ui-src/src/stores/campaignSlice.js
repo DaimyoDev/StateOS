@@ -1200,5 +1200,153 @@ export const createCampaignSlice = (set, get) => ({
         };
       });
     },
+
+    applyForJob: (jobData) => {
+      set((state) => {
+        const { activeCampaign } = state;
+        const { playerPoliticianId, politicians } = activeCampaign;
+        if (!playerPoliticianId || !politicians) return state;
+
+        // Update the player's current job in the SoA structure
+        const financesData = politicians.finances.get(playerPoliticianId) || {};
+        const campaignData = politicians.campaign.get(playerPoliticianId) || {};
+
+        const newFinancesMap = new Map(politicians.finances);
+        newFinancesMap.set(playerPoliticianId, {
+          ...financesData,
+          currentJob: jobData,
+          monthlyJobSalary: jobData.salary,
+        });
+
+        const newCampaignMap = new Map(politicians.campaign);
+        newCampaignMap.set(playerPoliticianId, {
+          ...campaignData,
+          // Reduce available working hours based on job time commitment
+          maxWorkingHours: Math.max(1, 12 - jobData.timeCommitment),
+          campaignHoursRemainingToday: Math.max(1, 12 - jobData.timeCommitment),
+        });
+
+        // Also update the legacy politician object for compatibility
+        const updatedPolitician = {
+          ...activeCampaign.politician,
+          currentJob: jobData,
+          treasury: (activeCampaign.politician.treasury || 0), // Keep current treasury
+          workingHours: Math.max(1, 12 - jobData.timeCommitment),
+        };
+
+        get().actions.addNotification?.({
+          message: `You are now employed as a ${jobData.title}! Monthly salary: $${jobData.salary.toLocaleString()}`,
+          type: "success",
+          category: "Career"
+        });
+
+        return {
+          activeCampaign: {
+            ...activeCampaign,
+            politician: updatedPolitician,
+            politicians: {
+              ...politicians,
+              finances: newFinancesMap,
+              campaign: newCampaignMap,
+            },
+          },
+        };
+      });
+    },
+
+    quitJob: () => {
+      set((state) => {
+        const { activeCampaign } = state;
+        const { playerPoliticianId, politicians } = activeCampaign;
+        if (!playerPoliticianId || !politicians) return state;
+
+        // Remove job from the SoA structure
+        const financesData = politicians.finances.get(playerPoliticianId) || {};
+        const campaignData = politicians.campaign.get(playerPoliticianId) || {};
+
+        const newFinancesMap = new Map(politicians.finances);
+        newFinancesMap.set(playerPoliticianId, {
+          ...financesData,
+          currentJob: null,
+          monthlyJobSalary: 0,
+        });
+
+        const newCampaignMap = new Map(politicians.campaign);
+        newCampaignMap.set(playerPoliticianId, {
+          ...campaignData,
+          // Restore full working hours
+          maxWorkingHours: 12,
+          campaignHoursRemainingToday: 12,
+        });
+
+        // Also update the legacy politician object for compatibility
+        const updatedPolitician = {
+          ...activeCampaign.politician,
+          currentJob: null,
+          workingHours: 12,
+        };
+
+        get().actions.addNotification?.({
+          message: "You have quit your job and now have more time for political activities.",
+          type: "info",
+          category: "Career"
+        });
+
+        return {
+          activeCampaign: {
+            ...activeCampaign,
+            politician: updatedPolitician,
+            politicians: {
+              ...politicians,
+              finances: newFinancesMap,
+              campaign: newCampaignMap,
+            },
+          },
+        };
+      });
+    },
+
+    processMonthlyJobIncome: () => {
+      set((state) => {
+        const { activeCampaign } = state;
+        const { playerPoliticianId, politicians } = activeCampaign;
+        if (!playerPoliticianId || !politicians) return state;
+
+        const financesData = politicians.finances.get(playerPoliticianId) || {};
+        const currentJob = financesData.currentJob;
+
+        if (!currentJob || !currentJob.salary) return state;
+
+        const salary = currentJob.salary;
+        const newFinancesMap = new Map(politicians.finances);
+        newFinancesMap.set(playerPoliticianId, {
+          ...financesData,
+          treasury: (financesData.treasury || 0) + salary,
+        });
+
+        // Also update the legacy politician object
+        const updatedPolitician = {
+          ...activeCampaign.politician,
+          treasury: (activeCampaign.politician.treasury || 0) + salary,
+        };
+
+        get().actions.addNotification?.({
+          message: `Monthly salary received: $${salary.toLocaleString()} from ${currentJob.title}`,
+          type: "success",
+          category: "Income"
+        });
+
+        return {
+          activeCampaign: {
+            ...activeCampaign,
+            politician: updatedPolitician,
+            politicians: {
+              ...politicians,
+              finances: newFinancesMap,
+            },
+          },
+        };
+      });
+    },
   },
 });

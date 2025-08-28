@@ -110,18 +110,202 @@ const ElectionsSubTab = ({
   );
 };
 
-const JobsSubTab = () => {
+const JobsSubTab = ({ campaignData, actions }) => {
+  const [selectedJob, setSelectedJob] = useState(null);
+  const playerPolitician = campaignData?.politician;
+  const currentJob = playerPolitician?.currentJob;
+
+  // Available jobs with different career paths
+  const availableJobs = useMemo(() => [
+    {
+      id: "law_firm_associate",
+      title: "Law Firm Associate",
+      category: "Legal",
+      salary: 8500,
+      timeCommitment: 6, // hours per day
+      requirements: {
+        education: "Law Degree",
+        skills: ["Negotiation", "Research"]
+      },
+      benefits: {
+        income: 8500,
+        networkingBonus: 15,
+        skillDevelopment: ["Oratory", "Strategy"]
+      },
+      description: "Work at a prestigious law firm, building legal expertise and professional networks."
+    },
+    {
+      id: "consultant_analyst",
+      title: "Political Consultant",
+      category: "Consulting",
+      salary: 7200,
+      timeCommitment: 5,
+      requirements: {
+        experience: "Some political experience",
+        skills: ["Analysis", "Communication"]
+      },
+      benefits: {
+        income: 7200,
+        politicalConnections: 20,
+        skillDevelopment: ["Strategy", "Fundraising"]
+      },
+      description: "Advise clients on political strategy and campaign management."
+    },
+    {
+      id: "nonprofit_director",
+      title: "Nonprofit Director",
+      category: "Public Service",
+      salary: 5800,
+      timeCommitment: 4,
+      requirements: {
+        experience: "Management experience",
+        skills: ["Leadership", "Community Relations"]
+      },
+      benefits: {
+        income: 5800,
+        communityStanding: 25,
+        skillDevelopment: ["Public Speaking", "Organization"]
+      },
+      description: "Lead a nonprofit organization focused on community issues."
+    },
+    {
+      id: "business_executive",
+      title: "Corporate Executive",
+      category: "Business",
+      salary: 12000,
+      timeCommitment: 7,
+      requirements: {
+        education: "Business degree preferred",
+        skills: ["Management", "Finance"]
+      },
+      benefits: {
+        income: 12000,
+        businessConnections: 30,
+        skillDevelopment: ["Fundraising", "Negotiation"]
+      },
+      description: "High-paying executive role with significant business networking opportunities."
+    },
+    {
+      id: "university_lecturer",
+      title: "University Lecturer",
+      category: "Academia",
+      salary: 6200,
+      timeCommitment: 4,
+      requirements: {
+        education: "Advanced degree",
+        skills: ["Research", "Teaching"]
+      },
+      benefits: {
+        income: 6200,
+        intellectualCredibility: 20,
+        skillDevelopment: ["Oratory", "Research"]
+      },
+      description: "Teach and conduct research while maintaining flexible schedule for political activities."
+    },
+    {
+      id: "media_commentator",
+      title: "Media Commentator",
+      category: "Media",
+      salary: 7800,
+      timeCommitment: 3,
+      requirements: {
+        experience: "Public speaking experience",
+        skills: ["Communication", "Current Affairs"]
+      },
+      benefits: {
+        income: 7800,
+        publicVisibility: 35,
+        skillDevelopment: ["Public Speaking", "Media Relations"]
+      },
+      description: "Regular appearances on news programs and political shows."
+    }
+  ], []);
+
+  const handleApplyForJob = (jobId) => {
+    const job = availableJobs.find(j => j.id === jobId);
+    if (job && actions.applyForJob) {
+      actions.applyForJob(job);
+      actions.addToast?.({
+        message: `Applied for ${job.title}! You will start earning $${job.salary.toLocaleString()}/month.`,
+        type: "success"
+      });
+    }
+  };
+
+  const handleQuitJob = () => {
+    if (actions.quitJob) {
+      actions.quitJob();
+      actions.addToast?.({
+        message: "You have quit your job.",
+        type: "info"
+      });
+    }
+  };
+
   return (
     <div className="sub-tab-content">
-      <section className="info-card jobs-info-card">
-        <h3>Career Paths & Job Market</h3>
-        <p>
-          Explore alternative career paths, appointed positions, or private
-          sector jobs to build your experience and network.
-        </p>
-        <p>
-          <em>(Job opportunities feature coming soon!)</em>
-        </p>
+      {currentJob && (
+        <section className="info-card current-job-card">
+          <h3>Current Employment</h3>
+          <div className="job-details">
+            <p><strong>Position:</strong> {currentJob.title}</p>
+            <p><strong>Category:</strong> {currentJob.category}</p>
+            <p><strong>Monthly Salary:</strong> ${currentJob.salary?.toLocaleString()}</p>
+            <p><strong>Daily Time:</strong> {currentJob.timeCommitment} hours</p>
+            <p><strong>Remaining Work Hours:</strong> {playerPolitician.workingHours || 0}</p>
+          </div>
+          <button 
+            className="button-delete small-button"
+            onClick={handleQuitJob}
+          >
+            Quit Job
+          </button>
+        </section>
+      )}
+      
+      <section className="info-card available-jobs-card">
+        <h3>Available Positions</h3>
+        {!currentJob ? (
+          <p>Choose a career path to generate income and build your political profile:</p>
+        ) : (
+          <p>Other career opportunities (you can switch jobs, but will lose current position):</p>
+        )}
+        
+        <ul className="jobs-list">
+          {availableJobs.map((job) => (
+            <li key={job.id} className="job-list-item">
+              <div className="job-info">
+                <span className="job-title">{job.title}</span>
+                <span className="job-category">({job.category})</span>
+                <div className="job-details">
+                  <p><strong>Salary:</strong> ${job.salary.toLocaleString()}/month</p>
+                  <p><strong>Time:</strong> {job.timeCommitment} hours/day</p>
+                  <p><strong>Benefits:</strong> 
+                    {Object.entries(job.benefits)
+                      .filter(([key]) => key !== 'income')
+                      .map(([key, value]) => 
+                        ` ${key.replace(/([A-Z])/g, ' $1').toLowerCase()}: +${value}`
+                      )
+                      .join(',')}
+                  </p>
+                </div>
+                <p className="job-description">{job.description}</p>
+              </div>
+              <button
+                className="action-button small-button"
+                onClick={() => handleApplyForJob(job.id)}
+                disabled={currentJob?.id === job.id}
+                title={
+                  currentJob?.id === job.id 
+                    ? "You already have this job" 
+                    : `Apply for ${job.title}`
+                }
+              >
+                {currentJob?.id === job.id ? "Current" : "Apply"}
+              </button>
+            </li>
+          ))}
+        </ul>
       </section>
     </div>
   );
@@ -874,7 +1058,7 @@ function CareerActionsTab({ campaignData }) {
           />
         );
       case "Jobs":
-        return <JobsSubTab />;
+        return <JobsSubTab {...subTabProps} />;
       case "Office":
         return (
           <OfficeSubTab

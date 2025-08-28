@@ -145,7 +145,11 @@ export const createTimeSlice = (set, get) => {
           }
           collectedNewsThisMonth.push(...statResult.newsItems);
 
-          // 4. Simulate player approval update
+          // 4. Process monthly job income for player
+          get().actions.processMonthlyJobIncome?.();
+          currentCampaign = get().activeCampaign; // Re-fetch state after job income
+
+          // 5. Simulate player approval update
           const newPlayerApproval =
             runMonthlyPlayerApprovalUpdate(currentCampaign);
           currentCampaign = _updatePlayerApprovalPure(
@@ -155,7 +159,7 @@ export const createTimeSlice = (set, get) => {
           );
 
 
-          // 6. Update Party Popularity (Multi-level)
+          // 7. Update Party Popularity (Multi-level)
           const partyPopResult = runMonthlyPartyPopularityUpdate(
             currentCampaign,
             get
@@ -194,13 +198,13 @@ export const createTimeSlice = (set, get) => {
           
           collectedNewsThisMonth.push(...partyPopResult.newsItems);
 
-          // 7. Run AI Bill Proposals
+          // 8. Run AI Bill Proposals
           const proposedBills = runAIBillProposals(currentCampaign, get);
           if (proposedBills.length > 0) {
             get().actions.addProposedBills?.(proposedBills);
           }
 
-          // 8. Dispatch collected news
+          // 9. Dispatch collected news
           if (collectedNewsThisMonth.length > 0) {
             const datedNews = collectedNewsThisMonth.map((d) => ({
               ...d,

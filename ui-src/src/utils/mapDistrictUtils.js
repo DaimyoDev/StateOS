@@ -15,18 +15,24 @@ const COUNTY_NAME_MAP = usaCounties.reduce((acc, county) => {
 /**
  * Creates a gradient color from multiple district colors based on allocations
  */
-export const createGradientColor = (allocations, districtData, districtColors) => {
+export const createGradientColor = (
+  allocations,
+  districtData,
+  districtColors
+) => {
   const allocationEntries = Object.entries(allocations)
     .map(([districtId, allocation]) => {
-      const districtIndex = districtData.findIndex(d => d.id === parseInt(districtId, 10));
+      const districtIndex = districtData.findIndex(
+        (d) => d.id === parseInt(districtId, 10)
+      );
       return {
         districtId: parseInt(districtId, 10),
         allocation: allocation,
-        color: districtIndex !== -1 ? districtColors[districtIndex] : '#cccccc',
-        index: districtIndex
+        color: districtIndex !== -1 ? districtColors[districtIndex] : "#cccccc",
+        index: districtIndex,
       };
     })
-    .filter(entry => entry.allocation > 0)
+    .filter((entry) => entry.allocation > 0)
     .sort((a, b) => b.allocation - a.allocation);
 
   if (allocationEntries.length === 1) {
@@ -37,23 +43,22 @@ export const createGradientColor = (allocations, districtData, districtColors) =
     // Create a simple two-color gradient
     const [first, second] = allocationEntries;
     const firstPercent = Math.round(first.allocation * 100);
-    const secondPercent = Math.round(second.allocation * 100);
-    
+
     return `linear-gradient(45deg, ${first.color} 0%, ${first.color} ${firstPercent}%, ${second.color} ${firstPercent}%, ${second.color} 100%)`;
   }
 
   // For more than 2 districts, create a multi-stop gradient
   let gradientStops = [];
   let currentPercent = 0;
-  
+
   for (const entry of allocationEntries) {
     const percent = Math.round(entry.allocation * 100);
     gradientStops.push(`${entry.color} ${currentPercent}%`);
     currentPercent += percent;
     gradientStops.push(`${entry.color} ${currentPercent}%`);
   }
-  
-  return `linear-gradient(45deg, ${gradientStops.join(', ')})`;
+
+  return `linear-gradient(45deg, ${gradientStops.join(", ")})`;
 };
 
 /**
@@ -106,7 +111,7 @@ export const getDistrictFillColor = (
 
   // Check if county is split across multiple districts
   const allocationCount = Object.keys(allocations).length;
-  
+
   if (allocationCount > 1) {
     // Create gradient for split counties
     return createGradientColor(allocations, districtData, districtColors);
@@ -147,12 +152,14 @@ export const createDistrictMapData = (
     return { districtData: [], districtColors: [], mapData: [] };
   }
 
-  const numDistricts = getCongressionalDistrictCount(state.id);
+  const numDistricts = getCongressionalDistrictCount(state.id, countryData);
   const totalPopulation =
     state.population ||
     counties.reduce((sum, c) => sum + (c.population || 0), 0);
 
-  const cacheKey = `${state.id}_${totalPopulation}_${numDistricts}_${counties.length}_${countryData ? 'generated' : 'rl'}`;
+  const cacheKey = `${state.id}_${totalPopulation}_${numDistricts}_${
+    counties.length
+  }_${countryData ? "generated" : "rl"}`;
 
   let districtData;
   if (districtCache.has(cacheKey)) {
@@ -196,8 +203,9 @@ export const createDistrictMapData = (
       isSplit: isSplit,
       splitDetails: splitDetails,
       // Add gradient information for CSS-based rendering
-      isGradient: color && color.startsWith('linear-gradient'),
-      backgroundImage: color && color.startsWith('linear-gradient') ? color : null,
+      isGradient: color && color.startsWith("linear-gradient"),
+      backgroundImage:
+        color && color.startsWith("linear-gradient") ? color : null,
     };
   });
 
@@ -276,7 +284,6 @@ export const getCountyDistrictId = (countyId, districtData) => {
  * Creates a standardized region style object for district maps
  */
 export const getDistrictRegionStyle = ({
-  countyId,
   svgId,
   countyData,
   districtData,
@@ -285,6 +292,8 @@ export const getDistrictRegionStyle = ({
   theme,
   hoveredId,
   isClickable = false,
+  isSplit = false,
+  splitDetails = null,
 }) => {
   const countyInfo = countyData[svgId];
   if (!countyInfo) return {};
@@ -311,11 +320,26 @@ export const getDistrictRegionStyle = ({
       selectedDistrictId,
       "#cccccc"
     );
-    
-    // Check if it's a gradient color (for split counties)
-    if (fillColor.startsWith('linear-gradient')) {
-      // For SVG, we need to create a pattern or use a different approach
-      // For now, fall back to the primary district color for SVG compatibility
+
+    // Check if this is a split county
+    if (isSplit && splitDetails && splitDetails.length > 1) {
+      if (selectedDistrictId !== null) {
+        // If a district is selected, check if this split county belongs to it
+        const belongsToSelected = splitDetails.some(detail => detail.districtId === selectedDistrictId);
+        if (belongsToSelected) {
+          // Use the selected district's color
+          const selectedDistrictIndex = districtData.findIndex(d => d.id === selectedDistrictId);
+          style.fill = selectedDistrictIndex !== -1 ? districtColors[selectedDistrictIndex] : "#cccccc";
+        } else {
+          // Gray out if not part of the selected district
+          style.fill = "#e0e0e0";
+        }
+      } else {
+        // No district selected - use theme accent color for split counties
+        style.fill = theme.selectedColor || theme.accentColor || "#ff6b35";
+      }
+    } else if (fillColor.startsWith("linear-gradient")) {
+      // Fallback for any remaining gradient cases - use primary district color
       const countyName = COUNTY_NAME_MAP[countyInfo.gameId];
       if (countyName) {
         let allocations = null;
@@ -326,23 +350,22 @@ export const getDistrictRegionStyle = ({
             break;
           }
         }
-        
+
         if (allocations && Object.keys(allocations).length > 1) {
-          // For split counties in SVG, use a striped pattern effect
-          // This is a fallback - in a real implementation you'd create SVG patterns
           const allocationEntries = Object.entries(allocations)
             .map(([districtId, allocation]) => ({
               districtId: parseInt(districtId, 10),
-              allocation: allocation
+              allocation: allocation,
             }))
             .sort((a, b) => b.allocation - a.allocation);
-          
-          const primaryDistrictIndex = districtData.findIndex(d => d.id === allocationEntries[0].districtId);
-          style.fill = primaryDistrictIndex !== -1 ? districtColors[primaryDistrictIndex] : "#cccccc";
-          
-          // Add a visual indicator for split counties
-          style.strokeWidth = "2px";
-          style.strokeDasharray = "3,2";
+
+          const primaryDistrictIndex = districtData.findIndex(
+            (d) => d.id === allocationEntries[0].districtId
+          );
+          style.fill =
+            primaryDistrictIndex !== -1
+              ? districtColors[primaryDistrictIndex]
+              : "#cccccc";
         } else {
           style.fill = fillColor;
         }
