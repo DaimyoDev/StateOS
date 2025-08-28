@@ -97,28 +97,25 @@ function StateDetailsScreen() {
       countyPathData = texasCountyPathData;
     }
     // We call createDistrictMapData without a selected district to get the base data.
-    const { districtData, districtColors } = createDistrictMapData(state, counties, null, countyPathData);
+    const { districtData, districtColors } = createDistrictMapData(state, counties, null, countyPathData, country);
     return { districtData, districtColors };
-  }, [state, counties]);
+  }, [state, counties, country]);
 
   // Create the final map data, which DOES depend on the selected district
   const districtMapData = useMemo(() => {
     if (!districtData || districtData.length === 0) {
       return { districtData: [], districtColors: [], mapData: [], selectedDistrictId: null };
     }
-    const mapData = counties.map(county => {
-      const color = getDistrictFillColor(county.id, districtData, districtColors, selectedDistrictId, '#cccccc');
-      const label = getDistrictLabel(county.id, districtData);
-      const districtId = getCountyDistrictId(county.id, districtData);
-      return {
-        id: county.id,
-        color: color,
-        value: label,
-        districtId: districtId
-      };
-    });
+    
+    // Use createDistrictMapData to get the proper mapData with split county information
+    let countyPathData = null;
+    if (state.id === "USA_TX") {
+      countyPathData = texasCountyPathData;
+    }
+    const { mapData } = createDistrictMapData(state, counties, selectedDistrictId, countyPathData, country);
+    
     return { districtData, districtColors, mapData, selectedDistrictId };
-  }, [districtData, districtColors, counties, selectedDistrictId]);
+  }, [districtData, districtColors, counties, selectedDistrictId, state, country]);
 
   const mapData = useMemo(() => {
     if (mapView === "congressional_districts") {
@@ -403,6 +400,58 @@ function StateDetailsScreen() {
                   </button>
                 ))}
               </div>
+              
+              {/* Split County Details Section */}
+              {(() => {
+                const splitCounties = districtMapData.mapData?.filter(county => county.isSplit) || [];
+                if (splitCounties.length === 0) return null;
+                
+                return (
+                  <div className="split-counties-section">
+                    <h4>Split County Details</h4>
+                    <div className="split-counties-list">
+                      {splitCounties.map((county) => {
+                        const countyName = counties.find(c => c.id === county.id)?.name || 'Unknown County';
+                        const totalPopulation = counties.find(c => c.id === county.id)?.population || 0;
+                        
+                        return (
+                          <div key={county.id} className="split-county-item">
+                            <div className="split-county-header">
+                              <strong>{countyName}</strong>
+                              <span className="split-county-total">
+                                Total: {totalPopulation.toLocaleString()}
+                              </span>
+                            </div>
+                            <div className="split-county-breakdown">
+                              {county.splitDetails?.map((detail, index) => {
+                                const districtColor = districtMapData.districtColors[
+                                  districtMapData.districtData.findIndex(d => d.id === detail.districtId)
+                                ] || '#cccccc';
+                                
+                                return (
+                                  <div key={index} className="split-detail-item">
+                                    <div 
+                                      className="district-color-indicator"
+                                      style={{ backgroundColor: districtColor }}
+                                    ></div>
+                                    <span className="district-label">District {detail.districtId}:</span>
+                                    <span className="district-population">
+                                      {detail.population.toLocaleString()} people
+                                    </span>
+                                    <span className="district-percentage">
+                                      ({((detail.population / totalPopulation) * 100).toFixed(1)}%)
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           ) : (
             <div

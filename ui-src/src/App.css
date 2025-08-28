@@ -48,6 +48,77 @@ h6 {
   font-family: var(--font-heading, "Montserrat", sans-serif);
 }
 
+/* Split County Details Section Styles */
+.split-counties-section {
+  margin-top: 20px;
+  padding: 16px;
+  border-top: 1px solid var(--border-color, #444);
+}
+
+.split-counties-section h4 {
+  margin: 0 0 12px 0;
+  color: var(--accent-color, #ff6b35);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.split-counties-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.split-county-item {
+  background: var(--secondary-bg, rgba(255, 255, 255, 0.05));
+  border-radius: 6px;
+  padding: 12px;
+  border-left: 3px solid var(--accent-color, #ff6b35);
+}
+
+.split-county-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.split-county-header strong {
+  font-size: 0.8rem;
+  color: var(--primary-text, white);
+}
+
+.split-county-total {
+  font-size: 0.8rem;
+  color: var(--secondary-text, #ccc);
+  font-weight: normal;
+}
+
+.split-county-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.split-detail-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  padding: 4px 0;
+}
+
+.district-color-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.district-percentage {
+  color: var(--secondary-text, #ccc);
+  font-style: italic;
+}
+
 .ui-panel {
   /* A generic class for your info panels or sections */
   background-color: var(--ui-panel-bg);
