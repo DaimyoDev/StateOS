@@ -281,9 +281,9 @@ export function generateDistrictColors(numDistricts) {
   };
 
   for (let i = 0; i < numDistricts; i++) {
-    const hue = (i * goldenAngle) % 360;
-    const saturation = 70 + Math.random() * 10; // 70-80%
-    const lightness = 65 + Math.random() * 10;  // 65-75%
+    const hue = Math.random() * 360;
+    const saturation = 60 + Math.random() * 30; // 60-90%
+    const lightness = 60 + Math.random() * 20;  // 60-80%
     colors.push(hslToHex(hue, saturation, lightness));
   }
   

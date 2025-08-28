@@ -99,7 +99,7 @@ export const createDistrictMapData = (state, counties, selectedDistrictId, count
  * @param {Array} districtData - District data array
  * @returns {string} District label
  */
-const getDistrictLabel = (countyId, districtData) => {
+export const getDistrictLabel = (countyId, districtData) => {
   // Convert gameId to county name for matching with district data
   const countyName = COUNTY_NAME_MAP[countyId];
   if (!countyName) {
@@ -121,7 +121,7 @@ const getDistrictLabel = (countyId, districtData) => {
  * @param {Array} districtData - District data array
  * @returns {number|null} Primary district ID
  */
-const getCountyDistrictId = (countyId, districtData) => {
+export const getCountyDistrictId = (countyId, districtData) => {
   // Convert gameId to county name for matching with district data
   const countyName = COUNTY_NAME_MAP[countyId];
   if (!countyName) {

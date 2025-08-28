@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import useGameStore from "../store";
-import { createDistrictMapData } from "../utils/mapDistrictUtils";
+import { createDistrictMapData, getDistrictFillColor, getDistrictLabel, getCountyDistrictId } from "../utils/mapDistrictUtils";
 import { countyPathData as texasCountyPathData } from "../maps/usaCounties/TexasMap";
 
 // Import county maps for US states
@@ -87,20 +87,38 @@ function StateDetailsScreen() {
       .sort((a, b) => (b.population || 0) - (a.population || 0));
   }, [country, state]);
 
-  // Create district data for congressional districts view
-  const districtMapData = useMemo(() => {
+  // Memoize district data and colors to prevent re-calculation on selection
+  const { districtData, districtColors } = useMemo(() => {
     if (!state || !counties || counties.length === 0) {
-      return { districtData: [], districtColors: [], mapData: [], selectedDistrictId: null };
+      return { districtData: [], districtColors: [] };
     }
-    // Import county path data for Texas to enable contiguity analysis
     let countyPathData = null;
     if (state.id === "USA_TX") {
       countyPathData = texasCountyPathData;
     }
-    
-    const data = createDistrictMapData(state, counties, selectedDistrictId, countyPathData);
-    return { ...data, selectedDistrictId };
-  }, [state, counties, selectedDistrictId]);
+    // We call createDistrictMapData without a selected district to get the base data.
+    const { districtData, districtColors } = createDistrictMapData(state, counties, null, countyPathData);
+    return { districtData, districtColors };
+  }, [state, counties]);
+
+  // Create the final map data, which DOES depend on the selected district
+  const districtMapData = useMemo(() => {
+    if (!districtData || districtData.length === 0) {
+      return { districtData: [], districtColors: [], mapData: [], selectedDistrictId: null };
+    }
+    const mapData = counties.map(county => {
+      const color = getDistrictFillColor(county.id, districtData, districtColors, selectedDistrictId, '#cccccc');
+      const label = getDistrictLabel(county.id, districtData);
+      const districtId = getCountyDistrictId(county.id, districtData);
+      return {
+        id: county.id,
+        color: color,
+        value: label,
+        districtId: districtId
+      };
+    });
+    return { districtData, districtColors, mapData, selectedDistrictId };
+  }, [districtData, districtColors, counties, selectedDistrictId]);
 
   const mapData = useMemo(() => {
     if (mapView === "congressional_districts") {
