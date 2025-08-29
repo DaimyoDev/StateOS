@@ -799,7 +799,7 @@ export const createLegislationSlice = (set, get) => ({
                   relevantStats,
                   state[level].activeLegislation,
                   state[level].proposedBills,
-                  activeCampaign.governmentOffices,
+                  get().activeCampaign.governmentOffices,
                   // Convert array to object with policy IDs as keys, and include bill-specific policies
                   {
                     ...state.availablePolicies[level].reduce(
@@ -870,7 +870,7 @@ export const createLegislationSlice = (set, get) => ({
             stats,
             get()[level].activeLegislation,
             get()[level].proposedBills,
-            activeCampaign.governmentOffices || [], // Pass government offices from activeCampaign
+            get().activeCampaign.governmentOffices, // Use the hierarchical structure
             // Convert array to object with policy IDs as keys, and include bill-specific policies
             {
               ...policiesForLevel.reduce((acc, policy) => {

@@ -4,7 +4,7 @@ import {
   generateDetailedCountryData,
 } from "../data/countriesData";
 import { ELECTION_TYPES_BY_COUNTRY } from "../data/electionsData";
-import { generateInitialGovernmentOffices } from "../entities/politicalEntities";
+import { generateInitialGovernmentOffices, flattenGovernmentOffices } from "../entities/politicalEntities";
 import { assignPopulationToCountry } from "../utils/populationUtils";
 
 // ADDED: Import the new generator functions and their dependencies
@@ -136,8 +136,10 @@ export const createCampaignSetupSlice = (set, get) => {
         });
         
 
+        // Extract politicians from the hierarchical structure
         const initialPoliticians = [];
-        initialGovernmentOffices.forEach((office) => {
+        const flatOffices = flattenGovernmentOffices(initialGovernmentOffices);
+        flatOffices.forEach((office) => {
           if (office.holder) {
             initialPoliticians.push(office.holder);
           }

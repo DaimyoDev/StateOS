@@ -1792,7 +1792,76 @@ const generateInitialNationalOffices = (
 };
 
 /**
+ * Creates the initial hierarchical government office structure
+ */
+export const createGovernmentOfficeStructure = () => ({
+  national: {
+    executive: [],
+    legislative: {
+      lowerHouse: [],
+      upperHouse: []
+    },
+    judicial: []
+  },
+  states: {},
+  cities: {}
+});
+
+/**
+ * Adds offices to the hierarchical structure based on their level and type
+ */
+const addOfficeToStructure = (structure, office) => {
+  const level = office.level;
+  
+  if (level?.startsWith('national_')) {
+    if (level.includes('head_of_state') || level.includes('executive')) {
+      structure.national.executive.push(office);
+    } else if (level.includes('lower_house')) {
+      structure.national.legislative.lowerHouse.push(office);
+    } else if (level.includes('upper_house')) {
+      structure.national.legislative.upperHouse.push(office);
+    } else if (level.includes('judicial')) {
+      structure.national.judicial.push(office);
+    }
+  } else if (level?.includes('local_state')) {
+    const stateId = office.regionId;
+    if (!structure.states[stateId]) {
+      structure.states[stateId] = {
+        executive: [],
+        legislative: {
+          lowerHouse: [],
+          upperHouse: []
+        }
+      };
+    }
+    
+    if (level.includes('governor') || office.officeNameTemplateId?.includes('governor')) {
+      structure.states[stateId].executive.push(office);
+    } else if (level.includes('lower_house')) {
+      structure.states[stateId].legislative.lowerHouse.push(office);
+    } else if (level.includes('upper_house')) {
+      structure.states[stateId].legislative.upperHouse.push(office);
+    }
+  } else if (level?.startsWith('local_') && (level.includes('city') || office.cityId)) {
+    const cityId = office.cityId;
+    if (!structure.cities[cityId]) {
+      structure.cities[cityId] = {
+        executive: [],
+        legislative: []
+      };
+    }
+    
+    if (office.officeNameTemplateId?.includes('mayor')) {
+      structure.cities[cityId].executive.push(office);
+    } else if (office.officeNameTemplateId?.includes('council')) {
+      structure.cities[cityId].legislative.push(office);
+    }
+  }
+};
+
+/**
  * OVERHAULED: Main dispatcher function for generating all initial government offices.
+ * Now returns a hierarchical structure instead of a flat array.
  */
 export const generateInitialGovernmentOffices = ({
   countryElectionTypes,
@@ -1824,8 +1893,44 @@ export const generateInitialGovernmentOffices = ({
     countryData
   );
 
-  // Combine all generated offices into one array
-  return [...localOffices, ...stateOffices, ...nationalOffices];
+  // Create hierarchical structure
+  const structure = createGovernmentOfficeStructure();
+  
+  // Add all offices to the structure
+  [...localOffices, ...stateOffices, ...nationalOffices].forEach(office => {
+    addOfficeToStructure(structure, office);
+  });
+
+  return structure;
+};
+
+/**
+ * Helper function to get all offices from the hierarchical structure as a flat array
+ * (for backwards compatibility)
+ */
+export const flattenGovernmentOffices = (structure) => {
+  const offices = [];
+  
+  // National offices
+  offices.push(...structure.national.executive);
+  offices.push(...structure.national.legislative.lowerHouse);
+  offices.push(...structure.national.legislative.upperHouse);
+  offices.push(...structure.national.judicial);
+  
+  // State offices
+  Object.values(structure.states).forEach(state => {
+    offices.push(...state.executive);
+    offices.push(...state.legislative.lowerHouse);
+    offices.push(...state.legislative.upperHouse);
+  });
+  
+  // City offices
+  Object.values(structure.cities).forEach(city => {
+    offices.push(...city.executive);
+    offices.push(...city.legislative);
+  });
+  
+  return offices;
 };
 
 export const updateGovernmentOffice = (existingOffice, updates) => {

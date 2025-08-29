@@ -14,7 +14,8 @@ const formatCurrency = (value) => value != null ? `$${value.toLocaleString()}` :
 
 const NationalOverviewTab = ({ campaignData }) => {
   const [activeSubTab, setActiveSubTab] = useState("summary");
-  const { openViewPoliticianModal } = useGameStore((state) => state.actions);
+  const { openViewPoliticianModal, getNationalGovernmentOffices } = useGameStore((state) => state.actions);
+  const nationalGovernmentOffices = getNationalGovernmentOffices();
 
   const countryData = useMemo(() => {
     // First try to get the live country data (updated by budget calculations)
@@ -28,33 +29,23 @@ const NationalOverviewTab = ({ campaignData }) => {
     );
   }, [campaignData]);
 
-  const nationalOffices = useMemo(() => {
-    return campaignData.governmentOffices.filter((o) =>
-      o.level.startsWith("national_")
-    );
-  }, [campaignData.governmentOffices]);
-
-  const headOfState = useMemo(
-    () => nationalOffices.find((o) => 
-      o.level.includes("head_of_state") || 
+  const headOfState = useMemo(() => {
+    if (!nationalGovernmentOffices?.executive) return null;
+    return nationalGovernmentOffices.executive.find((o) => 
+      o.level?.includes("head_of_state") || 
       o.level === "national_head_of_state_and_government"
-    ),
-    [nationalOffices]
-  );
-  const lowerHouse = useMemo(
-    () => nationalOffices.filter((o) => 
-      o.level.includes("lower_house") || 
-      o.level === "national_lower_house_constituency"
-    ),
-    [nationalOffices]
-  );
-  const upperHouse = useMemo(
-    () => nationalOffices.filter((o) => 
-      o.level.includes("upper_house") || 
-      o.level === "national_upper_house_state_rep"
-    ),
-    [nationalOffices]
-  );
+    );
+  }, [nationalGovernmentOffices]);
+
+  const lowerHouse = useMemo(() => {
+    if (!nationalGovernmentOffices?.legislative?.lowerHouse) return [];
+    return nationalGovernmentOffices.legislative.lowerHouse;
+  }, [nationalGovernmentOffices]);
+
+  const upperHouse = useMemo(() => {
+    if (!nationalGovernmentOffices?.legislative?.upperHouse) return [];
+    return nationalGovernmentOffices.legislative.upperHouse;
+  }, [nationalGovernmentOffices]);
 
   const lowerHouseComposition = useMemo(() => {
     const partyData = {};

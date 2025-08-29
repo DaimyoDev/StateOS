@@ -154,7 +154,8 @@ export const createPersonnelSlice = (set, get) => ({
         const playerPolitician = state.activeCampaign.politician;
 
         // Find the target politician from the comprehensive governmentOffices list
-        const targetPolitician = state.activeCampaign.governmentOffices
+        const allOffices = get().actions.getAllGovernmentOffices();
+        const targetPolitician = allOffices
           .flatMap((o) => o.members || (o.holder ? [o.holder] : []))
           .find((p) => p && p.id === politicianId);
 
@@ -476,7 +477,8 @@ export const createPersonnelSlice = (set, get) => ({
         const cost = 100;
         const playerPolitician = state.activeCampaign.politician;
 
-        const targetPolitician = state.activeCampaign.governmentOffices
+        const allOffices = get().actions.getAllGovernmentOffices();
+        const targetPolitician = allOffices
           .flatMap((o) => o.members || (o.holder ? [o.holder] : []))
           .find((p) => p && p.id === politicianId);
 
@@ -538,7 +540,8 @@ export const createPersonnelSlice = (set, get) => ({
           ? currentFavorites.filter(id => id !== politicianId)
           : [...currentFavorites, politicianId];
         
-        const targetPolitician = state.activeCampaign.governmentOffices
+        const allOffices = get().actions.getAllGovernmentOffices();
+        const targetPolitician = allOffices
           .flatMap((o) => o.members || (o.holder ? [o.holder] : []))
           .find((p) => p && p.id === politicianId);
         
@@ -560,32 +563,46 @@ export const createPersonnelSlice = (set, get) => ({
      */
     agePoliticians: () => {
       set((state) => {
-        const newGovernmentOffices = state.activeCampaign.governmentOffices.map(office => {
-          const updatedOffice = { ...office };
-          
-          // Age office holder
-          if (office.holder && !office.holder.isPlayer) {
-            updatedOffice.holder = {
-              ...office.holder,
-              age: office.holder.age + 1
-            };
-          }
-          
-          // Age office members
-          if (office.members) {
-            updatedOffice.members = office.members.map(member => {
-              if (member && !member.isPlayer) {
-                return {
-                  ...member,
-                  age: member.age + 1
+        // Helper function to age politicians in hierarchical structure
+        const ageOfficesRecursively = (structure) => {
+          if (Array.isArray(structure)) {
+            return structure.map(office => {
+              const updatedOffice = { ...office };
+              
+              // Age office holder
+              if (office.holder && !office.holder.isPlayer) {
+                updatedOffice.holder = {
+                  ...office.holder,
+                  age: office.holder.age + 1
                 };
               }
-              return member;
+              
+              // Age office members
+              if (office.members) {
+                updatedOffice.members = office.members.map(member => {
+                  if (member && !member.isPlayer) {
+                    return {
+                      ...member,
+                      age: member.age + 1
+                    };
+                  }
+                  return member;
+                });
+              }
+              
+              return updatedOffice;
             });
+          } else if (structure && typeof structure === 'object') {
+            const updated = {};
+            for (const [key, value] of Object.entries(structure)) {
+              updated[key] = ageOfficesRecursively(value);
+            }
+            return updated;
           }
-          
-          return updatedOffice;
-        });
+          return structure;
+        };
+
+        const newGovernmentOffices = ageOfficesRecursively(state.activeCampaign.governmentOffices);
         
         return {
           activeCampaign: {

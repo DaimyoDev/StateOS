@@ -208,13 +208,21 @@ const generateCityGovernment = (cityData, countryId = 'USA', allPartiesInScope =
 const getCityGovernmentOffices = (activeCampaign, cityId) => {
   if (!activeCampaign?.governmentOffices || !cityId) return [];
   
-  return activeCampaign.governmentOffices.filter(office => {
-    // Match by cityId or level-based filtering for city offices
-    return office.cityId === cityId || 
-           (office.level === 'city' && office.cityId === cityId) ||
-           (office.level === 'local_city' && office.cityId === cityId) ||
-           (office.level === 'city_district' && office.cityId === cityId);
-  });
+  // Get city offices from hierarchical structure
+  const cityOffices = activeCampaign.governmentOffices?.cities?.[cityId] || {};
+  const flatOffices = [];
+  
+  // Flatten city offices structure
+  if (cityOffices.executive) flatOffices.push(...cityOffices.executive);
+  if (cityOffices.legislative) flatOffices.push(...cityOffices.legislative);
+  if (cityOffices.judicial) flatOffices.push(...cityOffices.judicial);
+  
+  return flatOffices.filter(office => 
+    office && (office.cityId === cityId || 
+    office.level === 'city' || 
+    office.level === 'local_city' || 
+    office.level === 'city_district')
+  );
 };
 
 /**
@@ -411,26 +419,9 @@ export const createCityManagementSlice = (set, get) => ({
               ...(activeCampaign.politicians?.base || new Map()),
               ...(cityData.politicians || new Map())
             ])
-          },
-          // Merge city government offices into campaign offices
-          governmentOffices: [
-            // Keep existing offices that aren't for this city
-            ...(activeCampaign.governmentOffices || []).filter(office => office.cityId !== cityId),
-            // Add new city offices with proper cityId and structure
-            ...(cityData.governmentOffices || []).map(office => ({
-              ...office,
-              cityId: cityId,
-              officeId: `${cityId}_${office.id}`,
-              officeName: office.title,
-              holder: cityData.politicians?.get(office.holderId) || null,
-              level: office.id === 'mayor' ? 'local_city' : 
-                     office.id.startsWith('council_') ? 'local_city' : 'city',
-              officeNameTemplateId: office.id === 'mayor' ? 'mayor' :
-                                   office.id.startsWith('council_') ? 'city_council' : office.id,
-              // Add numberOfSeatsToFill for council offices to match expected structure
-              numberOfSeatsToFill: office.id.startsWith('council_') ? 1 : undefined
-            }))
-          ]
+          }
+          // The government offices are now in hierarchical structure - no need to merge here
+          // They are handled by the campaign setup and politicalEntities.js
         };
 
         // Update available cities cache

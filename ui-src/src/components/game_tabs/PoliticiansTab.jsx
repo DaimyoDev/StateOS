@@ -114,67 +114,70 @@ const RelationshipCard = React.memo(
 const EMPTY_ARRAY = [];
 
 function PoliticiansTab() {
-  const campaignData = useGameStore((state) => state.activeCampaign);
   const relationships = useGameStore((state) => state.politicianRelationships);
   const politicianIntel = useGameStore((state) => state.politicianIntel);
   const favoritePoliticians = useGameStore(
     (state) => state.favoritePoliticians || EMPTY_ARRAY
   );
   const actions = useGameStore((state) => state.actions);
+  const { getAllGovernmentOffices } = actions;
 
   const [activeTab, setActiveTab] = useState("all");
   const [relationshipFilter, setRelationshipFilter] = useState("all");
   const [levelFilter, setLevelFilter] = useState("all");
 
-  // CHANGED: Collect politicians from all levels using the same approach as State/National tabs
+  // CHANGED: Collect politicians from all levels using the hierarchical structure
   const aiPoliticians = useMemo(() => {
-    if (!campaignData?.governmentOffices) return [];
+    const allOffices = getAllGovernmentOffices();
+    if (!allOffices || allOffices.length === 0) return [];
     const politicianMap = new Map();
-    
+
     // Helper function to categorize government level based on office level
     const categorizeGovernmentLevel = (officeLevel) => {
-      if (!officeLevel) return 'local_city';
-      
+      if (!officeLevel) return "local_city";
+
       // Federal/National levels
-      if (officeLevel.startsWith('national_')) {
-        return 'federal';
+      if (officeLevel.startsWith("national_")) {
+        return "federal";
       }
-      
+
       // State levels
-      if (officeLevel === 'local_state' || 
-          officeLevel === 'local_state_lower_house' || 
-          officeLevel === 'local_state_upper_house') {
-        return 'state';
+      if (
+        officeLevel === "local_state" ||
+        officeLevel === "local_state_lower_house" ||
+        officeLevel === "local_state_upper_house"
+      ) {
+        return "state";
       }
-      
+
       // County levels
-      if (officeLevel.startsWith('local_county')) {
-        return 'local_county';
+      if (officeLevel.startsWith("local_county")) {
+        return "local_county";
       }
-      
+
       // Local city levels (default)
-      return 'local_city';
+      return "local_city";
     };
 
-    // Process all government offices using the same pattern as State/National tabs
-    campaignData.governmentOffices.forEach((office) => {
+    // Process all government offices using the hierarchical structure
+    allOffices.forEach((office) => {
       // Handle both single holders and multi-member offices
       const politicians = [];
-      
+
       // Add holder if exists
       if (office.holder && !office.holder.isPlayer) {
         politicians.push(office.holder);
       }
-      
+
       // Add members if they exist
       if (office.members && office.members.length > 0) {
-        office.members.forEach(member => {
+        office.members.forEach((member) => {
           if (member && !member.isPlayer) {
             politicians.push(member);
           }
         });
       }
-      
+
       politicians.forEach((p) => {
         if (p && !politicianMap.has(p.id)) {
           // Categorize the government level properly
@@ -184,7 +187,7 @@ function PoliticiansTab() {
             governmentLevel: categorizedLevel,
             currentOffice: office.officeName || office.name,
             _debugOfficeLevel: office.level, // Add for debugging
-            _debugOfficeName: office.officeName || office.name // Add for debugging
+            _debugOfficeName: office.officeName || office.name, // Add for debugging
           };
           politicianMap.set(p.id, politician);
         }
@@ -194,7 +197,7 @@ function PoliticiansTab() {
     return Array.from(politicianMap.values()).sort((a, b) =>
       a.name.localeCompare(b.name)
     );
-  }, [campaignData]);
+  }, [getAllGovernmentOffices]);
 
   // Filter politicians based on active tab and filters
   const filteredPoliticians = useMemo(() => {

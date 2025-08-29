@@ -24,6 +24,7 @@ import { createDataSlice } from "./stores/dataSlice.js";
 import { createPollingSlice } from "./stores/pollingSlice.js";
 import { createNotificationSlice } from "./stores/notificationSlice.js";
 import { createCityManagementSlice } from "./stores/cityManagementSlice.js";
+import { flattenGovernmentOffices } from "./entities/politicalEntities.js";
 
 // --- Helper Functions (to be moved to relevant slices or utils later) ---
 
@@ -545,6 +546,46 @@ export const useGameStore = create(
                 (setup) => setup.id !== setupId
               ),
             }));
+          },
+
+          // Government office helper functions
+          getAllGovernmentOffices: () => {
+            const state = get();
+            if (!state.activeCampaign?.governmentOffices) return [];
+            return flattenGovernmentOffices(state.activeCampaign.governmentOffices);
+          },
+
+          getNationalGovernmentOffices: () => {
+            const state = get();
+            const govOffices = state.activeCampaign?.governmentOffices;
+            if (!govOffices) return { executive: [], legislative: { lowerHouse: [], upperHouse: [] }, judicial: [] };
+            return govOffices.national || { executive: [], legislative: { lowerHouse: [], upperHouse: [] }, judicial: [] };
+          },
+
+          getStateGovernmentOffices: (stateId) => {
+            const state = get();
+            const govOffices = state.activeCampaign?.governmentOffices;
+            if (!govOffices || !stateId) return { executive: [], legislative: { lowerHouse: [], upperHouse: [] } };
+            return govOffices.states?.[stateId] || { executive: [], legislative: { lowerHouse: [], upperHouse: [] } };
+          },
+
+          getCurrentStateGovernmentOffices: () => {
+            const state = get();
+            const regionId = state.activeCampaign?.regionId;
+            return get().actions.getStateGovernmentOffices(regionId);
+          },
+
+          getCityGovernmentOffices: (cityId) => {
+            const state = get();
+            const govOffices = state.activeCampaign?.governmentOffices;
+            if (!govOffices || !cityId) return { executive: [], legislative: [] };
+            return govOffices.cities?.[cityId] || { executive: [], legislative: [] };
+          },
+
+          getCurrentCityGovernmentOffices: () => {
+            const state = get();
+            const cityId = state.activeCampaign?.startingCity?.id;
+            return get().actions.getCityGovernmentOffices(cityId);
           },
         },
       };

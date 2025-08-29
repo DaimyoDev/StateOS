@@ -17,7 +17,10 @@ import { generateNewsForEvent } from "../simulation/newsGenerator.js";
 import { rehydratePolitician } from "../entities/personnel.js";
 import { _addPoliticiansToSoA_helper } from "./dataSlice.js";
 import { calculateBaseCandidateScore } from "../utils/electionUtils.js";
-import { normalizePollingOptimized, pollingOptimizer } from "../General Scripts/OptimizedPollingFunctions.js";
+import {
+  normalizePollingOptimized,
+  pollingOptimizer,
+} from "../General Scripts/OptimizedPollingFunctions.js";
 
 // --- Local Helper Functions (To be moved to electionManager.js later) ---
 
@@ -86,6 +89,231 @@ const cleanWinnerName = (name) => {
   return name.replace(/\s*\([^)]*List\s*#\d+\)$/, "").trim();
 };
 
+/**
+ * Helper function to update government office in hierarchical structure
+ * @param {Object} hierarchicalStructure - The current government offices structure
+ * @param {Object} election - The election that concluded
+ * @param {Object} newOfficeData - The new office data to set
+ * @returns {Object} Updated hierarchical structure
+ */
+const updateGovernmentOfficeInHierarchy = (
+  hierarchicalStructure,
+  election,
+  newOfficeData
+) => {
+  const level = election.level;
+  const entityData = election.entityDataSnapshot;
+  const updated = { ...hierarchicalStructure };
+
+  // Determine where to place this office in the hierarchy
+  if (level && level.startsWith("national_")) {
+    // National level office
+    if (!updated.national)
+      updated.national = {
+        executive: [],
+        legislative: { lowerHouse: [], upperHouse: [] },
+        judicial: [],
+      };
+
+    if (
+      level.includes("executive") ||
+      level.includes("head_of_state") ||
+      level.includes("president") ||
+      level.includes("prime_minister")
+    ) {
+      // Find existing office or add new one
+      const existingIndex = updated.national.executive.findIndex(
+        (o) =>
+          o.instanceIdBase === election.instanceIdBase ||
+          o.officeNameTemplateId === election.officeNameTemplateId
+      );
+
+      if (existingIndex >= 0) {
+        updated.national.executive[existingIndex] = {
+          ...updated.national.executive[existingIndex],
+          ...newOfficeData,
+        };
+      } else {
+        updated.national.executive.push(newOfficeData);
+      }
+    } else if (
+      level.includes("legislative") ||
+      level.includes("house") ||
+      level.includes("senate") ||
+      level.includes("congress")
+    ) {
+      // Determine if upper or lower house
+      const isUpperHouse = level.includes("senate") || level.includes("upper");
+      const chamber = isUpperHouse ? "upperHouse" : "lowerHouse";
+
+      const existingIndex = updated.national.legislative[chamber].findIndex(
+        (o) =>
+          o.instanceIdBase === election.instanceIdBase ||
+          o.officeNameTemplateId === election.officeNameTemplateId
+      );
+
+      if (existingIndex >= 0) {
+        updated.national.legislative[chamber][existingIndex] = {
+          ...updated.national.legislative[chamber][existingIndex],
+          ...newOfficeData,
+        };
+      } else {
+        updated.national.legislative[chamber].push(newOfficeData);
+      }
+    } else {
+      // Default to executive for unknown national offices
+      const existingIndex = updated.national.executive.findIndex(
+        (o) =>
+          o.instanceIdBase === election.instanceIdBase ||
+          o.officeNameTemplateId === election.officeNameTemplateId
+      );
+
+      if (existingIndex >= 0) {
+        updated.national.executive[existingIndex] = {
+          ...updated.national.executive[existingIndex],
+          ...newOfficeData,
+        };
+      } else {
+        updated.national.executive.push(newOfficeData);
+      }
+    }
+  } else if (
+    level &&
+    (level.startsWith("state_") ||
+      level.startsWith("local_state") ||
+      level === "state")
+  ) {
+    // State level office
+    const stateId = entityData.id || entityData.stateId;
+    if (!updated.states) updated.states = {};
+    if (!updated.states[stateId])
+      updated.states[stateId] = {
+        executive: [],
+        legislative: { lowerHouse: [], upperHouse: [] },
+        judicial: [],
+      };
+
+    if (level.includes("executive") || level.includes("governor")) {
+      const existingIndex = updated.states[stateId].executive.findIndex(
+        (o) =>
+          o.instanceIdBase === election.instanceIdBase ||
+          o.officeNameTemplateId === election.officeNameTemplateId
+      );
+
+      if (existingIndex >= 0) {
+        updated.states[stateId].executive[existingIndex] = {
+          ...updated.states[stateId].executive[existingIndex],
+          ...newOfficeData,
+        };
+      } else {
+        updated.states[stateId].executive.push(newOfficeData);
+      }
+    } else if (
+      level.includes("legislative") ||
+      level.includes("house") ||
+      level.includes("senate")
+    ) {
+      const isUpperHouse = level.includes("senate") || level.includes("upper");
+      const chamber = isUpperHouse ? "upperHouse" : "lowerHouse";
+
+      const existingIndex = updated.states[stateId].legislative[
+        chamber
+      ].findIndex(
+        (o) =>
+          o.instanceIdBase === election.instanceIdBase ||
+          o.officeNameTemplateId === election.officeNameTemplateId
+      );
+
+      if (existingIndex >= 0) {
+        updated.states[stateId].legislative[chamber][existingIndex] = {
+          ...updated.states[stateId].legislative[chamber][existingIndex],
+          ...newOfficeData,
+        };
+      } else {
+        updated.states[stateId].legislative[chamber].push(newOfficeData);
+      }
+    } else {
+      // Default to executive for unknown state offices
+      const existingIndex = updated.states[stateId].executive.findIndex(
+        (o) =>
+          o.instanceIdBase === election.instanceIdBase ||
+          o.officeNameTemplateId === election.officeNameTemplateId
+      );
+
+      if (existingIndex >= 0) {
+        updated.states[stateId].executive[existingIndex] = {
+          ...updated.states[stateId].executive[existingIndex],
+          ...newOfficeData,
+        };
+      } else {
+        updated.states[stateId].executive.push(newOfficeData);
+      }
+    }
+  } else if (
+    level &&
+    (level.startsWith("local_city") ||
+      level === "city" ||
+      level.includes("municipal"))
+  ) {
+    // City level office
+    const cityId =
+      entityData.id || entityData.cityId || entityData.parentCityId;
+    if (!updated.cities) updated.cities = {};
+    if (!updated.cities[cityId])
+      updated.cities[cityId] = { executive: [], legislative: [], judicial: [] };
+
+    if (level.includes("mayor") || level.includes("executive")) {
+      const existingIndex = updated.cities[cityId].executive.findIndex(
+        (o) =>
+          o.instanceIdBase === election.instanceIdBase ||
+          o.officeNameTemplateId === election.officeNameTemplateId
+      );
+
+      if (existingIndex >= 0) {
+        updated.cities[cityId].executive[existingIndex] = {
+          ...updated.cities[cityId].executive[existingIndex],
+          ...newOfficeData,
+        };
+      } else {
+        updated.cities[cityId].executive.push(newOfficeData);
+      }
+    } else if (level.includes("council") || level.includes("legislative")) {
+      const existingIndex = updated.cities[cityId].legislative.findIndex(
+        (o) =>
+          o.instanceIdBase === election.instanceIdBase ||
+          o.officeNameTemplateId === election.officeNameTemplateId
+      );
+
+      if (existingIndex >= 0) {
+        updated.cities[cityId].legislative[existingIndex] = {
+          ...updated.cities[cityId].legislative[existingIndex],
+          ...newOfficeData,
+        };
+      } else {
+        updated.cities[cityId].legislative.push(newOfficeData);
+      }
+    } else {
+      // Default to executive for unknown city offices
+      const existingIndex = updated.cities[cityId].executive.findIndex(
+        (o) =>
+          o.instanceIdBase === election.instanceIdBase ||
+          o.officeNameTemplateId === election.officeNameTemplateId
+      );
+
+      if (existingIndex >= 0) {
+        updated.cities[cityId].executive[existingIndex] = {
+          ...updated.cities[cityId].executive[existingIndex],
+          ...newOfficeData,
+        };
+      } else {
+        updated.cities[cityId].executive.push(newOfficeData);
+      }
+    }
+  }
+
+  return updated;
+};
+
 export const createElectionSlice = (set, get) => ({
   isSimulationMode: false,
   simulatedElections: [],
@@ -124,7 +352,9 @@ export const createElectionSlice = (set, get) => ({
 
         // --- OPTIMIZATION: Pre-calculate incumbents by office name ---
         const incumbentsMap = new Map();
-        governmentOffices.forEach((office) => {
+        // Use the helper function to get flattened government offices
+        const flatGovernmentOffices = get().actions.getAllGovernmentOffices();
+        flatGovernmentOffices.forEach((office) => {
           if (office.holder) {
             const incumbents = incumbentsMap.get(office.officeName) || [];
             incumbents.push(office);
@@ -367,9 +597,10 @@ export const createElectionSlice = (set, get) => ({
         let updatedElections = [...state.activeCampaign.elections];
         updatedElections[electionIndex] = updatedElection;
 
-        let updatedGovernmentOffices = [
-          ...state.activeCampaign.governmentOffices,
-        ];
+        // Get current hierarchical structure
+        let updatedGovernmentOffices = JSON.parse(
+          JSON.stringify(state.activeCampaign.governmentOffices)
+        );
         const electionDef = ELECTION_TYPES_BY_COUNTRY[
           state.activeCampaign.countryId
         ]?.find((e) => e.id === updatedElection.officeNameTemplateId);
@@ -412,42 +643,37 @@ export const createElectionSlice = (set, get) => ({
             };
           }
 
-          const officeIndex = updatedGovernmentOffices.findIndex(
-            (o) => o && o.instanceIdBase === updatedElection.instanceIdBase
-          );
-
           if (outcome.winnerAssignment.type === "MEMBERS_ARRAY") {
             const newMembers = winners.map((winner, i) => ({
-              // Added index 'i' here
               ...winner,
               name: cleanWinnerName(winner.name),
               holder: {
                 ...winner,
                 name: cleanWinnerName(winner.name),
               },
-              // The role now includes a specific seat number
               role: `Member, ${updatedElection.officeName} (Seat ${i + 1})`,
             }));
 
-            if (officeIndex > -1) {
-              updatedGovernmentOffices[officeIndex] = {
-                ...updatedGovernmentOffices[officeIndex],
-                members: newMembers,
-                termEnds,
-              };
-            } else {
-              updatedGovernmentOffices.push({
-                officeId: `gov_${updatedElection.instanceIdBase}`,
-                officeName: updatedElection.officeName,
-                level: updatedElection.level, // Add level
-                cityId:
-                  updatedElection.entityDataSnapshot.parentCityId ||
-                  updatedElection.entityDataSnapshot.id, // Add cityId
-                members: newMembers,
-                termEnds,
-                officeNameTemplateId: updatedElection.officeNameTemplateId,
-              });
-            }
+            // Create the new office data for multi-member offices
+            const newOfficeData = {
+              officeId: `gov_${updatedElection.instanceIdBase}`,
+              officeName: updatedElection.officeName,
+              level: updatedElection.level,
+              cityId:
+                updatedElection.entityDataSnapshot.parentCityId ||
+                updatedElection.entityDataSnapshot.id,
+              members: newMembers,
+              termEnds,
+              officeNameTemplateId: updatedElection.officeNameTemplateId,
+              instanceIdBase: updatedElection.instanceIdBase,
+            };
+
+            // Update the hierarchical structure
+            updatedGovernmentOffices = updateGovernmentOfficeInHierarchy(
+              updatedGovernmentOffices,
+              updatedElection,
+              newOfficeData
+            );
           } else {
             // SINGLE_HOLDER
             const winner = winners[0];
@@ -457,26 +683,26 @@ export const createElectionSlice = (set, get) => ({
               role: updatedElection.officeName,
             };
 
-            if (officeIndex > -1) {
-              updatedGovernmentOffices[officeIndex] = {
-                ...updatedGovernmentOffices[officeIndex],
-                holder: newHolder,
-                termEnds,
-              };
-            } else {
-              updatedGovernmentOffices.push({
-                officeId: `gov_${updatedElection.instanceIdBase}`,
-                officeName: updatedElection.officeName,
-                level: updatedElection.level, // Add level
-                cityId:
-                  updatedElection.entityDataSnapshot.parentCityId ||
-                  updatedElection.entityDataSnapshot.id, // Add cityId
-                holder: newHolder,
-                termEnds,
-                officeNameTemplateId: updatedElection.officeNameTemplateId,
-                instanceIdBase: updatedElection.instanceIdBase,
-              });
-            }
+            // Create the new office data for single-holder offices
+            const newOfficeData = {
+              officeId: `gov_${updatedElection.instanceIdBase}`,
+              officeName: updatedElection.officeName,
+              level: updatedElection.level,
+              cityId:
+                updatedElection.entityDataSnapshot.parentCityId ||
+                updatedElection.entityDataSnapshot.id,
+              holder: newHolder,
+              termEnds,
+              officeNameTemplateId: updatedElection.officeNameTemplateId,
+              instanceIdBase: updatedElection.instanceIdBase,
+            };
+
+            // Update the hierarchical structure
+            updatedGovernmentOffices = updateGovernmentOfficeInHierarchy(
+              updatedGovernmentOffices,
+              updatedElection,
+              newOfficeData
+            );
           }
         }
 
@@ -511,7 +737,13 @@ export const createElectionSlice = (set, get) => ({
             .slice(0, 3);
 
           outletsToReport.forEach((outlet) => {
-            const article = generateNewsForEvent(event, outlet, currentDate, [], cityName);
+            const article = generateNewsForEvent(
+              event,
+              outlet,
+              currentDate,
+              [],
+              cityName
+            );
             newNewsItems.unshift(article); // Add new article to the top of the list
           });
         }
@@ -641,19 +873,26 @@ export const createElectionSlice = (set, get) => ({
                   if (!candidate.name) {
                     candidate.name = candidate.id || "Unknown Candidate";
                   }
-                  
+
                   // Fix corrupted party data during candidacy declaration
-                  if (candidate.partyId && candidate.partyName === "Independent") {
+                  if (
+                    candidate.partyId &&
+                    candidate.partyName === "Independent"
+                  ) {
                     const allParties = [
                       ...(generatedPartiesSnapshot || []),
-                      ...(customPartiesSnapshot || [])
+                      ...(customPartiesSnapshot || []),
                     ];
-                    
-                    const correctParty = allParties.find(p => p.id === candidate.partyId);
+
+                    const correctParty = allParties.find(
+                      (p) => p.id === candidate.partyId
+                    );
                     if (correctParty) {
                       candidate.partyName = correctParty.name;
                       candidate.partyColor = correctParty.color;
-                      console.log(`Fixed party data for ${candidate.name}: ${correctParty.name}`);
+                      console.log(
+                        `Fixed party data for ${candidate.name}: ${correctParty.name}`
+                      );
                     }
                   }
                 }
@@ -678,8 +917,6 @@ export const createElectionSlice = (set, get) => ({
               candidatesWithScores,
               adultPop
             );
-
-
 
             const finalCandidatesMap = new Map();
             for (const candidate of incorrectlyKeyedMap.values()) {

@@ -308,18 +308,55 @@ const calculateFinancialImpactScore = (
 const calculateProposerRelationshipScore = (
   aiPolitician,
   proposal,
-  governmentOffices
+  governmentOfficesStructure
 ) => {
   let score = 0;
   
-  // Handle case where governmentOffices is null, undefined, or not an array
-  if (!Array.isArray(governmentOffices)) {
-    console.log(`[calculateProposerRelationshipScore Debug] Government offices is not an array:`, governmentOffices);
-    return score;
+  // Helper function to flatten hierarchical government offices structure
+  const flattenGovernmentOffices = (hierarchicalStructure) => {
+    if (!hierarchicalStructure) return [];
+    const flattened = [];
+    
+    // Add national offices
+    if (hierarchicalStructure.national) {
+      if (hierarchicalStructure.national.executive) flattened.push(...hierarchicalStructure.national.executive);
+      if (hierarchicalStructure.national.legislative?.lowerHouse) flattened.push(...hierarchicalStructure.national.legislative.lowerHouse);
+      if (hierarchicalStructure.national.legislative?.upperHouse) flattened.push(...hierarchicalStructure.national.legislative.upperHouse);
+      if (hierarchicalStructure.national.judicial) flattened.push(...hierarchicalStructure.national.judicial);
+    }
+    
+    // Add state offices
+    if (hierarchicalStructure.states) {
+      Object.values(hierarchicalStructure.states).forEach(state => {
+        if (state.executive) flattened.push(...state.executive);
+        if (state.legislative?.lowerHouse) flattened.push(...state.legislative.lowerHouse);
+        if (state.legislative?.upperHouse) flattened.push(...state.legislative.upperHouse);
+        if (state.judicial) flattened.push(...state.judicial);
+      });
+    }
+    
+    // Add city offices
+    if (hierarchicalStructure.cities) {
+      Object.values(hierarchicalStructure.cities).forEach(city => {
+        if (city.executive) flattened.push(...city.executive);
+        if (city.legislative) flattened.push(...city.legislative);
+        if (city.judicial) flattened.push(...city.judicial);
+      });
+    }
+    
+    return flattened.filter(Boolean);
+  };
+
+  // Handle both hierarchical structure and flat array
+  let allGovernmentOffices;
+  if (Array.isArray(governmentOfficesStructure)) {
+    allGovernmentOffices = governmentOfficesStructure;
+  } else {
+    allGovernmentOffices = flattenGovernmentOffices(governmentOfficesStructure);
   }
   
-  const playerPolitician = governmentOffices.find((o) => o.isPlayer);
-  const playerPoliticianId = playerPolitician ? playerPolitician.id : null;
+  const playerOffice = allGovernmentOffices.find((o) => o.holder?.isPlayer);
+  const playerPoliticianId = playerOffice?.holder?.id || null;
 
   if (proposal.proposerId === playerPoliticianId) {
     score += 0.05; // Slightly favor player's proposals for now
@@ -335,14 +372,14 @@ export function decideAIVote(
   cityStats,
   activeLegislation,
   proposedBills,
-  governmentOffices,
+  governmentOfficesStructure,
   allPolicyDefsForLevel
 ) {
   
-  // Handle null governmentOffices parameter
-  if (governmentOffices === null || governmentOffices === undefined) {
-    console.log(`[decideAIVote Debug] Government offices is null, using empty object`);
-    governmentOffices = {};
+  // Handle null governmentOfficesStructure parameter
+  if (governmentOfficesStructure === null || governmentOfficesStructure === undefined) {
+    console.log(`[decideAIVote Debug] Government offices is null, using empty structure`);
+    governmentOfficesStructure = {};
   }
   
   if (!bill || !bill.policies || bill.policies.length === 0) {
@@ -401,7 +438,7 @@ export function decideAIVote(
 
   // 5. Proposer Relationship (calculated once for the whole bill)
   totalVoteScore +=
-    calculateProposerRelationshipScore(aiPolitician, bill, governmentOffices) *
+    calculateProposerRelationshipScore(aiPolitician, bill, governmentOfficesStructure) *
     0.2;
 
   // Add individual variability to each politician's decision-making

@@ -89,12 +89,13 @@ const StateOverviewTab = ({ campaignData }) => {
   const [activeSubTab, setActiveSubTab] = useState("summary");
   const [governmentFilter, setGovernmentFilter] = useState("all");
 
-  const { openViewPoliticianModal } = useGameStore((state) => state.actions);
+  const { openViewPoliticianModal, getCurrentStateGovernmentOffices } = useGameStore((state) => state.actions);
   const currentTheme = useGameStore(
     (state) => state.availableThemes[state.activeThemeName]
   );
 
   const playerCountryId = campaignData.countryId;
+  const stateGovernmentOffices = getCurrentStateGovernmentOffices();
 
   const activeState = useMemo(() => {
     // First try to get the live region data from campaign.regions (updated by budget calculations)
@@ -115,49 +116,35 @@ const StateOverviewTab = ({ campaignData }) => {
     return dynamicRegions.find((r) => r.id === campaignData.regionId);
   }, [campaignData, playerCountryId]); // Updated dependencies
 
-  const allGovernmentOffices = campaignData.governmentOffices;
-
-  // FIXED: Find executive offices by checking the regionId property.
+  // FIXED: Find executive offices from the new hierarchical structure
   const governorOffice = useMemo(() => {
-    if (!activeState) return null;
-    return allGovernmentOffices.find(
+    if (!activeState || !stateGovernmentOffices?.executive) return null;
+    return stateGovernmentOffices.executive.find(
       (o) =>
-        o.regionId === activeState.id && // Check the specific property
         o.officeNameTemplateId === "governor" &&
         o.holder
     );
-  }, [allGovernmentOffices, activeState]);
+  }, [stateGovernmentOffices, activeState]);
 
   const lieutenantGovernorOffice = useMemo(() => {
-    if (!activeState) return null;
-    return allGovernmentOffices.find(
+    if (!activeState || !stateGovernmentOffices?.executive) return null;
+    return stateGovernmentOffices.executive.find(
       (o) =>
-        o.regionId === activeState.id && // Check the specific property
         o.officeNameTemplateId === "lieutenant_governor" &&
         o.holder
     );
-  }, [allGovernmentOffices, activeState]);
+  }, [stateGovernmentOffices, activeState]);
 
-  // This memo is now simplified and more accurate.
-  const upperChamberOffices = useMemo(
-    () =>
-      getLegislativeChamberMembers(
-        allGovernmentOffices,
-        activeState,
-        "local_state_upper_house"
-      ),
-    [allGovernmentOffices, activeState]
-  );
+  // Updated to use hierarchical structure
+  const upperChamberOffices = useMemo(() => {
+    if (!stateGovernmentOffices?.legislative?.upperHouse) return [];
+    return stateGovernmentOffices.legislative.upperHouse;
+  }, [stateGovernmentOffices]);
 
-  const lowerChamberOffices = useMemo(
-    () =>
-      getLegislativeChamberMembers(
-        allGovernmentOffices,
-        activeState,
-        "local_state_lower_house"
-      ),
-    [allGovernmentOffices, activeState]
-  );
+  const lowerChamberOffices = useMemo(() => {
+    if (!stateGovernmentOffices?.legislative?.lowerHouse) return [];
+    return stateGovernmentOffices.legislative.lowerHouse;
+  }, [stateGovernmentOffices]);
 
   // --- Helper to create party composition data for a chamber ---
   const getCompositionForChamber = (offices) => {

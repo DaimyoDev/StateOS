@@ -743,7 +743,43 @@ export const runMonthlyPlayerApprovalUpdate = (campaign) => {
 
   if (!cityStats || !playerPoliticianId || !politiciansStore) return null;
 
-  const mayorOffice = campaign.governmentOffices.find(
+  // Helper function to flatten hierarchical government offices structure
+  const flattenGovernmentOffices = (hierarchicalStructure) => {
+    if (!hierarchicalStructure) return [];
+    const flattened = [];
+    
+    // Add national offices
+    if (hierarchicalStructure.national) {
+      if (hierarchicalStructure.national.executive) flattened.push(...hierarchicalStructure.national.executive);
+      if (hierarchicalStructure.national.legislative?.lowerHouse) flattened.push(...hierarchicalStructure.national.legislative.lowerHouse);
+      if (hierarchicalStructure.national.legislative?.upperHouse) flattened.push(...hierarchicalStructure.national.legislative.upperHouse);
+      if (hierarchicalStructure.national.judicial) flattened.push(...hierarchicalStructure.national.judicial);
+    }
+    
+    // Add state offices
+    if (hierarchicalStructure.states) {
+      Object.values(hierarchicalStructure.states).forEach(state => {
+        if (state.executive) flattened.push(...state.executive);
+        if (state.legislative?.lowerHouse) flattened.push(...state.legislative.lowerHouse);
+        if (state.legislative?.upperHouse) flattened.push(...state.legislative.upperHouse);
+        if (state.judicial) flattened.push(...state.judicial);
+      });
+    }
+    
+    // Add city offices
+    if (hierarchicalStructure.cities) {
+      Object.values(hierarchicalStructure.cities).forEach(city => {
+        if (city.executive) flattened.push(...city.executive);
+        if (city.legislative) flattened.push(...city.legislative);
+        if (city.judicial) flattened.push(...city.judicial);
+      });
+    }
+    
+    return flattened.filter(Boolean);
+  };
+
+  const flatOffices = flattenGovernmentOffices(campaign.governmentOffices);
+  const mayorOffice = flatOffices.find(
     (off) => off.officeNameTemplateId === "mayor"
   );
   const mayorId = mayorOffice?.holder?.id;
