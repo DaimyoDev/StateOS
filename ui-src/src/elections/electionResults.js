@@ -5,6 +5,7 @@ import { distributeVotesToCandidates } from "./electionSimulator.js";
 import { getRandomInt } from "../utils/core.js";
 import useGameStore from "../store.js";
 import { rehydratePolitician } from "../entities/personnel.js";
+import { calculateElectoralCollegeResults } from "../General Scripts/ElectoralCollegeSystem.js";
 
 // --- Seat Allocation & Winner Determination ---
 

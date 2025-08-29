@@ -9,6 +9,10 @@ import {
   aggregateCoalitionPolling,
   updateCoalitionStates 
 } from "./CoalitionSystem.js";
+import { 
+  calculateElectoralCollegeResults,
+  electoralCollegeSystem 
+} from "./ElectoralCollegeSystem.js";
 
 /**
  * Optimized polling normalization using Structure of Arrays (SoA) approach
@@ -489,6 +493,87 @@ export function calculateCoalitionBasedPolling(election, campaignData, politicia
   }
   
   return results;
+}
+
+/**
+ * Electoral College polling calculation that uses state-level coalitions
+ * This function orchestrates the entire electoral college process
+ */
+export function calculateElectoralCollegePolling(election, campaignData, politicians) {
+  const { activeCampaign } = campaignData;
+  
+  if (!activeCampaign?.coalitionSystems) {
+    console.warn("No coalition systems available for electoral college calculation");
+    return calculateStandardElectionPolling(election, campaignData, politicians);
+  }
+
+  const candidates = Array.isArray(election.candidates) ? 
+    election.candidates : Array.from(election.candidates.values());
+    
+  // Get country data for states
+  const countryData = activeCampaign.country || activeCampaign.availableCountries?.find(c => c.id === activeCampaign.countryId);
+  
+  if (!countryData) {
+    console.warn("No country data available for electoral college");
+    return calculateStandardElectionPolling(election, campaignData, politicians);
+  }
+
+  // Calculate electoral college results using our coalition system
+  const electoralResults = calculateElectoralCollegeResults(candidates, activeCampaign, countryData);
+  
+  // Convert electoral college results back to polling format for UI compatibility
+  const results = new Map();
+  
+  candidates.forEach(candidate => {
+    const electoralVotes = electoralResults.candidateElectoralVotes.get(candidate.id) || 0;
+    const statesWon = electoralResults.summary.statesWon.get(candidate.id) || [];
+    
+    // Calculate "polling" based on electoral votes for UI display
+    const electoralPercentage = Math.round((electoralVotes / 538) * 100);
+    
+    // Get candidate data from SoA for UI display
+    const baseData = politicians.base.get(candidate.id);
+    const stateData = politicians.state.get(candidate.id);
+    const attributesData = politicians.attributes.get(candidate.id);
+    const ideologyScores = politicians.ideologyScores.get(candidate.id);
+    
+    results.set(candidate.id, {
+      id: candidate.id,
+      name: baseData?.name || candidate.name || 'Unknown Candidate',
+      party: baseData?.partyName || candidate.party || 'Independent',
+      partyName: baseData?.partyName || candidate.partyName || 'Independent',
+      partyColor: baseData?.partyColor || candidate.partyColor || '#888888',
+      age: baseData?.age || candidate.age,
+      
+      // Electoral college specific data
+      electoralVotes: electoralVotes,
+      polling: electoralPercentage, // Use electoral percentage as "polling" for UI
+      statesWon: statesWon.length,
+      stateDetails: statesWon,
+      
+      // Standard polling data
+      nameRecognition: stateData?.nameRecognition || candidate.nameRecognition || 0,
+      approvalRating: stateData?.approvalRating || candidate.approvalRating || 50,
+      mediaBuzz: stateData?.mediaBuzz || candidate.mediaBuzz || 0,
+      attributes: attributesData || candidate.attributes || {},
+      ideologyScores: ideologyScores || candidate.ideologyScores || {},
+      calculatedIdeology: baseData?.calculatedIdeology || candidate.calculatedIdeology,
+      isPlayer: candidate.isPlayer || false,
+      
+      // Electoral metadata
+      isElectoralCollegeCandidate: true,
+      electoralResults: electoralResults
+    });
+  });
+  
+  return results;
+}
+
+/**
+ * Fallback to standard election polling when electoral college isn't applicable
+ */
+function calculateStandardElectionPolling(election, campaignData, politicians) {
+  return calculateCoalitionBasedPolling(election, campaignData, politicians);
 }
 
 /**

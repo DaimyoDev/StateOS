@@ -365,6 +365,7 @@ const updateGovernmentOfficeInHierarchy = (
 export const createElectionSlice = (set, get) => ({
   isSimulationMode: false,
   simulatedElections: [],
+  electionSimulatorSetup: null,
   actions: {
     generateScheduledElections: () => {
       set((state) => {
@@ -1090,12 +1091,17 @@ export const createElectionSlice = (set, get) => ({
     setSimulatedElections: (elections) =>
       set({ simulatedElections: elections }),
 
+    // Sets the election simulator setup data (preserves tab states and configuration)
+    setElectionSimulatorSetup: (setup) => 
+      set({ electionSimulatorSetup: setup }),
+
     // Clears the simulation data when it's over
     clearSimulatedElections: () => set({ simulatedElections: [] }),
     resetElectionState: () =>
       set({
         isSimulationMode: false,
         simulatedElections: [],
+        electionSimulatorSetup: null,
         isWinnerAnnouncementModalOpen: false,
         winnerAnnouncementData: null,
       }),

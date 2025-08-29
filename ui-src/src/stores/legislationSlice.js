@@ -327,7 +327,7 @@ export const createLegislationSlice = (set, get) => ({
                   return {
                     ...policyDef,
                     chosenParameters: policyInBill.chosenParameters,
-                    monthsUntilEffective: policyDef.monthsUntilEffective || 0,
+                    monthsUntilEffective: policyDef.durationToImplement || 0,
                     effectsApplied: false,
                   };
                 });
@@ -336,7 +336,7 @@ export const createLegislationSlice = (set, get) => ({
                   name: bill.name,
                   policies: updatedPolicies,
                   monthsUntilEffective: Math.max(
-                    ...updatedPolicies.map((p) => p.monthsUntilEffective || 0)
+                    ...updatedPolicies.map((p) => p.durationToImplement || 0)
                   ),
                   effectsApplied: false,
                 };
@@ -357,7 +357,7 @@ export const createLegislationSlice = (set, get) => ({
               return {
                 ...policyDef,
                 chosenParameters: policyInBill.chosenParameters,
-                monthsUntilEffective: policyDef?.monthsUntilEffective || 0,
+                monthsUntilEffective: policyDef?.durationToImplement || 0,
                 effectsApplied: false,
               };
             });
@@ -371,7 +371,7 @@ export const createLegislationSlice = (set, get) => ({
                 policies: newPoliciesForLaw,
                 dateEnacted: { ...get().activeCampaign.currentDate },
                 monthsUntilEffective: Math.max(
-                  ...newPoliciesForLaw.map((p) => p.monthsUntilEffective || 0)
+                  ...newPoliciesForLaw.map((p) => p.durationToImplement || 0)
                 ),
                 effectsApplied: false,
               });

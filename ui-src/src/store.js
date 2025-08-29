@@ -126,6 +126,46 @@ export const useGameStore = create(
 
           acknowledgeDisclaimer: () => set({ hasAcknowledgedDisclaimer: true }),
 
+          // Coalition System Utilities
+          getCoalitionsForEntity: (entityType, entityId) => {
+            const { activeCampaign } = get();
+            const coalitionKey = `${entityType}_${entityId}`;
+            return activeCampaign?.coalitionSystems?.[coalitionKey] || null;
+          },
+
+          getCoalitionsForCity: (cityId) => {
+            return get().actions.getCoalitionsForEntity('city', cityId);
+          },
+
+          getCoalitionsForState: (stateId) => {
+            return get().actions.getCoalitionsForEntity('state', stateId);
+          },
+
+          getCoalitionsForCongressionalDistrict: (districtId) => {
+            return get().actions.getCoalitionsForEntity('congressional_district', districtId);
+          },
+
+          getCoalitionsForStateHouseDistrict: (districtId) => {
+            return get().actions.getCoalitionsForEntity('state_house_district', districtId);
+          },
+
+          getCoalitionsForStateSenateDistrict: (districtId) => {
+            return get().actions.getCoalitionsForEntity('state_senate_district', districtId);
+          },
+
+          getCoalitionsForCounty: (countyId) => {
+            return get().actions.getCoalitionsForEntity('county', countyId);
+          },
+
+          getCoalitionsForNational: (countryId) => {
+            return get().actions.getCoalitionsForEntity('national', countryId);
+          },
+
+          getAllAvailableCoalitions: () => {
+            const { activeCampaign } = get();
+            return activeCampaign?.coalitionSystems || {};
+          },
+
           improveSkillOratory: () => {
             set((state) => {
               if (!state.activeCampaign?.politician) return {};

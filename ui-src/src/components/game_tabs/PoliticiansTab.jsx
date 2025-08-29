@@ -70,6 +70,9 @@ const RelationshipCard = React.memo(
         <div className="politician-card-body">
           <p className="politician-office">
             {politician.currentOffice || "No current office"}
+            {politician.regionName && (
+              <span className="politician-region"> ({politician.regionName})</span>
+            )}
           </p>
           <div className="fog-of-war-stats">
             <span className={attributesRevealed ? "revealed-stat" : ""}>
@@ -121,10 +124,13 @@ function PoliticiansTab() {
   );
   const actions = useGameStore((state) => state.actions);
   const { getAllGovernmentOffices } = actions;
+  const activeCampaign = useGameStore((state) => state.activeCampaign);
+  const availableRegions = activeCampaign?.availableCountries?.find(c => c.id === activeCampaign?.countryId)?.regions || [];
 
   const [activeTab, setActiveTab] = useState("all");
   const [relationshipFilter, setRelationshipFilter] = useState("all");
   const [levelFilter, setLevelFilter] = useState("all");
+  const [stateFilter, setStateFilter] = useState("all");
 
   // CHANGED: Collect politicians from all levels using the hierarchical structure
   const aiPoliticians = useMemo(() => {
@@ -182,10 +188,19 @@ function PoliticiansTab() {
         if (p && !politicianMap.has(p.id)) {
           // Categorize the government level properly
           const categorizedLevel = categorizeGovernmentLevel(office.level);
+          
+          // Find the region/state for this politician
+          let regionInfo = null;
+          if (office.regionId && availableRegions.length > 0) {
+            regionInfo = availableRegions.find(r => r.id === office.regionId);
+          }
+          
           const politician = {
             ...p,
             governmentLevel: categorizedLevel,
             currentOffice: office.officeName || office.name,
+            regionId: office.regionId || null,
+            regionName: regionInfo?.name || (office.regionId ? "Unknown Region" : null),
             _debugOfficeLevel: office.level, // Add for debugging
             _debugOfficeName: office.officeName || office.name, // Add for debugging
           };
@@ -197,7 +212,7 @@ function PoliticiansTab() {
     return Array.from(politicianMap.values()).sort((a, b) =>
       a.name.localeCompare(b.name)
     );
-  }, [getAllGovernmentOffices]);
+  }, [getAllGovernmentOffices, availableRegions]);
 
   // Filter politicians based on active tab and filters
   const filteredPoliticians = useMemo(() => {
@@ -235,12 +250,25 @@ function PoliticiansTab() {
       });
     }
 
+    // Filter by state/region
+    if (stateFilter !== "all") {
+      politicians = politicians.filter((pol) => {
+        // Handle national politicians (no regionId)
+        if (stateFilter === "national") {
+          return !pol.regionId;
+        }
+        // Handle regional politicians
+        return pol.regionId === stateFilter;
+      });
+    }
+
     return politicians;
   }, [
     aiPoliticians,
     activeTab,
     relationshipFilter,
     levelFilter,
+    stateFilter,
     favoritePoliticians,
     relationships,
   ]);
@@ -295,6 +323,22 @@ function PoliticiansTab() {
             <option value="state">State</option>
             <option value="local_city">City</option>
             <option value="local_county">County</option>
+          </select>
+        </div>
+
+        <div className="filter-group">
+          <label>State/Region:</label>
+          <select
+            value={stateFilter}
+            onChange={(e) => setStateFilter(e.target.value)}
+          >
+            <option value="all">All States</option>
+            <option value="national">National (No State)</option>
+            {availableRegions.map((region) => (
+              <option key={region.id} value={region.id}>
+                {region.name}
+              </option>
+            ))}
           </select>
         </div>
       </div>

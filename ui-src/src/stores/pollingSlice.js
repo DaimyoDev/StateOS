@@ -1,4 +1,4 @@
-import { normalizePollingOptimized, calculateCoalitionBasedPolling } from "../General Scripts/OptimizedPollingFunctions.js";
+import { normalizePollingOptimized, calculateCoalitionBasedPolling, calculateElectoralCollegePolling } from "../General Scripts/OptimizedPollingFunctions.js";
 
 export const createPollingSlice = (set) => ({
   // --- State ---
@@ -52,9 +52,21 @@ export const createPollingSlice = (set) => ({
           }
         }
 
-        // 3. Use different polling methods based on whether player is candidate
+        // 3. Use different polling methods based on election type and player participation
         let groundTruthPollingMap;
-        if (election.playerIsCandidate) {
+        
+        // Check if this is an electoral college election
+        const isElectoralCollegeElection = election.electionType?.electoralSystem === "ElectoralCollege" || 
+                                          election.electoralSystem === "ElectoralCollege";
+        
+        if (isElectoralCollegeElection) {
+          // Use electoral college polling which calculates state-by-state results
+          groundTruthPollingMap = calculateElectoralCollegePolling(
+            election,
+            { startingCity: activeCampaign.startingCity, activeCampaign },
+            politicians
+          );
+        } else if (election.playerIsCandidate) {
           // For player elections, use regular normalized polling (not coalition-based)
           // Add timestamp to candidate data to force fresh calculation
           const candidatesArray = Array.from(updatedCandidates.values()).map(candidate => ({
@@ -191,9 +203,21 @@ export const createPollingSlice = (set) => ({
             }
           }
 
-          // Use different polling methods based on whether player is candidate
+          // Use different polling methods based on election type and player participation
           let groundTruthPollingMap;
-          if (election.playerIsCandidate) {
+          
+          // Check if this is an electoral college election
+          const isElectoralCollegeElection = election.electionType?.electoralSystem === "ElectoralCollege" || 
+                                            election.electoralSystem === "ElectoralCollege";
+          
+          if (isElectoralCollegeElection) {
+            // Use electoral college polling which calculates state-by-state results
+            groundTruthPollingMap = calculateElectoralCollegePolling(
+              election,
+              { startingCity: activeCampaign.startingCity, activeCampaign },
+              politicians
+            );
+          } else if (election.playerIsCandidate) {
             // For player elections, use regular normalized polling (not coalition-based)
             // Add timestamp to candidate data to force fresh calculation
             const candidatesArray = Array.from(updatedCandidates.values()).map(candidate => ({

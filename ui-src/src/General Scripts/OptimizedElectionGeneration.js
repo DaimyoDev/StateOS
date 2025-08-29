@@ -2,7 +2,7 @@
 
 import { IDEOLOGY_DEFINITIONS } from "../data/ideologiesData.js";
 import { getRandomElement, getRandomInt } from "../utils/core.js";
-import { calculateIdeologyDistance, calculateIdeologyFromStances } from "../entities/personnel.js";
+import { calculateIdeologyDistance, calculateIdeologyFromStances, generateFullAIPolitician } from "../entities/personnel.js";
 import useGameStore from "../store.js";
 import {POLICY_QUESTIONS} from "../data/policyData.js";
 /**
@@ -209,89 +209,14 @@ class OptimizedPoliticianGenerator {
     return varied;
   }
 
-  /**
-   * Find best party fit with caching
-   */
-  findBestPartyFit(ideologyScores, allPartiesInScope, forcePartyId = null) {
-    if (forcePartyId) {
-      return allPartiesInScope.find(p => p.id === forcePartyId);
-    }
-
-    const cacheKey = JSON.stringify(ideologyScores);
-    if (this.partyFitCache.has(cacheKey)) {
-      const cachedPartyId = this.partyFitCache.get(cacheKey);
-      return allPartiesInScope.find(p => p.id === cachedPartyId);
-    }
-
-    let bestPartyFitDistance = Infinity;
-    let chosenParty = null;
-    const INDEPENDENT_THRESHOLD = 45.0; // More lenient threshold for party assignment
-
-    allPartiesInScope.forEach(party => {
-      if (party.ideologyScores) {
-        const distance = calculateIdeologyDistance(ideologyScores, party.ideologyScores);
-        if (distance < bestPartyFitDistance) {
-          bestPartyFitDistance = distance;
-          chosenParty = party;
-        }
-      }
-    });
-
-    // Only reject party assignment if distance is extremely high
-    if (bestPartyFitDistance > INDEPENDENT_THRESHOLD) {
-      chosenParty = null;
-    }
-
-    if (chosenParty) {
-      this.partyFitCache.set(cacheKey, chosenParty.id);
-    }
-
-    return chosenParty;
-  }
 
   /**
-   * Generate policy stances for a specific party or independent
-   */
-  generatePolicyStancesForParty(party, isIndependent = false) {
-    if (isIndependent) {
-      // Generate random stances for independents
-      return this.generateRandomPolicyStances();
-    }
-
-    if (!party || !party.ideologyScores) {
-      return this.generateRandomPolicyStances();
-    }
-
-    // Generate party-aligned stances
-    const baseStances = this.generateNumericPolicyStances(party.ideologyScores);
-    
-    // Add minor variation to party stances
-    return this.addMinorStanceVariation(baseStances);
-  }
-
-  /**
-   * Generate random policy stances for independents
-   */
-  generateRandomPolicyStances() {
-    const policyStances = {};
-    
-    POLICY_QUESTIONS.forEach(question => {
-      // Random stance between 0-100
-      policyStances[question.id] = Math.random() * 100;
-    });
-    
-    return policyStances;
-  }
-
-  /**
-   * Batch generate multiple politicians efficiently
+   * Batch generate multiple politicians efficiently using generateFullAIPolitician
    */
   batchGeneratePoliticians(count, countryId, allPartiesInScope, options = {}) {
     this.cleanCache();
     
-    const batchId = Date.now();
     const usedIds = new Set();
-    const usedNames = new Set();
     const politicians = [];
 
     // Sort parties by popularity (highest first)
@@ -302,102 +227,67 @@ class OptimizedPoliticianGenerator {
 
     while (candidatesGenerated < count) {
       let chosenParty = null;
-      let isIndependent = false;
+      let forcePartyId = null;
 
       // 10% chance for independent candidate
       if (Math.random() < 0.1) {
-        isIndependent = true;
+        // Leave forcePartyId as null for independent
       } else if (sortedParties.length > 0) {
         // Assign to next party in priority order
         chosenParty = sortedParties[partyIndex % sortedParties.length];
+        forcePartyId = chosenParty.id;
         partyIndex++;
-      } else {
-        // No parties available, make independent
-        isIndependent = true;
       }
 
-      // Generate policy stances based on party ideology or random for independents
-      const policyStances = this.generatePolicyStancesForParty(chosenParty, isIndependent);
-      
-      // Calculate ideology from stances
-      const { ideologyName: calculatedIdeology, scores: ideologyScores } =
-        calculateIdeologyFromStances(policyStances, POLICY_QUESTIONS, IDEOLOGY_DEFINITIONS);
+      // Use generateFullAIPolitician to create complete politician with background data
+      const politician = generateFullAIPolitician(
+        countryId,
+        allPartiesInScope,
+        {
+          forcePartyId,
+          cityId: options.cityId || null,
+          regionId: options.regionId || null,
+        }
+      );
 
-      // Generate unique name
-      const name = this.generateCachedName(countryId, usedNames);
-
-      // Generate proper structured politician object
-      const firstName = name.split(' ')[0] || 'Unknown';
-      const lastName = name.split(' ').slice(1).join(' ') || 'Candidate';
-      const age = getRandomInt(25, 75);
-      const sex = Math.random() > 0.5 ? 'M' : 'F';
-      
-      // Generate unique ID
-      let uniqueId;
+      // Ensure unique ID
       let attempts = 0;
-      do {
-        uniqueId = `ai_politician_${batchId}_${candidatesGenerated}_${Math.random().toString(36).substr(2, 9)}`;
+      while (usedIds.has(politician.id) && attempts < 10) {
+        // Regenerate if duplicate ID
+        const newPolitician = generateFullAIPolitician(
+          countryId,
+          allPartiesInScope,
+          {
+            forcePartyId,
+            cityId: options.cityId || null,
+            regionId: options.regionId || null,
+          }
+        );
+        politician.id = newPolitician.id;
         attempts++;
-      } while (usedIds.has(uniqueId) && attempts < 10);
+      }
       
-      usedIds.add(uniqueId);
+      if (usedIds.has(politician.id)) {
+        // Last resort: modify the ID directly
+        politician.id = `${politician.id}_${Date.now()}_${candidatesGenerated}`;
+      }
       
-      const politician = {
-        id: uniqueId,
-        firstName,
-        lastName,
-        name,
-        age,
-        sex,
-        partyId: isIndependent ? `independent_ai_${Date.now()}_${candidatesGenerated}` : chosenParty.id,
-        partyName: isIndependent ? "Independent" : chosenParty.name,
-        partyColor: isIndependent ? "#888888" : chosenParty.color,
-        calculatedIdeology: calculatedIdeology,
-        ideologyScores,
-        policyStances,
-        isAI: true,
-        
-        // Additional attributes for realistic politician profiles
-        attributes: {
-          charisma: getRandomInt(20, 90),
-          intelligence: getRandomInt(30, 95),
-          integrity: getRandomInt(10, 85),
-          experience: getRandomInt(0, 40),
-          energy: getRandomInt(40, 90),
-          leadership: getRandomInt(20, 85)
-        },
-        
-        // Campaign-related data
-        baseScore: getRandomInt(15, 35),
-        nameRecognition: getRandomInt(5, 25),
-        campaignFunds: getRandomInt(10000, 100000),
-        endorsements: [],
-        
-        // Campaign data
-        isInCampaign: false,
-        workingHours: getRandomInt(6, 12),
-        maxWorkingHours: 16,
-        campaignHoursPerDay: getRandomInt(6, 10),
-        campaignHoursRemainingToday: 8,
-        volunteerCount: getRandomInt(0, 15),
-        currentAdStrategy: { focus: "none", targetId: null, intensity: 0 },
-        
-        // Office data
-        currentOffice: null,
-        factionId: null,
-        
-        // Professional background
-        profession: getRandomElement([
-          'Lawyer', 'Business Owner', 'Teacher', 'Doctor', 'Engineer', 
-          'Consultant', 'Non-profit Director', 'Former Military', 'Journalist', 'Activist'
-        ]),
-        
-        // Personal details for flavor
-        education: getRandomElement([
-          'High School', 'Associates Degree', 'Bachelors Degree', 
-          'Masters Degree', 'Doctorate', 'Professional Degree'
-        ])
-      };
+      usedIds.add(politician.id);
+
+      // Add election-specific properties
+      politician.baseScore = getRandomInt(15, 35);
+      politician.nameRecognition = getRandomInt(5, 25);
+      politician.campaignFunds = getRandomInt(10000, 100000);
+      politician.endorsements = [];
+      
+      // Campaign data
+      politician.isInCampaign = false;
+      politician.workingHours = getRandomInt(6, 12);
+      politician.maxWorkingHours = 16;
+      politician.campaignHoursPerDay = getRandomInt(6, 10);
+      politician.campaignHoursRemainingToday = 8;
+      politician.volunteerCount = getRandomInt(0, 15);
+      politician.currentAdStrategy = { focus: "none", targetId: null, intensity: 0 };
 
       politicians.push(politician);
       candidatesGenerated++;
@@ -424,19 +314,11 @@ class OptimizedPoliticianGenerator {
   }
 
   /**
-   * Static method for external compatibility - uses party-priority system
+   * Static method for external compatibility - uses generateFullAIPolitician
    */
-  static batchGeneratePoliticians(count, countryId, allPartiesInScope, forcePartyId = null) {
-    const generator = new OptimizedElectionGeneration();
-    
-    if (forcePartyId) {
-      // Filter to only the forced party
-      const filteredParties = allPartiesInScope.filter(p => p.id === forcePartyId);
-      return generator.batchGeneratePoliticians(count, countryId, filteredParties);
-    }
-    
-    // Use new party-priority system
-    return generator.batchGeneratePoliticians(count, countryId, allPartiesInScope);
+  static batchGeneratePoliticians(count, countryId, allPartiesInScope, options = {}) {
+    const generator = new OptimizedPoliticianGenerator();
+    return generator.batchGeneratePoliticians(count, countryId, allPartiesInScope, options);
   }
 
   /**
@@ -575,8 +457,17 @@ export function generateOptimizedElectionParticipants({
   switch (system) {
     case "FPTP":
     case "TwoRoundSystem":
-    case "ElectoralCollege":
       return handleOptimizedFPTPParticipants({
+        partiesInScope,
+        incumbentInfo,
+        countryId,
+        activeCampaign,
+        electionPropertiesForScoring,
+        entityPopulation,
+      });
+
+    case "ElectoralCollege":
+      return handleOptimizedElectoralCollegeParticipants({
         partiesInScope,
         incumbentInfo,
         countryId,
@@ -624,6 +515,90 @@ export function generateOptimizedElectionParticipants({
       // Fall back to original implementation for other systems
       return null;
   }
+}
+
+/**
+ * Optimized Electoral College participant generation
+ * Similar to FPTP but with electoral college metadata
+ */
+function handleOptimizedElectoralCollegeParticipants({
+  partiesInScope,
+  incumbentInfo,
+  countryId,
+  activeCampaign,
+  electionPropertiesForScoring,
+  entityPopulation,
+}) {
+  let candidates = [];
+  const runningIncumbents = [];
+
+  // Handle incumbents (current president if running for re-election)
+  if (incumbentInfo) {
+    const incumbentsArray = Array.isArray(incumbentInfo) ? incumbentInfo : [incumbentInfo];
+    incumbentsArray.forEach(inc => {
+      if (inc && inc.isActuallyRunning) {
+        runningIncumbents.push({
+          ...inc,
+          isIncumbent: true,
+          isPresidentialCandidate: true,
+        });
+      }
+    });
+    candidates.push(...runningIncumbents);
+  }
+
+  // For presidential elections, we want major party nominees + some independents
+  // Usually 2 major party candidates + 1-3 independents/third parties
+  const minTotal = Math.max(2, runningIncumbents.length);
+  const maxTotal = Math.min(5, partiesInScope.length + 2);
+  
+  const targetTotalCandidates = getRandomInt(minTotal, maxTotal);
+  const numberOfChallengersToGenerate = Math.max(0, targetTotalCandidates - candidates.length);
+
+  // Batch generate challengers - prioritize major parties
+  if (numberOfChallengersToGenerate > 0) {
+    const newChallengers = generatePoliticiansBatch(
+      numberOfChallengersToGenerate,
+      countryId,
+      partiesInScope
+    );
+
+    // Remove duplicates from same party (presidential nominees are unique per party)
+    const processedChallengers = removeDuplicatePartyCandidates(newChallengers);
+
+    // Add presidential candidate metadata
+    processedChallengers.forEach(challenger => {
+      challenger.isPresidentialCandidate = true;
+      challenger.nationalCampaign = true;
+      challenger.campaignFunds = challenger.campaignFunds * 100; // Presidential campaigns have much larger budgets
+    });
+
+    candidates.push(...processedChallengers);
+  }
+
+  // Convert to Map format expected by the system
+  const candidatesMap = new Map();
+  candidates.forEach((candidate) => {
+    candidatesMap.set(candidate.id, {
+      ...candidate,
+      polling: Math.max(5, Math.random() * 40),
+      isElectoralCollegeCandidate: true,
+      electoralStrategy: {
+        targetStates: [], // Could be populated with target swing states
+        strongholdStates: [], // Could be populated with safe states
+      }
+    });
+  });
+
+  return { 
+    type: "electoral_college_candidates", 
+    data: candidatesMap,
+    metadata: {
+      electionType: "presidential",
+      totalElectoralVotes: 538,
+      neededToWin: 270
+    }
+  };
 }
 
 /**
