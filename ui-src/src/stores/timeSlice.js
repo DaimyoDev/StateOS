@@ -151,7 +151,7 @@ export const createTimeSlice = (set, get) => {
 
           // 5. Simulate player approval update
           const newPlayerApproval =
-            runMonthlyPlayerApprovalUpdate(currentCampaign);
+            runMonthlyPlayerApprovalUpdate(currentCampaign, get);
           currentCampaign = _updatePlayerApprovalPure(
             currentCampaign,
             playerPoliticianId,

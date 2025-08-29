@@ -413,9 +413,20 @@ export const createLegislationSlice = (set, get) => ({
         return;
       }
 
+      // PERFORMANCE OPTIMIZATION: Only get government offices relevant to this level and player's context
+      const cityId = level === "city" ? activeCampaign?.startingCity?.id : null;
+      const stateId =
+        level === "state" || level === "city" ? activeCampaign?.regionId : null;
+      const contextualOffices = get().actions.getGovernmentOfficesForContext(
+        level,
+        cityId,
+        stateId
+      );
+
       const { members: legislators } = getLegislatureDetails(
         activeCampaign,
-        level
+        level,
+        contextualOffices
       );
 
       const aiLegislators = legislators.filter(
@@ -681,8 +692,10 @@ export const createLegislationSlice = (set, get) => ({
                 ) {
                   const pDetails = policy.parameterDetails;
                   const chosenValue = policy.chosenParameters[pDetails.key];
-                  console.log(`[legislationSlice] Processing parameterized policy: ${policy.name}, chosenValue: ${chosenValue}, setsSimulationVariable: ${policy.setsSimulationVariable}, targetStat: ${pDetails.targetStat}`);
-                  
+                  console.log(
+                    `[legislationSlice] Processing parameterized policy: ${policy.name}, chosenValue: ${chosenValue}, setsSimulationVariable: ${policy.setsSimulationVariable}, targetStat: ${pDetails.targetStat}`
+                  );
+
                   if (chosenValue !== undefined) {
                     // Handle budget and tax rate changes
                     if (pDetails.targetBudgetLine || pDetails.targetTaxRate) {
@@ -705,7 +718,7 @@ export const createLegislationSlice = (set, get) => ({
                       };
                       applyPolicyEffect(state.activeCampaign, tempEffect);
                     }
-                    
+
                     // Handle simulation variables (like minimum wage)
                     if (policy.setsSimulationVariable && pDetails.targetStat) {
                       console.log(
@@ -714,21 +727,30 @@ export const createLegislationSlice = (set, get) => ({
                       const tempEffect = {
                         targetStat: pDetails.targetStat,
                         change: chosenValue,
-                        type: pDetails.adjustmentType === "set_value" 
-                          ? "absolute_set_rate" 
-                          : "absolute_change",
+                        type:
+                          pDetails.adjustmentType === "set_value"
+                            ? "absolute_set_rate"
+                            : "absolute_change",
                         level: law.level,
                         setsSimulationVariable: true,
                         parameterDetails: pDetails,
-                        parameters: { [pDetails.key]: chosenValue }
+                        parameters: { [pDetails.key]: chosenValue },
                       };
                       applyPolicyEffect(state.activeCampaign, tempEffect);
                     }
                   } else {
-                    console.warn(`[legislationSlice] No chosen value found for parameterized policy: ${policy.name}`);
+                    console.warn(
+                      `[legislationSlice] No chosen value found for parameterized policy: ${policy.name}`
+                    );
                   }
                 } else {
-                  console.log(`[legislationSlice] Non-parameterized policy or missing data: ${policy.name}, isParameterized: ${policy.isParameterized}, hasParameterDetails: ${!!policy.parameterDetails}, hasChosenParameters: ${!!policy.chosenParameters}`);
+                  console.log(
+                    `[legislationSlice] Non-parameterized policy or missing data: ${
+                      policy.name
+                    }, isParameterized: ${
+                      policy.isParameterized
+                    }, hasParameterDetails: ${!!policy.parameterDetails}, hasChosenParameters: ${!!policy.chosenParameters}`
+                  );
                 }
 
                 newsEventsToAdd.push({
@@ -770,10 +792,25 @@ export const createLegislationSlice = (set, get) => ({
     processDailyBillCommentary: () => {
       set((state) => {
         const { activeCampaign } = state;
+
         for (const level of ["city", "state", "national"]) {
+          // PERFORMANCE OPTIMIZATION: Only fetch government offices relevant to this level
+          const cityId =
+            level === "city" ? activeCampaign?.startingCity?.id : null;
+          const stateId =
+            level === "state" || level === "city"
+              ? activeCampaign?.regionId
+              : null;
+          const contextualGovernmentOffices =
+            get().actions.getGovernmentOfficesForContext(
+              level,
+              cityId,
+              stateId
+            );
           const { members: legislators } = getLegislatureDetails(
             activeCampaign,
-            level
+            level,
+            contextualGovernmentOffices
           );
           const relevantStats = getStatsForLevel(activeCampaign, level);
 
@@ -799,7 +836,7 @@ export const createLegislationSlice = (set, get) => ({
                   relevantStats,
                   state[level].activeLegislation,
                   state[level].proposedBills,
-                  get().activeCampaign.governmentOffices,
+                  contextualGovernmentOffices,
                   // Convert array to object with policy IDs as keys, and include bill-specific policies
                   {
                     ...state.availablePolicies[level].reduce(
@@ -848,7 +885,17 @@ export const createLegislationSlice = (set, get) => ({
       const bill = get()[level]?.proposedBills.find((b) => b.id === billId);
       if (!bill) return {};
 
-      const { members } = getLegislatureDetails(activeCampaign, level);
+      // PERFORMANCE OPTIMIZATION: Only get government offices relevant to this level
+      const cityId = level === "city" ? activeCampaign?.startingCity?.id : null;
+      const stateId =
+        level === "state" || level === "city" ? activeCampaign?.regionId : null;
+      const contextualGovernmentOffices =
+        get().actions.getGovernmentOfficesForContext(level, cityId, stateId);
+      const { members } = getLegislatureDetails(
+        activeCampaign,
+        level,
+        contextualGovernmentOffices
+      );
 
       // AI members are those who are not the player (isPlayer: false)
       const aiCouncilMembers = members.filter((m) => !m.isPlayer);
@@ -870,7 +917,7 @@ export const createLegislationSlice = (set, get) => ({
             stats,
             get()[level].activeLegislation,
             get()[level].proposedBills,
-            get().activeCampaign.governmentOffices, // Use the hierarchical structure
+            contextualGovernmentOffices,
             // Convert array to object with policy IDs as keys, and include bill-specific policies
             {
               ...policiesForLevel.reduce((acc, policy) => {

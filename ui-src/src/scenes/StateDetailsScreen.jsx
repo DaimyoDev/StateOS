@@ -2,8 +2,10 @@
 
 import React, { useState, useMemo } from "react";
 import useGameStore from "../store";
-import { createDistrictMapData, getDistrictFillColor, getDistrictLabel, getCountyDistrictId } from "../utils/mapDistrictUtils";
+import { createDistrictMapData } from "../utils/mapDistrictUtils";
 import { countyPathData as texasCountyPathData } from "../maps/usaCounties/TexasMap";
+import { countyPathData as alabamaCountyPathData } from "../maps/usaCounties/AlabamaMap";
+import { countyPathData as arizonaCountyPathData } from "../maps/usaCounties/ArizonaMap";
 
 // Import county maps for US states
 import AlabamaMap from "../maps/usaCounties/AlabamaMap";
@@ -61,7 +63,7 @@ function StateDetailsScreen() {
   const actions = useGameStore((state) => state.actions);
   const viewingStateId = useGameStore((state) => state.viewingStateId);
   const availableCountries = useGameStore((state) => state.availableCountries);
-  
+
   const [mapView, setMapView] = useState("population");
   const [activeDataTab, setActiveDataTab] = useState("county");
   const [selectedDistrictId, setSelectedDistrictId] = useState(null);
@@ -69,7 +71,7 @@ function StateDetailsScreen() {
   // Find the country and state/region
   const { country, region: state } = useMemo(() => {
     if (!viewingStateId) return { country: null, region: null };
-    
+
     for (const country of availableCountries) {
       const region = country.regions?.find((r) => r.id === viewingStateId);
       if (region) {
@@ -96,26 +98,62 @@ function StateDetailsScreen() {
     if (state.id === "USA_TX") {
       countyPathData = texasCountyPathData;
     }
+    if (state.id === "USA_AL") {
+      countyPathData = alabamaCountyPathData;
+    }
+    if (state.id === "USA_AZ") {
+      countyPathData = arizonaCountyPathData;
+    }
     // We call createDistrictMapData without a selected district to get the base data.
-    const { districtData, districtColors } = createDistrictMapData(state, counties, null, countyPathData, country);
+    const { districtData, districtColors } = createDistrictMapData(
+      state,
+      counties,
+      null,
+      countyPathData,
+      country
+    );
     return { districtData, districtColors };
   }, [state, counties, country]);
 
   // Create the final map data, which DOES depend on the selected district
   const districtMapData = useMemo(() => {
     if (!districtData || districtData.length === 0) {
-      return { districtData: [], districtColors: [], mapData: [], selectedDistrictId: null };
+      return {
+        districtData: [],
+        districtColors: [],
+        mapData: [],
+        selectedDistrictId: null,
+      };
     }
-    
+
     // Use createDistrictMapData to get the proper mapData with split county information
     let countyPathData = null;
     if (state.id === "USA_TX") {
       countyPathData = texasCountyPathData;
     }
-    const { mapData } = createDistrictMapData(state, counties, selectedDistrictId, countyPathData, country);
-    
+    if (state.id === "USA_AL") {
+      countyPathData = alabamaCountyPathData;
+    }
+    if (state.id === "USA_AZ") {
+      countyPathData = arizonaCountyPathData;
+    }
+    const { mapData } = createDistrictMapData(
+      state,
+      counties,
+      selectedDistrictId,
+      countyPathData,
+      country
+    );
+
     return { districtData, districtColors, mapData, selectedDistrictId };
-  }, [districtData, districtColors, counties, selectedDistrictId, state, country]);
+  }, [
+    districtData,
+    districtColors,
+    counties,
+    selectedDistrictId,
+    state,
+    country,
+  ]);
 
   const mapData = useMemo(() => {
     if (mapView === "congressional_districts") {
@@ -166,7 +204,8 @@ function StateDetailsScreen() {
       default:
         return counties.map((county) => {
           const population = county.population || 0;
-          const normalizedValue = popRange > 0 ? (population - minPop) / popRange : 0;
+          const normalizedValue =
+            popRange > 0 ? (population - minPop) / popRange : 0;
           return {
             id: county.id,
             value: normalizedValue,
@@ -334,7 +373,12 @@ function StateDetailsScreen() {
             <div className="map-view-container ui-panel">
               <div className="map-controls">
                 <h3>County Map Views</h3>
-                {console.log("Rendering map controls, country:", country?.id, "state:", state?.id)}
+                {console.log(
+                  "Rendering map controls, country:",
+                  country?.id,
+                  "state:",
+                  state?.id
+                )}
                 <button
                   onClick={() => setMapView("population")}
                   className={`menu-button ${
@@ -371,13 +415,16 @@ function StateDetailsScreen() {
           )}
 
           {/* Data container with tabs - replaced by district selection in congressional view */}
-          {mapView === "congressional_districts" && activeDataTab === "county" ? (
+          {mapView === "congressional_districts" &&
+          activeDataTab === "county" ? (
             <div className="districts-selection-panel-right ui-panel">
               <h3>Congressional Districts</h3>
               <div className="districts-buttons">
                 <button
                   onClick={() => setSelectedDistrictId(null)}
-                  className={`district-button ${selectedDistrictId === null ? "active" : ""}`}
+                  className={`district-button ${
+                    selectedDistrictId === null ? "active" : ""
+                  }`}
                 >
                   All Districts
                 </button>
@@ -385,7 +432,9 @@ function StateDetailsScreen() {
                   <button
                     key={district.id}
                     onClick={() => setSelectedDistrictId(district.id)}
-                    className={`district-button ${selectedDistrictId === district.id ? "active" : ""}`}
+                    className={`district-button ${
+                      selectedDistrictId === district.id ? "active" : ""
+                    }`}
                     style={{
                       borderLeft: `4px solid ${districtMapData.districtColors[index]}`,
                     }}
@@ -400,20 +449,26 @@ function StateDetailsScreen() {
                   </button>
                 ))}
               </div>
-              
+
               {/* Split County Details Section */}
               {(() => {
-                const splitCounties = districtMapData.mapData?.filter(county => county.isSplit) || [];
+                const splitCounties =
+                  districtMapData.mapData?.filter((county) => county.isSplit) ||
+                  [];
                 if (splitCounties.length === 0) return null;
-                
+
                 return (
                   <div className="split-counties-section">
                     <h4>Split County Details</h4>
                     <div className="split-counties-list">
                       {splitCounties.map((county) => {
-                        const countyName = counties.find(c => c.id === county.id)?.name || 'Unknown County';
-                        const totalPopulation = counties.find(c => c.id === county.id)?.population || 0;
-                        
+                        const countyName =
+                          counties.find((c) => c.id === county.id)?.name ||
+                          "Unknown County";
+                        const totalPopulation =
+                          counties.find((c) => c.id === county.id)
+                            ?.population || 0;
+
                         return (
                           <div key={county.id} className="split-county-item">
                             <div className="split-county-header">
@@ -424,22 +479,36 @@ function StateDetailsScreen() {
                             </div>
                             <div className="split-county-breakdown">
                               {county.splitDetails?.map((detail, index) => {
-                                const districtColor = districtMapData.districtColors[
-                                  districtMapData.districtData.findIndex(d => d.id === detail.districtId)
-                                ] || '#cccccc';
-                                
+                                const districtColor =
+                                  districtMapData.districtColors[
+                                    districtMapData.districtData.findIndex(
+                                      (d) => d.id === detail.districtId
+                                    )
+                                  ] || "#cccccc";
+
                                 return (
-                                  <div key={index} className="split-detail-item">
-                                    <div 
+                                  <div
+                                    key={index}
+                                    className="split-detail-item"
+                                  >
+                                    <div
                                       className="district-color-indicator"
                                       style={{ backgroundColor: districtColor }}
                                     ></div>
-                                    <span className="district-label">District {detail.districtId}:</span>
+                                    <span className="district-label">
+                                      District {detail.districtId}:
+                                    </span>
                                     <span className="district-population">
-                                      {detail.population.toLocaleString()} people
+                                      {detail.population.toLocaleString()}{" "}
+                                      people
                                     </span>
                                     <span className="district-percentage">
-                                      ({((detail.population / totalPopulation) * 100).toFixed(1)}%)
+                                      (
+                                      {(
+                                        (detail.population / totalPopulation) *
+                                        100
+                                      ).toFixed(1)}
+                                      %)
                                     </span>
                                   </div>
                                 );
@@ -474,86 +543,90 @@ function StateDetailsScreen() {
                 </button>
               </div>
 
-          {activeDataTab === "state" && (
-            <div className="data-tab-content">
-              <h2>{state.name} at a Glance</h2>
-              <div className="national-stats-summary">
-                <p>
-                  <strong>Population:</strong>{" "}
-                  {state.population?.toLocaleString()}
-                </p>
-                <p>
-                  <strong>GDP per Capita:</strong> $
-                  {state.economicProfile?.gdpPerCapita?.toLocaleString()}
-                </p>
-                <p>
-                  <strong>Key Issues:</strong>{" "}
-                  {state.stats?.mainIssues?.join(", ")}
-                </p>
-                {state.capital && (
-                  <p>
-                    <strong>Capital:</strong> {state.capital}
-                  </p>
-                )}
-                <div>
-                  <strong>Top Political Parties:</strong>
-                  <ul>
-                    {(state.politicalLandscape || [])
-                      .slice(0, 5)
-                      .map((party) => (
-                        <li key={party.id}>
-                          {party.name}: {party.popularity.toFixed(1)}%
-                        </li>
-                      ))}
-                  </ul>
+              {activeDataTab === "state" && (
+                <div className="data-tab-content">
+                  <h2>{state.name} at a Glance</h2>
+                  <div className="national-stats-summary">
+                    <p>
+                      <strong>Population:</strong>{" "}
+                      {state.population?.toLocaleString()}
+                    </p>
+                    <p>
+                      <strong>GDP per Capita:</strong> $
+                      {state.economicProfile?.gdpPerCapita?.toLocaleString()}
+                    </p>
+                    <p>
+                      <strong>Key Issues:</strong>{" "}
+                      {state.stats?.mainIssues?.join(", ")}
+                    </p>
+                    {state.capital && (
+                      <p>
+                        <strong>Capital:</strong> {state.capital}
+                      </p>
+                    )}
+                    <div>
+                      <strong>Top Political Parties:</strong>
+                      <ul>
+                        {(state.politicalLandscape || [])
+                          .slice(0, 5)
+                          .map((party) => (
+                            <li key={party.id}>
+                              {party.name}: {party.popularity.toFixed(1)}%
+                            </li>
+                          ))}
+                      </ul>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-          )}
+              )}
 
-          {activeDataTab === "county" && (
-            <div className="data-tab-content">
-              <h2>County Data</h2>
-              <div className="table-wrapper">
-                {counties.length > 0 ? (
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>County Name</th>
-                        <th>Population</th>
-                        <th>GDP per Capita</th>
-                        <th>Top Party</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {counties.map((county) => {
-                        const landscape = county.politicalLandscape || [];
-                        const topParty =
-                          landscape.length > 0
-                            ? landscape.reduce((max, p) =>
-                                p.popularity > max.popularity ? p : max
-                              )
-                            : { name: "N/A" };
-
-                        return (
-                          <tr key={county.id}>
-                            <td>{county.name}</td>
-                            <td>{county.population?.toLocaleString() || "N/A"}</td>
-                            <td>
-                              ${county.economicProfile?.gdpPerCapita?.toLocaleString() || "N/A"}
-                            </td>
-                            <td>{topParty.name}</td>
+              {activeDataTab === "county" && (
+                <div className="data-tab-content">
+                  <h2>County Data</h2>
+                  <div className="table-wrapper">
+                    {counties.length > 0 ? (
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>County Name</th>
+                            <th>Population</th>
+                            <th>GDP per Capita</th>
+                            <th>Top Party</th>
                           </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                ) : (
-                  <p>No county data available for this state.</p>
-                )}
-              </div>
-            </div>
-          )}
+                        </thead>
+                        <tbody>
+                          {counties.map((county) => {
+                            const landscape = county.politicalLandscape || [];
+                            const topParty =
+                              landscape.length > 0
+                                ? landscape.reduce((max, p) =>
+                                    p.popularity > max.popularity ? p : max
+                                  )
+                                : { name: "N/A" };
+
+                            return (
+                              <tr key={county.id}>
+                                <td>{county.name}</td>
+                                <td>
+                                  {county.population?.toLocaleString() || "N/A"}
+                                </td>
+                                <td>
+                                  $
+                                  {county.economicProfile?.gdpPerCapita?.toLocaleString() ||
+                                    "N/A"}
+                                </td>
+                                <td>{topParty.name}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    ) : (
+                      <p>No county data available for this state.</p>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

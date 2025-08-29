@@ -153,9 +153,12 @@ export const createPersonnelSlice = (set, get) => ({
         const cost = 500;
         const playerPolitician = state.activeCampaign.politician;
 
-        // Find the target politician from the comprehensive governmentOffices list
-        const allOffices = get().actions.getAllGovernmentOffices();
-        const targetPolitician = allOffices
+        // PERFORMANCE OPTIMIZATION: Only get government offices relevant to the current context
+        const { activeCampaign } = get();
+        const cityId = activeCampaign?.startingCity?.id;
+        const stateId = activeCampaign?.regionId;
+        const contextualOffices = get().actions.getGovernmentOfficesForContext('city', cityId, stateId);
+        const targetPolitician = contextualOffices
           .flatMap((o) => o.members || (o.holder ? [o.holder] : []))
           .find((p) => p && p.id === politicianId);
 
@@ -477,8 +480,12 @@ export const createPersonnelSlice = (set, get) => ({
         const cost = 100;
         const playerPolitician = state.activeCampaign.politician;
 
-        const allOffices = get().actions.getAllGovernmentOffices();
-        const targetPolitician = allOffices
+        // PERFORMANCE OPTIMIZATION: Only get government offices relevant to the current context
+        const { activeCampaign } = get();
+        const cityId = activeCampaign?.startingCity?.id;
+        const stateId = activeCampaign?.regionId;
+        const contextualOffices = get().actions.getGovernmentOfficesForContext('city', cityId, stateId);
+        const targetPolitician = contextualOffices
           .flatMap((o) => o.members || (o.holder ? [o.holder] : []))
           .find((p) => p && p.id === politicianId);
 
@@ -540,8 +547,12 @@ export const createPersonnelSlice = (set, get) => ({
           ? currentFavorites.filter(id => id !== politicianId)
           : [...currentFavorites, politicianId];
         
-        const allOffices = get().actions.getAllGovernmentOffices();
-        const targetPolitician = allOffices
+        // PERFORMANCE OPTIMIZATION: Only get government offices relevant to the current context
+        const { activeCampaign } = get();
+        const cityId = activeCampaign?.startingCity?.id;
+        const stateId = activeCampaign?.regionId;
+        const contextualOffices = get().actions.getGovernmentOfficesForContext('city', cityId, stateId);
+        const targetPolitician = contextualOffices
           .flatMap((o) => o.members || (o.holder ? [o.holder] : []))
           .find((p) => p && p.id === politicianId);
         

@@ -555,6 +555,36 @@ export const useGameStore = create(
             return flattenGovernmentOffices(state.activeCampaign.governmentOffices);
           },
 
+          // PERFORMANCE: Optimized version that only flattens national and state offices
+          // Use this for operations that don't need city-level offices (most AI operations)
+          getNationalAndStateOffices: () => {
+            const state = get();
+            const govOffices = state.activeCampaign?.governmentOffices;
+            if (!govOffices) return [];
+
+            const offices = [];
+
+            // National offices
+            if (govOffices.national) {
+              if (govOffices.national.executive) offices.push(...govOffices.national.executive);
+              if (govOffices.national.legislative?.lowerHouse) offices.push(...govOffices.national.legislative.lowerHouse);
+              if (govOffices.national.legislative?.upperHouse) offices.push(...govOffices.national.legislative.upperHouse);
+              if (govOffices.national.judicial) offices.push(...govOffices.national.judicial);
+            }
+
+            // State offices (still much smaller than cities)
+            if (govOffices.states) {
+              Object.values(govOffices.states).forEach(state => {
+                if (state.executive) offices.push(...state.executive);
+                if (state.legislative?.lowerHouse) offices.push(...state.legislative.lowerHouse);
+                if (state.legislative?.upperHouse) offices.push(...state.legislative.upperHouse);
+                if (state.judicial) offices.push(...state.judicial);
+              });
+            }
+
+            return offices;
+          },
+
           getNationalGovernmentOffices: () => {
             const state = get();
             const govOffices = state.activeCampaign?.governmentOffices;
@@ -586,6 +616,43 @@ export const useGameStore = create(
             const state = get();
             const cityId = state.activeCampaign?.startingCity?.id;
             return get().actions.getCityGovernmentOffices(cityId);
+          },
+
+          // PERFORMANCE OPTIMIZATION: Context-aware government office fetching
+          // Only fetches the specific city/state/nation needed, avoiding massive flattening
+          getGovernmentOfficesForContext: (level, cityId = null, stateId = null) => {
+            const state = get();
+            const govOffices = state.activeCampaign?.governmentOffices;
+            if (!govOffices) return [];
+
+            const offices = [];
+
+            // Always include national offices for all levels
+            if (govOffices.national) {
+              if (govOffices.national.executive) offices.push(...govOffices.national.executive);
+              if (govOffices.national.legislative?.lowerHouse) offices.push(...govOffices.national.legislative.lowerHouse);
+              if (govOffices.national.legislative?.upperHouse) offices.push(...govOffices.national.legislative.upperHouse);
+              if (govOffices.national.judicial) offices.push(...govOffices.national.judicial);
+            }
+
+            // Include state offices if state-level or city-level
+            if ((level === 'state' || level === 'city') && stateId && govOffices.states?.[stateId]) {
+              const stateOffices = govOffices.states[stateId];
+              if (stateOffices.executive) offices.push(...stateOffices.executive);
+              if (stateOffices.legislative?.lowerHouse) offices.push(...stateOffices.legislative.lowerHouse);
+              if (stateOffices.legislative?.upperHouse) offices.push(...stateOffices.legislative.upperHouse);
+              if (stateOffices.judicial) offices.push(...stateOffices.judicial);
+            }
+
+            // Include city offices only if city-level
+            if (level === 'city' && cityId && govOffices.cities?.[cityId]) {
+              const cityOffices = govOffices.cities[cityId];
+              if (cityOffices.executive) offices.push(...cityOffices.executive);
+              if (cityOffices.legislative) offices.push(...cityOffices.legislative);
+              if (cityOffices.judicial) offices.push(...cityOffices.judicial);
+            }
+
+            return offices;
           },
         },
       };

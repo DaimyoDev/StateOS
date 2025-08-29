@@ -291,6 +291,68 @@ export const applyPolicyEffect = (campaignState, effect, parameters = {}) => {
         }
         break;
       }
+      case "percentage_change": {
+        const currentValue = parseFloat(target[lastKey]) || 0;
+        
+        // Ensure actualChange is a valid number
+        if (isNaN(actualChange) || !isFinite(actualChange)) {
+          console.warn(`[applyPolicyEffect] Invalid actualChange for ${lastKey}: ${actualChange}`);
+          break; // Skip this effect if actualChange is invalid
+        }
+        
+        // Apply percentage change: new = current * (1 + change/100)
+        const newValue = currentValue * (1 + actualChange / 100);
+        
+        // Double-check the result is valid before applying
+        if (isNaN(newValue) || !isFinite(newValue)) {
+          console.warn(`[applyPolicyEffect] Invalid newValue for ${lastKey}: ${newValue} (current: ${currentValue}, change: ${actualChange})`);
+          target[lastKey] = currentValue; // Keep current value if calculation fails
+        } else {
+          target[lastKey] = newValue;
+        }
+        break;
+      }
+      case "percentage_point_change_by_param": {
+        const currentValue = parseFloat(target[lastKey]) || 0;
+        
+        // Ensure actualChange is a valid number
+        if (isNaN(actualChange) || !isFinite(actualChange)) {
+          console.warn(`[applyPolicyEffect] Invalid actualChange for ${lastKey}: ${actualChange}`);
+          break; // Skip this effect if actualChange is invalid
+        }
+        
+        const newValue = currentValue + actualChange;
+        
+        // Double-check the result is valid before applying
+        if (isNaN(newValue) || !isFinite(newValue)) {
+          console.warn(`[applyPolicyEffect] Invalid newValue for ${lastKey}: ${newValue} (current: ${currentValue}, change: ${actualChange})`);
+          target[lastKey] = currentValue; // Keep current value if calculation fails
+        } else {
+          target[lastKey] = newValue;
+        }
+        break;
+      }
+      case "conditional_percentage_change_by_tax_change": {
+        const currentValue = parseFloat(target[lastKey]) || 0;
+        
+        // Ensure actualChange is a valid number
+        if (isNaN(actualChange) || !isFinite(actualChange)) {
+          console.warn(`[applyPolicyEffect] Invalid actualChange for ${lastKey}: ${actualChange}`);
+          break; // Skip this effect if actualChange is invalid
+        }
+        
+        // Apply percentage change: new = current * (1 + change/100)
+        const newValue = currentValue * (1 + actualChange / 100);
+        
+        // Double-check the result is valid before applying
+        if (isNaN(newValue) || !isFinite(newValue)) {
+          console.warn(`[applyPolicyEffect] Invalid newValue for ${lastKey}: ${newValue} (current: ${currentValue}, change: ${actualChange})`);
+          target[lastKey] = currentValue; // Keep current value if calculation fails
+        } else {
+          target[lastKey] = newValue;
+        }
+        break;
+      }
       case "absolute_change":
       case "absolute_change_recurring":
         if (typeof target[lastKey] === "number") {
@@ -309,6 +371,8 @@ export const applyPolicyEffect = (campaignState, effect, parameters = {}) => {
             // Create context with available stats for formula evaluation
             const formulaContext = {
               population: currentState.population || 0,
+              statePopulation: currentState.population || 0, // Add statePopulation alias
+              nationalPopulation: currentState.population || 0, // Add nationalPopulation alias
               gdpPerCapita: currentState.gdpPerCapita || 0,
               ...(currentState.budget || {}),
               ...parameters,

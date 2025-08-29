@@ -180,12 +180,14 @@ export const generateFullSecondAdminRegionData = (params = {}) => {
   const { baseRegionData, parentStateData, countryId } = params;
 
   // Convert populationWeight to actual population (e.g., from usaCounties.js)
-  // PopulationWeight represents population in thousands
+  // Population will be properly distributed at the country level using distributeValueProportionally
   let population;
-  if (baseRegionData.populationWeight !== undefined) {
-    population = baseRegionData.populationWeight * 1000;
-  } else if (baseRegionData.population !== undefined) {
+  if (baseRegionData.population !== undefined) {
+    // Population already set (will be set by country-level distribution)
     population = baseRegionData.population;
+  } else if (baseRegionData.populationWeight !== undefined) {
+    // Temporary placeholder - will be overridden by country-level distribution
+    population = baseRegionData.populationWeight * 1000;
   } else {
     population = getRandomInt(10000, 100000);
   }

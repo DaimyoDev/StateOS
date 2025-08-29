@@ -157,58 +157,59 @@ function CountryDetailsScreen() {
       </div>
 
       <div className="country-details-content-area">
-        {/* MODIFIED: Map is now conditionally rendered */}
-        {activeDataTab === "regional" && (
-          <div className="map-view-container ui-panel">
-            <div className="map-controls">
-              <h3>Map Views</h3>
+        <div className="country-details-main-panels">
+          {/* Map is now conditionally rendered */}
+          {activeDataTab === "regional" && (
+            <div className="map-view-container ui-panel">
+              <div className="map-controls">
+                <h3>Map Views</h3>
+                <button
+                  onClick={() => setMapView("population")}
+                  className={`menu-button ${
+                    mapView === "population" ? "active" : ""
+                  }`}
+                >
+                  Population
+                </button>
+                <button
+                  onClick={() => setMapView("party_popularity")}
+                  className={`menu-button ${
+                    mapView === "party_popularity" ? "active" : ""
+                  }`}
+                >
+                  Political Leanings
+                </button>
+                <button
+                  onClick={() => setMapView("gdp")}
+                  className={`menu-button ${mapView === "gdp" ? "active" : ""}`}
+                >
+                  GDP per Capita
+                </button>
+              </div>
+              <div className="map-render-wrapper-details">{renderMap()}</div>
+            </div>
+          )}
+
+          {/* Data container now has tabs */}
+          <div
+            className={`data-table-container ui-panel ${
+              activeDataTab === "national" ? "full-width" : ""
+            }`}
+          >
+            <div className="data-tab-navigation">
               <button
-                onClick={() => setMapView("population")}
-                className={`menu-button ${
-                  mapView === "population" ? "active" : ""
-                }`}
+                onClick={() => setActiveDataTab("regional")}
+                className={activeDataTab === "regional" ? "active" : ""}
               >
-                Population
+                Regional Data
               </button>
               <button
-                onClick={() => setMapView("party_popularity")}
-                className={`menu-button ${
-                  mapView === "party_popularity" ? "active" : ""
-                }`}
+                onClick={() => setActiveDataTab("national")}
+                className={activeDataTab === "national" ? "active" : ""}
               >
-                Political Leanings
-              </button>
-              <button
-                onClick={() => setMapView("gdp")}
-                className={`menu-button ${mapView === "gdp" ? "active" : ""}`}
-              >
-                GDP per Capita
+                National Data
               </button>
             </div>
-            <div className="map-render-wrapper-details">{renderMap()}</div>
-          </div>
-        )}
-
-        {/* MODIFIED: Data container now has tabs */}
-        <div
-          className={`data-table-container ui-panel ${
-            activeDataTab === "national" ? "full-width" : ""
-          }`}
-        >
-          <div className="data-tab-navigation">
-            <button
-              onClick={() => setActiveDataTab("regional")}
-              className={activeDataTab === "regional" ? "active" : ""}
-            >
-              Regional Data
-            </button>
-            <button
-              onClick={() => setActiveDataTab("national")}
-              className={activeDataTab === "national" ? "active" : ""}
-            >
-              National Data
-            </button>
-          </div>
 
           {activeDataTab === "national" && (
             <div className="data-tab-content">
@@ -259,7 +260,7 @@ function CountryDetailsScreen() {
                   </thead>
                   <tbody>
                     {country.regions
-                      .sort((a, b) => b.population - a.population)
+                      .sort((a, b) => (b.population || 0) - (a.population || 0))
                       .map((region) => {
                         const landscape = region.politicalLandscape || [];
                         const topParty =
@@ -272,10 +273,10 @@ function CountryDetailsScreen() {
                         return (
                           <tr key={region.id}>
                             <td>{region.name}</td>
-                            <td>{region.population.toLocaleString()}</td>
+                            <td>{region.population?.toLocaleString() || "N/A"}</td>
                             <td>
                               $
-                              {region.economicProfile.gdpPerCapita.toLocaleString()}
+                              {region.economicProfile?.gdpPerCapita?.toLocaleString() || "N/A"}
                             </td>
                             <td>{topParty.name}</td>
                           </tr>
@@ -286,6 +287,7 @@ function CountryDetailsScreen() {
               </div>
             </div>
           )}
+          </div>
         </div>
       </div>
     </div>

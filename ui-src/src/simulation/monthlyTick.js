@@ -373,7 +373,12 @@ export const runAIBillProposals = (campaign, getFromStore) => {
     return billsToDispatch;
   }
 
-  const councilMembers = campaign.governmentOffices
+  // PERFORMANCE OPTIMIZATION: Only get government offices relevant to the current city context
+  // This avoids flattening thousands of irrelevant city offices
+  const cityId = campaign.startingCity?.id;
+  const stateId = campaign.regionId;
+  const contextualOffices = getFromStore().actions?.getGovernmentOfficesForContext?.('city', cityId, stateId) || [];
+  const councilMembers = contextualOffices
     .flatMap(
       (office) => office.members || (office.holder ? [office.holder] : [])
     )
@@ -399,7 +404,7 @@ export const runAIBillProposals = (campaign, getFromStore) => {
         getFromStore().failedBillsHistory || [],
         campaign.currentDate,
         councilMembers,
-        campaign.governmentOffices
+        contextualOffices
       );
 
       // Check if the AI strategically decided to propose a bill
@@ -473,16 +478,12 @@ const updateCityPartyPopularity = (campaign, getFromStore) => {
   const cityStats = campaign.startingCity.stats;
   const electorateProfile = cityStats.electoratePolicyProfile || {};
 
-  // Get incumbent information
-  const mayorOffice = campaign.governmentOffices?.find(
+  // Get incumbent information using store helper functions
+  const cityOffices = getFromStore().actions?.getCurrentCityGovernmentOffices?.() || { executive: [], legislative: [] };
+  const mayorOffice = cityOffices.executive?.find(
     (off) => off.officeNameTemplateId === "mayor"
   );
-  const councilOffices =
-    campaign.governmentOffices?.filter(
-      (off) =>
-        off.officeNameTemplateId === "city_council" ||
-        off.officeNameTemplateId === "council_member"
-    ) || [];
+  const councilOffices = cityOffices.legislative || [];
 
   const mayorPartyId = mayorOffice?.holder?.partyId;
   const councilPartyComposition = getPartyComposition(councilOffices);
@@ -536,21 +537,20 @@ const updateCityPartyPopularity = (campaign, getFromStore) => {
 /**
  * Updates state-level party popularity based on state performance and governance.
  */
-const updateStatePartyPopularity = (campaign) => {
+const updateStatePartyPopularity = (campaign, getFromStore) => {
   const stateLandscape = campaign.parentState.politicalLandscape;
   const stateStats = campaign.parentState.stats || {};
   const electorateProfile = stateStats.electoratePolicyProfile || {};
 
-  // Get state-level incumbent information (governor, state legislature)
-  const governorOffice = campaign.stateGovernmentOffices?.find(
+  // Get state-level incumbent information using store helper functions
+  const stateOffices = getFromStore().actions?.getCurrentStateGovernmentOffices?.() || { executive: [], legislative: { lowerHouse: [], upperHouse: [] } };
+  const governorOffice = stateOffices.executive?.find(
     (off) => off.officeNameTemplateId === "governor"
   );
-  const legislatureOffices =
-    campaign.stateGovernmentOffices?.filter(
-      (off) =>
-        off.officeNameTemplateId?.includes("state_") &&
-        off.officeNameTemplateId?.includes("legislature")
-    ) || [];
+  const legislatureOffices = [
+    ...(stateOffices.legislative?.lowerHouse || []),
+    ...(stateOffices.legislative?.upperHouse || [])
+  ];
 
   const governorPartyId = governorOffice?.holder?.partyId;
   const legislatureComposition = getPartyComposition(legislatureOffices);
@@ -736,50 +736,16 @@ const calculateOppositionBonus = (stats, level) => {
   return Math.min(0.5, bonus); // Cap opposition bonus
 };
 
-export const runMonthlyPlayerApprovalUpdate = (campaign) => {
+export const runMonthlyPlayerApprovalUpdate = (campaign, getFromStore) => {
   const cityStats = campaign.startingCity?.stats;
   const playerPoliticianId = campaign.playerPoliticianId;
   const politiciansStore = campaign.politicians;
 
   if (!cityStats || !playerPoliticianId || !politiciansStore) return null;
 
-  // Helper function to flatten hierarchical government offices structure
-  const flattenGovernmentOffices = (hierarchicalStructure) => {
-    if (!hierarchicalStructure) return [];
-    const flattened = [];
-    
-    // Add national offices
-    if (hierarchicalStructure.national) {
-      if (hierarchicalStructure.national.executive) flattened.push(...hierarchicalStructure.national.executive);
-      if (hierarchicalStructure.national.legislative?.lowerHouse) flattened.push(...hierarchicalStructure.national.legislative.lowerHouse);
-      if (hierarchicalStructure.national.legislative?.upperHouse) flattened.push(...hierarchicalStructure.national.legislative.upperHouse);
-      if (hierarchicalStructure.national.judicial) flattened.push(...hierarchicalStructure.national.judicial);
-    }
-    
-    // Add state offices
-    if (hierarchicalStructure.states) {
-      Object.values(hierarchicalStructure.states).forEach(state => {
-        if (state.executive) flattened.push(...state.executive);
-        if (state.legislative?.lowerHouse) flattened.push(...state.legislative.lowerHouse);
-        if (state.legislative?.upperHouse) flattened.push(...state.legislative.upperHouse);
-        if (state.judicial) flattened.push(...state.judicial);
-      });
-    }
-    
-    // Add city offices
-    if (hierarchicalStructure.cities) {
-      Object.values(hierarchicalStructure.cities).forEach(city => {
-        if (city.executive) flattened.push(...city.executive);
-        if (city.legislative) flattened.push(...city.legislative);
-        if (city.judicial) flattened.push(...city.judicial);
-      });
-    }
-    
-    return flattened.filter(Boolean);
-  };
-
-  const flatOffices = flattenGovernmentOffices(campaign.governmentOffices);
-  const mayorOffice = flatOffices.find(
+  // Use store helper to get city offices
+  const cityOffices = getFromStore().actions?.getCurrentCityGovernmentOffices?.() || { executive: [], legislative: [] };
+  const mayorOffice = cityOffices.executive?.find(
     (off) => off.officeNameTemplateId === "mayor"
   );
   const mayorId = mayorOffice?.holder?.id;
@@ -787,7 +753,7 @@ export const runMonthlyPlayerApprovalUpdate = (campaign) => {
   const playerState = politiciansStore.state.get(playerPoliticianId);
   if (!playerState) return null; // Player data not found
 
-  const currentApproval = playerState.approvalRating;
+  const currentApproval = parseFloat(playerState.approvalRating) || 50; // Default to 50 if undefined/NaN
   const currentOverallCitizenMood = cityStats.overallCitizenMood;
 
   let approvalChangeFromMood = 0;
@@ -822,6 +788,12 @@ export const runMonthlyPlayerApprovalUpdate = (campaign) => {
         )
       )
     );
+  }
+
+  // Final safety check to prevent NaN
+  if (isNaN(newPlayerApproval) || !isFinite(newPlayerApproval)) {
+    console.warn(`[monthlyTick] Invalid newPlayerApproval calculated: ${newPlayerApproval}, using currentApproval: ${currentApproval}`);
+    return null;
   }
 
   return newPlayerApproval !== currentApproval ? newPlayerApproval : null;

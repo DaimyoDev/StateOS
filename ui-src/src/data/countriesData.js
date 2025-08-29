@@ -5,7 +5,7 @@ import {
   generateInitialNationalStats,
 } from "../entities/politicalEntities";
 import { chamberTiers } from "./chamberTiers";
-import { getRandomInt } from "../utils/core";
+import { getRandomInt, distributeValueProportionally } from "../utils/core";
 import { generateLegislativeDistrictsForCountry } from "../entities/districtGeneration";
 import { generateNationalParties } from "../entities/personnel";
 import { japanPrefectures } from "./states/japanPrefectures";
@@ -634,6 +634,28 @@ export const generateDetailedCountryData = (countryToProcess) => {
           countryId: processedCountry.id,
         });
       });
+
+    // Properly distribute population among counties using distributeValueProportionally
+    processedCountry.regions.forEach((state) => {
+      const stateCounties = processedCountry.secondAdminRegions.filter(
+        (county) => county.stateId === state.id
+      );
+      if (stateCounties.length > 0) {
+        // Pass the county objects with populationWeight property, not just the weights
+        const distributedPopulations = distributeValueProportionally(
+          state.population,
+          stateCounties
+        );
+        stateCounties.forEach((county, index) => {
+          county.population = distributedPopulations[index] || 5000;
+          // Update the county in the main array
+          const countyIndex = processedCountry.secondAdminRegions.findIndex(c => c.id === county.id);
+          if (countyIndex !== -1) {
+            processedCountry.secondAdminRegions[countyIndex].population = county.population;
+          }
+        });
+      }
+    });
   }
 
   // Aggregate population and GDP from regions. This part is crucial.

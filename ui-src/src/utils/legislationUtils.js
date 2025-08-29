@@ -1,6 +1,6 @@
 // ui-src/src/utils/legislationUtils.js
 
-export const getLegislatureDetails = (campaign, level) => {
+export const getLegislatureDetails = (campaign, level, contextualOffices = null) => {
   if (!campaign || !level) return { members: [], size: 0, officeName: '' };
 
   const officeMapping = {
@@ -11,43 +11,51 @@ export const getLegislatureDetails = (campaign, level) => {
 
   const officeName = officeMapping[level];
   
-  // Helper function to flatten hierarchical government offices structure
-  const flattenGovernmentOffices = (hierarchicalStructure) => {
-    if (!hierarchicalStructure) return [];
-    const flattened = [];
-    
-    // Add national offices
-    if (hierarchicalStructure.national) {
-      if (hierarchicalStructure.national.executive) flattened.push(...hierarchicalStructure.national.executive);
-      if (hierarchicalStructure.national.legislative?.lowerHouse) flattened.push(...hierarchicalStructure.national.legislative.lowerHouse);
-      if (hierarchicalStructure.national.legislative?.upperHouse) flattened.push(...hierarchicalStructure.national.legislative.upperHouse);
-      if (hierarchicalStructure.national.judicial) flattened.push(...hierarchicalStructure.national.judicial);
-    }
-    
-    // Add state offices
-    if (hierarchicalStructure.states) {
-      Object.values(hierarchicalStructure.states).forEach(state => {
-        if (state.executive) flattened.push(...state.executive);
-        if (state.legislative?.lowerHouse) flattened.push(...state.legislative.lowerHouse);
-        if (state.legislative?.upperHouse) flattened.push(...state.legislative.upperHouse);
-        if (state.judicial) flattened.push(...state.judicial);
-      });
-    }
-    
-    // Add city offices
-    if (hierarchicalStructure.cities) {
-      Object.values(hierarchicalStructure.cities).forEach(city => {
-        if (city.executive) flattened.push(...city.executive);
-        if (city.legislative) flattened.push(...city.legislative);
-        if (city.judicial) flattened.push(...city.judicial);
-      });
-    }
-    
-    return flattened.filter(Boolean);
-  };
+  // Use provided contextual offices or fallback to old behavior for backwards compatibility
+  let flatOffices;
+  if (contextualOffices) {
+    // PERFORMANCE OPTIMIZATION: Use pre-filtered contextual offices
+    flatOffices = contextualOffices;
+  } else {
+    // FALLBACK: Use old method for backwards compatibility (but this will be slow)
+    // Helper function to flatten hierarchical government offices structure
+    const flattenGovernmentOffices = (hierarchicalStructure) => {
+      if (!hierarchicalStructure) return [];
+      const flattened = [];
+      
+      // Add national offices
+      if (hierarchicalStructure.national) {
+        if (hierarchicalStructure.national.executive) flattened.push(...hierarchicalStructure.national.executive);
+        if (hierarchicalStructure.national.legislative?.lowerHouse) flattened.push(...hierarchicalStructure.national.legislative.lowerHouse);
+        if (hierarchicalStructure.national.legislative?.upperHouse) flattened.push(...hierarchicalStructure.national.legislative.upperHouse);
+        if (hierarchicalStructure.national.judicial) flattened.push(...hierarchicalStructure.national.judicial);
+      }
+      
+      // Add state offices
+      if (hierarchicalStructure.states) {
+        Object.values(hierarchicalStructure.states).forEach(state => {
+          if (state.executive) flattened.push(...state.executive);
+          if (state.legislative?.lowerHouse) flattened.push(...state.legislative.lowerHouse);
+          if (state.legislative?.upperHouse) flattened.push(...state.legislative.upperHouse);
+          if (state.judicial) flattened.push(...state.judicial);
+        });
+      }
+      
+      // Add city offices
+      if (hierarchicalStructure.cities) {
+        Object.values(hierarchicalStructure.cities).forEach(city => {
+          if (city.executive) flattened.push(...city.executive);
+          if (city.legislative) flattened.push(...city.legislative);
+          if (city.judicial) flattened.push(...city.judicial);
+        });
+      }
+      
+      return flattened.filter(Boolean);
+    };
 
-  // Get flattened offices from hierarchical structure
-  const flatOffices = flattenGovernmentOffices(campaign.governmentOffices);
+    // Get flattened offices from hierarchical structure
+    flatOffices = flattenGovernmentOffices(campaign.governmentOffices);
+  }
   const office = flatOffices.find((o) => o && o.name === officeName);
 
   if (!office) {

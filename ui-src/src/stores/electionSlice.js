@@ -124,8 +124,7 @@ const updateGovernmentOfficeInHierarchy = (
       // Find existing office or add new one
       const existingIndex = updated.national.executive.findIndex(
         (o) =>
-          o.instanceIdBase === election.instanceIdBase ||
-          o.officeNameTemplateId === election.officeNameTemplateId
+          o.instanceIdBase === election.instanceIdBase
       );
 
       if (existingIndex >= 0) {
@@ -148,8 +147,7 @@ const updateGovernmentOfficeInHierarchy = (
 
       const existingIndex = updated.national.legislative[chamber].findIndex(
         (o) =>
-          o.instanceIdBase === election.instanceIdBase ||
-          o.officeNameTemplateId === election.officeNameTemplateId
+          o.instanceIdBase === election.instanceIdBase
       );
 
       if (existingIndex >= 0) {
@@ -164,8 +162,7 @@ const updateGovernmentOfficeInHierarchy = (
       // Default to executive for unknown national offices
       const existingIndex = updated.national.executive.findIndex(
         (o) =>
-          o.instanceIdBase === election.instanceIdBase ||
-          o.officeNameTemplateId === election.officeNameTemplateId
+          o.instanceIdBase === election.instanceIdBase
       );
 
       if (existingIndex >= 0) {
@@ -196,8 +193,7 @@ const updateGovernmentOfficeInHierarchy = (
     if (level.includes("executive") || level.includes("governor")) {
       const existingIndex = updated.states[stateId].executive.findIndex(
         (o) =>
-          o.instanceIdBase === election.instanceIdBase ||
-          o.officeNameTemplateId === election.officeNameTemplateId
+          o.instanceIdBase === election.instanceIdBase
       );
 
       if (existingIndex >= 0) {
@@ -220,8 +216,7 @@ const updateGovernmentOfficeInHierarchy = (
         chamber
       ].findIndex(
         (o) =>
-          o.instanceIdBase === election.instanceIdBase ||
-          o.officeNameTemplateId === election.officeNameTemplateId
+          o.instanceIdBase === election.instanceIdBase
       );
 
       if (existingIndex >= 0) {
@@ -236,8 +231,7 @@ const updateGovernmentOfficeInHierarchy = (
       // Default to executive for unknown state offices
       const existingIndex = updated.states[stateId].executive.findIndex(
         (o) =>
-          o.instanceIdBase === election.instanceIdBase ||
-          o.officeNameTemplateId === election.officeNameTemplateId
+          o.instanceIdBase === election.instanceIdBase
       );
 
       if (existingIndex >= 0) {
@@ -265,8 +259,7 @@ const updateGovernmentOfficeInHierarchy = (
     if (level.includes("mayor") || level.includes("executive")) {
       const existingIndex = updated.cities[cityId].executive.findIndex(
         (o) =>
-          o.instanceIdBase === election.instanceIdBase ||
-          o.officeNameTemplateId === election.officeNameTemplateId
+          o.instanceIdBase === election.instanceIdBase
       );
 
       if (existingIndex >= 0) {
@@ -280,8 +273,7 @@ const updateGovernmentOfficeInHierarchy = (
     } else if (level.includes("council") || level.includes("legislative")) {
       const existingIndex = updated.cities[cityId].legislative.findIndex(
         (o) =>
-          o.instanceIdBase === election.instanceIdBase ||
-          o.officeNameTemplateId === election.officeNameTemplateId
+          o.instanceIdBase === election.instanceIdBase
       );
 
       if (existingIndex >= 0) {
@@ -296,8 +288,7 @@ const updateGovernmentOfficeInHierarchy = (
       // Default to executive for unknown city offices
       const existingIndex = updated.cities[cityId].executive.findIndex(
         (o) =>
-          o.instanceIdBase === election.instanceIdBase ||
-          o.officeNameTemplateId === election.officeNameTemplateId
+          o.instanceIdBase === election.instanceIdBase
       );
 
       if (existingIndex >= 0) {
@@ -352,9 +343,10 @@ export const createElectionSlice = (set, get) => ({
 
         // --- OPTIMIZATION: Pre-calculate incumbents by office name ---
         const incumbentsMap = new Map();
-        // Use the helper function to get flattened government offices
-        const flatGovernmentOffices = get().actions.getAllGovernmentOffices();
-        flatGovernmentOffices.forEach((office) => {
+        // PERFORMANCE OPTIMIZATION: Only get national and state offices for election generation
+        // Most city offices won't be relevant for scheduled elections
+        const relevantOffices = get().actions.getNationalAndStateOffices();
+        relevantOffices.forEach((office) => {
           if (office.holder) {
             const incumbents = incumbentsMap.get(office.officeName) || [];
             incumbents.push(office);
@@ -597,10 +589,8 @@ export const createElectionSlice = (set, get) => ({
         let updatedElections = [...state.activeCampaign.elections];
         updatedElections[electionIndex] = updatedElection;
 
-        // Get current hierarchical structure
-        let updatedGovernmentOffices = JSON.parse(
-          JSON.stringify(state.activeCampaign.governmentOffices)
-        );
+        // Work directly with the current hierarchical structure - no copying needed
+        let updatedGovernmentOffices = state.activeCampaign.governmentOffices;
         const electionDef = ELECTION_TYPES_BY_COUNTRY[
           state.activeCampaign.countryId
         ]?.find((e) => e.id === updatedElection.officeNameTemplateId);

@@ -85,6 +85,45 @@ export const mergeAIProposals = (proposals, context) => {
     return proposals.map(p => ({ ...p, proposers: [p.proposer] }));
   }
 
+  // PERFORMANCE OPTIMIZATION: Flatten government offices once here
+  // instead of doing it repeatedly in each decideAIVote call
+  let flattenedGovernmentOffices;
+  if (Array.isArray(context.governmentOffices)) {
+    flattenedGovernmentOffices = context.governmentOffices;
+  } else {
+    flattenedGovernmentOffices = [];
+    const govOffices = context.governmentOffices || {};
+    
+    // Add national offices
+    if (govOffices.national) {
+      if (govOffices.national.executive) flattenedGovernmentOffices.push(...govOffices.national.executive);
+      if (govOffices.national.legislative?.lowerHouse) flattenedGovernmentOffices.push(...govOffices.national.legislative.lowerHouse);
+      if (govOffices.national.legislative?.upperHouse) flattenedGovernmentOffices.push(...govOffices.national.legislative.upperHouse);
+      if (govOffices.national.judicial) flattenedGovernmentOffices.push(...govOffices.national.judicial);
+    }
+    
+    // Add state offices
+    if (govOffices.states) {
+      Object.values(govOffices.states).forEach(state => {
+        if (state.executive) flattenedGovernmentOffices.push(...state.executive);
+        if (state.legislative?.lowerHouse) flattenedGovernmentOffices.push(...state.legislative.lowerHouse);
+        if (state.legislative?.upperHouse) flattenedGovernmentOffices.push(...state.legislative.upperHouse);
+        if (state.judicial) flattenedGovernmentOffices.push(...state.judicial);
+      });
+    }
+    
+    // Add city offices
+    if (govOffices.cities) {
+      Object.values(govOffices.cities).forEach(city => {
+        if (city.executive) flattenedGovernmentOffices.push(...city.executive);
+        if (city.legislative) flattenedGovernmentOffices.push(...city.legislative);
+        if (city.judicial) flattenedGovernmentOffices.push(...city.judicial);
+      });
+    }
+    
+    flattenedGovernmentOffices = flattenedGovernmentOffices.filter(Boolean);
+  }
+
   const mergedBills = [];
   const mergedIndices = new Set();
 
@@ -118,7 +157,7 @@ export const mergeAIProposals = (proposals, context) => {
           context.cityStats,
           context.activeLegislation,
           context.proposedBills,
-          context.governmentOffices,
+          flattenedGovernmentOffices,
           context.allPolicyDefsForLevel
         );
 

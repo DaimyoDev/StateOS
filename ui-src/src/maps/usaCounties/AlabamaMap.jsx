@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from "react";
+import React, { useState } from "react";
 import useGameStore from "../../store";
-import { getMapThemeColors, getRegionStyle, calculateHeatmapRange } from "../../utils/mapHeatmapUtils";
+import { getMapThemeColors, getRegionStyle } from "../../utils/mapHeatmapUtils";
 import { getDistrictRegionStyle } from "../../utils/mapDistrictUtils";
 import "../JapanMap.css";
 
@@ -275,7 +275,12 @@ const countyOrderFromSVG = [
   "Lauderdale",
 ];
 
-function AlabamaMap({ onSelectCounty, selectedCountyGameId, heatmapData, viewType }) {
+function AlabamaMap({
+  onSelectCounty,
+  selectedCountyGameId,
+  heatmapData,
+  viewType,
+}) {
   const [hoveredCountyId, setHoveredCountyId] = useState(null);
   const [tooltipData, setTooltipData] = useState(null);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
@@ -284,8 +289,7 @@ function AlabamaMap({ onSelectCounty, selectedCountyGameId, heatmapData, viewTyp
   );
 
   const themeColors = getMapThemeColors(currentTheme);
-  const { min, max } = useMemo(() => calculateHeatmapRange(heatmapData, viewType), [heatmapData, viewType]);
-  
+
   const handleCountyClick = (svgId) => {
     const county = COUNTY_DATA[svgId];
     if (county && onSelectCounty) {
@@ -294,22 +298,24 @@ function AlabamaMap({ onSelectCounty, selectedCountyGameId, heatmapData, viewTyp
       console.warn(`No game data found for SVG ID: ${svgId}`);
     }
   };
-  
+
   const handleMouseEnter = (svgId, event) => {
     const countyInfo = COUNTY_DATA[svgId];
     if (!countyInfo) return;
 
     setHoveredCountyId(countyInfo.gameId);
-    
+
     // Get split county details if in congressional districts view
     if (viewType === "congressional_districts" && heatmapData?.mapData) {
-      const mapDataItem = heatmapData.mapData.find(item => item.id === countyInfo.gameId);
+      const mapDataItem = heatmapData.mapData.find(
+        (item) => item.id === countyInfo.gameId
+      );
       if (mapDataItem) {
         setTooltipData({
           name: countyInfo.name,
           isSplit: mapDataItem.isSplit,
           splitDetails: mapDataItem.splitDetails,
-          districtLabel: mapDataItem.value
+          districtLabel: mapDataItem.value,
         });
       }
     } else {
@@ -317,28 +323,30 @@ function AlabamaMap({ onSelectCounty, selectedCountyGameId, heatmapData, viewTyp
         name: countyInfo.name,
         isSplit: false,
         splitDetails: null,
-        districtLabel: null
+        districtLabel: null,
       });
     }
-    
+
     setMousePosition({ x: event.clientX, y: event.clientY });
   };
-  
+
   const handleMouseLeave = () => {
     setHoveredCountyId(null);
     setTooltipData(null);
   };
-  
+
   const handleMouseMove = (event) => {
     setMousePosition({ x: event.clientX, y: event.clientY });
   };
-  
+
   const getCountyStyle = (svgId) => {
     // Use district styling if viewType is congressional_districts
     if (viewType === "congressional_districts" && heatmapData?.districtData) {
       const countyInfo = COUNTY_DATA[svgId];
-      const mapDataItem = heatmapData.mapData?.find(item => item.id === countyInfo?.gameId);
-      
+      const mapDataItem = heatmapData.mapData?.find(
+        (item) => item.id === countyInfo?.gameId
+      );
+
       return getDistrictRegionStyle({
         svgId,
         countyData: COUNTY_DATA,
@@ -349,10 +357,10 @@ function AlabamaMap({ onSelectCounty, selectedCountyGameId, heatmapData, viewTyp
         hoveredId: hoveredCountyId,
         isClickable: !!onSelectCounty,
         isSplit: mapDataItem?.isSplit || false,
-        splitDetails: mapDataItem?.splitDetails || null
+        splitDetails: mapDataItem?.splitDetails || null,
       });
     }
-    
+
     // Default heatmap styling
     return getRegionStyle({
       regionId: null,
@@ -363,7 +371,7 @@ function AlabamaMap({ onSelectCounty, selectedCountyGameId, heatmapData, viewTyp
       theme: themeColors,
       hoveredId: hoveredCountyId,
       selectedId: selectedCountyGameId,
-      isClickable: !!onSelectCounty
+      isClickable: !!onSelectCounty,
     });
   };
 
@@ -405,7 +413,6 @@ function AlabamaMap({ onSelectCounty, selectedCountyGameId, heatmapData, viewTyp
         className="interactive-japan-map"
         preserveAspectRatio="xMidYMid meet"
       >
-        
         <g
           id="alabama-counties-group"
           transform="translate(5,5)"
@@ -415,45 +422,52 @@ function AlabamaMap({ onSelectCounty, selectedCountyGameId, heatmapData, viewTyp
           {countyOrderFromSVG.map((svgId) => renderCountyPath(svgId))}
         </g>
       </svg>
-      
+
       {/* Enhanced Tooltip for Split Counties */}
       {tooltipData && (
         <div
           style={{
-            position: 'fixed',
+            position: "fixed",
             left: mousePosition.x + 10,
             top: mousePosition.y - 10,
-            backgroundColor: 'rgba(0, 0, 0, 0.9)',
-            color: 'white',
-            padding: '8px 12px',
-            borderRadius: '4px',
-            fontSize: '12px',
-            pointerEvents: 'none',
+            backgroundColor: "rgba(0, 0, 0, 0.9)",
+            color: "white",
+            padding: "8px 12px",
+            borderRadius: "4px",
+            fontSize: "12px",
+            pointerEvents: "none",
             zIndex: 1000,
-            maxWidth: '250px',
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)'
+            maxWidth: "250px",
+            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.3)",
           }}
         >
-          <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
+          <div style={{ fontWeight: "bold", marginBottom: "4px" }}>
             {tooltipData.name} County
           </div>
-          
+
           {tooltipData.isSplit && tooltipData.splitDetails ? (
             <div>
-              <div style={{ color: themeColors.selectedColor || '#ff6b35', fontWeight: 'bold', marginBottom: '4px' }}>
+              <div
+                style={{
+                  color: themeColors.selectedColor || "#ff6b35",
+                  fontWeight: "bold",
+                  marginBottom: "4px",
+                }}
+              >
                 Split County
               </div>
-              <div style={{ fontSize: '11px' }}>
+              <div style={{ fontSize: "11px" }}>
                 {tooltipData.splitDetails.map((detail, index) => (
-                  <div key={index} style={{ marginBottom: '2px' }}>
-                    District {detail.districtId}: {detail.population.toLocaleString()} people
+                  <div key={index} style={{ marginBottom: "2px" }}>
+                    District {detail.districtId}:{" "}
+                    {detail.population.toLocaleString()} people
                   </div>
                 ))}
               </div>
             </div>
           ) : (
             tooltipData.districtLabel && (
-              <div style={{ fontSize: '11px' }}>
+              <div style={{ fontSize: "11px" }}>
                 {tooltipData.districtLabel}
               </div>
             )
@@ -465,3 +479,4 @@ function AlabamaMap({ onSelectCounty, selectedCountyGameId, heatmapData, viewTyp
 }
 
 export default AlabamaMap;
+export { countyPathData };

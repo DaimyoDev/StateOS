@@ -17,7 +17,7 @@ const LegislationSubTab = ({ campaignData }) => {
     (state) => state[currentLevel]?.activeLegislation || EMPTY_ARRAY
   );
 
-  const { openPolicyVoteDetailsModal, openBillDetailsModal, openBillAuthoringModal } = useGameStore(
+  const { openPolicyVoteDetailsModal, openBillDetailsModal, openBillAuthoringModal, getGovernmentOfficesForContext } = useGameStore(
     (state) => state.actions
   );
 
@@ -48,8 +48,12 @@ const LegislationSubTab = ({ campaignData }) => {
     ) {
       return `${activeCampaign.politician.firstName} ${activeCampaign.politician.lastName}`;
     }
-    if (activeCampaign.governmentOffices) {
-      for (const office of activeCampaign.governmentOffices) {
+    // PERFORMANCE OPTIMIZATION: Only get government offices relevant to the current level
+    const cityId = currentLevel === 'city' ? activeCampaign?.startingCity?.id : null;
+    const stateId = (currentLevel === 'state' || currentLevel === 'city') ? activeCampaign?.regionId : null;
+    const contextualOffices = getGovernmentOfficesForContext(currentLevel, cityId, stateId);
+    if (contextualOffices) {
+      for (const office of contextualOffices) {
         if (office.holder && office.holder.id === politicianId) {
           return (
             office.holder.name ||
