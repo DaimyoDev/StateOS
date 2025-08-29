@@ -15,7 +15,44 @@ const formatCurrency = (value) => value != null ? `$${value.toLocaleString()}` :
 const NationalOverviewTab = ({ campaignData }) => {
   const [activeSubTab, setActiveSubTab] = useState("summary");
   const { openViewPoliticianModal, getNationalGovernmentOffices } = useGameStore((state) => state.actions);
+  const politiciansSoA = useGameStore((state) => state.activeCampaign?.politicians);
   const nationalGovernmentOffices = getNationalGovernmentOffices();
+
+  const getUpdatedPolitician = useCallback(
+    (politicianRef) => {
+      if (!politicianRef || !politiciansSoA) return null;
+      
+      // Handle case where politicianRef is just an ID string
+      const politicianId = typeof politicianRef === 'string' ? politicianRef : politicianRef.id;
+      
+      if (!politicianId) return politicianRef; // Return original if no ID available
+      
+      const base = politiciansSoA.base.get(politicianId);
+      const state = politiciansSoA.state.get(politicianId);
+      const finances = politiciansSoA.finances.get(politicianId);
+      const attributes = politiciansSoA.attributes.get(politicianId);
+      const background = politiciansSoA.background.get(politicianId);
+      
+      // If politician not found in SoA store, return original reference
+      if (!base) return politicianRef;
+      
+      // Merge SoA data with any existing reference data (like partyName, role from government offices)
+      return {
+        ...base,
+        ...(state || {}),
+        ...(finances || {}),
+        ...(attributes || {}),
+        ...(background || {}),
+        // Preserve any existing data from the government office reference
+        ...(typeof politicianRef === 'object' ? {
+          partyName: politicianRef.partyName || base.partyName,
+          partyColor: politicianRef.partyColor || base.partyColor,
+          role: politicianRef.role,
+        } : {}),
+      };
+    },
+    [politiciansSoA]
+  );
 
   const countryData = useMemo(() => {
     // First try to get the live country data (updated by budget calculations)
@@ -50,11 +87,12 @@ const NationalOverviewTab = ({ campaignData }) => {
   const lowerHouseComposition = useMemo(() => {
     const partyData = {};
     lowerHouse.forEach((office) => {
-      const partyName = office.holder?.partyName || "Independent";
+      const updatedHolder = getUpdatedPolitician(office.holder);
+      const partyName = updatedHolder?.partyName || "Independent";
       if (!partyData[partyName]) {
         partyData[partyName] = {
           count: 0,
-          color: office.holder?.partyColor || "#CCCCCC",
+          color: updatedHolder?.partyColor || "#CCCCCC",
         };
       }
       partyData[partyName].count++;
@@ -64,7 +102,7 @@ const NationalOverviewTab = ({ campaignData }) => {
       popularity: data.count,
       color: data.color,
     }));
-  }, [lowerHouse]);
+  }, [lowerHouse, getUpdatedPolitician]);
 
   const formatOfficeTitleForDisplay = useCallback(
     (office) => {
@@ -210,7 +248,7 @@ const NationalOverviewTab = ({ campaignData }) => {
                 <h5>Head of State / Government</h5>
                 <div className="officials-cards-grid">
                   <PoliticianCard
-                    politician={headOfState.holder}
+                    politician={getUpdatedPolitician(headOfState.holder)}
                     office={headOfState}
                     onClick={openViewPoliticianModal}
                     formatOfficeTitle={formatOfficeTitleForDisplay}
@@ -233,7 +271,7 @@ const NationalOverviewTab = ({ campaignData }) => {
                   {lowerHouse.map((office) => (
                     <PoliticianCard
                       key={office.officeId}
-                      politician={office.holder}
+                      politician={getUpdatedPolitician(office.holder)}
                       office={office}
                       onClick={openViewPoliticianModal}
                       formatOfficeTitle={formatOfficeTitleForDisplay}
@@ -252,7 +290,7 @@ const NationalOverviewTab = ({ campaignData }) => {
                   {upperHouse.map((office) => (
                     <PoliticianCard
                       key={office.officeId}
-                      politician={office.holder}
+                      politician={getUpdatedPolitician(office.holder)}
                       office={office}
                       onClick={openViewPoliticianModal}
                       formatOfficeTitle={formatOfficeTitleForDisplay}

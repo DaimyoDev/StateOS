@@ -595,27 +595,44 @@ export const useGameStore = create(
           getStateGovernmentOffices: (stateId) => {
             const state = get();
             const govOffices = state.activeCampaign?.governmentOffices;
+            console.log('[getStateGovernmentOffices] Looking for stateId:', stateId);
+            console.log('[getStateGovernmentOffices] Available states in govOffices:', govOffices?.states ? Object.keys(govOffices.states) : 'No states');
             if (!govOffices || !stateId) return { executive: [], legislative: { lowerHouse: [], upperHouse: [] } };
-            return govOffices.states?.[stateId] || { executive: [], legislative: { lowerHouse: [], upperHouse: [] } };
+            const result = govOffices.states?.[stateId] || { executive: [], legislative: { lowerHouse: [], upperHouse: [] } };
+            console.log('[getStateGovernmentOffices] Returning result for', stateId, ':', result);
+            return result;
           },
 
           getCurrentStateGovernmentOffices: () => {
             const state = get();
             const regionId = state.activeCampaign?.regionId;
-            return get().actions.getStateGovernmentOffices(regionId);
+            console.log('[getCurrentStateGovernmentOffices] Region ID:', regionId);
+            const result = get().actions.getStateGovernmentOffices(regionId);
+            console.log('[getCurrentStateGovernmentOffices] Result:', result);
+            return result;
           },
 
           getCityGovernmentOffices: (cityId) => {
             const state = get();
             const govOffices = state.activeCampaign?.governmentOffices;
-            if (!govOffices || !cityId) return { executive: [], legislative: [] };
-            return govOffices.cities?.[cityId] || { executive: [], legislative: [] };
+            console.log('[getCityGovernmentOffices] CityId:', cityId);
+            console.log('[getCityGovernmentOffices] Available cities:', Object.keys(govOffices?.cities || {}));
+            if (!govOffices || !cityId) {
+              console.log('[getCityGovernmentOffices] No govOffices or cityId, returning empty');
+              return { executive: [], legislative: [] };
+            }
+            const result = govOffices.cities?.[cityId] || { executive: [], legislative: [] };
+            console.log('[getCityGovernmentOffices] Result for city:', cityId, result);
+            return result;
           },
 
           getCurrentCityGovernmentOffices: () => {
             const state = get();
             const cityId = state.activeCampaign?.startingCity?.id;
-            return get().actions.getCityGovernmentOffices(cityId);
+            console.log('[getCurrentCityGovernmentOffices] CityId:', cityId);
+            const result = get().actions.getCityGovernmentOffices(cityId);
+            console.log('[getCurrentCityGovernmentOffices] Result:', result);
+            return result;
           },
 
           // PERFORMANCE OPTIMIZATION: Context-aware government office fetching

@@ -22,11 +22,23 @@ import {
   runStateBudgetUpdate,
   runNationalBudgetUpdate,
 } from "../utils/regionalStatCalc.js";
+import { runMonthlyBudgetUpdate } from "../simulation/monthlyTick.js";
 
 // Helper function to recalculate budgets after policy effects
 const recalculateBudgetsForLevel = (campaignState, level) => {
   try {
-    if (level === "state") {
+    if (level === "city") {
+      // Update city budget
+      if (campaignState?.startingCity?.stats?.budget) {
+        const { budgetUpdates } = runMonthlyBudgetUpdate(campaignState);
+        if (budgetUpdates && campaignState.startingCity.stats) {
+          campaignState.startingCity.stats.budget = {
+            ...campaignState.startingCity.stats.budget,
+            ...budgetUpdates,
+          };
+        }
+      }
+    } else if (level === "state") {
       // Find the current region (state)
       const currentRegion = campaignState.regions?.find(
         (r) => r.id === campaignState.startingCity?.regionId
@@ -52,7 +64,7 @@ const recalculateBudgetsForLevel = (campaignState, level) => {
         }
       }
     }
-    // City-level budget updates are handled by monthly tick
+    // All budget levels (city, state, national) are now handled above
   } catch (error) {
     console.error(
       `[ERROR] Failed to recalculate budget for level ${level}:`,
@@ -501,7 +513,7 @@ export const createLegislationSlice = (set, get) => ({
           cityStats: getStatsForLevel(activeCampaign, level),
           activeLegislation: state[level]?.activeLegislation || [],
           proposedBills: state[level]?.proposedBills || [],
-          governmentOffices: activeCampaign.governmentOffices || [],
+          governmentOffices: contextualOffices || [],
           allPolicyDefsForLevel: state.availablePolicies[level].reduce(
             (acc, p) => ({ ...acc, [p.id]: p }),
             {}
@@ -839,13 +851,10 @@ export const createLegislationSlice = (set, get) => ({
                   contextualGovernmentOffices,
                   // Convert array to object with policy IDs as keys, and include bill-specific policies
                   {
-                    ...state.availablePolicies[level].reduce(
-                      (acc, policy, index) => {
-                        acc[policy.id] = policy;
-                        return acc;
-                      },
-                      {}
-                    ),
+                    ...state.availablePolicies[level].reduce((acc, policy) => {
+                      acc[policy.id] = policy;
+                      return acc;
+                    }, {}),
                     ...(bill.policyDefinitions || {}),
                   }
                 );

@@ -72,16 +72,63 @@ const CityOverviewTab = () => {
 
   const activeCampaign = useGameStore((state) => state.activeCampaign);
   const { openViewPoliticianModal } = useGameStore((state) => state.actions);
-  const { getCurrentCityGovernmentOffices } = useGameStore((state) => state.actions);
+  const governmentOffices = useGameStore((state) => state.activeCampaign?.governmentOffices);
   const currentTheme = useGameStore(
     (state) => state.availableThemes[state.activeThemeName]
   );
+  const politiciansSoA = useGameStore((state) => state.activeCampaign?.politicians);
+  
+  // Debug logging for starting city
+  console.log('[CityOverviewTab] Starting city:', activeCampaign?.startingCity);
+  console.log('[CityOverviewTab] Starting city ID:', activeCampaign?.startingCity?.id);
+
+  // Helper function to get updated politician data from SoA store or use existing data
+  const getUpdatedPolitician = useCallback((politicianRef) => {
+    if (!politicianRef || !politiciansSoA) return null;
+    
+    // Handle case where politicianRef is just an ID string
+    const politicianId = typeof politicianRef === 'string' ? politicianRef : politicianRef.id;
+    
+    if (!politicianId) return politicianRef; // Return original if no ID available
+    
+    const base = politiciansSoA.base.get(politicianId);
+    const state = politiciansSoA.state.get(politicianId);
+    const finances = politiciansSoA.finances.get(politicianId);
+    const attributes = politiciansSoA.attributes.get(politicianId);
+    const background = politiciansSoA.background.get(politicianId);
+    
+    // If politician not found in SoA store, return original reference
+    if (!base) return politicianRef;
+    
+    // Merge SoA data with any existing reference data (like partyName, role from government offices)
+    return {
+      ...base,
+      ...(state || {}),
+      ...(finances || {}),
+      ...(attributes || {}),
+      ...(background || {}),
+      // Preserve any existing data from the government office reference
+      ...(typeof politicianRef === 'object' ? {
+        partyName: politicianRef.partyName || base.partyName,
+        partyColor: politicianRef.partyColor || base.partyColor,
+        role: politicianRef.role,
+      } : {}),
+    };
+  }, [politiciansSoA]);
 
   const { startingCity } = activeCampaign || {};
-  const cityGovernmentOffices = getCurrentCityGovernmentOffices();
+  const cityId = startingCity?.id;
+  const cityGovernmentOffices = useMemo(() => {
+    if (!governmentOffices || !cityId) return { executive: [], legislative: [] };
+    return governmentOffices.cities?.[cityId] || { executive: [], legislative: [] };
+  }, [governmentOffices, cityId]);
+  
+  // Debug logging for city government offices
+  console.log('[CityOverviewTab] City government offices:', cityGovernmentOffices);
+  console.log('[CityOverviewTab] Executive offices:', cityGovernmentOffices?.executive);
+  console.log('[CityOverviewTab] Legislative offices:', cityGovernmentOffices?.legislative);
   
   const {
-    id: cityId,
     name: cityName,
     population,
     demographics,
@@ -105,6 +152,8 @@ const CityOverviewTab = () => {
     budget,
     environmentRating,
     cultureArtsRating,
+    healthcareCoverage,
+    healthcareCostPerPerson,
   } = stats || {};
 
   const taxRates = budget?.taxRates;
@@ -203,7 +252,7 @@ const CityOverviewTab = () => {
     const partyData = {};
     councilOffices.forEach((office) => {
       // The 'office' variable here is already a single conceptual seat with a member in the 'holder' property.
-      const holder = office.holder;
+      const holder = getUpdatedPolitician(office.holder);
       if (holder) {
         const partyName = holder.partyName || "Independent";
         let partyKey;
@@ -233,7 +282,7 @@ const CityOverviewTab = () => {
       popularity: data.count,
       color: data.color,
     }));
-  }, [councilOffices]);
+  }, [councilOffices, getUpdatedPolitician]);
 
   const handlePoliticianClick = (politician) => {
     if (politician && openViewPoliticianModal)
@@ -650,14 +699,14 @@ const CityOverviewTab = () => {
               <div className="stat-item">
                 <strong>Healthcare Coverage:</strong>{" "}
                 <span className="stat-descriptor">
-                  {formatPercentage(stats.healthcareCoverage, 1)}
+                  {formatPercentage(healthcareCoverage, 1)}
                 </span>
               </div>
               <div className="stat-item">
                 {" "}
                 <strong>Cost Per Person (Healthcare):</strong>{" "}
                 <span className="stat-descriptor">
-                  ${stats.healthcareCostPerPerson?.toFixed(2) || "N/A"}
+                  ${healthcareCostPerPerson?.toFixed(2) || "N/A"}
                 </span>
               </div>
               <div className="stat-item">
@@ -847,7 +896,7 @@ const CityOverviewTab = () => {
                   <PoliticianCard
                     key={office.officeId}
                     office={office}
-                    politician={office.holder}
+                    politician={getUpdatedPolitician(office.holder)}
                     currentLocationName={cityName} // Pass cityName here
                     formatOfficeTitle={formatOfficeTitleForDisplay}
                     onClick={handlePoliticianClick}

@@ -1,5 +1,5 @@
 // ui-src/src/components/charts/CouncilCompositionPieChart.jsx (new file)
-import React from "react";
+import React, { useMemo } from "react";
 import { Pie } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, Title } from "chart.js";
 import "./CouncilCompositionPieChart.css";
@@ -7,33 +7,44 @@ import "./CouncilCompositionPieChart.css";
 ChartJS.register(ArcElement, Tooltip, Legend, Title); // Register datalabels plugin
 
 function CouncilCompositionPieChart({ councilCompositionData }) {
-  if (!councilCompositionData || councilCompositionData.length === 0) {
+  const memoizedData = useMemo(() => {
+    if (!councilCompositionData || councilCompositionData.length === 0) {
+      return null;
+    }
+
+    // The 'councilCompositionData' prop is expected to be an array of objects like:
+    // { id: "party_id", name: "Party Name", popularity: seatCount, color: "#RRGGBB" }
+    // where 'popularity' will represent the number of seats for this chart.
+
+    const totalSeats = councilCompositionData.reduce(
+      (sum, party) => sum + party.popularity,
+      0
+    );
+
+    return {
+      totalSeats,
+      chartData: {
+        labels: councilCompositionData.map((party) => party.name),
+        datasets: [
+          {
+            label: "Seats", // Changed label
+            data: councilCompositionData.map((party) => party.popularity), // This is the seatCount
+            backgroundColor: councilCompositionData.map(
+              (party) => party.color || "#CCCCCC"
+            ),
+            borderColor: "var(--ui-panel-bg)",
+            borderWidth: 1,
+          },
+        ],
+      },
+    };
+  }, [councilCompositionData]);
+
+  if (!memoizedData) {
     return <p>No council composition data available.</p>;
   }
 
-  // The 'councilCompositionData' prop is expected to be an array of objects like:
-  // { id: "party_id", name: "Party Name", popularity: seatCount, color: "#RRGGBB" }
-  // where 'popularity' will represent the number of seats for this chart.
-
-  const totalSeats = councilCompositionData.reduce(
-    (sum, party) => sum + party.popularity,
-    0
-  );
-
-  const data = {
-    labels: councilCompositionData.map((party) => party.name),
-    datasets: [
-      {
-        label: "Seats", // Changed label
-        data: councilCompositionData.map((party) => party.popularity), // This is the seatCount
-        backgroundColor: councilCompositionData.map(
-          (party) => party.color || "#CCCCCC"
-        ),
-        borderColor: "var(--ui-panel-bg)",
-        borderWidth: 1,
-      },
-    ],
-  };
+  const { totalSeats, chartData } = memoizedData;
 
   const options = {
     responsive: true,
@@ -134,7 +145,7 @@ function CouncilCompositionPieChart({ councilCompositionData }) {
         maxHeight: "400px",
       }} // Adjusted height
     >
-      <Pie data={data} options={options} />
+      <Pie data={chartData} options={options} />
     </div>
   );
 }

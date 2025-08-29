@@ -589,6 +589,73 @@ function scorePolicyForAI(
 }
 
 /**
+ * Calculates the exact budget amount needed to reach a target service level
+ */
+function calculateNeededBudgetForService(targetBudgetLine, cityStats, targetRating = "Good") {
+  const population = cityStats.population || 550000; // Default population
+  const currentAllocation = cityStats.budget?.expenseAllocations?.[targetBudgetLine] || 0;
+  
+  // Calculate per-capita amounts needed for different service ratings
+  const serviceBudgetRequirements = {
+    // Education: budget per student (assuming ~20% are students)
+    education: {
+      "Excellent": population * 0.2 * 8000,
+      "Good": population * 0.2 * 6000,
+      "Average": population * 0.2 * 4000,
+      "Poor": population * 0.2 * 2000
+    },
+    // Infrastructure: budget per capita
+    infrastructure: {
+      "Excellent": population * 500,
+      "Good": population * 300,
+      "Average": population * 150,
+      "Poor": population * 50
+    },
+    // Waste Management (Environment): budget per capita
+    wasteManagement: {
+      "Excellent": population * 100,
+      "Good": population * 60,
+      "Average": population * 30,
+      "Poor": population * 10
+    },
+    // Culture & Arts: budget per capita
+    cultureArts: {
+      "Excellent": population * 80,
+      "Good": population * 50,
+      "Average": population * 25,
+      "Poor": population * 10
+    },
+    // Healthcare: based on coverage targets
+    publicHealthServices: {
+      "Excellent": population * 200 * 0.95, // 95% coverage
+      "Good": population * 200 * 0.80, // 80% coverage
+      "Average": population * 200 * 0.65, // 65% coverage
+      "Poor": population * 200 * 0.40 // 40% coverage
+    },
+    // Police: based on crime rate targets
+    policeDepartment: {
+      "Excellent": population * 400, // $400 per capita for excellent public safety
+      "Good": population * 300,
+      "Average": population * 200,
+      "Poor": population * 100
+    },
+    // Social Welfare: based on poverty targets
+    socialWelfarePrograms: {
+      "Excellent": population * 250,
+      "Good": population * 180,
+      "Average": population * 120,
+      "Poor": population * 60
+    }
+  };
+  
+  const requirements = serviceBudgetRequirements[targetBudgetLine];
+  if (!requirements) return currentAllocation * 1.5; // Default 50% increase if unknown
+  
+  const neededBudget = requirements[targetRating] || requirements["Good"];
+  return Math.max(currentAllocation, neededBudget);
+}
+
+/**
  * **PIPELINE STEP 3:** Selects the optimal parameter value for a given parameterized policy.
  * @returns {object} The chosenParameters object, e.g., { amount: 500000 }.
  */
@@ -607,7 +674,6 @@ function selectOptimalParameter(
     financialState,
     cityStats
   );
-  const range = pDetails.max - pDetails.min;
 
   // Logic for budget vs. tax adjustments
   if (pDetails.targetBudgetLine) {
@@ -616,43 +682,53 @@ function selectOptimalParameter(
       cityStats,
       RATING_LEVELS
     );
-    const targetPointInRange = getBudgetAdjustmentTarget(
-      pDetails,
-      serviceInfo,
-      fiscalConservatismFactor,
-      financialState,
-      cityStats
-    ); // Sourced from aiUtils.js
-    chosenValue = pDetails.min + range * targetPointInRange;
-    chosenValue = applyBudgetAdjustmentCaps(
-      chosenValue,
-      pDetails,
-      cityStats,
-      contextualData, // Corrected from contextualPendingBudgetAdjustments
-      serviceInfo,
-      financialState
-    ); // Sourced from aiUtils.js
+    
+    // Calculate the exact amount needed instead of using percentage ranges
+    const currentAllocation = cityStats.budget?.expenseAllocations?.[pDetails.targetBudgetLine] || 0;
+    
+    // Determine target service level based on current rating and financial state
+    let targetRating = "Good"; // Default target
+    if (serviceInfo.ratingIndex === 0) targetRating = "Average"; // Very Poor -> Average
+    else if (serviceInfo.ratingIndex === 1) targetRating = "Good"; // Poor -> Good
+    else if (serviceInfo.ratingIndex >= 3 && financialState.hasLargeSurplus) targetRating = "Excellent";
+    
+    const neededBudget = calculateNeededBudgetForService(pDetails.targetBudgetLine, cityStats, targetRating);
+    const budgetIncrease = Math.max(0, neededBudget - currentAllocation);
+    
+    // Apply fiscal conservatism - more conservative politicians propose smaller increases
+    const conservatismMultiplier = Math.max(0.3, 1.0 - (fiscalConservatismFactor * 0.7));
+    chosenValue = currentAllocation + (budgetIncrease * conservatismMultiplier);
+    
+    // Handle budget cuts for dire finances
+    if (financialState.hasDireFinances && serviceInfo.ratingIndex >= 2) {
+      // Only cut non-essential services or services already at Average or better
+      const cutAmount = currentAllocation * 0.15; // 15% cut
+      chosenValue = Math.max(pDetails.min, currentAllocation - cutAmount);
+    } else if (financialState.isStrainedFinances && serviceInfo.ratingIndex >= 3) {
+      // Smaller cuts for strained finances, only cut good/excellent services
+      const cutAmount = currentAllocation * 0.08; // 8% cut
+      chosenValue = Math.max(pDetails.min, currentAllocation - cutAmount);
+    }
   } else if (pDetails.targetTaxRate) {
     const targetPointInRange = getTaxAdjustmentTarget(
       pDetails,
       cityStats,
       fiscalConservatismFactor,
       financialState
-    ); // Sourced from aiUtils.js
+    );
+    const range = pDetails.max - pDetails.min;
     chosenValue = pDetails.min + range * targetPointInRange;
   } else {
     chosenValue =
       pDetails.defaultValue !== undefined
         ? pDetails.defaultValue
-        : pDetails.min + range * (0.3 + Math.random() * 0.4);
+        : pDetails.min + (pDetails.max - pDetails.min) * (0.3 + Math.random() * 0.4);
   }
 
   // Apply step and clamp to min/max
   if (pDetails.step)
     chosenValue = Math.round(chosenValue / pDetails.step) * pDetails.step;
   chosenValue = Math.max(pDetails.min, Math.min(pDetails.max, chosenValue));
-
-  // ... (All other detailed nudges and adjustments from the end of the original function) ...
 
   return { [pDetails.key || "amount"]: chosenValue };
 }

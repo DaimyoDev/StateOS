@@ -90,12 +90,55 @@ const StateOverviewTab = ({ campaignData }) => {
   const [governmentFilter, setGovernmentFilter] = useState("all");
 
   const { openViewPoliticianModal, getCurrentStateGovernmentOffices } = useGameStore((state) => state.actions);
+  
+  // Also subscribe directly to government offices to force re-render when they change
+  const governmentOfficesRaw = useGameStore((state) => state.activeCampaign?.governmentOffices);
   const currentTheme = useGameStore(
     (state) => state.availableThemes[state.activeThemeName]
   );
+  const politiciansSoA = useGameStore((state) => state.activeCampaign?.politicians);
+
+  // Helper function to get updated politician data from SoA store or use existing data
+  const getUpdatedPolitician = useCallback((politicianRef) => {
+    if (!politicianRef || !politiciansSoA) return null;
+    
+    // Handle case where politicianRef is just an ID string
+    const politicianId = typeof politicianRef === 'string' ? politicianRef : politicianRef.id;
+    
+    if (!politicianId) return politicianRef; // Return original if no ID available
+    
+    const base = politiciansSoA.base.get(politicianId);
+    const state = politiciansSoA.state.get(politicianId);
+    const finances = politiciansSoA.finances.get(politicianId);
+    const attributes = politiciansSoA.attributes.get(politicianId);
+    const background = politiciansSoA.background.get(politicianId);
+    
+    // If politician not found in SoA store, return original reference
+    if (!base) return politicianRef;
+    
+    // Merge SoA data with any existing reference data (like partyName, role from government offices)
+    return {
+      ...base,
+      ...(state || {}),
+      ...(finances || {}),
+      ...(attributes || {}),
+      ...(background || {}),
+      // Preserve any existing data from the government office reference
+      ...(typeof politicianRef === 'object' ? {
+        partyName: politicianRef.partyName || base.partyName,
+        partyColor: politicianRef.partyColor || base.partyColor,
+        role: politicianRef.role,
+      } : {}),
+    };
+  }, [politiciansSoA]);
 
   const playerCountryId = campaignData.countryId;
   const stateGovernmentOffices = getCurrentStateGovernmentOffices();
+  
+  // Debug logging
+  console.log('[StateOverviewTab] Current region ID:', campaignData.regionId);
+  console.log('[StateOverviewTab] Raw government offices structure:', governmentOfficesRaw);
+  console.log('[StateOverviewTab] Filtered government offices data:', stateGovernmentOffices);
 
   const activeState = useMemo(() => {
     // First try to get the live region data from campaign.regions (updated by budget calculations)
@@ -147,10 +190,10 @@ const StateOverviewTab = ({ campaignData }) => {
   }, [stateGovernmentOffices]);
 
   // --- Helper to create party composition data for a chamber ---
-  const getCompositionForChamber = (offices) => {
+  const getCompositionForChamber = useCallback((offices) => {
     const partyData = {};
     offices.forEach((office) => {
-      const holder = office.holder;
+      const holder = getUpdatedPolitician(office.holder);
       if (holder) {
         const partyName = holder.partyName || "Independent"; // Standardize to "Independent"
         let partyKey;
@@ -181,7 +224,7 @@ const StateOverviewTab = ({ campaignData }) => {
       popularity: data.count,
       color: data.color,
     }));
-  };
+  }, [getUpdatedPolitician]);
 
   // --- Separate compositions for each chamber ---
   const upperChamberComposition = useMemo(
@@ -805,7 +848,7 @@ const StateOverviewTab = ({ campaignData }) => {
                     <PoliticianCard
                       key={office.officeId}
                       office={office}
-                      politician={office.holder}
+                      politician={getUpdatedPolitician(office.holder)}
                       currentLocationName={stateName}
                       formatOfficeTitle={formatOfficeTitleForDisplay}
                       onClick={handlePoliticianClick}
@@ -823,7 +866,7 @@ const StateOverviewTab = ({ campaignData }) => {
                     <PoliticianCard
                       key={office.officeId}
                       office={office}
-                      politician={office.holder}
+                      politician={getUpdatedPolitician(office.holder)}
                       currentLocationName={stateName}
                       formatOfficeTitle={formatOfficeTitleForDisplay}
                       onClick={handlePoliticianClick}
@@ -853,7 +896,7 @@ const StateOverviewTab = ({ campaignData }) => {
                     <PoliticianCard
                       key={office.officeId}
                       office={office}
-                      politician={office.holder}
+                      politician={getUpdatedPolitician(office.holder)}
                       currentLocationName={stateName}
                       formatOfficeTitle={formatOfficeTitleForDisplay}
                       onClick={handlePoliticianClick}

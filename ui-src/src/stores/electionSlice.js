@@ -104,6 +104,8 @@ const updateGovernmentOfficeInHierarchy = (
   const level = election.level;
   const entityData = election.entityDataSnapshot;
   const updated = { ...hierarchicalStructure };
+  
+  console.log(`[updateGovernmentOfficeInHierarchy] Updating level: ${level}, entityData:`, entityData.id, 'with office data:', newOfficeData);
 
   // Determine where to place this office in the hierarchy
   if (level && level.startsWith("national_")) {
@@ -181,7 +183,9 @@ const updateGovernmentOfficeInHierarchy = (
       level === "state")
   ) {
     // State level office
-    const stateId = entityData.id || entityData.stateId;
+    // For state legislative districts, we need to extract the state ID from the parent
+    const stateId = entityData.stateId || entityData.parentId || (entityData.id && entityData.id.includes('_') ? entityData.id.split('_').slice(0, 2).join('_') : entityData.id);
+    console.log(`[updateGovernmentOfficeInHierarchy] Extracted stateId: ${stateId} from entityData:`, entityData);
     if (!updated.states) updated.states = {};
     if (!updated.states[stateId])
       updated.states[stateId] = {
@@ -252,24 +256,42 @@ const updateGovernmentOfficeInHierarchy = (
     // City level office
     const cityId =
       entityData.id || entityData.cityId || entityData.parentCityId;
+    console.log('[updateGovernmentOfficeInHierarchy] City level - cityId:', cityId, 'entityData:', entityData);
     if (!updated.cities) updated.cities = {};
     if (!updated.cities[cityId])
       updated.cities[cityId] = { executive: [], legislative: [], judicial: [] };
+    console.log('[updateGovernmentOfficeInHierarchy] City structure created for:', cityId);
 
-    if (level.includes("mayor") || level.includes("executive")) {
-      const existingIndex = updated.cities[cityId].executive.findIndex(
-        (o) =>
-          o.instanceIdBase === election.instanceIdBase
+    if (level.includes("mayor") || level.includes("executive") || newOfficeData.officeNameTemplateId === "mayor") {
+      console.log('[updateGovernmentOfficeInHierarchy] Handling mayor/executive office for level:', level);
+      
+      // Try to find existing office by instanceIdBase first
+      let existingIndex = updated.cities[cityId].executive.findIndex(
+        (o) => o.instanceIdBase === election.instanceIdBase
       );
+      
+      // If not found and this is a mayor office, try to find by office template (for legacy offices)
+      if (existingIndex === -1 && (level.includes("mayor") || newOfficeData.officeNameTemplateId === "mayor")) {
+        console.log('[updateGovernmentOfficeInHierarchy] Searching for existing mayor office by template. Current executive offices:', updated.cities[cityId].executive.map(o => ({ officeNameTemplateId: o.officeNameTemplateId, officeName: o.officeName, instanceIdBase: o.instanceIdBase })));
+        existingIndex = updated.cities[cityId].executive.findIndex(
+          (o) => o.officeNameTemplateId === "mayor" || o.officeName?.includes("Mayor")
+        );
+        console.log('[updateGovernmentOfficeInHierarchy] Found existing mayor office by template at index:', existingIndex);
+      }
+      
+      console.log('[updateGovernmentOfficeInHierarchy] Existing index:', existingIndex, 'instanceIdBase:', election.instanceIdBase);
 
       if (existingIndex >= 0) {
+        console.log('[updateGovernmentOfficeInHierarchy] Updating existing mayor office at index:', existingIndex);
         updated.cities[cityId].executive[existingIndex] = {
           ...updated.cities[cityId].executive[existingIndex],
           ...newOfficeData,
         };
       } else {
+        console.log('[updateGovernmentOfficeInHierarchy] Adding new mayor office');
         updated.cities[cityId].executive.push(newOfficeData);
       }
+      console.log('[updateGovernmentOfficeInHierarchy] City executive offices after update:', updated.cities[cityId].executive);
     } else if (level.includes("council") || level.includes("legislative")) {
       const existingIndex = updated.cities[cityId].legislative.findIndex(
         (o) =>
@@ -608,13 +630,18 @@ export const createElectionSlice = (set, get) => ({
           outcome.winnerAssignment.winners.length > 0
         ) {
           const rawWinners = outcome.winnerAssignment.winners.filter(Boolean);
+          console.log(`[Election Results] Processing winners for ${updatedElection.officeName}:`, rawWinners.map(w => w.name));
 
           // --- THIS IS THE FIX ---
-          // Enrich the raw winner objects with full party details
+          // Instead of creating new politician objects, we'll reference existing ones from SoA store
           const winners = rawWinners.map((winner) => {
             const partyDetails = partiesMap.get(winner.partyId);
+            
+            // Important: Keep only the politician ID and essential data, not full politician object
             return {
-              ...winner,
+              id: winner.id, // This is the key - politician ID for SoA lookup
+              name: winner.name,
+              partyId: winner.partyId,
               partyName: partyDetails?.name || "Independent",
               partyColor: partyDetails?.color || "#888888",
             };
@@ -634,13 +661,13 @@ export const createElectionSlice = (set, get) => ({
           }
 
           if (outcome.winnerAssignment.type === "MEMBERS_ARRAY") {
+            // Store minimal member data with politician ID references
             const newMembers = winners.map((winner, i) => ({
-              ...winner,
+              id: winner.id, // Politician ID for SoA lookup
               name: cleanWinnerName(winner.name),
-              holder: {
-                ...winner,
-                name: cleanWinnerName(winner.name),
-              },
+              partyId: winner.partyId,
+              partyName: winner.partyName,
+              partyColor: winner.partyColor,
               role: `Member, ${updatedElection.officeName} (Seat ${i + 1})`,
             }));
 
@@ -659,6 +686,7 @@ export const createElectionSlice = (set, get) => ({
             };
 
             // Update the hierarchical structure
+            console.log(`[Election Results] Updating government offices for multi-member office: ${updatedElection.officeName}`, newOfficeData);
             updatedGovernmentOffices = updateGovernmentOfficeInHierarchy(
               updatedGovernmentOffices,
               updatedElection,
@@ -667,9 +695,13 @@ export const createElectionSlice = (set, get) => ({
           } else {
             // SINGLE_HOLDER
             const winner = winners[0];
+            // Store minimal holder data with politician ID reference
             const newHolder = {
-              ...winner,
+              id: winner.id, // Politician ID for SoA lookup
               name: cleanWinnerName(winner.name),
+              partyId: winner.partyId,
+              partyName: winner.partyName,
+              partyColor: winner.partyColor,
               role: updatedElection.officeName,
             };
 
@@ -688,6 +720,7 @@ export const createElectionSlice = (set, get) => ({
             };
 
             // Update the hierarchical structure
+            console.log(`[Election Results] Updating government offices for single-holder office: ${updatedElection.officeName}`, newOfficeData);
             updatedGovernmentOffices = updateGovernmentOfficeInHierarchy(
               updatedGovernmentOffices,
               updatedElection,

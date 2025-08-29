@@ -369,6 +369,51 @@ export const calculateAllCityStats = (city) => {
 
   const unemploymentRate = calculateUnemploymentRate(economicProfile, povertyRate, stats.type);
 
+  // Calculate Education Quality based on education budget allocation
+  const calculateEducationQuality = (population, educationBudget) => {
+    const budgetPerStudent = educationBudget / (population * 0.2); // Assume ~20% are students
+    if (budgetPerStudent > 8000) return "Excellent";
+    else if (budgetPerStudent > 6000) return "Good"; 
+    else if (budgetPerStudent > 4000) return "Average";
+    else if (budgetPerStudent > 2000) return "Poor";
+    else return "Very Poor";
+  };
+
+  // Calculate Infrastructure State based on infrastructure budget allocation
+  const calculateInfrastructureState = (population, infraBudget) => {
+    const budgetPerCapita = infraBudget / population;
+    if (budgetPerCapita > 500) return "Excellent";
+    else if (budgetPerCapita > 300) return "Good";
+    else if (budgetPerCapita > 150) return "Average"; 
+    else if (budgetPerCapita > 50) return "Poor";
+    else return "Very Poor";
+  };
+
+  // Calculate Environment Rating based on environmental budget allocation
+  const calculateEnvironmentRating = (population, envBudget) => {
+    const budgetPerCapita = envBudget / population;
+    if (budgetPerCapita > 100) return "Excellent";
+    else if (budgetPerCapita > 60) return "Good";
+    else if (budgetPerCapita > 30) return "Average";
+    else if (budgetPerCapita > 10) return "Poor"; 
+    else return "Very Poor";
+  };
+
+  // Calculate Culture & Arts Rating based on culture budget allocation
+  const calculateCultureArtsRating = (population, cultureBudget) => {
+    const budgetPerCapita = cultureBudget / population;
+    if (budgetPerCapita > 80) return "Excellent";
+    else if (budgetPerCapita > 50) return "Good";
+    else if (budgetPerCapita > 25) return "Average";
+    else if (budgetPerCapita > 10) return "Poor";
+    else return "Very Poor";
+  };
+
+  const educationQuality = calculateEducationQuality(population, budget.expenseAllocations.education || 0);
+  const infrastructureState = calculateInfrastructureState(population, budget.expenseAllocations.infrastructure || 0);
+  const environmentRating = calculateEnvironmentRating(population, budget.expenseAllocations.wasteManagement || 0);
+  const cultureArtsRating = calculateCultureArtsRating(population, budget.expenseAllocations.cultureArts || 0);
+
   // --- Step 2: Return an object with all the updated stats ---
   // This can be spread onto the existing stats object in the monthly tick.
   return {
@@ -377,6 +422,10 @@ export const calculateAllCityStats = (city) => {
     povertyRate,
     crimeRatePer1000,
     unemploymentRate: parseFloat(unemploymentRate.toFixed(1)),
+    educationQuality,
+    infrastructureState,
+    environmentRating,
+    cultureArtsRating,
     // Add any other future calculated stats here
   };
 };

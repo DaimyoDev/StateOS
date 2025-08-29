@@ -16,6 +16,7 @@ function DashboardTab({ campaignData }) {
   } = campaignData || {};
 
   const actions = useGameStore((state) => state.actions);
+  const { openViewPoliticianModal } = actions;
 
   const playerPolitician = useMemo(() => {
     if (!playerPoliticianId || !politiciansSoA) return null;
@@ -73,7 +74,24 @@ function DashboardTab({ campaignData }) {
       <div className="dashboard-grid">
         {/* Player Status Card - UPDATED */}
         <div className="info-card player-status-card">
-          <h3>Your Status</h3>
+          <div className="card-header">
+            <h3>Your Status</h3>
+            <button
+              className="view-profile-btn"
+              onClick={() => openViewPoliticianModal(playerPolitician)}
+              title="View your complete politician profile"
+            >
+              View Profile
+            </button>
+          </div>
+          <p>
+            <strong>Name:</strong>{" "}
+            {playerPolitician.firstName} {playerPolitician.lastName}
+          </p>
+          <p>
+            <strong>Age:</strong>{" "}
+            {playerPolitician.age != null ? `${playerPolitician.age} years old` : "N/A"}
+          </p>
           <p>
             <strong>Current Role:</strong>{" "}
             {playerPolitician.currentOffice || "Aspiring Politician"}

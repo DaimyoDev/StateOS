@@ -43,6 +43,35 @@
   gap: 20px;
 }
 
+/* Card header with button */
+.info-card .card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.info-card .card-header h3 {
+  margin: 0;
+  font-family: var(--font-heading);
+  color: var(--primary-text);
+}
+
+.view-profile-btn {
+  background: var(--accent-color);
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 0.85em;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.view-profile-btn:hover {
+  background: var(--accent-hover);
+}
+
 .info-card h3 {
   font-family: var(--font-heading);
   color: var(--primary-text);

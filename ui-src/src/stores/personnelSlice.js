@@ -615,10 +615,37 @@ export const createPersonnelSlice = (set, get) => ({
 
         const newGovernmentOffices = ageOfficesRecursively(state.activeCampaign.governmentOffices);
         
+        // Age the player politician separately
+        console.log('[agePoliticians] Running player aging logic...');
+        let updatedPoliticians = state.activeCampaign.politicians;
+        if (state.activeCampaign.playerPoliticianId && updatedPoliticians?.base) {
+          const playerBasicData = updatedPoliticians.base.get(state.activeCampaign.playerPoliticianId);
+          console.log('[agePoliticians] Player politician base data found:', playerBasicData?.age);
+          if (playerBasicData && playerBasicData.age != null) {
+            const newAge = playerBasicData.age + 1;
+            console.log('[agePoliticians] Aging player from', playerBasicData.age, 'to', newAge);
+            
+            // Create a new base Map with updated player politician age
+            const newBaseMap = new Map(updatedPoliticians.base);
+            newBaseMap.set(state.activeCampaign.playerPoliticianId, {
+              ...playerBasicData,
+              age: newAge
+            });
+            
+            updatedPoliticians = {
+              ...updatedPoliticians,
+              base: newBaseMap
+            };
+          } else {
+            console.warn('[agePoliticians] Player politician base data not found or age is null');
+          }
+        }
+        
         return {
           activeCampaign: {
             ...state.activeCampaign,
             governmentOffices: newGovernmentOffices,
+            politicians: updatedPoliticians,
           },
         };
       });
