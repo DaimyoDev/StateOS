@@ -1415,7 +1415,10 @@ const generateInitialLocalOffices = (
       const holder = generateFullAIPolitician(
         countryData.id,
         processedParties,
-        city
+        {
+          regionId: city.regionId,
+          cityId: city.id,
+        }
       );
       holder.currentOffice = officeName;
       localOffices.push(
@@ -1445,9 +1448,10 @@ const generateInitialLocalOffices = (
         const member = generateFullAIPolitician(
           countryData.id,
           processedParties,
-          POLICY_QUESTIONS,
-          IDEOLOGY_DEFINITIONS,
-          countryData
+          {
+            regionId: city.regionId,
+            cityId: city.id,
+          }
         );
         member.currentOffice = officeName;
         return member;
@@ -1502,7 +1506,9 @@ const generateInitialStateOffices = (
     const holder = generateFullAIPolitician(
       countryData.id,
       processedParties,
-      regionData
+      {
+        regionId: regionId,
+      }
     );
     holder.currentOffice = officeName;
 
@@ -1548,7 +1554,9 @@ const generateInitialStateOffices = (
         const holder = generateFullAIPolitician(
           countryData.id,
           processedParties,
-          regionData
+          {
+            regionId: regionId,
+          }
         );
         holder.currentOffice = officeName;
 
@@ -1588,7 +1596,9 @@ const generateInitialStateOffices = (
           const member = generateFullAIPolitician(
             countryData.id,
             processedParties,
-            regionData
+            {
+              regionId: regionId,
+            }
           );
           member.currentOffice = officeName;
           return member;
@@ -1626,7 +1636,9 @@ const generateInitialStateOffices = (
       const holder = generateFullAIPolitician(
         countryData.id,
         processedParties,
-        regionData
+        {
+          regionId: regionId,
+        }
       );
       holder.currentOffice = officeName;
 
@@ -1679,7 +1691,7 @@ const generateInitialNationalOffices = (
     const holder = generateFullAIPolitician(
       countryData.id,
       processedParties,
-      countryData
+      {}
     );
     holder.currentOffice = officeName;
 
@@ -1723,7 +1735,7 @@ const generateInitialNationalOffices = (
       const holder = generateFullAIPolitician(
         countryData.id,
         processedParties,
-        countryData
+        {}
       );
       holder.currentOffice = officeName;
       nationalOffices.push(
@@ -1764,7 +1776,7 @@ const generateInitialNationalOffices = (
         const holder = generateFullAIPolitician(
           countryData.id,
           processedParties,
-          countryData
+          {}
         );
         holder.currentOffice = officeName;
 
@@ -1816,14 +1828,21 @@ const addOfficeToStructure = (structure, office) => {
   const level = office.level;
   
   if (level?.startsWith('national_')) {
-    if (level.includes('head_of_state') || level.includes('executive')) {
+    if (level.includes('head_of_state') || level.includes('executive') || level === 'national_head_of_state_and_government') {
       structure.national.executive.push(office);
-    } else if (level.includes('lower_house')) {
+    } else if (level.includes('lower_house') || level === 'national_lower_house_constituency') {
       structure.national.legislative.lowerHouse.push(office);
-    } else if (level.includes('upper_house')) {
+    } else if (level.includes('upper_house') || level === 'national_upper_house_state_rep') {
       structure.national.legislative.upperHouse.push(office);
     } else if (level.includes('judicial')) {
       structure.national.judicial.push(office);
+    } else {
+      // Default fallback for unknown national offices - put single offices in executive, multi-member in lower house
+      if (office.members?.length > 1) {
+        structure.national.legislative.lowerHouse.push(office);
+      } else {
+        structure.national.executive.push(office);
+      }
     }
   } else if (level?.includes('local_state')) {
     const stateId = office.regionId;
@@ -1853,10 +1872,24 @@ const addOfficeToStructure = (structure, office) => {
       };
     }
     
-    if (office.officeNameTemplateId?.includes('mayor')) {
+    if (office.officeNameTemplateId?.includes('mayor') || level.includes('mayor') || office.officeName?.toLowerCase().includes('mayor')) {
       structure.cities[cityId].executive.push(office);
-    } else if (office.officeNameTemplateId?.includes('council')) {
+    } else if (
+      office.officeNameTemplateId?.includes('council') || 
+      office.officeNameTemplateId === 'city_council' ||
+      level.includes('council') || 
+      office.officeName?.toLowerCase().includes('council') ||
+      office.officeName?.toLowerCase().includes('city council') ||
+      office.members?.length > 1
+    ) {
       structure.cities[cityId].legislative.push(office);
+    } else {
+      // Default single-person city offices to executive, multi-member to legislative
+      if (office.members?.length > 1) {
+        structure.cities[cityId].legislative.push(office);
+      } else {
+        structure.cities[cityId].executive.push(office);
+      }
     }
   }
 };

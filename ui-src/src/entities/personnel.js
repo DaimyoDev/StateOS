@@ -35,9 +35,9 @@ export const createPartyStaffObject = (params = {}) => ({
   name: params.name || "Staff Member",
   role: params.role || "Analyst",
   attributes: params.attributes || {
-    loyalty: getRandomInt(3, 9),
-    strategy: getRandomInt(4, 9),
-    communication: getRandomInt(4, 9),
+    loyalty: getRandomInt(30, 90),
+    strategy: getRandomInt(40, 90),
+    communication: getRandomInt(40, 90),
   },
   partyId: params.partyId || null,
 });
@@ -722,12 +722,12 @@ export function generateFullAIPolitician(
   const lastName = nameParts.slice(1).join(" ");
 
   const attributes = {
-    charisma: getRandomInt(3, 8),
-    integrity: getRandomInt(2, 7),
-    intelligence: getRandomInt(4, 9),
-    negotiation: getRandomInt(3, 8),
-    oratory: getRandomInt(3, 8),
-    fundraising: getRandomInt(2, 7),
+    charisma: getRandomInt(30, 80),
+    integrity: getRandomInt(20, 70),
+    intelligence: getRandomInt(40, 90),
+    negotiation: getRandomInt(30, 80),
+    oratory: getRandomInt(30, 80),
+    fundraising: getRandomInt(20, 70),
   };
 
   const career = getRandomElement([

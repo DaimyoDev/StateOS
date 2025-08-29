@@ -103,7 +103,7 @@ const ViewPoliticianModal = ({ isOpen, onClose, politician }) => {
                   <div className="attribute-bar-container">
                     <div
                       className="attribute-bar"
-                      style={{ width: `${value * 10}%` }} // Assuming attributes are 0-10
+                      style={{ width: `${Math.min(value, 100)}%` }} // Attributes are 0-100
                     ></div>
                   </div>
                 </li>

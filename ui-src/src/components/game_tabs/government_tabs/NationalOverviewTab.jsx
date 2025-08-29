@@ -16,7 +16,10 @@ const NationalOverviewTab = ({ campaignData }) => {
   const [activeSubTab, setActiveSubTab] = useState("summary");
   const { openViewPoliticianModal, getNationalGovernmentOffices } = useGameStore((state) => state.actions);
   const politiciansSoA = useGameStore((state) => state.activeCampaign?.politicians);
-  const nationalGovernmentOffices = getNationalGovernmentOffices();
+  const governmentOfficesRaw = useGameStore((state) => state.activeCampaign?.governmentOffices);
+  const nationalGovernmentOffices = useMemo(() => {
+    return getNationalGovernmentOffices();
+  }, [getNationalGovernmentOffices, governmentOfficesRaw]);
 
   const getUpdatedPolitician = useCallback(
     (politicianRef) => {

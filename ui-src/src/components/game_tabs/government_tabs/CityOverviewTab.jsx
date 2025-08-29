@@ -78,6 +78,8 @@ const CityOverviewTab = () => {
   );
   const politiciansSoA = useGameStore((state) => state.activeCampaign?.politicians);
   
+  // Subscribe to government offices changes for reactivity
+  
   // Debug logging for starting city
   console.log('[CityOverviewTab] Starting city:', activeCampaign?.startingCity);
   console.log('[CityOverviewTab] Starting city ID:', activeCampaign?.startingCity?.id);
@@ -176,7 +178,7 @@ const CityOverviewTab = () => {
     );
     
     return mayorCandidate;
-  }, [cityGovernmentOffices, cityId]);
+  }, [cityGovernmentOffices, cityId, governmentOffices]);
 
   const viceMayorOffice = useMemo(() => {
     if (!cityGovernmentOffices?.executive || !cityId) return null;
@@ -186,7 +188,7 @@ const CityOverviewTab = () => {
         office.officeNameTemplateId.includes("vice_mayor") &&
         office.holder
     );
-  }, [cityGovernmentOffices, cityId]);
+  }, [cityGovernmentOffices, cityId, governmentOffices]);
 
   const councilOffices = useMemo(() => {
     if (!cityGovernmentOffices?.legislative || cityGovernmentOffices.legislative.length === 0) return [];
@@ -245,7 +247,7 @@ const CityOverviewTab = () => {
         return officeNameA.localeCompare(officeNameB);
       }
     });
-  }, [cityGovernmentOffices, cityId]);
+  }, [cityGovernmentOffices, cityId, governmentOffices]);
 
   const councilPartyComposition = useMemo(() => {
     if (!councilOffices || councilOffices.length === 0) return [];
@@ -502,7 +504,7 @@ const CityOverviewTab = () => {
       }
     });
     return officials;
-  }, [mayorOffice, viceMayorOffice, councilOffices]);
+  }, [mayorOffice, viceMayorOffice, councilOffices, governmentOffices]);
 
   const filteredOfficials = useMemo(() => {
     if (governmentFilter === "all") {

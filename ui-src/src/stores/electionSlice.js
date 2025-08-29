@@ -293,10 +293,19 @@ const updateGovernmentOfficeInHierarchy = (
       }
       console.log('[updateGovernmentOfficeInHierarchy] City executive offices after update:', updated.cities[cityId].executive);
     } else if (level.includes("council") || level.includes("legislative")) {
-      const existingIndex = updated.cities[cityId].legislative.findIndex(
-        (o) =>
-          o.instanceIdBase === election.instanceIdBase
+      // Try to find existing office by instanceIdBase first
+      let existingIndex = updated.cities[cityId].legislative.findIndex(
+        (o) => o.instanceIdBase === election.instanceIdBase
       );
+      
+      // If not found and this is a city council office, try to find by office template (for legacy offices)
+      if (existingIndex === -1 && (level.includes("council") || newOfficeData.officeNameTemplateId === "city_council")) {
+        console.log('[updateGovernmentOfficeInHierarchy] Searching for existing council office by template. Current legislative offices:', updated.cities[cityId].legislative.map(o => ({ officeNameTemplateId: o.officeNameTemplateId, officeName: o.officeName, instanceIdBase: o.instanceIdBase })));
+        existingIndex = updated.cities[cityId].legislative.findIndex(
+          (o) => o.officeNameTemplateId === "city_council" || o.officeName?.includes("City Council")
+        );
+        console.log('[updateGovernmentOfficeInHierarchy] Found existing council office by template at index:', existingIndex);
+      }
 
       if (existingIndex >= 0) {
         updated.cities[cityId].legislative[existingIndex] = {
@@ -307,19 +316,45 @@ const updateGovernmentOfficeInHierarchy = (
         updated.cities[cityId].legislative.push(newOfficeData);
       }
     } else {
-      // Default to executive for unknown city offices
-      const existingIndex = updated.cities[cityId].executive.findIndex(
-        (o) =>
-          o.instanceIdBase === election.instanceIdBase
-      );
-
-      if (existingIndex >= 0) {
-        updated.cities[cityId].executive[existingIndex] = {
-          ...updated.cities[cityId].executive[existingIndex],
-          ...newOfficeData,
-        };
+      // Check if this is actually a city council office that should go to legislative
+      if (newOfficeData.officeNameTemplateId === "city_council" || 
+          newOfficeData.officeName?.includes("City Council") || 
+          newOfficeData.members?.length > 1) {
+        // This should be in legislative, not executive
+        let existingIndex = updated.cities[cityId].legislative.findIndex(
+          (o) => o.instanceIdBase === election.instanceIdBase
+        );
+        
+        // Try to find by template if not found by instanceIdBase
+        if (existingIndex === -1) {
+          existingIndex = updated.cities[cityId].legislative.findIndex(
+            (o) => o.officeNameTemplateId === "city_council" || o.officeName?.includes("City Council")
+          );
+        }
+        
+        if (existingIndex >= 0) {
+          updated.cities[cityId].legislative[existingIndex] = {
+            ...updated.cities[cityId].legislative[existingIndex],
+            ...newOfficeData,
+          };
+        } else {
+          updated.cities[cityId].legislative.push(newOfficeData);
+        }
       } else {
-        updated.cities[cityId].executive.push(newOfficeData);
+        // Default to executive for unknown single-holder city offices
+        const existingIndex = updated.cities[cityId].executive.findIndex(
+          (o) =>
+            o.instanceIdBase === election.instanceIdBase
+        );
+
+        if (existingIndex >= 0) {
+          updated.cities[cityId].executive[existingIndex] = {
+            ...updated.cities[cityId].executive[existingIndex],
+            ...newOfficeData,
+          };
+        } else {
+          updated.cities[cityId].executive.push(newOfficeData);
+        }
       }
     }
   }

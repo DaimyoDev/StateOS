@@ -91,7 +91,7 @@ const StateOverviewTab = ({ campaignData }) => {
 
   const { openViewPoliticianModal, getCurrentStateGovernmentOffices } = useGameStore((state) => state.actions);
   
-  // Also subscribe directly to government offices to force re-render when they change
+  // Subscribe directly to government offices to force re-render when they change
   const governmentOfficesRaw = useGameStore((state) => state.activeCampaign?.governmentOffices);
   const currentTheme = useGameStore(
     (state) => state.availableThemes[state.activeThemeName]
@@ -133,7 +133,9 @@ const StateOverviewTab = ({ campaignData }) => {
   }, [politiciansSoA]);
 
   const playerCountryId = campaignData.countryId;
-  const stateGovernmentOffices = getCurrentStateGovernmentOffices();
+  const stateGovernmentOffices = useMemo(() => {
+    return getCurrentStateGovernmentOffices();
+  }, [getCurrentStateGovernmentOffices, governmentOfficesRaw]);
   
   // Debug logging
   console.log('[StateOverviewTab] Current region ID:', campaignData.regionId);
@@ -167,7 +169,7 @@ const StateOverviewTab = ({ campaignData }) => {
         o.officeNameTemplateId === "governor" &&
         o.holder
     );
-  }, [stateGovernmentOffices, activeState]);
+  }, [stateGovernmentOffices, activeState, governmentOfficesRaw]);
 
   const lieutenantGovernorOffice = useMemo(() => {
     if (!activeState || !stateGovernmentOffices?.executive) return null;
@@ -176,18 +178,18 @@ const StateOverviewTab = ({ campaignData }) => {
         o.officeNameTemplateId === "lieutenant_governor" &&
         o.holder
     );
-  }, [stateGovernmentOffices, activeState]);
+  }, [stateGovernmentOffices, activeState, governmentOfficesRaw]);
 
   // Updated to use hierarchical structure
   const upperChamberOffices = useMemo(() => {
     if (!stateGovernmentOffices?.legislative?.upperHouse) return [];
     return stateGovernmentOffices.legislative.upperHouse;
-  }, [stateGovernmentOffices]);
+  }, [stateGovernmentOffices, governmentOfficesRaw]);
 
   const lowerChamberOffices = useMemo(() => {
     if (!stateGovernmentOffices?.legislative?.lowerHouse) return [];
     return stateGovernmentOffices.legislative.lowerHouse;
-  }, [stateGovernmentOffices]);
+  }, [stateGovernmentOffices, governmentOfficesRaw]);
 
   // --- Helper to create party composition data for a chamber ---
   const getCompositionForChamber = useCallback((offices) => {
@@ -229,11 +231,11 @@ const StateOverviewTab = ({ campaignData }) => {
   // --- Separate compositions for each chamber ---
   const upperChamberComposition = useMemo(
     () => getCompositionForChamber(upperChamberOffices),
-    [upperChamberOffices]
+    [upperChamberOffices, getCompositionForChamber]
   );
   const lowerChamberComposition = useMemo(
     () => getCompositionForChamber(lowerChamberOffices),
-    [lowerChamberOffices]
+    [lowerChamberOffices, getCompositionForChamber]
   );
 
   const {
