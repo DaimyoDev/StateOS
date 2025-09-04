@@ -1,4 +1,10 @@
-import React from "react";
+import React, { useState, useMemo } from "react";
+import useGameStore from "../../store";
+import {
+  getMapThemeColors,
+  getRegionStyle,
+  calculateHeatmapRange,
+} from "../../utils/mapHeatmapUtils";
 import "../JapanMap.css";
 
 const COUNTY_DATA = {
@@ -288,7 +294,40 @@ const countyOrderFromSVG = [
   "Jefferson",
 ];
 
-function WisconsinMap({ onSelectCounty, selectedCountyGameId }) {
+function WisconsinMap({
+  onSelectCounty,
+  selectedCountyGameId,
+  heatmapData,
+  viewType,
+}) {
+  const [hoveredCountyId, setHoveredCountyId] = useState(null);
+  const [tooltipData, setTooltipData] = useState(null);
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+
+  const currentTheme = useGameStore(
+    (state) => state.availableThemes[state.activeThemeName]
+  );
+  const themeColors = getMapThemeColors(currentTheme);
+
+  useMemo(
+    () => calculateHeatmapRange(heatmapData, viewType),
+    [heatmapData, viewType]
+  );
+
+  const getCountyStyle = (svgId) => {
+    return getRegionStyle({
+      regionId: null,
+      svgId,
+      regionData: COUNTY_DATA,
+      heatmapData,
+      viewType,
+      theme: themeColors,
+      hoveredId: hoveredCountyId,
+      selectedId: selectedCountyGameId,
+      isClickable: !!onSelectCounty,
+    });
+  };
+
   const handleCountyClick = (svgId) => {
     const county = COUNTY_DATA[svgId];
     if (county && onSelectCounty) {
@@ -296,6 +335,45 @@ function WisconsinMap({ onSelectCounty, selectedCountyGameId }) {
     } else {
       console.warn(`No game data found for SVG ID: ${svgId}`);
     }
+  };
+
+  const handleMouseEnter = (svgId, event) => {
+    const countyInfo = COUNTY_DATA[svgId];
+    if (!countyInfo) return;
+
+    setHoveredCountyId(countyInfo.gameId);
+
+    if (viewType === "congressional_districts" && heatmapData?.mapData) {
+      const mapDataItem = heatmapData.mapData.find(
+        (item) => item.id === countyInfo.gameId
+      );
+      if (mapDataItem) {
+        setTooltipData({
+          name: countyInfo.name,
+          isSplit: mapDataItem.isSplit,
+          splitDetails: mapDataItem.splitDetails,
+          districtLabel: mapDataItem.value,
+        });
+      }
+    } else {
+      setTooltipData({
+        name: countyInfo.name,
+        isSplit: false,
+        splitDetails: null,
+        districtLabel: null,
+      });
+    }
+
+    setMousePosition({ x: event.clientX, y: event.clientY });
+  };
+
+  const handleMouseLeave = () => {
+    setHoveredCountyId(null);
+    setTooltipData(null);
+  };
+
+  const handleMouseMove = (event) => {
+    setMousePosition({ x: event.clientX, y: event.clientY });
   };
 
   const renderCountyPath = (svgId) => {
@@ -317,6 +395,10 @@ function WisconsinMap({ onSelectCounty, selectedCountyGameId }) {
         className={`prefecture-path ${
           selectedCountyGameId === countyInfo.gameId ? "selected" : ""
         }`}
+        style={getCountyStyle(svgId)}
+        onMouseEnter={(e) => handleMouseEnter(svgId, e)}
+        onMouseLeave={handleMouseLeave}
+        onMouseMove={handleMouseMove}
         onClick={() => handleCountyClick(svgId)}
         d={pathD}
       />
@@ -324,22 +406,74 @@ function WisconsinMap({ onSelectCounty, selectedCountyGameId }) {
   };
 
   return (
-    <svg
-      version="1.2"
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 810 900"
-      className="interactive-japan-map"
-      preserveAspectRatio="xMidYMid meet"
-    >
-      <g
-        id="washington-counties-group"
-        transform="translate(5,5)"
-        stroke="white"
-        strokeWidth="1"
+    <>
+      <svg
+        version="1.2"
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 810 900"
+        className="interactive-japan-map"
+        preserveAspectRatio="xMidYMid meet"
       >
-        {countyOrderFromSVG.map((svgId) => renderCountyPath(svgId))}
-      </g>
-    </svg>
+        <g
+          id="wisconsin-counties-group"
+          transform="translate(5,5)"
+          stroke="white"
+          strokeWidth="1"
+        >
+          {countyOrderFromSVG.map((svgId) => renderCountyPath(svgId))}
+        </g>
+      </svg>
+      {tooltipData && (
+        <div
+          style={{
+            position: "fixed",
+            left: mousePosition.x + 10,
+            top: mousePosition.y - 10,
+            backgroundColor: "rgba(0, 0, 0, 0.9)",
+            color: "white",
+            padding: "8px 12px",
+            borderRadius: "4px",
+            fontSize: "12px",
+            pointerEvents: "none",
+            zIndex: 1000,
+            maxWidth: "250px",
+            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.3)",
+          }}
+        >
+          <div style={{ fontWeight: "bold", marginBottom: "4px" }}>
+            {tooltipData.name} County
+          </div>
+
+          {tooltipData.isSplit && tooltipData.splitDetails ? (
+            <div>
+              <div
+                style={{
+                  color: themeColors.selectedColor || "#ff6b35",
+                  fontWeight: "bold",
+                  marginBottom: "4px",
+                }}
+              >
+                Split County
+              </div>
+              <div style={{ fontSize: "11px" }}>
+                {tooltipData.splitDetails.map((detail, index) => (
+                  <div key={index} style={{ marginBottom: "2px" }}>
+                    District {detail.districtId}:{" "}
+                    {detail.population.toLocaleString()} people
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            tooltipData.districtLabel && (
+              <div style={{ fontSize: "11px" }}>
+                {tooltipData.districtLabel}
+              </div>
+            )
+          )}
+        </div>
+      )}
+    </>
   );
 }
 
