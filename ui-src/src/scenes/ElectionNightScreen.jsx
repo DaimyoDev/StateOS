@@ -4,6 +4,57 @@ import useGameStore from "../store"; //
 import "./ElectionNightScreen.css"; //
 import WinnerAnnouncementModal from "../components/modals/WinnerAnnouncementModal"; //
 import { getRandomInt, calculateAdultPopulation } from "../utils/core"; //
+import { calculateElectoralCollegeResults, isProgressiveReportingComplete, ELECTORAL_VOTES_BY_STATE, electoralCollegeSystem } from "../General Scripts/ElectoralCollegeSystem";
+import ElectoralCollegeMap from "../components/ElectoralCollegeMap/ElectoralCollegeMap";
+
+// Import county maps for state detail view
+import AlabamaMap from "../maps/usaCounties/AlabamaMap";
+import ArkansasMap from "../maps/usaCounties/ArkansasMap";
+import ArizonaMap from "../maps/usaCounties/ArizonaMap";
+import ConnecticutMap from "../maps/usaCounties/ConnecticutMap";
+import CaliforniaMap from "../maps/usaCounties/CaliforniaMap";
+import ColoradoMap from "../maps/usaCounties/ColoradoMap";
+import DelawareMap from "../maps/usaCounties/DelwareMap";
+import FloridaMap from "../maps/usaCounties/FloridaMap";
+import GeorgiaMap from "../maps/usaCounties/GeorgiaMap";
+import IdahoMap from "../maps/usaCounties/IdahoMap";
+import IllinoisMap from "../maps/usaCounties/IllinoisMap";
+import IndianaMap from "../maps/usaCounties/IndianaMap";
+import IowaMap from "../maps/usaCounties/IowaMap";
+import KansasMap from "../maps/usaCounties/KansasMap";
+import KentuckyMap from "../maps/usaCounties/KentuckyMap";
+import LousianaMap from "../maps/usaCounties/LousianaMap";
+import MaineMap from "../maps/usaCounties/MaineMap";
+import MarylandMap from "../maps/usaCounties/MarylandMap";
+import MassachusettsMap from "../maps/usaCounties/MassachusettsMap";
+import MichiganMap from "../maps/usaCounties/MichiganMap";
+import MinnesotaMap from "../maps/usaCounties/MinnesotaMap";
+import MississippiMap from "../maps/usaCounties/MississippiMap";
+import MissouriMap from "../maps/usaCounties/MissouriMap";
+import MontanaMap from "../maps/usaCounties/MontanaMap";
+import NebraskaMap from "../maps/usaCounties/NebraskaMap";
+import NevadaMap from "../maps/usaCounties/NevadaMap";
+import NewHampshireMap from "../maps/usaCounties/NewHampshireMap";
+import NewJerseyMap from "../maps/usaCounties/NewJerseyMap";
+import NewMexicoMap from "../maps/usaCounties/NewMexicoMap";
+import NewYorkMap from "../maps/usaCounties/NewYorkMap";
+import NorthCarolinaMap from "../maps/usaCounties/NorthCarolinaMap";
+import NorthDakotaMap from "../maps/usaCounties/NorthDakotaMap";
+import OhioMap from "../maps/usaCounties/OhioMap";
+import OklahomaMap from "../maps/usaCounties/OklahomaMap";
+import OregonMap from "../maps/usaCounties/OregonMap";
+import PennyslvaniaMap from "../maps/usaCounties/PennsylvaniaMap";
+import RhodeIslandMap from "../maps/usaCounties/RhodeIslandMap";
+import SouthCarolinaMap from "../maps/usaCounties/SouthCarolinaMap";
+import SouthDakotaMap from "../maps/usaCounties/SouthDakotaMap";
+import TennesseeMap from "../maps/usaCounties/TennesseeMap";
+import TexasMap from "../maps/usaCounties/TexasMap";
+import UtahMap from "../maps/usaCounties/UtahMap";
+import VermontMap from "../maps/usaCounties/VermontMap";
+import VirginiaMap from "../maps/usaCounties/VirginiaMap";
+import WashingtonMap from "../maps/usaCounties/WashingtonMap";
+import WestVirginiaMap from "../maps/usaCounties/WestVirginiaMap";
+import WisconsinMap from "../maps/usaCounties/WisconsinMap";
 
 const SIMULATION_SPEEDS = {
   realistic: 300000,
@@ -105,6 +156,577 @@ const distributeVoteChunkProportionally = (candidates, voteChunk) => {
     }
   }
   return processedCandidates.map(({ ...rest }) => rest);
+};
+
+// State Detail View Component (replaces modal)
+const StateDetailView = ({ selectedState, candidates, onBackToMap, countryData }) => {
+  const [activeTab, setActiveTab] = useState("map");
+
+  // Find the state and its counties from the election's country data
+  const { state, counties } = useMemo(() => {
+    if (!selectedState?.stateId || !countryData) return { state: null, counties: [] };
+    
+    const foundState = countryData.regions?.find((r) => r.id === selectedState.stateId);
+    if (foundState) {
+      const stateCounties = (countryData.secondAdminRegions || [])
+        .filter((county) => county.stateId === selectedState.stateId)
+        .sort((a, b) => (b.population || 0) - (a.population || 0));
+      console.log(`[DEBUG] Found state ${foundState.name} with ${stateCounties.length} counties`);
+      return { state: foundState, counties: stateCounties };
+    }
+    console.log(`[DEBUG] State not found: ${selectedState.stateId}`);
+    return { state: null, counties: [] };
+  }, [selectedState?.stateId, countryData]);
+
+  // Generate county-level election results based on state results
+  const countyResults = useMemo(() => {
+    if (!counties.length || !candidates.length || !selectedState?.stateResult?.candidatePolling) return [];
+
+    return counties.map(county => {
+      const countyPolling = new Map();
+      
+      // Simulate county variations from state polling
+      selectedState.stateResult.candidatePolling.forEach((statePercent, candidateId) => {
+        // Add county-specific variation (-15% to +15%) based on county characteristics
+        let variation = (Math.random() - 0.5) * 30;
+        
+        // Urban counties might favor different candidates
+        const isUrban = (county.population || 0) > 100000;
+        const candidate = candidates.find(c => c.id === candidateId);
+        
+        // Add realistic bias based on county demographics and candidate
+        if (county.politicalLandscape) {
+          const topParty = county.politicalLandscape.reduce((max, p) => 
+            p.popularity > max.popularity ? p : max, {popularity: 0});
+          
+          // If candidate's party matches county's top party, boost slightly
+          if (candidate?.partyName === topParty.name) {
+            variation += 5;
+          }
+        }
+        
+        const countyPercent = Math.max(0, Math.min(100, statePercent + variation));
+        countyPolling.set(candidateId, countyPercent);
+      });
+
+      // Normalize to 100%
+      const total = Array.from(countyPolling.values()).reduce((sum, val) => sum + val, 0);
+      if (total > 0) {
+        countyPolling.forEach((val, candidateId) => {
+          countyPolling.set(candidateId, Math.round((val / total) * 100));
+        });
+      }
+
+      // Find winner
+      let winner = null;
+      let maxPercent = 0;
+      countyPolling.forEach((percent, candidateId) => {
+        if (percent > maxPercent) {
+          maxPercent = percent;
+          winner = candidates.find(c => c.id === candidateId);
+        }
+      });
+
+      // Calculate margin (difference between 1st and 2nd place)
+      const sortedResults = Array.from(countyPolling.entries())
+        .sort(([,a], [,b]) => b - a);
+      const margin = sortedResults.length >= 2 ? 
+        sortedResults[0][1] - sortedResults[1][1] : sortedResults[0]?.[1] || 0;
+
+      return {
+        county,
+        polling: countyPolling,
+        winner,
+        margin,
+        winnerPercent: maxPercent,
+        totalVotes: Math.floor((county.population || 0) * (0.5 + Math.random() * 0.3)) // 50-80% turnout
+      };
+    });
+  }, [counties, candidates, selectedState?.stateResult]);
+
+  // Create heatmap data for county map
+  const countyHeatmapData = useMemo(() => {
+    if (!countyResults.length) return [];
+
+    return countyResults.map(result => ({
+      id: result.county.id,
+      color: result.winner?.partyColor || "#cccccc",
+      opacity: Math.max(0.4, Math.min(1.0, result.margin / 40)), // Opacity based on margin
+      value: result.winner?.name || "No winner"
+    }));
+  }, [countyResults]);
+
+  // Render appropriate state county map (same pattern as StateDetailsScreen)
+  const renderStateMap = () => {
+    console.log('[DEBUG] renderStateMap - state:', state, 'stateId:', selectedState?.stateId, 'counties:', counties.length);
+    
+    const mapProps = {
+      heatmapData: countyHeatmapData,
+      viewType: "party_popularity"
+    };
+
+    // Map state IDs to their corresponding county map components
+    switch (selectedState.stateId) {
+      case "USA_AL": return <AlabamaMap {...mapProps} />;
+      case "USA_AR": return <ArkansasMap {...mapProps} />;
+      case "USA_AZ": return <ArizonaMap {...mapProps} />;
+      case "USA_CA": return <CaliforniaMap {...mapProps} />;
+      case "USA_CO": return <ColoradoMap {...mapProps} />;
+      case "USA_CT": return <ConnecticutMap {...mapProps} />;
+      case "USA_DE": return <DelawareMap {...mapProps} />;
+      case "USA_FL": return <FloridaMap {...mapProps} />;
+      case "USA_GA": return <GeorgiaMap {...mapProps} />;
+      case "USA_ID": return <IdahoMap {...mapProps} />;
+      case "USA_IL": return <IllinoisMap {...mapProps} />;
+      case "USA_IN": return <IndianaMap {...mapProps} />;
+      case "USA_IA": return <IowaMap {...mapProps} />;
+      case "USA_KS": return <KansasMap {...mapProps} />;
+      case "USA_KY": return <KentuckyMap {...mapProps} />;
+      case "USA_LA": return <LousianaMap {...mapProps} />;
+      case "USA_ME": return <MaineMap {...mapProps} />;
+      case "USA_MD": return <MarylandMap {...mapProps} />;
+      case "USA_MA": return <MassachusettsMap {...mapProps} />;
+      case "USA_MI": return <MichiganMap {...mapProps} />;
+      case "USA_MN": return <MinnesotaMap {...mapProps} />;
+      case "USA_MS": return <MississippiMap {...mapProps} />;
+      case "USA_MO": return <MissouriMap {...mapProps} />;
+      case "USA_MT": return <MontanaMap {...mapProps} />;
+      case "USA_NE": return <NebraskaMap {...mapProps} />;
+      case "USA_NV": return <NevadaMap {...mapProps} />;
+      case "USA_NH": return <NewHampshireMap {...mapProps} />;
+      case "USA_NJ": return <NewJerseyMap {...mapProps} />;
+      case "USA_NM": return <NewMexicoMap {...mapProps} />;
+      case "USA_NY": return <NewYorkMap {...mapProps} />;
+      case "USA_NC": return <NorthCarolinaMap {...mapProps} />;
+      case "USA_ND": return <NorthDakotaMap {...mapProps} />;
+      case "USA_OH": return <OhioMap {...mapProps} />;
+      case "USA_OK": return <OklahomaMap {...mapProps} />;
+      case "USA_OR": return <OregonMap {...mapProps} />;
+      case "USA_PA": return <PennyslvaniaMap {...mapProps} />;
+      case "USA_RI": return <RhodeIslandMap {...mapProps} />;
+      case "USA_SC": return <SouthCarolinaMap {...mapProps} />;
+      case "USA_SD": return <SouthDakotaMap {...mapProps} />;
+      case "USA_TN": return <TennesseeMap {...mapProps} />;
+      case "USA_TX": return <TexasMap {...mapProps} />;
+      case "USA_UT": return <UtahMap {...mapProps} />;
+      case "USA_VT": return <VermontMap {...mapProps} />;
+      case "USA_VA": return <VirginiaMap {...mapProps} />;
+      case "USA_WA": return <WashingtonMap {...mapProps} />;
+      case "USA_WV": return <WestVirginiaMap {...mapProps} />;
+      case "USA_WI": return <WisconsinMap {...mapProps} />;
+      default:
+        return <div className="county-map-placeholder">County map not available for {selectedState.stateName}</div>;
+    }
+  };
+
+  if (!selectedState) return null;
+
+  const { stateId, stateName, stateResult } = selectedState;
+  const electoralVotes = ELECTORAL_VOTES_BY_STATE[stateId] || 0;
+
+  return (
+    <div className="state-detail-view">
+      {/* Header with back button */}
+      <div className="state-detail-header">
+        <button className="back-button menu-button" onClick={onBackToMap}>
+          ← Back to Electoral Map
+        </button>
+        <div className="state-title">
+          <h3>{stateName}</h3>
+          <div className="state-meta">
+            <span className="electoral-votes">{electoralVotes} Electoral Votes</span>
+            <span className="reporting">Reporting: {stateResult.reportingPercent || 0}%</span>
+          </div>
+        </div>
+      </div>
+
+      {/* State Results */}
+      {stateResult.hasStartedReporting && stateResult.candidatePolling && (
+        <div className="state-results-summary">
+          <h4>Statewide Results</h4>
+          <div className="candidate-results-grid">
+            {Array.from(stateResult.candidatePolling.entries())
+              .sort(([,a], [,b]) => b - a)
+              .map(([candidateId, percentage]) => {
+                const candidate = candidates.find(c => c.id === candidateId);
+                if (!candidate) return null;
+
+                return (
+                  <div key={candidateId} className="candidate-result-card">
+                    <div 
+                      className="candidate-indicator"
+                      style={{ backgroundColor: candidate.partyColor }}
+                    />
+                    <div className="candidate-info">
+                      <div className="candidate-name">{candidate.name}</div>
+                      <div className="candidate-party">({candidate.partyName || "Independent"})</div>
+                    </div>
+                    <div className="candidate-percentage">{percentage.toFixed(1)}%</div>
+                  </div>
+                );
+              })}
+          </div>
+          {stateResult.winner && (
+            <div className="state-winner-banner">
+              <strong>🏆 Winner: {stateResult.winner.name}</strong>
+              <span className="winner-margin"> (Margin: {stateResult.margin?.toFixed(1)}%)</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tabs for different views */}
+      <div className="state-detail-tabs">
+        <button 
+          className={activeTab === "map" ? "active" : ""}
+          onClick={() => setActiveTab("map")}
+        >
+          County Map
+        </button>
+        <button 
+          className={activeTab === "breakdown" ? "active" : ""}
+          onClick={() => setActiveTab("breakdown")}
+        >
+          County Breakdown
+        </button>
+      </div>
+
+      {/* Tab Content */}
+      <div className="state-tab-content">
+        {activeTab === "map" && (
+          <div className="county-map-section">
+            {renderStateMap()}
+          </div>
+        )}
+
+        {activeTab === "breakdown" && (
+          <div className="county-breakdown-section">
+            <h4>County Results</h4>
+            <div className="county-results-list">
+              {countyResults.length > 0 ? (
+                countyResults.slice(0, 20).map(result => (
+                  <div key={result.county.id} className="county-result-row">
+                    <div className="county-info">
+                      <span className="county-name">{result.county.name}</span>
+                      <span className="county-votes">{result.totalVotes.toLocaleString()} votes</span>
+                    </div>
+                    <div className="county-winner">
+                      {result.winner && (
+                        <>
+                          <span 
+                            className="winner-name"
+                            style={{ color: result.winner.partyColor }}
+                          >
+                            {result.winner.name}
+                          </span>
+                          <span className="winner-percent">{result.winnerPercent}%</span>
+                          <span className="winner-margin">(+{result.margin.toFixed(1)}%)</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="no-results">No county results available yet</div>
+              )}
+              {countyResults.length > 20 && (
+                <div className="more-counties">
+                  ...and {countyResults.length - 20} more counties
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Electoral College specific component
+const ElectoralCollegeCard = ({ election, simulationSpeed = 5000, skipToResults = false }) => {
+  const { activeCampaign, countryData } = useGameStore();
+  const [updateTrigger, setUpdateTrigger] = useState(0);
+  const [selectedState, setSelectedState] = useState(null); // Now for main screen, not modal
+  const [projectedStates, setProjectedStates] = useState(new Set());
+  const [showProjectionModal, setShowProjectionModal] = useState(false);
+  const [currentProjection, setCurrentProjection] = useState(null);
+
+  // Timer for progressive reporting updates - only when progressive reporting is active
+  useEffect(() => {
+    if (!election?.isElectoralCollege || skipToResults) return;
+
+    // Check if we need to continue updating (if progressive reporting is still in progress)
+    let shouldContinueUpdating = true;
+    
+    const interval = setInterval(() => {
+      // Only trigger updates if progressive reporting might still be happening
+      if (shouldContinueUpdating) {
+        // Check if progressive reporting is complete
+        if (isProgressiveReportingComplete()) {
+          shouldContinueUpdating = false;
+          console.log("[DEBUG] Progressive reporting complete - stopping updates");
+          return;
+        }
+        
+        setUpdateTrigger(prev => prev + 1);
+      }
+    }, 5000); // Update every 5 seconds (slower for more suspense)
+
+    return () => clearInterval(interval);
+  }, [election?.isElectoralCollege, skipToResults]);
+
+  // Force update when skipToResults changes to true
+  useEffect(() => {
+    if (skipToResults) {
+      console.log("[DEBUG] Skipping to results - forcing Electoral College recalculation");
+      // Just trigger recalculation without reset - let useProgressiveReporting=false handle it
+      setUpdateTrigger(prev => prev + 1);
+    }
+  }, [skipToResults]);
+  
+  const electoralResults = useMemo(() => {
+    if (!election?.isElectoralCollege || !election.candidates) {
+      console.log("[DEBUG] ElectoralCollegeCard: Early return", {
+        isElectoralCollege: election?.isElectoralCollege,
+        hasCandidates: !!election?.candidates,
+        hasActiveCampaign: !!activeCampaign
+      });
+      return null;
+    }
+    
+    // Convert Map to array for calculation
+    const candidatesArray = Array.from(election.candidates.values());
+    
+    // Use campaign data if available, otherwise use election's embedded data
+    let currentCountryData, campaignToUse;
+    
+    if (activeCampaign) {
+      // Campaign mode - use active campaign data
+      currentCountryData = countryData?.[activeCampaign.countryId];
+      campaignToUse = activeCampaign;
+    } else {
+      // Simulation mode - use election's embedded data
+      currentCountryData = election.countryData;
+      campaignToUse = {
+        countryId: election.regionId,
+        coalitionSystems: null // Simulation mode doesn't use coalition systems
+      };
+    }
+    
+    console.log("[DEBUG] ElectoralCollegeCard: Calculating electoral results", {
+      mode: activeCampaign ? 'campaign' : 'simulation',
+      candidatesCount: candidatesArray.length,
+      candidates: candidatesArray.map(c => ({id: c.id, name: c.name, currentVotes: c.currentVotes})),
+      countryId: campaignToUse.countryId,
+      hasCountryData: !!currentCountryData,
+      hasCoalitionSystems: !!campaignToUse?.coalitionSystems,
+      coalitionSystemsKeys: campaignToUse?.coalitionSystems ? Object.keys(campaignToUse.coalitionSystems) : null
+    });
+    
+    const useProgressiveReporting = !skipToResults;
+    console.log("[DEBUG] ElectoralCollegeCard: About to calculate with useProgressiveReporting =", useProgressiveReporting, "skipToResults =", skipToResults);
+    
+    // If skipping to results, reset the system right before calculation to ensure clean slate
+    if (skipToResults && electoralCollegeSystem && electoralCollegeSystem.reset) {
+      console.log("[DEBUG] Resetting Electoral College system before non-progressive calculation");
+      electoralCollegeSystem.reset();
+    }
+    
+    return calculateElectoralCollegeResults(candidatesArray, campaignToUse, currentCountryData, useProgressiveReporting, simulationSpeed);
+  }, [election, activeCampaign, countryData, updateTrigger, simulationSpeed, skipToResults]);
+
+  const electoralSummary = useMemo(() => {
+    if (!electoralResults) return { candidates: [], battleground: [] };
+    
+    const candidates = [];
+    electoralResults.candidateElectoralVotes.forEach((votes, candidateId) => {
+      const candidate = Array.from(election.candidates.values()).find(c => c.id === candidateId);
+      if (candidate) {
+        candidates.push({
+          ...candidate,
+          electoralVotes: votes,
+          percentage: ((votes / 538) * 100).toFixed(1)
+        });
+      }
+    });
+    
+    // Sort by electoral votes
+    candidates.sort((a, b) => (b.electoralVotes || 0) - (a.electoralVotes || 0));
+    
+    // Find battleground states (margin < 5%) but only for states that are reporting
+    const battleground = [];
+    electoralResults.stateResults.forEach((stateResult, stateId) => {
+      if (stateResult.hasStartedReporting && stateResult.winner && stateResult.margin < 5) {
+        battleground.push(stateResult);
+      }
+    });
+    
+    return { candidates, battleground };
+  }, [electoralResults, election.candidates]);
+
+  // Update selectedState when electoral results change
+  useEffect(() => {
+    if (selectedState && electoralResults?.stateResults) {
+      const updatedStateResult = electoralResults.stateResults.get(selectedState.stateId);
+      if (updatedStateResult && updatedStateResult !== selectedState.stateResult) {
+        setSelectedState(prev => ({
+          ...prev,
+          stateResult: updatedStateResult
+        }));
+      }
+    }
+  }, [updateTrigger, electoralResults]);
+
+  // Check for new state projections
+  useEffect(() => {
+    if (!electoralResults?.stateResults) return;
+
+    electoralResults.stateResults.forEach((stateResult, stateId) => {
+      // A state is "called" when it has started reporting, has a clear winner, and sufficient reporting/margin
+      // Make projection criteria more strict to avoid early calls
+      const canCall = stateResult.hasStartedReporting && 
+                     stateResult.winner && 
+                     stateResult.reportingPercent >= 60 && // At least 60% reporting (was 25%)
+                     (stateResult.margin > 20 || stateResult.reportingPercent >= 95); // Very high margin OR almost complete
+      
+      if (canCall && !projectedStates.has(stateId)) {
+        const stateName = stateResult.stateName || `State ${stateId}`;
+        
+        // Add to projected states
+        setProjectedStates(prev => new Set([...prev, stateId]));
+        
+        // Show projection modal
+        setCurrentProjection({
+          stateName,
+          stateId,
+          winner: stateResult.winner,
+          electoralVotes: ELECTORAL_VOTES_BY_STATE[stateId] || 0,
+          margin: stateResult.margin,
+          reportingPercent: stateResult.reportingPercent
+        });
+        setShowProjectionModal(true);
+      }
+    });
+  }, [electoralResults, projectedStates]);
+
+  if (!election?.isElectoralCollege) {
+    return <FeaturedElectionCard election={election} />;
+  }
+
+  return (
+    <div className={`election-card electoral-college-card ${election.isComplete ? "complete" : "in-progress"}`}>
+      <h2 className="important-heading">{election.officeName}</h2>
+      
+      {/* Electoral Vote Summary */}
+      <div className="electoral-summary">
+        <div className="electoral-vote-bar">
+          {electoralSummary.candidates.map((candidate, index) => {
+            const width = (candidate.electoralVotes / 538) * 100;
+            return (
+              <div
+                key={candidate.id}
+                className="electoral-segment"
+                style={{
+                  width: `${width}%`,
+                  backgroundColor: candidate.partyColor || generateRandomColor(),
+                }}
+                title={`${candidate.name}: ${candidate.electoralVotes} electoral votes`}
+              />
+            );
+          })}
+        </div>
+        
+        <div className="electoral-candidates">
+          {electoralSummary.candidates.map((candidate) => (
+            <div key={candidate.id} className="electoral-candidate">
+              <div 
+                className="candidate-indicator"
+                style={{ backgroundColor: candidate.partyColor || generateRandomColor() }}
+              />
+              <span className="candidate-name">{candidate.name}</span>
+              <span className="electoral-votes">{candidate.electoralVotes}</span>
+              <span className="electoral-percentage">({candidate.percentage}%)</span>
+            </div>
+          ))}
+        </div>
+        
+        <div className="electoral-status">
+          <span className="needed-to-win">270 to win</span>
+          {electoralResults?.winner && (
+            <span className="projected-winner">
+              Winner: {Array.from(election.candidates.values()).find(c => c.id === electoralResults.winner.id)?.name || electoralResults.winner.id}
+            </span>
+          )}
+        </div>
+      </div>
+      
+      {/* Battleground States */}
+      {electoralSummary.battleground.length > 0 && (
+        <div className="battleground-states">
+          <h4>Key Battleground States</h4>
+          <div className="battleground-list">
+            {electoralSummary.battleground.slice(0, 5).map((state) => (
+              <div key={state.stateId} className="battleground-state">
+                <span className="state-name">{state.stateName}</span>
+                <span className="state-ev">{state.electoralVotes} EV</span>
+                <span className="state-margin">{state.margin.toFixed(1)}%</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      
+      {/* Interactive Electoral College Map or State Detail View */}
+      <div className="electoral-map-container">
+        {!selectedState ? (
+          // National Electoral College Map
+          <ElectoralCollegeMap
+            electoralResults={electoralResults}
+            candidates={Array.from(election.candidates.values())}
+            onStateClick={(stateId, stateName) => {
+              console.log(`Clicked state: ${stateName} (${stateId})`);
+              const stateResult = electoralResults?.stateResults?.get(stateId);
+              if (stateResult) {
+                setSelectedState({ stateId, stateName, stateResult });
+              }
+            }}
+          />
+        ) : (
+          // State Detail View
+          <StateDetailView 
+            selectedState={selectedState}
+            candidates={Array.from(election.candidates.values())}
+            onBackToMap={() => setSelectedState(null)}
+            countryData={countryData || election.countryData}
+          />
+        )}
+      </div>
+
+      {/* State Projection Modal */}
+      {currentProjection && (
+        <WinnerAnnouncementModal
+          isOpen={showProjectionModal}
+          onClose={() => {
+            setShowProjectionModal(false);
+            setCurrentProjection(null);
+          }}
+          winnerData={{
+            officeName: `${currentProjection.stateName} (${currentProjection.electoralVotes} EV)`,
+            winners: [{
+              id: currentProjection.winner.id,
+              name: currentProjection.winner.name,
+              partyName: currentProjection.winner.partyName,
+              partyColor: currentProjection.winner.partyColor
+            }],
+            electoralSystem: "ElectoralCollege",
+            margin: currentProjection.margin,
+            reportingPercent: currentProjection.reportingPercent,
+            isStateProjection: true
+          }}
+        />
+      )}
+    </div>
+  );
 };
 
 const FeaturedElectionCard = ({ election }) => {
@@ -306,6 +928,27 @@ const FeaturedElectionCard = ({ election }) => {
 };
 
 const ElectionListItem = ({ election, onSelect, isSelected }) => {
+  // For Electoral College elections, don't show individual vote counts - show electoral progress
+  if (election.isElectoralCollege) {
+    return (
+      <li
+        className={`election-list-sidebar-item ${isSelected ? "selected" : ""} ${
+          election.isComplete ? "complete" : "in-progress"
+        }`}
+        onClick={() => onSelect(election.id)}
+      >
+        <div className="election-list-item-header">
+          <strong>{election.officeName}</strong>
+          <span> (Electoral College)</span>
+        </div>
+        <div className="election-list-item-leader">
+          States reporting results...
+        </div>
+      </li>
+    );
+  }
+
+  // Regular elections - show vote counts as before
   const leadingCandidate =
     election.candidates?.length > 0
       ? [...election.candidates].sort(
@@ -374,6 +1017,7 @@ const ElectionNightScreen = () => {
   const allSimulationsCompleteRef = React.useRef(allSimulationsComplete);
   const [featuredElectionId, setFeaturedElectionId] = useState(null);
   const [winnerAnnouncementQueue, setWinnerAnnouncementQueue] = useState([]);
+  const [skipElectoralToResults, setSkipElectoralToResults] = useState(false);
 
   useEffect(() => {
     allSimulationsCompleteRef.current = allSimulationsComplete;
@@ -886,6 +1530,7 @@ const ElectionNightScreen = () => {
 
   const handleSkipToResults = useCallback(() => {
     setIsPaused(true);
+    setSkipElectoralToResults(true);
     let announcements = [];
     setLiveElections((prev) =>
       prev.map((election) => {
@@ -1049,10 +1694,19 @@ const ElectionNightScreen = () => {
         <div className="election-night-body-layout">
           <div className="main-election-panel">
             {featuredElection ? (
-              <FeaturedElectionCard
-                election={featuredElection}
-                openViewPoliticianModal={openViewPoliticianModal}
-              />
+              featuredElection.isElectoralCollege ? (
+                <ElectoralCollegeCard
+                  election={featuredElection}
+                  simulationSpeed={simulationSpeed}
+                  skipToResults={skipElectoralToResults}
+                  openViewPoliticianModal={openViewPoliticianModal}
+                />
+              ) : (
+                <FeaturedElectionCard
+                  election={featuredElection}
+                  openViewPoliticianModal={openViewPoliticianModal}
+                />
+              )
             ) : liveElections.length > 0 ? (
               <div className="featured-election-placeholder">
                 Select an election from the list to view details.

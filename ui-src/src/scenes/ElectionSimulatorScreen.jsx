@@ -4,7 +4,7 @@ import useGameStore from "../store";
 import "./ElectionSimulatorScreen.css";
 
 // Data imports
-import { BASE_COUNTRIES_DATA } from "../data/countriesData";
+import { BASE_COUNTRIES_DATA, generateDetailedCountryData } from "../data/countriesData";
 import { IDEOLOGY_DEFINITIONS, BASE_IDEOLOGIES } from "../data/ideologiesData";
 import { POLICY_QUESTIONS } from "../data/policyData";
 import { ELECTION_TYPES_BY_COUNTRY } from "../data/electionsData";
@@ -18,6 +18,8 @@ import {
   generateFullAIPolitician,
   generateNewPartyName,
 } from "../entities/personnel";
+import { calculateElectoralCollegeResults } from "../General Scripts/ElectoralCollegeSystem";
+import { calculateElectionOutcome } from "../elections/electionResults.js";
 
 // Reusable UI components
 import Modal from "../components/modals/Modal";
@@ -683,21 +685,41 @@ const ElectionSimulatorScreen = () => {
   };
 
   const handleSimulateDirectly = () => {
-    if (!pendingSimulationData) return;
+    console.log("[DEBUG] handleSimulateDirectly called!");
+    if (!pendingSimulationData) {
+      console.log("[DEBUG] No pending simulation data, returning early");
+      return;
+    }
     
-    // TODO: Process the election data through automated simulation logic
-    // For now, we'll use the polling data as results
-    const simulatedResults = pendingSimulationData.map(election => ({
-      ...election,
-      outcome: { 
-        status: "completed",
-        results: Array.from(election.candidates.values()).map(candidate => ({
-          candidateId: candidate.id,
-          votes: Math.round((candidate.polling / 100) * election.totalEligibleVoters * (election.voterTurnoutPercentage / 100)),
-          percentage: candidate.polling
-        }))
-      }
-    }));
+    console.log("[DEBUG] Processing", pendingSimulationData.length, "elections");
+    
+    // Process elections using the proper election processing system
+    const simulatedResults = pendingSimulationData.map(election => {
+      console.log("[DEBUG] Processing election in simulator:", {
+        id: election.id,
+        electoralSystem: election.electoralSystem,
+        officeName: election.officeName
+      });
+      
+      // Create mock parties data from the current setup
+      const allParties = currentSetup.parties.map(party => ({
+        id: party.id,
+        name: party.name,
+        color: party.color,
+        ideology: party.ideology
+      }));
+      
+      // Calculate the proper election outcome using the same system as campaigns
+      const outcome = calculateElectionOutcome(election, allParties, null);
+      
+      return {
+        ...election,
+        outcome: {
+          status: "completed",
+          ...outcome
+        }
+      };
+    });
 
     setSimulationResults(simulatedResults);
     setIsSimulationChoiceModalOpen(false);
@@ -820,6 +842,22 @@ const ElectionSimulatorScreen = () => {
         officeName += ` - District ${electionInstance.districtNumber}`;
       }
 
+      console.log("[DEBUG] Creating simulated election:", {
+        electionTypeId: selectedElectionTypeDetails.id,
+        electoralSystem: selectedElectionTypeDetails.electoralSystem,
+        officeName,
+        isElectoralCollege: selectedElectionTypeDetails.electoralSystem === "ElectoralCollege"
+      });
+
+      // For Electoral College elections, generate detailed country data with counties
+      let countryDataForElection = selectedCountry;
+      if (selectedElectionTypeDetails.electoralSystem === "ElectoralCollege") {
+        console.log("[DEBUG] Generating detailed country data for Electoral College election");
+        countryDataForElection = generateDetailedCountryData(selectedCountry);
+        console.log("[DEBUG] Generated country with", countryDataForElection?.regions?.length, "regions and", 
+                    countryDataForElection?.secondAdminRegions?.length, "counties");
+      }
+
       const simulatedElection = {
         id: `sim_election_${generateId()}`,
         officeName,
@@ -830,6 +868,12 @@ const ElectionSimulatorScreen = () => {
         voterTurnoutPercentage: currentSetup.voterTurnout,
         numberOfSeatsToFill: selectedElectionTypeDetails.seatsToFill || 1,
         outcome: { status: "upcoming" },
+        // Add Electoral College specific data if needed
+        ...(selectedElectionTypeDetails.electoralSystem === "ElectoralCollege" && {
+          isElectoralCollege: true,
+          countryData: countryDataForElection,
+          regionId: currentSetup.selectedRegionId,
+        }),
       };
       allSimulations.push(simulatedElection);
     }

@@ -62,6 +62,8 @@ function UnitedStatesMap({
   selectedStateGameId,
   heatmapData,
   viewType,
+  onStateHover,
+  onStateLeave,
 }) {
   const [hoveredStateId, setHoveredStateId] = useState(null);
   const currentTheme = useGameStore(
@@ -92,7 +94,7 @@ function UnitedStatesMap({
   };
 
   const { min, max } = useMemo(() => {
-    if (!heatmapData || viewType === "party_popularity")
+    if (!heatmapData || viewType === "party_popularity" || viewType === "electoral_college")
       return { min: 0, max: 1 };
     const values = heatmapData
       .map((d) => d.value)
@@ -125,6 +127,16 @@ function UnitedStatesMap({
       if (data) {
         if (viewType === "party_popularity") {
           style.fill = data.color || landColor;
+        } else if (viewType === "electoral_college") {
+          // Use the color with opacity for electoral college view
+          if (data.color && data.opacity !== undefined) {
+            const r = parseInt(data.color.slice(1, 3), 16);
+            const g = parseInt(data.color.slice(3, 5), 16);
+            const b = parseInt(data.color.slice(5, 7), 16);
+            style.fill = `rgba(${r}, ${g}, ${b}, ${data.opacity})`;
+          } else {
+            style.fill = data.color || landColor;
+          }
         } else if (typeof data.value === "number") {
           const ratio = max > min ? (data.value - min) / (max - min) : 0;
           const r = Math.round(
@@ -267,7 +279,12 @@ function UnitedStatesMap({
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 1000 589"
       preserveAspectRatio="xMidYMid meet"
-      onMouseLeave={() => setHoveredStateId(null)}
+      onMouseLeave={() => {
+        setHoveredStateId(null);
+        if (onStateLeave) {
+          onStateLeave();
+        }
+      }}
       className="interactive-japan-map"
     >
       <g id="usa-states-group">
@@ -283,7 +300,18 @@ function UnitedStatesMap({
               title={stateInfo.name}
               style={getStateStyle(svgId)}
               onClick={() => handleStateClick(svgId)}
-              onMouseEnter={() => setHoveredStateId(stateInfo.gameId)}
+              onMouseEnter={(event) => {
+                setHoveredStateId(stateInfo.gameId);
+                if (onStateHover) {
+                  onStateHover(stateInfo.gameId, stateInfo.name, event);
+                }
+              }}
+              onMouseLeave={() => {
+                setHoveredStateId(null);
+                if (onStateLeave) {
+                  onStateLeave();
+                }
+              }}
               d={pathD}
             />
           );

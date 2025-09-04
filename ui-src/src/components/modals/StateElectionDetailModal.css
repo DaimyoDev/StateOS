@@ -1,0 +1,215 @@
+.state-election-detail {
+  padding: 20px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.state-overview {
+  margin-bottom: 20px;
+}
+
+.state-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--border-color, #ddd);
+}
+
+.state-header h3 {
+  margin: 0;
+  font-size: 1.5em;
+}
+
+.state-meta {
+  display: flex;
+  gap: 20px;
+  font-size: 0.9em;
+}
+
+.electoral-votes {
+  background: var(--primary-bg, #007bff);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: bold;
+}
+
+.reporting {
+  color: var(--secondary-text, #666);
+  font-weight: bold;
+}
+
+.state-results {
+  background: var(--card-bg, #f8f9fa);
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.state-results h4 {
+  margin: 0 0 10px 0;
+  color: var(--primary-text, #333);
+}
+
+.candidate-results {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 15px;
+}
+
+.candidate-result {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  background: white;
+  border-radius: 4px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.candidate-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.candidate-name {
+  font-weight: bold;
+  flex: 1;
+}
+
+.candidate-party {
+  color: var(--secondary-text, #666);
+  font-size: 0.9em;
+}
+
+.candidate-percentage {
+  font-weight: bold;
+  font-size: 1.1em;
+  min-width: 60px;
+  text-align: right;
+}
+
+.state-winner {
+  padding: 10px;
+  background: var(--success-bg, #d4edda);
+  border-left: 4px solid var(--success-color, #28a745);
+  border-radius: 4px;
+  font-size: 1.1em;
+}
+
+.winner-margin {
+  color: var(--secondary-text, #666);
+  font-weight: normal;
+}
+
+.detail-tabs {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 20px;
+  border-bottom: 2px solid var(--border-color, #ddd);
+}
+
+.detail-tabs button {
+  padding: 10px 20px;
+  background: var(--secondary-bg, #f8f9fa);
+  border: none;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  color: var(--secondary-text, #666);
+  transition: all 0.2s ease;
+}
+
+.detail-tabs button:hover {
+  background: var(--hover-bg, #e9ecef);
+}
+
+.detail-tabs button.active {
+  background: var(--primary-bg, #007bff);
+  color: white;
+}
+
+.county-map-section {
+  text-align: center;
+}
+
+.county-map-section h4 {
+  margin-bottom: 15px;
+  color: var(--primary-text, #333);
+}
+
+.county-map-container {
+  display: flex;
+  justify-content: center;
+  margin: 20px 0;
+  min-height: 300px;
+}
+
+.county-map-container svg {
+  max-width: 100%;
+  max-height: 400px;
+}
+
+.map-legend {
+  margin-top: 10px;
+  font-size: 0.9em;
+  color: var(--secondary-text, #666);
+  font-style: italic;
+}
+
+.county-results-section h4 {
+  margin-bottom: 15px;
+  color: var(--primary-text, #333);
+}
+
+.county-results-table {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.county-result-row {
+  display: grid;
+  grid-template-columns: 2fr 2fr 1fr;
+  gap: 15px;
+  align-items: center;
+  padding: 12px;
+  background: var(--card-bg, #f8f9fa);
+  border-radius: 6px;
+  border-left: 4px solid var(--border-color, #ddd);
+}
+
+.county-name {
+  font-weight: 500;
+  color: var(--primary-text, #333);
+}
+
+.county-winner {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.county-margin {
+  color: var(--secondary-text, #666);
+  font-size: 0.9em;
+}
+
+.county-votes {
+  text-align: right;
+  color: var(--secondary-text, #666);
+  font-size: 0.9em;
+}
+
+.county-more {
+  text-align: center;
+  color: var(--secondary-text, #666);
+  font-style: italic;
+  padding: 15px;
+}

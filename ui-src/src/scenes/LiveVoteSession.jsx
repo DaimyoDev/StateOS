@@ -16,13 +16,14 @@ const LiveVoteSession = () => {
   // --- 1. Select state from the store ---
   const session = useGameStore((state) => state.activeVotingSessionDetails); // { billId, level }
   const playerId = useGameStore((state) => state.activeCampaign?.playerPoliticianId);
-  const governmentOffices = useGameStore((state) => {
+  const governmentOffices = useMemo(() => {
+    const state = useGameStore.getState();
     if (!state.activeVotingSessionDetails) return [];
     const level = state.activeVotingSessionDetails.level;
     const cityId = level === 'city' ? state.activeCampaign?.startingCity?.id : null;
     const stateId = (level === 'state' || level === 'city') ? state.activeCampaign?.regionId : null;
     return state.actions.getGovernmentOfficesForContext(level, cityId, stateId);
-  });
+  }, [session, activeCampaign]);
   const activeCampaign = useGameStore((state) => state.activeCampaign);
   const { endVotingSession, recordCouncilVote } = useGameStore((state) => state.actions);
 
