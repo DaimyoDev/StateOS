@@ -2,6 +2,7 @@ import React, { useState, useMemo } from "react";
 import useGameStore from "../../store";
 import { ELECTORAL_VOTES_BY_STATE } from "../../General Scripts/ElectoralCollegeSystem";
 import UnitedStatesMap from "../../maps/UnitedStatesMap";
+import { adjustColorForMargin } from "../../utils/generalUtils";
 import "./ElectoralCollegeMap.css";
 
 // We'll use the existing UnitedStatesMap component which already has all the state data
@@ -11,6 +12,7 @@ function ElectoralCollegeMap({
   onStateClick,
   selectedStateId,
   candidates = [],
+  viewMode = "results", // "results", "margin", "projection"
 }) {
   // Get current theme for default state colors
   const currentTheme = useGameStore(
@@ -23,7 +25,7 @@ function ElectoralCollegeMap({
     content: "",
   });
 
-  // Create heatmap data for the US map based on electoral results
+  // Create heatmap data for the US map based on electoral results and view mode
   const electoralHeatmapData = useMemo(() => {
     if (!electoralResults?.stateResults || !candidates.length) return [];
 
@@ -34,19 +36,82 @@ function ElectoralCollegeMap({
 
     const heatmapData = [];
     electoralResults.stateResults.forEach((stateResult, stateId) => {
-      // Always show states with solid colors - use contrasting colors like CampaignSetupScreen borders
-      let stateColor = currentTheme?.colors?.["--border-color"] || currentTheme?.colors?.["--disabled-bg"] || "#cccccc"; // Theme-based contrasting color for unreported states
-      let opacity = 1.0; // Always full opacity
+      let stateColor = currentTheme?.colors?.["--border-color"] || currentTheme?.colors?.["--disabled-bg"] || "#cccccc";
+      let opacity = 1.0;
       let value = "Not yet reported";
 
-      if (stateResult.hasStartedReporting && stateResult.winner) {
-        const winnerColor =
-          candidateColors.get(stateResult.winner.id) || "#888888";
-        stateColor = winnerColor;
-        value = stateResult.winner.name;
-      } else if (stateResult.hasStartedReporting) {
-        stateColor = "#ffcc00"; // Yellow for reporting but no winner yet
-        value = "Results pending";
+      // Different logic based on view mode
+      if (viewMode === "results") {
+        // Original results view logic
+        if (stateResult.hasStartedReporting && stateResult.winner) {
+          const winnerColor = candidateColors.get(stateResult.winner.id) || "#888888";
+          stateColor = winnerColor;
+          value = stateResult.winner.name;
+        } else if (stateResult.hasStartedReporting) {
+          stateColor = "#ffcc00"; // Yellow for reporting but no winner yet
+          value = "Results pending";
+        }
+      } else if (viewMode === "margin") {
+        // Margin view - show victory margins with color lightness variations
+        if (stateResult.hasStartedReporting && stateResult.winner && stateResult.margin !== undefined) {
+          const baseWinnerColor = candidateColors.get(stateResult.winner.id) || "#888888";
+          
+          // Adjust color lightness based on margin (closer races are lighter)
+          const margin = stateResult.margin;
+          stateColor = adjustColorForMargin(baseWinnerColor, margin);
+          
+          // Keep full opacity since we're adjusting color lightness instead
+          opacity = 1.0;
+          value = `${stateResult.winner.name} +${margin.toFixed(1)}%`;
+        } else if (stateResult.hasStartedReporting && stateResult.winner) {
+          // Fallback for states with winner but no margin data
+          const winnerColor = candidateColors.get(stateResult.winner.id) || "#888888";
+          stateColor = winnerColor;
+          opacity = 1.0; // Full opacity, no margin adjustment
+          value = `${stateResult.winner.name} (Margin unknown)`;
+        }
+      } else if (viewMode === "projection") {
+        // Projection view - show projected winners using candidatePolling data
+        if (stateResult.candidatePolling && stateResult.candidatePolling.size > 0) {
+          // Find the leading candidate from polling data
+          let leadingCandidateId = null;
+          let highestPolling = 0;
+          
+          stateResult.candidatePolling.forEach((polling, candidateId) => {
+            if (polling > highestPolling) {
+              highestPolling = polling;
+              leadingCandidateId = candidateId;
+            }
+          });
+          
+          if (leadingCandidateId) {
+            const leadingCandidate = candidates.find(c => c.id === leadingCandidateId);
+            const projectedColor = candidateColors.get(leadingCandidateId) || "#888888";
+            stateColor = projectedColor;
+            
+            if (stateResult.hasStartedReporting) {
+              // Full opacity for reported states
+              opacity = 1.0;
+              value = `${leadingCandidate?.name || 'Unknown'} (Reported)`;
+            } else {
+              // Semi-transparent for projections
+              opacity = 0.5;
+              value = `${leadingCandidate?.name || 'Unknown'} (Projected)`;
+            }
+          }
+        } else if (stateResult.winner) {
+          // Fallback to winner data if polling not available
+          const projectedColor = candidateColors.get(stateResult.winner.id) || "#888888";
+          stateColor = projectedColor;
+          
+          if (stateResult.hasStartedReporting) {
+            opacity = 1.0;
+            value = `${stateResult.winner.name} (Reported)`;
+          } else {
+            opacity = 0.5;
+            value = `${stateResult.winner.name} (Projected)`;
+          }
+        }
       }
 
       heatmapData.push({
@@ -64,7 +129,7 @@ function ElectoralCollegeMap({
     });
 
     return heatmapData;
-  }, [electoralResults, candidates]);
+  }, [electoralResults, candidates, viewMode, currentTheme]);
 
   const handleStateHover = (stateId, stateName, event) => {
     if (!electoralResults?.stateResults) return;
@@ -180,26 +245,6 @@ function ElectoralCollegeMap({
         </div>
       )}
 
-      {/* Legend */}
-      <div className="electoral-map-legend">
-        <div className="legend-title">Electoral College Results</div>
-        {candidates.map((candidate) => {
-          const electoralVotes =
-            electoralResults?.candidateElectoralVotes?.get(candidate.id) || 0;
-          return (
-            <div key={candidate.id} className="legend-item">
-              <div
-                className="legend-color"
-                style={{ backgroundColor: candidateColors.get(candidate.id) }}
-              />
-              <span className="legend-text">
-                {candidate.name}: {electoralVotes} EV
-              </span>
-            </div>
-          );
-        })}
-        <div className="legend-note">*Color intensity shows reporting progress</div>
-      </div>
     </div>
   );
 }

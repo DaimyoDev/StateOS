@@ -164,6 +164,39 @@ export function generateNuancedColor(
 }
 
 /**
+ * Adjusts the lightness of a hex color for margin visualization
+ * @param {string} hexColor - The base hex color
+ * @param {number} margin - The victory margin (0-100)
+ * @param {number} maxMargin - Maximum margin for scaling (default 20)
+ * @returns {string} Adjusted hex color
+ */
+export function adjustColorForMargin(hexColor, margin, maxMargin = 20) {
+  const hsl = hexToHSL(hexColor);
+  if (!hsl) return hexColor;
+
+  // Calculate lightness adjustment based on margin
+  // Smaller margins = lighter colors, larger margins = darker/more saturated colors
+  const marginRatio = Math.min(margin / maxMargin, 1); // 0 to 1
+
+  // Adjust lightness: smaller margins get lighter (higher L), larger margins stay darker
+  if (marginRatio < 0.1) {
+    // Very close races (0-2%) - make very light
+    hsl.l = Math.min(85, hsl.l + (85 - hsl.l) * 0.7);
+  } else if (marginRatio < 0.25) {
+    // Close races (2-5%) - make lighter  
+    hsl.l = Math.min(75, hsl.l + (75 - hsl.l) * 0.5);
+  } else if (marginRatio < 0.5) {
+    // Moderate races (5-10%) - slightly lighter
+    hsl.l = Math.min(65, hsl.l + (65 - hsl.l) * 0.3);
+  } else {
+    // Comfortable/blowout margins (10%+) - keep original or make slightly more saturated
+    hsl.s = Math.min(100, hsl.s * 1.1);
+  }
+
+  return hslToHex(hsl);
+}
+
+/**
  * Generates a slightly "off" polling number for display to simulate margin of error.
  * @param {number} actualPolling - The true polling percentage (0-100).
  * @param {number} [maxMargin=3] - The maximum points to deviate (e.g., 3 means +/- 0-3 points).

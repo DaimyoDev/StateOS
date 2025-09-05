@@ -11,7 +11,7 @@ import ArizonaMap from "../../maps/usaCounties/ArizonaMap";
 import ConnecticutMap from "../../maps/usaCounties/ConnecticutMap";
 import CaliforniaMap from "../../maps/usaCounties/CaliforniaMap";
 import ColoradoMap from "../../maps/usaCounties/ColoradoMap";
-import DelawareMap from "../../maps/usaCounties/DelwareMap";
+import DelawareMap from "../../maps/usaCounties/DelawareMap";
 import FloridaMap from "../../maps/usaCounties/FloridaMap";
 import GeorgiaMap from "../../maps/usaCounties/GeorgiaMap";
 import IdahoMap from "../../maps/usaCounties/IdahoMap";
@@ -53,14 +53,21 @@ import WashingtonMap from "../../maps/usaCounties/WashingtonMap";
 import WestVirginiaMap from "../../maps/usaCounties/WestVirginiaMap";
 import WisconsinMap from "../../maps/usaCounties/WisconsinMap";
 
-const StateElectionDetailModal = ({ isOpen, onClose, stateId, stateName, stateResult, candidates }) => {
+const StateElectionDetailModal = ({
+  isOpen,
+  onClose,
+  stateId,
+  stateName,
+  stateResult,
+  candidates,
+}) => {
   const { availableCountries } = useGameStore();
   const [activeTab, setActiveTab] = useState("overview");
 
   // Find the state and its counties
   const { state, counties } = useMemo(() => {
     if (!stateId || !availableCountries) return { state: null, counties: [] };
-    
+
     for (const country of availableCountries) {
       const foundState = country.regions?.find((r) => r.id === stateId);
       if (foundState) {
@@ -75,21 +82,32 @@ const StateElectionDetailModal = ({ isOpen, onClose, stateId, stateName, stateRe
 
   // Simulate county-level results for Electoral College
   const countyResults = useMemo(() => {
-    if (!counties.length || !candidates.length || !stateResult?.candidatePolling) return [];
+    if (
+      !counties.length ||
+      !candidates.length ||
+      !stateResult?.candidatePolling
+    )
+      return [];
 
-    return counties.map(county => {
+    return counties.map((county) => {
       const countyPolling = new Map();
-      
+
       // Simulate county variations from state polling
       stateResult.candidatePolling.forEach((statePercent, candidateId) => {
         // Add random variation (-10% to +10%) for each county
         const variation = (Math.random() - 0.5) * 20;
-        const countyPercent = Math.max(0, Math.min(100, statePercent + variation));
+        const countyPercent = Math.max(
+          0,
+          Math.min(100, statePercent + variation)
+        );
         countyPolling.set(candidateId, countyPercent);
       });
 
       // Normalize to 100%
-      const total = Array.from(countyPolling.values()).reduce((sum, val) => sum + val, 0);
+      const total = Array.from(countyPolling.values()).reduce(
+        (sum, val) => sum + val,
+        0
+      );
       if (total > 0) {
         countyPolling.forEach((val, candidateId) => {
           countyPolling.set(candidateId, Math.round((val / total) * 100));
@@ -102,22 +120,27 @@ const StateElectionDetailModal = ({ isOpen, onClose, stateId, stateName, stateRe
       countyPolling.forEach((percent, candidateId) => {
         if (percent > maxPercent) {
           maxPercent = percent;
-          winner = candidates.find(c => c.id === candidateId);
+          winner = candidates.find((c) => c.id === candidateId);
         }
       });
 
       // Calculate margin (difference between 1st and 2nd place)
-      const sortedResults = Array.from(countyPolling.entries())
-        .sort(([,a], [,b]) => b - a);
-      const margin = sortedResults.length >= 2 ? 
-        sortedResults[0][1] - sortedResults[1][1] : sortedResults[0]?.[1] || 0;
+      const sortedResults = Array.from(countyPolling.entries()).sort(
+        ([, a], [, b]) => b - a
+      );
+      const margin =
+        sortedResults.length >= 2
+          ? sortedResults[0][1] - sortedResults[1][1]
+          : sortedResults[0]?.[1] || 0;
 
       return {
         county,
         polling: countyPolling,
         winner,
         margin,
-        totalVotes: Math.floor((county.population || 0) * (0.5 + Math.random() * 0.3)) // 50-80% turnout
+        totalVotes: Math.floor(
+          (county.population || 0) * (0.5 + Math.random() * 0.3)
+        ), // 50-80% turnout
       };
     });
   }, [counties, candidates, stateResult]);
@@ -126,11 +149,11 @@ const StateElectionDetailModal = ({ isOpen, onClose, stateId, stateName, stateRe
   const countyHeatmapData = useMemo(() => {
     if (!countyResults.length) return [];
 
-    return countyResults.map(result => ({
+    return countyResults.map((result) => ({
       id: result.county.id,
       color: result.winner?.partyColor || "#cccccc",
       opacity: Math.max(0.4, Math.min(1.0, result.margin / 30)), // Opacity based on margin
-      value: result.winner?.name || "No winner"
+      value: result.winner?.name || "No winner",
     }));
   }, [countyResults]);
 
@@ -140,60 +163,111 @@ const StateElectionDetailModal = ({ isOpen, onClose, stateId, stateName, stateRe
 
     const mapProps = {
       heatmapData: countyHeatmapData,
-      viewType: "party_popularity"
+      viewType: "party_popularity",
     };
 
     // Map state IDs to their corresponding county map components
     switch (stateId) {
-      case "USA_AL": return <AlabamaMap {...mapProps} />;
-      case "USA_AR": return <ArkansasMap {...mapProps} />;
-      case "USA_AZ": return <ArizonaMap {...mapProps} />;
-      case "USA_CA": return <CaliforniaMap {...mapProps} />;
-      case "USA_CO": return <ColoradoMap {...mapProps} />;
-      case "USA_CT": return <ConnecticutMap {...mapProps} />;
-      case "USA_DE": return <DelawareMap {...mapProps} />;
-      case "USA_FL": return <FloridaMap {...mapProps} />;
-      case "USA_GA": return <GeorgiaMap {...mapProps} />;
-      case "USA_ID": return <IdahoMap {...mapProps} />;
-      case "USA_IL": return <IllinoisMap {...mapProps} />;
-      case "USA_IN": return <IndianaMap {...mapProps} />;
-      case "USA_IA": return <IowaMap {...mapProps} />;
-      case "USA_KS": return <KansasMap {...mapProps} />;
-      case "USA_KY": return <KentuckyMap {...mapProps} />;
-      case "USA_LA": return <LousianaMap {...mapProps} />;
-      case "USA_ME": return <MaineMap {...mapProps} />;
-      case "USA_MD": return <MarylandMap {...mapProps} />;
-      case "USA_MA": return <MassachusettsMap {...mapProps} />;
-      case "USA_MI": return <MichiganMap {...mapProps} />;
-      case "USA_MN": return <MinnesotaMap {...mapProps} />;
-      case "USA_MS": return <MississippiMap {...mapProps} />;
-      case "USA_MO": return <MissouriMap {...mapProps} />;
-      case "USA_MT": return <MontanaMap {...mapProps} />;
-      case "USA_NE": return <NebraskaMap {...mapProps} />;
-      case "USA_NV": return <NevadaMap {...mapProps} />;
-      case "USA_NH": return <NewHampshireMap {...mapProps} />;
-      case "USA_NJ": return <NewJerseyMap {...mapProps} />;
-      case "USA_NM": return <NewMexicoMap {...mapProps} />;
-      case "USA_NY": return <NewYorkMap {...mapProps} />;
-      case "USA_NC": return <NorthCarolinaMap {...mapProps} />;
-      case "USA_ND": return <NorthDakotaMap {...mapProps} />;
-      case "USA_OH": return <OhioMap {...mapProps} />;
-      case "USA_OK": return <OklahomaMap {...mapProps} />;
-      case "USA_OR": return <OregonMap {...mapProps} />;
-      case "USA_PA": return <PennyslvaniaMap {...mapProps} />;
-      case "USA_RI": return <RhodeIslandMap {...mapProps} />;
-      case "USA_SC": return <SouthCarolinaMap {...mapProps} />;
-      case "USA_SD": return <SouthDakotaMap {...mapProps} />;
-      case "USA_TN": return <TennesseeMap {...mapProps} />;
-      case "USA_TX": return <TexasMap {...mapProps} />;
-      case "USA_UT": return <UtahMap {...mapProps} />;
-      case "USA_VT": return <VermontMap {...mapProps} />;
-      case "USA_VA": return <VirginiaMap {...mapProps} />;
-      case "USA_WA": return <WashingtonMap {...mapProps} />;
-      case "USA_WV": return <WestVirginiaMap {...mapProps} />;
-      case "USA_WI": return <WisconsinMap {...mapProps} />;
+      case "USA_AL":
+        return <AlabamaMap {...mapProps} />;
+      case "USA_AR":
+        return <ArkansasMap {...mapProps} />;
+      case "USA_AZ":
+        return <ArizonaMap {...mapProps} />;
+      case "USA_CA":
+        return <CaliforniaMap {...mapProps} />;
+      case "USA_CO":
+        return <ColoradoMap {...mapProps} />;
+      case "USA_CT":
+        return <ConnecticutMap {...mapProps} />;
+      case "USA_DE":
+        return <DelawareMap {...mapProps} />;
+      case "USA_FL":
+        return <FloridaMap {...mapProps} />;
+      case "USA_GA":
+        return <GeorgiaMap {...mapProps} />;
+      case "USA_ID":
+        return <IdahoMap {...mapProps} />;
+      case "USA_IL":
+        return <IllinoisMap {...mapProps} />;
+      case "USA_IN":
+        return <IndianaMap {...mapProps} />;
+      case "USA_IA":
+        return <IowaMap {...mapProps} />;
+      case "USA_KS":
+        return <KansasMap {...mapProps} />;
+      case "USA_KY":
+        return <KentuckyMap {...mapProps} />;
+      case "USA_LA":
+        return <LousianaMap {...mapProps} />;
+      case "USA_ME":
+        return <MaineMap {...mapProps} />;
+      case "USA_MD":
+        return <MarylandMap {...mapProps} />;
+      case "USA_MA":
+        return <MassachusettsMap {...mapProps} />;
+      case "USA_MI":
+        return <MichiganMap {...mapProps} />;
+      case "USA_MN":
+        return <MinnesotaMap {...mapProps} />;
+      case "USA_MS":
+        return <MississippiMap {...mapProps} />;
+      case "USA_MO":
+        return <MissouriMap {...mapProps} />;
+      case "USA_MT":
+        return <MontanaMap {...mapProps} />;
+      case "USA_NE":
+        return <NebraskaMap {...mapProps} />;
+      case "USA_NV":
+        return <NevadaMap {...mapProps} />;
+      case "USA_NH":
+        return <NewHampshireMap {...mapProps} />;
+      case "USA_NJ":
+        return <NewJerseyMap {...mapProps} />;
+      case "USA_NM":
+        return <NewMexicoMap {...mapProps} />;
+      case "USA_NY":
+        return <NewYorkMap {...mapProps} />;
+      case "USA_NC":
+        return <NorthCarolinaMap {...mapProps} />;
+      case "USA_ND":
+        return <NorthDakotaMap {...mapProps} />;
+      case "USA_OH":
+        return <OhioMap {...mapProps} />;
+      case "USA_OK":
+        return <OklahomaMap {...mapProps} />;
+      case "USA_OR":
+        return <OregonMap {...mapProps} />;
+      case "USA_PA":
+        return <PennyslvaniaMap {...mapProps} />;
+      case "USA_RI":
+        return <RhodeIslandMap {...mapProps} />;
+      case "USA_SC":
+        return <SouthCarolinaMap {...mapProps} />;
+      case "USA_SD":
+        return <SouthDakotaMap {...mapProps} />;
+      case "USA_TN":
+        return <TennesseeMap {...mapProps} />;
+      case "USA_TX":
+        return <TexasMap {...mapProps} />;
+      case "USA_UT":
+        return <UtahMap {...mapProps} />;
+      case "USA_VT":
+        return <VermontMap {...mapProps} />;
+      case "USA_VA":
+        return <VirginiaMap {...mapProps} />;
+      case "USA_WA":
+        return <WashingtonMap {...mapProps} />;
+      case "USA_WV":
+        return <WestVirginiaMap {...mapProps} />;
+      case "USA_WI":
+        return <WisconsinMap {...mapProps} />;
       default:
-        return <div className="map-placeholder">County map not available for {stateName}</div>;
+        return (
+          <div className="map-placeholder">
+            County map not available for {stateName}
+          </div>
+        );
     }
   };
 
@@ -214,8 +288,12 @@ const StateElectionDetailModal = ({ isOpen, onClose, stateId, stateName, stateRe
           <div className="state-header">
             <h3>{stateName}</h3>
             <div className="state-meta">
-              <span className="electoral-votes">{electoralVotes} Electoral Votes</span>
-              <span className="reporting">Reporting: {stateResult.reportingPercent || 0}%</span>
+              <span className="electoral-votes">
+                {electoralVotes} Electoral Votes
+              </span>
+              <span className="reporting">
+                Reporting: {stateResult.reportingPercent || 0}%
+              </span>
             </div>
           </div>
 
@@ -225,20 +303,26 @@ const StateElectionDetailModal = ({ isOpen, onClose, stateId, stateName, stateRe
               <h4>Statewide Results</h4>
               <div className="candidate-results">
                 {Array.from(stateResult.candidatePolling.entries())
-                  .sort(([,a], [,b]) => b - a)
+                  .sort(([, a], [, b]) => b - a)
                   .map(([candidateId, percentage]) => {
-                    const candidate = candidates.find(c => c.id === candidateId);
+                    const candidate = candidates.find(
+                      (c) => c.id === candidateId
+                    );
                     if (!candidate) return null;
 
                     return (
                       <div key={candidateId} className="candidate-result">
-                        <div 
+                        <div
                           className="candidate-indicator"
                           style={{ backgroundColor: candidate.partyColor }}
                         />
                         <span className="candidate-name">{candidate.name}</span>
-                        <span className="candidate-party">({candidate.partyName || "Independent"})</span>
-                        <span className="candidate-percentage">{percentage.toFixed(1)}%</span>
+                        <span className="candidate-party">
+                          ({candidate.partyName || "Independent"})
+                        </span>
+                        <span className="candidate-percentage">
+                          {percentage.toFixed(1)}%
+                        </span>
                       </div>
                     );
                   })}
@@ -246,7 +330,10 @@ const StateElectionDetailModal = ({ isOpen, onClose, stateId, stateName, stateRe
               {stateResult.winner && (
                 <div className="state-winner">
                   <strong>Winner: {stateResult.winner.name}</strong>
-                  <span className="winner-margin"> (Margin: {stateResult.margin?.toFixed(1)}%)</span>
+                  <span className="winner-margin">
+                    {" "}
+                    (Margin: {stateResult.margin?.toFixed(1)}%)
+                  </span>
                 </div>
               )}
             </div>
@@ -255,13 +342,13 @@ const StateElectionDetailModal = ({ isOpen, onClose, stateId, stateName, stateRe
 
         {/* Tabs for different views */}
         <div className="detail-tabs">
-          <button 
+          <button
             className={activeTab === "overview" ? "active" : ""}
             onClick={() => setActiveTab("overview")}
           >
             County Map
           </button>
-          <button 
+          <button
             className={activeTab === "counties" ? "active" : ""}
             onClick={() => setActiveTab("counties")}
           >
@@ -274,11 +361,12 @@ const StateElectionDetailModal = ({ isOpen, onClose, stateId, stateName, stateRe
           {activeTab === "overview" && (
             <div className="county-map-section">
               <h4>County-Level Results</h4>
-              <div className="county-map-container">
-                {renderStateMap()}
-              </div>
+              <div className="county-map-container">{renderStateMap()}</div>
               <div className="map-legend">
-                <p>Colors represent winning candidate, opacity shows margin of victory</p>
+                <p>
+                  Colors represent winning candidate, opacity shows margin of
+                  victory
+                </p>
               </div>
             </div>
           )}
@@ -287,7 +375,7 @@ const StateElectionDetailModal = ({ isOpen, onClose, stateId, stateName, stateRe
             <div className="county-results-section">
               <h4>County Breakdown</h4>
               <div className="county-results-table">
-                {countyResults.slice(0, 10).map(result => (
+                {countyResults.slice(0, 10).map((result) => (
                   <div key={result.county.id} className="county-result-row">
                     <div className="county-name">{result.county.name}</div>
                     <div className="county-winner">
@@ -296,13 +384,18 @@ const StateElectionDetailModal = ({ isOpen, onClose, stateId, stateName, stateRe
                           <span style={{ color: result.winner.partyColor }}>
                             {result.winner.name}
                           </span>
-                          <span className="county-margin"> ({result.margin.toFixed(1)}%)</span>
+                          <span className="county-margin">
+                            {" "}
+                            ({result.margin.toFixed(1)}%)
+                          </span>
                         </>
                       ) : (
                         "No results"
                       )}
                     </div>
-                    <div className="county-votes">{result.totalVotes.toLocaleString()} votes</div>
+                    <div className="county-votes">
+                      {result.totalVotes.toLocaleString()} votes
+                    </div>
                   </div>
                 ))}
                 {countyResults.length > 10 && (

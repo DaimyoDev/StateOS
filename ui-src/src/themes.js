@@ -59,6 +59,10 @@ export const themes = {
       "--map-region-default-fill": "#B0C4DE",
       "--map-region-border": "#FFFFFF",
       "--map-region-hover-fill": "rgba(230, 163, 173, 0.4)",
+
+      "--scrollbar-track": "#F2EAE0",
+      "--scrollbar-thumb": "#D8CFC4",
+      "--scrollbar-thumb-hover": "#C5B8AB",
     },
     fonts: {
       "--font-main": fontInter, // Inter for readability
@@ -133,6 +137,10 @@ export const themes = {
       "--map-region-default-fill": "#87A5B8", // Muted version of the pale sky blue
       "--map-region-border": "#FEFFFE", // White border
       "--map-region-hover-fill": "rgba(255, 102, 99, 0.4)", // Coral hover
+
+      "--scrollbar-track": "#BFD7EA",
+      "--scrollbar-thumb": "#A5C4D7",
+      "--scrollbar-thumb-hover": "#87A5B8",
     },
     fonts: {
       "--font-main": fontInter,

@@ -98,15 +98,15 @@ export class ElectoralCollegeSystem {
    */
   initializeProgressiveReporting(states, simulationSpeed = 5000) {
     this.reset(); // Reset everything for new election
-    
+
     // Map simulation speeds to much more reasonable electoral college reporting times
     // Real election nights can take 6-12+ hours, so we need bigger multipliers
     let speedMultiplier;
-    switch(simulationSpeed) {
+    switch (simulationSpeed) {
       case 1500: // fast - should still take a few minutes
         speedMultiplier = 1.0; // 4 minutes total (fast but reasonable)
         break;
-      case 5000: // normal - should take longer  
+      case 5000: // normal - should take longer
         speedMultiplier = 4.0; // 16 minutes total
         break;
       case 10000: // slow
@@ -122,26 +122,41 @@ export class ElectoralCollegeSystem {
         // For custom speeds, use a more aggressive formula
         speedMultiplier = Math.min(45.0, Math.max(0.5, simulationSpeed / 1250));
     }
-    
-    console.log(`[DEBUG] Simulation speed: ${simulationSpeed}, multiplier: ${speedMultiplier}x`);
+
+    console.log(
+      `[DEBUG] Simulation speed: ${simulationSpeed}, multiplier: ${speedMultiplier}x`
+    );
     const reportingOrder = [...states];
-    
+
     // Sort states by various factors for realistic reporting order
     // Small states and East Coast states typically report first
     reportingOrder.sort((a, b) => {
       const aVotes = ELECTORAL_VOTES_BY_STATE[a.id] || 0;
       const bVotes = ELECTORAL_VOTES_BY_STATE[b.id] || 0;
-      
+
       // East coast states (earlier time zones) report first
       const eastCoastStates = new Set([
-        'USA_ME', 'USA_NH', 'USA_VT', 'USA_MA', 'USA_CT', 'USA_RI', 
-        'USA_NY', 'USA_NJ', 'USA_PA', 'USA_DE', 'USA_MD', 'USA_VA',
-        'USA_NC', 'USA_SC', 'USA_GA', 'USA_FL'
+        "USA_ME",
+        "USA_NH",
+        "USA_VT",
+        "USA_MA",
+        "USA_CT",
+        "USA_RI",
+        "USA_NY",
+        "USA_NJ",
+        "USA_PA",
+        "USA_DE",
+        "USA_MD",
+        "USA_VA",
+        "USA_NC",
+        "USA_SC",
+        "USA_GA",
+        "USA_FL",
       ]);
-      
+
       if (eastCoastStates.has(a.id) && !eastCoastStates.has(b.id)) return -1;
       if (!eastCoastStates.has(a.id) && eastCoastStates.has(b.id)) return 1;
-      
+
       // Then by size (smaller states report faster)
       return aVotes - bVotes;
     });
@@ -150,27 +165,31 @@ export class ElectoralCollegeSystem {
     const baseTime = Date.now();
     const baseReportingWindow = 240000; // Base: 4 minutes total
     const totalReportingWindow = baseReportingWindow * speedMultiplier;
-    
+
     reportingOrder.forEach((state, index) => {
       // Stagger state start times over the first half of the window
       const baseStartWindow = 120000; // Base: 2 minutes for starts
       const startWindow = baseStartWindow * speedMultiplier;
       const startDelay = (index / reportingOrder.length) * startWindow;
       const reportingStartTime = baseTime + startDelay;
-      
+
       // States take longer to finish reporting based on size and complexity
       const electoralVotes = ELECTORAL_VOTES_BY_STATE[state.id] || 0;
       const baseReportingDuration = 60000; // Base: 1 minute to report
       const sizeMultiplier = Math.max(1, electoralVotes / 15); // Larger states take much longer
-      const randomVariation = 0.7 + (Math.random() * 0.6); // 70% to 130% of base time
-      const reportingDuration = baseReportingDuration * sizeMultiplier * randomVariation * speedMultiplier;
-      
+      const randomVariation = 0.7 + Math.random() * 0.6; // 70% to 130% of base time
+      const reportingDuration =
+        baseReportingDuration *
+        sizeMultiplier *
+        randomVariation *
+        speedMultiplier;
+
       this.reportingSimulation.set(state.id, {
         reportingStartTime,
         reportingDuration,
         hasReported: false,
         reportingPercent: 0,
-        finalResults: null
+        finalResults: null,
       });
 
       // Debug logging for timing (remove in production)
@@ -178,7 +197,13 @@ export class ElectoralCollegeSystem {
       const startSeconds = Math.floor((startDelay % 60000) / 1000);
       const durationMinutes = Math.floor(reportingDuration / 60000);
       const durationSeconds = Math.floor((reportingDuration % 60000) / 1000);
-      console.log(`[DEBUG] ${state.name}: starts at ${startMinutes}:${startSeconds.toString().padStart(2, '0')}, reports for ${durationMinutes}:${durationSeconds.toString().padStart(2, '0')} (${electoralVotes} EV)`);
+      console.log(
+        `[DEBUG] ${state.name}: starts at ${startMinutes}:${startSeconds
+          .toString()
+          .padStart(2, "0")}, reports for ${durationMinutes}:${durationSeconds
+          .toString()
+          .padStart(2, "0")} (${electoralVotes} EV)`
+      );
     });
   }
 
@@ -187,7 +212,7 @@ export class ElectoralCollegeSystem {
    */
   isReportingComplete() {
     if (this.reportingSimulation.size === 0) return false;
-    
+
     const currentTime = Date.now();
     for (const [stateId, data] of this.reportingSimulation) {
       if (currentTime < data.reportingStartTime + data.reportingDuration) {
@@ -203,28 +228,31 @@ export class ElectoralCollegeSystem {
   getReportingStatus() {
     const currentTime = Date.now();
     const reportingStatus = new Map();
-    
+
     this.reportingSimulation.forEach((data, stateId) => {
       if (currentTime >= data.reportingStartTime) {
         // State has started reporting - calculate percentage based on duration
         const timeSinceStart = currentTime - data.reportingStartTime;
-        const percent = Math.min(100, (timeSinceStart / data.reportingDuration) * 100);
-        
+        const percent = Math.min(
+          100,
+          (timeSinceStart / data.reportingDuration) * 100
+        );
+
         reportingStatus.set(stateId, {
           hasStarted: true,
           reportingPercent: Math.floor(percent),
-          isComplete: percent >= 100
+          isComplete: percent >= 100,
         });
       } else {
         // State hasn't started reporting yet
         reportingStatus.set(stateId, {
           hasStarted: false,
           reportingPercent: 0,
-          isComplete: false
+          isComplete: false,
         });
       }
     });
-    
+
     return reportingStatus;
   }
 
@@ -232,20 +260,39 @@ export class ElectoralCollegeSystem {
    * Calculate electoral college results for a presidential election
    * Uses coalition system for accurate state-level modeling
    */
-  calculateElectoralCollege(candidates, activeCampaign, countryData, useProgressiveReporting = false, simulationSpeed = 5000) {
-    console.log("[DEBUG] ElectoralCollegeSystem.calculateElectoralCollege called with:", {
-      candidatesCount: candidates?.length || 0,
-      candidates: candidates?.map(c => ({id: c.id, name: c.name, votes: c.votes})),
-      activeCampaign: activeCampaign ? {
-        countryId: activeCampaign.countryId,
-        coalitionSystems: activeCampaign.coalitionSystems ? Object.keys(activeCampaign.coalitionSystems) : null
-      } : null,
-      countryData: countryData ? {
-        id: countryData.id,
-        name: countryData.name,
-        regionsCount: countryData.regions?.length || 0
-      } : null
-    });
+  calculateElectoralCollege(
+    candidates,
+    activeCampaign,
+    countryData,
+    useProgressiveReporting = false,
+    simulationSpeed = 5000
+  ) {
+    console.log(
+      "[DEBUG] ElectoralCollegeSystem.calculateElectoralCollege called with:",
+      {
+        candidatesCount: candidates?.length || 0,
+        candidates: candidates?.map((c) => ({
+          id: c.id,
+          name: c.name,
+          votes: c.votes,
+        })),
+        activeCampaign: activeCampaign
+          ? {
+              countryId: activeCampaign.countryId,
+              coalitionSystems: activeCampaign.coalitionSystems
+                ? Object.keys(activeCampaign.coalitionSystems)
+                : null,
+            }
+          : null,
+        countryData: countryData
+          ? {
+              id: countryData.id,
+              name: countryData.name,
+              regionsCount: countryData.regions?.length || 0,
+            }
+          : null,
+      }
+    );
 
     // If we're using progressive reporting, don't fall back even without coalition systems
     if (!useProgressiveReporting && !activeCampaign?.coalitionSystems) {
@@ -279,12 +326,19 @@ export class ElectoralCollegeSystem {
 
     // Initialize progressive reporting if requested and not already initialized
     if (useProgressiveReporting && this.reportingSimulation.size === 0) {
-      console.log("[DEBUG] Initializing progressive reporting for", states.length, "states with speed", simulationSpeed);
+      console.log(
+        "[DEBUG] Initializing progressive reporting for",
+        states.length,
+        "states with speed",
+        simulationSpeed
+      );
       this.initializeProgressiveReporting(states, simulationSpeed);
     }
 
     // Get current reporting status
-    const reportingStatus = useProgressiveReporting ? this.getReportingStatus() : null;
+    const reportingStatus = useProgressiveReporting
+      ? this.getReportingStatus()
+      : null;
 
     states.forEach((state) => {
       if (useProgressiveReporting && reportingStatus) {
@@ -292,13 +346,18 @@ export class ElectoralCollegeSystem {
         const reportingInfo = {
           reportingPercent: status?.reportingPercent || 0,
           hasStartedReporting: status?.hasStarted || false,
-          reportingComplete: status?.isComplete || false
+          reportingComplete: status?.isComplete || false,
         };
 
-        if (reportingInfo.hasStartedReporting && !this.calculatedStates.has(state.id)) {
+        if (
+          reportingInfo.hasStartedReporting &&
+          !this.calculatedStates.has(state.id)
+        ) {
           // State just started reporting - calculate its results now
-          console.log(`[DEBUG] State ${state.name} started reporting - calculating results`);
-          
+          console.log(
+            `[DEBUG] State ${state.name} started reporting - calculating results`
+          );
+
           let stateResult;
           if (activeCampaign?.coalitionSystems) {
             stateResult = this.calculateStateElectoralVotes(
@@ -318,7 +377,14 @@ export class ElectoralCollegeSystem {
             stateResult.reportingPercent = reportingInfo.reportingPercent;
             stateResult.hasStartedReporting = true;
             stateResult.reportingComplete = reportingInfo.reportingComplete;
-            stateResult.showResults = true;
+
+            // Only show results and declare winner if we have sufficient reporting
+            // Different thresholds based on margin and electoral importance
+            const MINIMUM_REPORTING_THRESHOLD =
+              this.getMinimumReportingThreshold(stateResult, state);
+            stateResult.showResults =
+              reportingInfo.reportingPercent >= MINIMUM_REPORTING_THRESHOLD ||
+              reportingInfo.reportingComplete;
 
             // Cache the calculated result
             this.calculatedStates.set(state.id, stateResult);
@@ -327,7 +393,7 @@ export class ElectoralCollegeSystem {
 
         // Get the state result (either cached or create placeholder)
         let stateResult = this.calculatedStates.get(state.id);
-        
+
         if (!stateResult) {
           // Create placeholder for states not yet reporting
           stateResult = {
@@ -340,12 +406,21 @@ export class ElectoralCollegeSystem {
             reportingPercent: reportingInfo.reportingPercent,
             hasStartedReporting: reportingInfo.hasStartedReporting,
             reportingComplete: reportingInfo.reportingComplete,
-            showResults: false
+            showResults: false,
           };
         } else {
           // Update reporting progress for calculated states
           stateResult.reportingPercent = reportingInfo.reportingPercent;
           stateResult.reportingComplete = reportingInfo.reportingComplete;
+
+          // Re-evaluate if we should show results based on updated reporting percentage
+          const MINIMUM_REPORTING_THRESHOLD = this.getMinimumReportingThreshold(
+            stateResult,
+            state
+          );
+          stateResult.showResults =
+            reportingInfo.reportingPercent >= MINIMUM_REPORTING_THRESHOLD ||
+            reportingInfo.reportingComplete;
         }
 
         results.stateResults.set(state.id, stateResult);
@@ -363,7 +438,7 @@ export class ElectoralCollegeSystem {
             stateId: state.id,
             electoralVotes: stateResult.electoralVotes,
           });
-          
+
           results.totalElectoralVotes += stateResult.electoralVotes;
         }
       } else {
@@ -621,6 +696,48 @@ export class ElectoralCollegeSystem {
   }
 
   /**
+   * Get minimum reporting threshold before declaring a winner
+   * Based on margin size and state importance
+   */
+  getMinimumReportingThreshold(stateResult, state) {
+    const electoralVotes = ELECTORAL_VOTES_BY_STATE[state.id] || 0;
+    const margin = stateResult.margin || 0;
+
+    // Base threshold starts at 50% for most states
+    let threshold = 50;
+
+    // Adjust based on margin - closer races need more reporting
+    if (margin < 2) {
+      threshold = 85; // Very close race - need 85% reporting
+    } else if (margin < 5) {
+      threshold = 75; // Close race - need 75% reporting
+    } else if (margin < 10) {
+      threshold = 65; // Moderate margin - need 65% reporting
+    } else if (margin >= 20) {
+      threshold = 30; // Blowout - can call early at 30%
+    }
+
+    // Adjust based on electoral importance
+    if (electoralVotes >= 20) {
+      // Major states (CA, TX, FL, NY, PA) - be more cautious
+      threshold += 10;
+    } else if (electoralVotes <= 4) {
+      // Small states - can call a bit earlier
+      threshold -= 5;
+    }
+
+    // Ensure reasonable bounds
+    threshold = Math.max(25, Math.min(90, threshold));
+
+    console.log(
+      `[DEBUG] ${state.name}: margin=${margin.toFixed(
+        1
+      )}%, EVs=${electoralVotes}, threshold=${threshold}%`
+    );
+    return threshold;
+  }
+
+  /**
    * Determine the overall electoral college winner
    */
   determineElectoralWinner(results) {
@@ -654,7 +771,7 @@ export class ElectoralCollegeSystem {
     console.log("[DEBUG] Fallback calculation with:", {
       candidatesCount: candidates?.length || 0,
       statesCount: countryData?.regions?.length || 0,
-      countryId: countryData?.id
+      countryId: countryData?.id,
     });
 
     const results = {
@@ -681,7 +798,7 @@ export class ElectoralCollegeSystem {
         stateResult.hasStartedReporting = true;
         stateResult.reportingComplete = true;
         stateResult.showResults = true;
-        
+
         results.stateResults.set(state.id, stateResult);
         if (stateResult.winner) {
           const currentVotes =

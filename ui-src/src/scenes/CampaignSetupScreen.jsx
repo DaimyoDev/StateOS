@@ -9,7 +9,7 @@ import ArizonaMap from "../maps/usaCounties/ArizonaMap";
 import ConnecticutMap from "../maps/usaCounties/ConnecticutMap";
 import CaliforniaMap from "../maps/usaCounties/CaliforniaMap";
 import ColoradoMap from "../maps/usaCounties/ColoradoMap";
-import DelawareMap from "../maps/usaCounties/DelwareMap";
+import DelawareMap from "../maps/usaCounties/DelawareMap";
 import FloridaMap from "../maps/usaCounties/FloridaMap";
 import GeorgiaMap from "../maps/usaCounties/GeorgiaMap";
 import IdahoMap from "../maps/usaCounties/IdahoMap";
@@ -1366,7 +1366,15 @@ function CampaignSetupScreen() {
               )}
             </div>
           )}
-        <div className="view-details-buttons" style={{ marginTop: "1rem", display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+        <div
+          className="view-details-buttons"
+          style={{
+            marginTop: "1rem",
+            display: "flex",
+            gap: "0.5rem",
+            flexWrap: "wrap",
+          }}
+        >
           <button
             className="menu-button view-details-button"
             onClick={() => actions.navigateToCountryDetails(selectedCountryId)}

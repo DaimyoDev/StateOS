@@ -445,11 +445,12 @@ export const processElectoralCollegeResults = ({
   electionToEnd,
   allPartiesInGame,
   candidatesWithFinalVotes,
+  // eslint-disable-next-line no-unused-vars
   totalVotesActuallyCast,
   seatsToFill,
 }) => {
   const { activeCampaign, countryData } = useGameStore.getState();
-  
+
   console.log("[DEBUG] Electoral College Processing:", {
     electionToEnd: electionToEnd?.id,
     candidatesCount: candidatesWithFinalVotes?.size || 0,
@@ -457,23 +458,32 @@ export const processElectoralCollegeResults = ({
     countryDataKeys: countryData ? Object.keys(countryData) : null,
     electionCountryData: !!electionToEnd.countryData,
   });
-  
+
   // Convert Map to array for calculation
   const candidatesArray = Array.from(candidatesWithFinalVotes.values());
-  
+
   // Use country data from election if available (simulation mode), otherwise from campaign
-  const currentCountryData = electionToEnd.countryData || countryData?.[activeCampaign?.countryId];
-  
+  const currentCountryData =
+    electionToEnd.countryData || countryData?.[activeCampaign?.countryId];
+
   console.log("[DEBUG] Electoral College Data:", {
-    candidatesArray: candidatesArray.map(c => ({id: c.id, name: c.name, votes: c.votes})),
-    currentCountryData: currentCountryData ? {
-      id: currentCountryData.id,
-      name: currentCountryData.name,
-      regionsCount: currentCountryData.regions?.length || 0
-    } : null,
-    coalitionSystems: activeCampaign?.coalitionSystems ? Object.keys(activeCampaign.coalitionSystems) : null
+    candidatesArray: candidatesArray.map((c) => ({
+      id: c.id,
+      name: c.name,
+      votes: c.votes,
+    })),
+    currentCountryData: currentCountryData
+      ? {
+          id: currentCountryData.id,
+          name: currentCountryData.name,
+          regionsCount: currentCountryData.regions?.length || 0,
+        }
+      : null,
+    coalitionSystems: activeCampaign?.coalitionSystems
+      ? Object.keys(activeCampaign.coalitionSystems)
+      : null,
   });
-  
+
   if (!currentCountryData) {
     console.warn("Missing country data for Electoral College calculation");
     // Fallback to FPTP if data is missing
@@ -490,18 +500,20 @@ export const processElectoralCollegeResults = ({
     countryId: currentCountryData.id,
     coalitionSystems: null, // Will trigger fallback calculation
   };
-  
+
   const electoralResults = calculateElectoralCollegeResults(
     candidatesArray,
     campaignForCalculation,
     currentCountryData
   );
-  
+
   console.log("[DEBUG] Electoral College Results:", {
-    candidateElectoralVotes: Array.from(electoralResults.candidateElectoralVotes.entries()),
+    candidateElectoralVotes: Array.from(
+      electoralResults.candidateElectoralVotes.entries()
+    ),
     totalElectoralVotes: electoralResults.totalElectoralVotes,
     winner: electoralResults.winner,
-    stateResultsCount: electoralResults.stateResults?.size || 0
+    stateResultsCount: electoralResults.stateResults?.size || 0,
   });
 
   // Convert electoral results to match the expected format
@@ -509,7 +521,9 @@ export const processElectoralCollegeResults = ({
   let winnerCandidate = null;
 
   if (electoralResults.winner) {
-    winnerCandidate = candidatesArray.find(c => c.id === electoralResults.winner.id);
+    winnerCandidate = candidatesArray.find(
+      (c) => c.id === electoralResults.winner.id
+    );
     if (winnerCandidate) {
       determinedWinnersArray.push({
         ...winnerCandidate,
@@ -546,20 +560,23 @@ export const processElectoralCollegeResults = ({
         name: partyData.name,
         color: partyData.color,
         votes,
-        percentage: totalPopularVotes > 0 ? (votes / totalPopularVotes) * 100 : 0,
+        percentage:
+          totalPopularVotes > 0 ? (votes / totalPopularVotes) * 100 : 0,
       };
     })
     .sort((a, b) => b.votes - a.votes);
 
   // Create electoral vote summary for parties
   const partyElectoralSummary = {};
-  electoralResults.candidateElectoralVotes.forEach((electoralVotes, candidateId) => {
-    const candidate = candidatesArray.find(c => c.id === candidateId);
-    if (candidate?.partyId) {
-      partyElectoralSummary[candidate.partyId] = 
-        (partyElectoralSummary[candidate.partyId] || 0) + electoralVotes;
+  electoralResults.candidateElectoralVotes.forEach(
+    (electoralVotes, candidateId) => {
+      const candidate = candidatesArray.find((c) => c.id === candidateId);
+      if (candidate?.partyId) {
+        partyElectoralSummary[candidate.partyId] =
+          (partyElectoralSummary[candidate.partyId] || 0) + electoralVotes;
+      }
     }
-  });
+  );
 
   return {
     determinedWinnersArray,
@@ -573,7 +590,7 @@ export const processElectoralCollegeResults = ({
     electoralWinner: electoralResults.winner,
     isElectoralTie: electoralResults.isTie,
     battlegroundStates: Array.from(electoralResults.stateResults.values())
-      .filter(state => state.margin < 10)
+      .filter((state) => state.margin < 10)
       .sort((a, b) => a.margin - b.margin),
   };
 };
@@ -649,7 +666,7 @@ export const calculateElectionOutcome = (
     electionId: electionToEnd.id,
     electoralSystem: electionToEnd.electoralSystem,
     officeName: electionToEnd.officeName,
-    level: electionToEnd.level
+    level: electionToEnd.level,
   });
 
   let result;

@@ -28,6 +28,8 @@ function DelawareMap({
   selectedCountyGameId,
   heatmapData,
   viewType,
+  onCountyHover,
+  onCountyLeave,
 }) {
   const [hoveredCountyId, setHoveredCountyId] = useState(null);
   const [tooltipData, setTooltipData] = useState(null);
@@ -71,33 +73,44 @@ function DelawareMap({
 
     setHoveredCountyId(countyInfo.gameId);
 
-    if (viewType === "congressional_districts" && heatmapData?.mapData) {
-      const mapDataItem = heatmapData.mapData.find(
-        (item) => item.id === countyInfo.gameId
-      );
-      if (mapDataItem) {
+    // Call the external hover handler if provided (for election night tooltips)
+    if (onCountyHover) {
+      onCountyHover(countyInfo.gameId, event);
+    } else {
+      // Fallback to internal tooltip for other uses
+      if (viewType === "congressional_districts" && heatmapData?.mapData) {
+        const mapDataItem = heatmapData.mapData.find(
+          (item) => item.id === countyInfo.gameId
+        );
+        if (mapDataItem) {
+          setTooltipData({
+            name: countyInfo.name,
+            isSplit: mapDataItem.isSplit,
+            splitDetails: mapDataItem.splitDetails,
+            districtLabel: mapDataItem.value,
+          });
+        }
+      } else {
         setTooltipData({
           name: countyInfo.name,
-          isSplit: mapDataItem.isSplit,
-          splitDetails: mapDataItem.splitDetails,
-          districtLabel: mapDataItem.value,
+          isSplit: false,
+          splitDetails: null,
+          districtLabel: null,
         });
       }
-    } else {
-      setTooltipData({
-        name: countyInfo.name,
-        isSplit: false,
-        splitDetails: null,
-        districtLabel: null,
-      });
-    }
 
-    setMousePosition({ x: event.clientX, y: event.clientY });
+      setMousePosition({ x: event.clientX, y: event.clientY });
+    }
   };
 
   const handleMouseLeave = () => {
     setHoveredCountyId(null);
     setTooltipData(null);
+    
+    // Call the external leave handler if provided
+    if (onCountyLeave) {
+      onCountyLeave();
+    }
   };
 
   const handleMouseMove = (event) => {
@@ -140,20 +153,15 @@ function DelawareMap({
       <svg
         version="1.2"
         xmlns="http://www.w3.org/2000/svg"
-        viewBox="0 0 400 810"
-        className="interactive-japan-map"
+        viewBox="0 0 1200 810"
+        className="interactive-japan-map delaware-map"
         preserveAspectRatio="xMidYMid meet"
       >
-        <g
-          id="delaware-counties-group"
-          stroke="white"
-          strokeWidth="1"
-          transform="translate(-197, 5)"
-        >
+        <g id="delaware-counties-group" stroke="white" strokeWidth="1">
           {countyOrderFromSVG.map((svgId) => renderCountyPath(svgId))}
         </g>
       </svg>
-      {tooltipData && (
+      {tooltipData && !onCountyHover && (
         <div
           style={{
             position: "fixed",

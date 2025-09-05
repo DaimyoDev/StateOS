@@ -14,7 +14,7 @@ import ArizonaMap from "../maps/usaCounties/ArizonaMap";
 import ConnecticutMap from "../maps/usaCounties/ConnecticutMap";
 import CaliforniaMap from "../maps/usaCounties/CaliforniaMap";
 import ColoradoMap from "../maps/usaCounties/ColoradoMap";
-import DelawareMap from "../maps/usaCounties/DelwareMap";
+import DelawareMap from "../maps/usaCounties/DelawareMap";
 import FloridaMap from "../maps/usaCounties/FloridaMap";
 import GeorgiaMap from "../maps/usaCounties/GeorgiaMap";
 import IdahoMap from "../maps/usaCounties/IdahoMap";

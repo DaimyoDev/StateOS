@@ -310,8 +310,8 @@ h6 {
 html {
   /* Firefox */
   scrollbar-width: thin;
-  scrollbar-color: var(--scrollbar-thumb, rgba(255, 255, 255, 0.35))
-    var(--scrollbar-track, rgba(255, 255, 255, 0.08));
+  scrollbar-color: var(--scrollbar-thumb, var(--border-color, #ccc))
+    var(--scrollbar-track, var(--secondary-bg, #f5f5f5));
 }
 
 /* Chrome, Edge, Safari */
@@ -321,17 +321,17 @@ html {
 }
 
 *::-webkit-scrollbar-track {
-  background: var(--scrollbar-track, rgba(255, 255, 255, 0.08));
+  background: var(--scrollbar-track, var(--secondary-bg, #f5f5f5));
   border-radius: 8px;
 }
 
 *::-webkit-scrollbar-thumb {
-  background-color: var(--scrollbar-thumb, rgba(255, 255, 255, 0.35));
+  background-color: var(--scrollbar-thumb, var(--border-color, #ccc));
   border-radius: 8px;
   border: 2px solid transparent; /* Creates padding effect */
   background-clip: padding-box;
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background-color: var(--scrollbar-thumb-hover, rgba(255, 255, 255, 0.5));
+  background-color: var(--scrollbar-thumb-hover, var(--accent-color, #999));
 }
