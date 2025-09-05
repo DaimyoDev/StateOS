@@ -6,6 +6,7 @@ import { getRandomInt } from "../utils/core.js";
 import useGameStore from "../store.js";
 import { rehydratePolitician } from "../entities/personnel.js";
 import { calculateElectoralCollegeResults } from "../General Scripts/ElectoralCollegeSystem.js";
+import { calculateCoalitionBasedTurnout } from "../General Scripts/CoalitionSystem.js";
 
 // --- Seat Allocation & Winner Determination ---
 
@@ -627,11 +628,49 @@ export const calculateElectionOutcome = (
       ])
     );
   } else {
-    voterTurnoutPercentageActual = getRandomInt(40, 75);
-    totalVotesActuallyCast = Math.round(
-      (electionToEnd.totalEligibleVoters || 0) *
-        (voterTurnoutPercentageActual / 100)
-    );
+    // Use coalition-based turnout calculation instead of random
+    const { activeCampaign } = gameState;
+    let coalitionTurnoutData = null;
+    
+    // Try to get coalition system for this election
+    if (activeCampaign?.coalitionSystems) {
+      const electionEntityId = electionToEnd.entityDataSnapshot?.id;
+      let coalitionSoA = null;
+      
+      // Look for coalition system by election entity ID
+      if (electionEntityId && activeCampaign.coalitionSystems[electionEntityId]) {
+        coalitionSoA = activeCampaign.coalitionSystems[electionEntityId];
+      } else {
+        // Fallback: use any available coalition system (for state/national elections)
+        const availableCoalitions = Object.values(activeCampaign.coalitionSystems);
+        if (availableCoalitions.length > 0) {
+          coalitionSoA = availableCoalitions[0];
+        }
+      }
+      
+      if (coalitionSoA && electionToEnd.totalEligibleVoters > 0) {
+        coalitionTurnoutData = calculateCoalitionBasedTurnout(
+          coalitionSoA, 
+          electionToEnd.totalEligibleVoters
+        );
+        
+        totalVotesActuallyCast = coalitionTurnoutData.totalActualVotes;
+        voterTurnoutPercentageActual = coalitionTurnoutData.overallTurnoutRate;
+        
+        // Store coalition turnout data for potential analysis
+        electionToEnd.coalitionTurnoutData = coalitionTurnoutData;
+      }
+    }
+    
+    // Fallback to random turnout if no coalition data available
+    if (!coalitionTurnoutData) {
+      console.warn('No coalition data available for election, using random turnout');
+      voterTurnoutPercentageActual = getRandomInt(40, 75);
+      totalVotesActuallyCast = Math.round(
+        (electionToEnd.totalEligibleVoters || 0) *
+          (voterTurnoutPercentageActual / 100)
+      );
+    }
 
     const candidatesMap = electionToEnd.candidates || new Map();
     const candidateIds = Array.from(candidatesMap.keys());
@@ -704,6 +743,7 @@ export const calculateElectionOutcome = (
     ),
     totalVotesActuallyCast,
     voterTurnoutPercentageActual,
+    coalitionTurnoutData: electionToEnd.coalitionTurnoutData || null,
     seatsToFill: result.seatsToFill || seatsToFill,
     cityId: electionToEnd.entityDataSnapshot?.id || electionToEnd.id,
     newsContext: {

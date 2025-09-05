@@ -135,16 +135,26 @@ export const createOrganizationActionSlice = (set, get) => ({
 
   /**
    * NEW: Processes a donation, deducting funds and providing feedback.
-   * @param {string} groupId - The ID of the group receiving the donation.
+   * @param {string} entityId - The ID of the entity (group or party) receiving the donation.
    * @param {number} amount - The amount being donated.
    */
-  confirmDonation: (groupId, amount) => {
+  confirmDonation: (entityId, amount) => {
     set((state) => {
-      const group = state.activeCampaign?.lobbyingGroups?.find(
-        (g) => g.id === groupId
+      // Try to find the entity in lobbying groups first, then parties
+      let entity = state.activeCampaign?.lobbyingGroups?.find(
+        (g) => g.id === entityId
       );
-      if (!group) {
-        console.warn(`Confirm Donation: Group with ID ${groupId} not found.`);
+      let entityType = "group";
+      
+      if (!entity) {
+        entity = state.activeCampaign?.generatedPartiesSnapshot?.find(
+          (p) => p.id === entityId
+        );
+        entityType = "party";
+      }
+      
+      if (!entity) {
+        console.warn(`Confirm Donation: Entity with ID ${entityId} not found.`);
         return state;
       }
 
@@ -159,10 +169,59 @@ export const createOrganizationActionSlice = (set, get) => ({
         return state;
       }
 
+      let successMessage = `You successfully donated $${donationAmount.toLocaleString()} to ${entity.name}.`;
+      
+      // Add specific messaging based on entity type
+      if (entityType === "party") {
+        successMessage += " Your standing with the party has improved!";
+        
+        // Update party finances if the party has a finances object
+        if (entity.finances) {
+          // Add to party treasury
+          entity.finances.treasury = (entity.finances.treasury || 0) + donationAmount;
+          
+          // Update income sources to reflect the donation
+          if (entity.finances.incomeSources) {
+            entity.finances.incomeSources.individualDonations = 
+              (entity.finances.incomeSources.individualDonations || 0) + donationAmount;
+          }
+          
+          // Add to donor list if not already present
+          const playerPolitician = state.activeCampaign.politician;
+          const existingDonor = entity.finances.donors?.find(
+            d => d.name === `${playerPolitician.firstName} ${playerPolitician.lastName}`
+          );
+          
+          if (existingDonor) {
+            existingDonor.totalDonated += donationAmount;
+            existingDonor.lastDonationAmount = donationAmount;
+          } else if (entity.finances.donors) {
+            // Add new donor entry
+            const newDonor = {
+              id: `donor_${playerPolitician.id}`,
+              name: `${playerPolitician.firstName} ${playerPolitician.lastName}`,
+              type: "individual",
+              totalDonated: donationAmount,
+              lastDonationAmount: donationAmount,
+              donorCategory: donationAmount >= 5000 ? "major" : 
+                             donationAmount >= 1000 ? "large" : 
+                             donationAmount >= 250 ? "medium" : "small",
+              occupation: playerPolitician.background?.career || "Politician",
+              lastDonationDate: { year: 2025, month: 1, day: 1 } // Should use current game date
+            };
+            
+            entity.finances.donors.push(newDonor);
+            
+            // Add to major donors if it's a large donation
+            if (donationAmount >= 5000 && entity.finances.majorDonors) {
+              entity.finances.majorDonors.push(newDonor);
+            }
+          }
+        }
+      }
+
       get().actions.addToast({
-        message: `You successfully donated $${donationAmount.toLocaleString()} to ${
-          group.name
-        }.`,
+        message: successMessage,
         type: "success",
       });
 

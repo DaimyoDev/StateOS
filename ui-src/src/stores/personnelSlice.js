@@ -101,6 +101,7 @@ const getInitialPersonnelState = () => ({
   talentPool: [],
   hiredStaff: [],
   politicianIntel: {},
+  scheduledMeetings: [],
 });
 
 export const createPersonnelSlice = (set, get) => ({
@@ -893,6 +894,510 @@ export const createPersonnelSlice = (set, get) => ({
       }
 
       return generateAICandidateNameForElection(countryId, demographics);
+    },
+
+    /**
+     * Join a party committee as a member or chair
+     */
+    joinPartyCommittee: (partyId, committeeId, role = "member") => {
+      const cost = role === "chair" ? 2000 : 500;
+      const playerPolitician = get().activeCampaign.politician;
+
+      if (playerPolitician.treasury < cost) {
+        get().actions.addToast({
+          message: `Not enough funds to join committee as ${role}. Need $${cost}.`,
+          type: "error",
+        });
+        return;
+      }
+
+      // Find the party and committee (this would need to be implemented based on your party storage system)
+      get().actions.updatePlayerPolitician({
+        treasury: playerPolitician.treasury - cost,
+      });
+
+      get().actions.addToast({
+        message: `Successfully joined committee as ${role}!`,
+        type: "success",
+      });
+    },
+
+    /**
+     * Request to meet with a committee chair
+     */
+    requestCommitteeMeeting: (partyId, committeeId, chairId) => {
+      const cost = 300;
+      const playerPolitician = get().activeCampaign.politician;
+
+      if (playerPolitician.treasury < cost) {
+        get().actions.addToast({
+          message: `Not enough funds for committee meeting. Need $${cost}.`,
+          type: "error",
+        });
+        return;
+      }
+
+      get().actions.updatePlayerPolitician({
+        treasury: playerPolitician.treasury - cost,
+      });
+
+      // Improve relationship with committee chair
+      if (chairId) {
+        get().actions.adjustRelationship(chairId, 1);
+      }
+
+      get().actions.addToast({
+        message: "Meeting with committee chair scheduled. Relationship improved!",
+        type: "success",
+      });
+    },
+    
+    /**
+     * Schedule attendance at a committee meeting as a guest
+     */
+    scheduleCommitteeAttendance: (partyId, committeeId) => {
+      const cost = 100; // Small administrative fee
+      const playerPolitician = get().activeCampaign.politician;
+      const party = get().activeCampaign?.generatedPartiesSnapshot?.find(p => p.id === partyId);
+      const committee = party?.committees?.find(c => c.id === committeeId);
+      
+      if (!committee) {
+        get().actions.addToast({
+          message: "Committee not found.",
+          type: "error",
+        });
+        return;
+      }
+
+      if (playerPolitician.treasury < cost) {
+        get().actions.addToast({
+          message: `Not enough funds to register for committee meeting. Need $${cost}.`,
+          type: "error",
+        });
+        return;
+      }
+
+      // Calculate next meeting date based on frequency
+      const currentDate = get().activeCampaign.currentDate;
+      let daysUntilMeeting = 7; // Default weekly
+      
+      switch(committee.meetingFrequency) {
+        case 'daily':
+          daysUntilMeeting = 1;
+          break;
+        case 'weekly':
+          daysUntilMeeting = 7;
+          break;
+        case 'bi-weekly':
+          daysUntilMeeting = 14;
+          break;
+        case 'monthly':
+          daysUntilMeeting = 30;
+          break;
+        case 'quarterly':
+          daysUntilMeeting = 90;
+          break;
+      }
+      
+      const meetingDate = {
+        year: currentDate.year,
+        month: currentDate.month,
+        day: currentDate.day + daysUntilMeeting
+      };
+      
+      // Handle month/year overflow
+      while (meetingDate.day > 30) {
+        meetingDate.day -= 30;
+        meetingDate.month++;
+        if (meetingDate.month > 12) {
+          meetingDate.month = 1;
+          meetingDate.year++;
+        }
+      }
+
+      // Store scheduled meeting
+      set((state) => ({
+        scheduledMeetings: [
+          ...(state.scheduledMeetings || []),
+          {
+            id: `meeting_${generateId()}`,
+            type: 'committee',
+            partyId,
+            committeeId,
+            committeeName: committee.name,
+            partyName: party.name,
+            meetingDate,
+            status: 'scheduled'
+          }
+        ]
+      }));
+
+      get().actions.updatePlayerPolitician({
+        treasury: playerPolitician.treasury - cost,
+      });
+
+      get().actions.addToast({
+        message: `Scheduled to attend ${committee.name} meeting on ${meetingDate.month}/${meetingDate.day}/${meetingDate.year}.`,
+        type: "success",
+      });
+    },
+    
+    /**
+     * Generate committee meeting content
+     */
+    generateCommitteeMeetingContent: (partyId, committeeId) => {
+      const party = get().activeCampaign?.generatedPartiesSnapshot?.find(p => p.id === partyId);
+      const committee = party?.committees?.find(c => c.id === committeeId);
+      
+      if (!committee) return null;
+      
+      // Generate agenda items based on committee focus
+      const agendaTemplates = {
+        'Fundraising & Budget': [
+          'Review quarterly fundraising targets',
+          'Discuss major donor cultivation strategies',
+          'Analyze campaign finance reports',
+          'Budget allocation for upcoming events',
+          'Membership dues collection update'
+        ],
+        'Platform Development': [
+          'Review proposed policy amendments',
+          'Discuss party stance on recent legislation',
+          'Coordinate messaging with elected officials',
+          'Address constituent policy concerns',
+          'Prepare position papers for key issues'
+        ],
+        'Media & Messaging': [
+          'Review recent press coverage',
+          'Plan upcoming media campaigns',
+          'Crisis communication preparedness',
+          'Social media strategy update',
+          'Coordinate spokesperson training'
+        ],
+        'Electoral Strategy': [
+          'Analyze polling data and trends',
+          'Review candidate recruitment efforts',
+          'Discuss resource allocation for races',
+          'Coordinate field operations',
+          'Plan voter outreach initiatives'
+        ],
+        'Community Relations': [
+          'Review community partnership proposals',
+          'Plan town hall meetings',
+          'Discuss constituent services',
+          'Coordinate with local organizations',
+          'Address community concerns'
+        ],
+        'Youth Engagement': [
+          'Campus outreach initiatives',
+          'Young professional networking events',
+          'Internship program updates',
+          'Social media engagement strategies',
+          'Youth leadership development'
+        ],
+        'Party Governance': [
+          'Review party bylaws and procedures',
+          'Discuss internal disputes',
+          'Committee appointment recommendations',
+          'Ethics compliance review',
+          'Organizational structure updates'
+        ]
+      };
+      
+      const defaultAgenda = [
+        'Review previous meeting minutes',
+        'Discuss current party priorities',
+        'Address member concerns',
+        'Plan upcoming activities',
+        'General business'
+      ];
+      
+      const agenda = agendaTemplates[committee.focus] || defaultAgenda;
+      
+      // Generate discussion points from members
+      const discussions = [];
+      const members = [committee.chair, ...(committee.members || [])].filter(Boolean);
+      
+      members.forEach(member => {
+        if (Math.random() < 0.7) { // 70% chance each member speaks
+          const topics = [
+            `I believe we need to focus more on ${member.expertise.toLowerCase()}.`,
+            `Based on my experience as a ${member.background}, I think we should consider...`,
+            `The party's position on this needs to be clearer.`,
+            `We're seeing strong support for this initiative in my district.`,
+            `I have concerns about the budget allocation for this project.`,
+            `This aligns well with our core values and principles.`,
+            `We need better coordination with the national committee on this.`,
+            `The timeline seems ambitious but achievable with proper resources.`,
+            `I've been hearing different feedback from constituents.`,
+            `Let's ensure we're being transparent about this process.`
+          ];
+          
+          discussions.push({
+            speaker: member.name,
+            role: member.role,
+            statement: getRandomElement(topics),
+            expertise: member.expertise,
+            influence: member.attributes?.influence || 50
+          });
+        }
+      });
+      
+      // Generate any motions or decisions
+      const possibleMotions = [
+        'Motion to allocate additional funds',
+        'Motion to form a subcommittee',
+        'Motion to table discussion until next meeting',
+        'Motion to approve the proposed plan',
+        'Motion to request further research',
+        'Motion to coordinate with other committees'
+      ];
+      
+      const motion = Math.random() < 0.5 ? getRandomElement(possibleMotions) : null;
+      const motionPassed = motion ? Math.random() < 0.6 : false;
+      
+      return {
+        committee,
+        party,
+        agenda: agenda.slice(0, 3 + Math.floor(Math.random() * 2)), // 3-4 items
+        discussions,
+        motion,
+        motionPassed,
+        attendees: members.length,
+        atmosphere: getRandomElement(['productive', 'tense', 'collaborative', 'routine', 'energetic'])
+      };
+    },
+    
+    /**
+     * Check for scheduled meetings on current date
+     */
+    checkScheduledMeetings: () => {
+      const currentDate = get().activeCampaign?.currentDate;
+      const scheduledMeetings = get().scheduledMeetings || [];
+      
+      if (!currentDate) return;
+      
+      const todaysMeetings = scheduledMeetings.filter(meeting => 
+        meeting.meetingDate.year === currentDate.year &&
+        meeting.meetingDate.month === currentDate.month &&
+        meeting.meetingDate.day === currentDate.day &&
+        meeting.status === 'scheduled'
+      );
+      
+      if (todaysMeetings.length > 0) {
+        // Open meeting modal for the first meeting
+        const meeting = todaysMeetings[0];
+        get().actions.openCommitteeMeetingModal(meeting);
+      }
+    },
+    
+    /**
+     * Complete a scheduled meeting
+     */
+    completeScheduledMeeting: (meetingId) => {
+      set((state) => ({
+        scheduledMeetings: state.scheduledMeetings.map(meeting =>
+          meeting.id === meetingId
+            ? { ...meeting, status: 'completed' }
+            : meeting
+        )
+      }));
+    },
+
+    /**
+     * Propose new committee member
+     */
+    proposeCommitteeMember: (partyId, committeeId, politicianId) => {
+      const cost = 750;
+      const playerPolitician = get().activeCampaign.politician;
+
+      if (playerPolitician.treasury < cost) {
+        get().actions.addToast({
+          message: `Not enough funds to propose committee member. Need $${cost}.`,
+          type: "error",
+        });
+        return;
+      }
+
+      get().actions.updatePlayerPolitician({
+        treasury: playerPolitician.treasury - cost,
+      });
+
+      get().actions.addToast({
+        message: "Committee membership proposal submitted!",
+        type: "info",
+      });
+    },
+
+    /**
+     * Challenge committee chair position
+     */
+    challengeCommitteeChair: (partyId, committeeId, currentChairId) => {
+      const cost = 1500;
+      const playerPolitician = get().activeCampaign.politician;
+
+      if (playerPolitician.treasury < cost) {
+        get().actions.addToast({
+          message: `Not enough funds to challenge committee chair. Need $${cost}.`,
+          type: "error",
+        });
+        return;
+      }
+
+      if (playerPolitician.partyId !== partyId) {
+        get().actions.addToast({
+          message: "You can only challenge committee chairs within your own party.",
+          type: "error",
+        });
+        return;
+      }
+
+      get().actions.updatePlayerPolitician({
+        treasury: playerPolitician.treasury - cost,
+      });
+
+      // Damage relationship with current chair
+      if (currentChairId) {
+        get().actions.adjustRelationship(currentChairId, -2);
+      }
+
+      const success = Math.random() > 0.6; // 40% success rate
+      if (success) {
+        get().actions.addToast({
+          message: "Challenge successful! You are now the committee chair!",
+          type: "success",
+        });
+      } else {
+        get().actions.addToast({
+          message: "Challenge failed. The current chair retains their position.",
+          type: "warning",
+        });
+      }
+    },
+
+    /**
+     * Make a donation to a political party
+     */
+    donateToParty: (partyId) => {
+      const party = get().activeCampaign?.generatedPartiesSnapshot?.find(
+        (p) => p.id === partyId
+      );
+      if (!party) {
+        console.warn(`Donation Action: Party with ID ${partyId} not found.`);
+        return;
+      }
+      
+      const playerPolitician = get().activeCampaign.politician;
+      if (playerPolitician.treasury < 100) {
+        get().actions.addToast({
+          message: "You need at least $100 to make a donation.",
+          type: "error",
+        });
+        return;
+      }
+
+      // Open the donation modal with party entity
+      get().actions.openDonationModal(party);
+    },
+
+    /**
+     * Request detailed financial records from a party
+     */
+    requestFinancialRecords: (partyId) => {
+      const cost = 200; // Cost for investigation/FOIA request
+      const playerPolitician = get().activeCampaign.politician;
+
+      if (playerPolitician.treasury < cost) {
+        get().actions.addToast({
+          message: `Not enough funds to request financial records. Need $${cost}.`,
+          type: "error",
+        });
+        return;
+      }
+
+      get().actions.updatePlayerPolitician({
+        treasury: playerPolitician.treasury - cost,
+      });
+
+      const success = Math.random() > 0.3; // 70% success rate
+      if (success) {
+        get().actions.addToast({
+          message: "Financial records obtained! Detailed donor information revealed.",
+          type: "success",
+        });
+        // TODO: Reveal additional donor details in party finances
+      } else {
+        get().actions.addToast({
+          message: "Request denied. The party's financial records remain private.",
+          type: "warning",
+        });
+      }
+    },
+
+    /**
+     * Purchase party merchandise
+     */
+    purchasePartyMerchandise: (partyId, merchItemId, quantity = 1) => {
+      const playerPolitician = get().activeCampaign.politician;
+      
+      // Find the party and merchandise item
+      // This would need to access party data from the campaign state
+      const cost = 25 * quantity; // Example cost
+
+      if (playerPolitician.treasury < cost) {
+        get().actions.addToast({
+          message: `Not enough funds to purchase merchandise. Need $${cost}.`,
+          type: "error",
+        });
+        return;
+      }
+
+      get().actions.updatePlayerPolitician({
+        treasury: playerPolitician.treasury - cost,
+      });
+
+      get().actions.addToast({
+        message: `Purchased party merchandise for $${cost}. Supporting the cause!`,
+        type: "success",
+      });
+
+      // TODO: Update party finances with merchandise sale
+      // TODO: Add merchandise to player inventory
+    },
+
+    /**
+     * Host fundraiser for a party
+     */
+    hostPartyFundraiser: (partyId) => {
+      const cost = 2000; // Upfront costs for venue, catering, etc.
+      const playerPolitician = get().activeCampaign.politician;
+
+      if (playerPolitician.treasury < cost) {
+        get().actions.addToast({
+          message: `Not enough funds to host fundraiser. Need $${cost}.`,
+          type: "error",
+        });
+        return;
+      }
+
+      get().actions.updatePlayerPolitician({
+        treasury: playerPolitician.treasury - cost,
+      });
+
+      // Fundraiser success based on player's charisma and networking
+      const charisma = playerPolitician.attributes?.charisma || 50;
+      const successMultiplier = Math.max(1, charisma / 50);
+      const fundsRaised = Math.round((getRandomInt(3000, 8000) * successMultiplier));
+
+      const profit = fundsRaised - cost;
+
+      get().actions.addToast({
+        message: `Fundraiser raised $${fundsRaised.toLocaleString()}! Your net contribution: $${profit.toLocaleString()}`,
+        type: profit > 0 ? "success" : "warning",
+      });
+
+      // Improve party relationships
+      // TODO: Update party finances with fundraiser proceeds
     },
   },
 });

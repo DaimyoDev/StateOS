@@ -20,6 +20,25 @@ import {
 } from "../entities/personnel";
 import { calculateElectoralCollegeResults } from "../General Scripts/ElectoralCollegeSystem";
 import { calculateElectionOutcome } from "../elections/electionResults.js";
+import { 
+  generateCoalitionsForSimulation, 
+  createElectionInstance, 
+  repollCandidatesForElections, 
+  createSimulatedElections, 
+  validateSimulationSetup 
+} from "../elections/simulationLogic.js";
+import { 
+  updateCoalitionMobilization,
+  convertCoalitionSoAToArray,
+  getPartyAlignmentForCoalition 
+} from "../elections/coalitionManager.js";
+import { 
+  generateCandidatesForRace,
+  addSavedPoliticiansToRace,
+  removeCandidateFromRace,
+  updateCandidateInRace,
+  processSavedPoliticians
+} from "../elections/candidateManager.js";
 
 // Reusable UI components
 import Modal from "../components/modals/Modal";
@@ -39,21 +58,8 @@ const getInitialSetupState = () => ({
   candidatesByElection: {}, // New structure for candidates
   customCity: null,
   voterTurnout: 60,
-  electorateIdeologyCenter: Object.fromEntries(
-    Object.keys(IDEOLOGY_DEFINITIONS.centrist.idealPoint).map((axis) => [
-      axis,
-      0,
-    ])
-  ),
-  electorateIdeologySpread: Object.fromEntries(
-    Object.keys(IDEOLOGY_DEFINITIONS.centrist.idealPoint).map((axis) => [
-      axis,
-      1,
-    ])
-  ),
-  electorateIssueStances: Object.fromEntries(
-    POLICY_QUESTIONS.filter((q) => q.options?.length > 0).map((q) => [q.id, 0])
-  ),
+  coalitionSystems: null, // Will be generated when parties are created
+  coalitionsGenerated: false,
 });
 
 const ElectionSimulatorScreen = () => {
@@ -191,50 +197,27 @@ const ElectionSimulatorScreen = () => {
     setCurrentSetup((prev) => ({ ...prev, [field]: value }));
   }, []);
 
+  const generateCoalitionsForSetup = useCallback(() => {
+    const result = generateCoalitionsForSimulation(currentSetup.parties);
+    updateCurrentSetup("coalitionSystems", result.coalitionSystems);
+    updateCurrentSetup("coalitionsGenerated", result.coalitionsGenerated);
+  }, [currentSetup.parties, updateCurrentSetup]);
+
   const addElectionInstance = useCallback(
     (electionTypeId) => {
-      const electionType = availableElectionTypes.find(
-        (t) => t.id === electionTypeId
-      );
-      if (!electionType) return;
-
-      const currentInstances =
-        currentSetup.electionInstances[electionTypeId] || [];
-      const instanceNumber = currentInstances.length + 1;
-
-      // Generate district number only for House/Senate elections (not Governor, etc.)
-      let districtNumber = null;
-      if (
-        electionType.id.includes("house") ||
-        electionType.id.includes("senate") ||
-        electionType.officeName?.toLowerCase().includes("house") ||
-        electionType.officeName?.toLowerCase().includes("senate")
-      ) {
-        districtNumber = instanceNumber;
-      }
-
-      // Create a better base display name using office name template
+      const currentInstances = currentSetup.electionInstances[electionTypeId] || [];
       const selectedRegion = availableRegions.find(r => r.id === currentSetup.selectedRegionId);
-      const regionName = selectedRegion?.name || "Region";
       
-      let baseDisplayName = electionType.displayName || electionType.name || electionTypeId;
+      const newInstance = createElectionInstance(
+        electionTypeId, 
+        availableElectionTypes, 
+        currentInstances, 
+        selectedCountry, 
+        selectedRegion, 
+        currentSetup.customCity
+      );
       
-      if (electionType.officeNameTemplate) {
-        baseDisplayName = electionType.officeNameTemplate
-          .replace(/{stateName}|{regionName}|{prefectureName}|{provinceName}/g, regionName)
-          .replace(/{countryName}/g, selectedCountry?.name || "Country")
-          .replace(/{cityName}|{cityNameOrMunicipalityName}/g, currentSetup.customCity?.name || "City")
-          .replace(/{.*?}/g, "")
-          .trim();
-      }
-
-      const newInstance = {
-        id: `${electionTypeId}_instance_${instanceNumber}`,
-        electionTypeId: electionTypeId,
-        instanceNumber: instanceNumber,
-        districtNumber: districtNumber,
-        displayName: baseDisplayName,
-      };
+      if (!newInstance) return;
 
       const newInstances = [...currentInstances, newInstance];
       const newElectionInstances = {
@@ -253,7 +236,7 @@ const ElectionSimulatorScreen = () => {
         electionType: allInstanceIds,
       }));
     },
-    [availableElectionTypes, currentSetup.electionInstances, availableRegions, currentSetup.selectedRegionId, selectedCountry, currentSetup.customCity]
+    [availableElectionTypes, currentSetup.electionInstances, currentSetup.selectedRegionId, currentSetup.customCity, availableRegions, selectedCountry]
   );
 
   const removeElectionInstance = useCallback(
@@ -444,7 +427,9 @@ const ElectionSimulatorScreen = () => {
     }).filter(Boolean);
     updateCurrentSetup("parties", generated);
     updateCurrentSetup("candidatesByElection", {});
-  }, [updateCurrentSetup]);
+    // Auto-generate coalitions after party generation
+    setTimeout(() => generateCoalitionsForSetup(), 100);
+  }, [updateCurrentSetup, generateCoalitionsForSetup]);
 
   const handleCreateNewParty = () => {
     setEditingParty(null);
@@ -497,61 +482,22 @@ const ElectionSimulatorScreen = () => {
     updateCurrentSetup("parties", newParties);
     setIsPartyEditorModalOpen(false);
     setEditingParty(null);
+    // Regenerate coalitions after party changes
+    setTimeout(() => generateCoalitionsForSetup(), 100);
   };
 
-  const handleRandomizeElectorateProfile = useCallback(() => {
-    const newCenter = {};
-    const newSpread = {};
-    Object.keys(IDEOLOGY_DEFINITIONS.centrist.idealPoint).forEach((axis) => {
-      newCenter[axis] = parseFloat((getRandomInt(-40, 40) / 10).toFixed(1));
-      newSpread[axis] = parseFloat((getRandomInt(1, 40) / 10).toFixed(1));
-    });
-    const newIssueStances = {};
-    POLICY_QUESTIONS.forEach((question) => {
-      if (question.options?.length > 0) {
-        newIssueStances[question.id] = getRandomInt(-100, 100);
-      }
-    });
-    updateCurrentSetup("electorateIdeologyCenter", newCenter);
-    updateCurrentSetup("electorateIdeologySpread", newSpread);
-    updateCurrentSetup("electorateIssueStances", newIssueStances);
-  }, [updateCurrentSetup]);
 
   const handleRepollCandidates = useCallback(() => {
-    // Get all candidates across all elections
-    const allElectionInstances = Object.values(currentSetup.electionInstances).flat();
-    const updatedCandidatesByElection = { ...currentSetup.candidatesByElection };
-    let totalCandidatesRepolled = 0;
-
-    allElectionInstances.forEach(electionInstance => {
-      const candidates = updatedCandidatesByElection[electionInstance.id] || [];
-      if (candidates.length > 0) {
-        // Repoll each candidate based on new electorate profile
-        const repolledCandidates = candidates.map(candidate => ({
-          ...candidate,
-          polling: Math.max(1, Math.min(99, 
-            // Base polling with some random variation
-            candidate.polling + (Math.random() - 0.5) * 20
-          ))
-        }));
-
-        // Normalize polling to 100%
-        const totalPolling = repolledCandidates.reduce((sum, c) => sum + c.polling, 0);
-        const normalizedCandidates = repolledCandidates.map(candidate => ({
-          ...candidate,
-          polling: (candidate.polling / totalPolling) * 100
-        }));
-
-        updatedCandidatesByElection[electionInstance.id] = normalizedCandidates;
-        totalCandidatesRepolled += normalizedCandidates.length;
-      }
-    });
+    const { updatedCandidatesByElection, totalCandidatesRepolled } = repollCandidatesForElections(
+      currentSetup.candidatesByElection,
+      currentSetup.electionInstances
+    );
 
     if (totalCandidatesRepolled > 0) {
       updateCurrentSetup("candidatesByElection", updatedCandidatesByElection);
       actions.addToast({
         id: `repoll-complete-${Date.now()}`,
-        message: `Repolled ${totalCandidatesRepolled} candidates based on new electorate profile!`,
+        message: `Repolled ${totalCandidatesRepolled} candidates based on new coalition profile!`,
         type: "success",
       });
     } else {
@@ -561,7 +507,7 @@ const ElectionSimulatorScreen = () => {
         type: "warning",
       });
     }
-  }, [currentSetup, updateCurrentSetup, actions]);
+  }, [currentSetup.candidatesByElection, currentSetup.electionInstances, updateCurrentSetup, actions]);
 
   const handleGenerateCandidatesForRace = useCallback(() => {
     if (!activeElectionInCandidateTab || currentSetup.parties.length === 0) {
@@ -756,11 +702,18 @@ const ElectionSimulatorScreen = () => {
     ).flat();
     if (
       allElectionInstances.length === 0 ||
-      currentSetup.parties.length === 0
+      currentSetup.parties.length === 0 ||
+      !currentSetup.coalitionsGenerated
     ) {
+      let message = "Please complete your setup: ";
+      const missing = [];
+      if (allElectionInstances.length === 0) missing.push("select election types");
+      if (currentSetup.parties.length === 0) missing.push("configure parties");
+      if (!currentSetup.coalitionsGenerated) missing.push("generate coalitions");
+      
       actions.addToast({
         id: `incomplete-setup-${Date.now()}`,
-        message: "Please select election types and configure parties.",
+        message: message + missing.join(", ") + ".",
         type: "error",
       });
       return;
@@ -868,6 +821,8 @@ const ElectionSimulatorScreen = () => {
         voterTurnoutPercentage: currentSetup.voterTurnout,
         numberOfSeatsToFill: selectedElectionTypeDetails.seatsToFill || 1,
         outcome: { status: "upcoming" },
+        // Add coalition data for realistic turnout calculations
+        coalitionSoA: currentSetup.coalitionSystems?.simulation_default,
         // Add Electoral College specific data if needed
         ...(selectedElectionTypeDetails.electoralSystem === "ElectoralCollege" && {
           isElectoralCollege: true,
@@ -954,11 +909,11 @@ const ElectionSimulatorScreen = () => {
             </button>
             <button
               className={`tab-button ${
-                activeSetupTab === "electorate" ? "active" : ""
+                activeSetupTab === "coalitions" ? "active" : ""
               }`}
-              onClick={() => setActiveSetupTab("electorate")}
+              onClick={() => setActiveSetupTab("coalitions")}
             >
-              Electorate
+              Coalitions
             </button>
           </div>
 
@@ -1308,94 +1263,79 @@ const ElectionSimulatorScreen = () => {
                 )}
               </div>
             )}
-            {activeSetupTab === "electorate" && (
-              <div className="tab-pane electorate-tab">
-                <h3>Electorate Composition</h3>
-                <div className="config-group">
-                  <label>Expected Voter Turnout (%):</label>
-                  <input
-                    type="range"
-                    name="voterTurnout"
-                    min="0"
-                    max="100"
-                    value={currentSetup.voterTurnout}
-                    onChange={handleSetupFieldChange}
-                  />
-                  <span>{currentSetup.voterTurnout}%</span>
-                </div>
-                <h5>Ideological Stances:</h5>
-                {Object.keys(currentSetup.electorateIdeologyCenter).map(
-                  (axis) => (
-                    <div
-                      key={axis}
-                      className="config-group ideology-slider-group"
+            {activeSetupTab === "coalitions" && (
+              <div className="tab-pane coalitions-tab">
+                <h3>Coalition Configuration</h3>
+                {!currentSetup.coalitionsGenerated ? (
+                  <div className="coalitions-setup">
+                    <p className="help-text">
+                      Coalitions must be generated before you can run simulations.
+                      Create or generate parties first, then generate coalitions.
+                    </p>
+                    <button
+                      className="action-button primary"
+                      onClick={generateCoalitionsForSetup}
+                      disabled={currentSetup.parties.length === 0}
                     >
-                      <label>{axis.replace(/_/g, " ")}:</label>
-                      <div className="slider-with-values">
-                        <span>Center:</span>
-                        <input
-                          type="range"
-                          min="-4"
-                          max="4"
-                          step="0.1"
-                          value={currentSetup.electorateIdeologyCenter[axis]}
-                          onChange={(e) =>
-                            setCurrentSetup((p) => ({
-                              ...p,
-                              electorateIdeologyCenter: {
-                                ...p.electorateIdeologyCenter,
-                                [axis]: parseFloat(e.target.value),
-                              },
-                            }))
-                          }
-                        />
-                        <span>
-                          {currentSetup.electorateIdeologyCenter[axis]?.toFixed(
-                            1
-                          )}
-                        </span>
-                      </div>
-                      <div className="slider-with-values">
-                        <span>Spread:</span>
-                        <input
-                          type="range"
-                          min="0.1"
-                          max="4"
-                          step="0.1"
-                          value={currentSetup.electorateIdeologySpread[axis]}
-                          onChange={(e) =>
-                            setCurrentSetup((p) => ({
-                              ...p,
-                              electorateIdeologySpread: {
-                                ...p.electorateIdeologySpread,
-                                [axis]: parseFloat(e.target.value),
-                              },
-                            }))
-                          }
-                        />
-                        <span>
-                          {currentSetup.electorateIdeologySpread[axis]?.toFixed(
-                            1
-                          )}
-                        </span>
-                      </div>
+                      Generate Coalitions
+                    </button>
+                    {currentSetup.parties.length === 0 && (
+                      <p className="warning-text">
+                        Add parties in the "Parties" tab first.
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="coalitions-display">
+                    <div className="config-group">
+                      <label>Expected Voter Turnout (%):</label>
+                      <input
+                        type="range"
+                        name="voterTurnout"
+                        min="0"
+                        max="100"
+                        value={currentSetup.voterTurnout}
+                        onChange={handleSetupFieldChange}
+                      />
+                      <span>{currentSetup.voterTurnout}%</span>
                     </div>
-                  )
+                    
+                    <div className="coalitions-list">
+                      <h4>Generated Coalitions</h4>
+                      {currentSetup.coalitionSystems?.simulation_default ? (
+                        <CoalitionsList 
+                          coalitionSoA={currentSetup.coalitionSystems.simulation_default}
+                          parties={currentSetup.parties}
+                          onCoalitionUpdate={(updatedCoalitionSoA) => {
+                            updateCurrentSetup("coalitionSystems", {
+                              ...currentSetup.coalitionSystems,
+                              simulation_default: updatedCoalitionSoA
+                            });
+                          }}
+                        />
+                      ) : (
+                        <p className="help-text">
+                          No coalitions available. Click "Regenerate Coalitions" to create them.
+                        </p>
+                      )}
+                    </div>
+                    
+                    <div className="coalitions-controls">
+                      <button
+                        className="action-button"
+                        onClick={generateCoalitionsForSetup}
+                      >
+                        Regenerate Coalitions
+                      </button>
+                      <button
+                        className="action-button"
+                        onClick={handleRepollCandidates}
+                      >
+                        Repoll Candidates
+                      </button>
+                    </div>
+                  </div>
                 )}
-                <div className="electorate-controls">
-                  <button
-                    className="action-button"
-                    onClick={handleRandomizeElectorateProfile}
-                  >
-                    Randomize Profile
-                  </button>
-                  <button
-                    className="action-button"
-                    onClick={handleRepollCandidates}
-                  >
-                    Repoll Candidates
-                  </button>
-                </div>
               </div>
             )}
           </div>
@@ -1966,6 +1906,263 @@ const ScenarioManagementModalContent = ({ savedElectionSetups, onLoad, onDelete,
           Cancel
         </button>
       </div>
+    </div>
+  );
+};
+
+const CoalitionsList = ({ coalitionSoA, parties, onCoalitionUpdate }) => {
+  const [expandedProfiles, setExpandedProfiles] = useState(new Set());
+  const [editingProfiles, setEditingProfiles] = useState(new Set());
+  const [tempPolicyStances, setTempPolicyStances] = useState(new Map());
+
+  if (!coalitionSoA || !coalitionSoA.base) {
+    return <p className="help-text">No coalitions data available.</p>;
+  }
+
+  // Convert the coalitions SoA structure to array for display using extracted function
+  const coalitionData = convertCoalitionSoAToArray(coalitionSoA);
+
+  const handleMobilizationChange = (coalitionId, newMobilization) => {
+    const updatedCoalitionSoA = updateCoalitionMobilization(coalitionSoA, coalitionId, newMobilization);
+    onCoalitionUpdate(updatedCoalitionSoA);
+  };
+
+  const toggleElectorateProfile = (coalitionId) => {
+    const newExpanded = new Set(expandedProfiles);
+    if (newExpanded.has(coalitionId)) {
+      newExpanded.delete(coalitionId);
+    } else {
+      newExpanded.add(coalitionId);
+    }
+    setExpandedProfiles(newExpanded);
+  };
+
+  const startEditingProfile = (coalitionId) => {
+    const coalition = coalitionData.find(c => c.id === coalitionId);
+    if (coalition && coalition.policyStances) {
+      // Store current policy stances as temporary editable data
+      setTempPolicyStances(new Map([[coalitionId, new Map(coalition.policyStances)]]));
+      setEditingProfiles(new Set([coalitionId]));
+    }
+  };
+
+  const cancelEditingProfile = (coalitionId) => {
+    setEditingProfiles(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(coalitionId);
+      return newSet;
+    });
+    setTempPolicyStances(prev => {
+      const newMap = new Map(prev);
+      newMap.delete(coalitionId);
+      return newMap;
+    });
+  };
+
+  const saveProfileChanges = (coalitionId) => {
+    const tempStances = tempPolicyStances.get(coalitionId);
+    if (tempStances) {
+      // Update the coalition SoA structure with new policy stances
+      const updatedCoalitionSoA = {
+        ...coalitionSoA,
+        policyStances: new Map(coalitionSoA.policyStances)
+      };
+      updatedCoalitionSoA.policyStances.set(coalitionId, tempStances);
+      onCoalitionUpdate(updatedCoalitionSoA);
+    }
+    cancelEditingProfile(coalitionId);
+  };
+
+  const updateTempPolicyStance = (coalitionId, policyId, newValue) => {
+    setTempPolicyStances(prev => {
+      const newMap = new Map(prev);
+      const coalitionStances = new Map(newMap.get(coalitionId) || new Map());
+      coalitionStances.set(policyId, parseFloat(newValue));
+      newMap.set(coalitionId, coalitionStances);
+      return newMap;
+    });
+  };
+
+  // Helper function to format demographic values nicely
+  const formatDemographicValue = (key, value) => {
+    const labels = {
+      location: 'Location',
+      age: 'Age Group',
+      education: 'Education',
+      occupation: 'Occupation',
+      income: 'Income Level',
+      ageDistribution: 'Age Distribution',
+      urbanization: 'Urbanization',
+      educationLevel: 'Education Level',
+      incomeLevel: 'Income Level'
+    };
+
+    const label = labels[key] || key.charAt(0).toUpperCase() + key.slice(1);
+    
+    if (typeof value === 'object' && value !== null) {
+      // For nested objects like age distribution, show the dominant category
+      const entries = Object.entries(value);
+      if (entries.length > 0) {
+        const dominant = entries.reduce((max, [k, v]) => v > max.value ? { key: k, value: v } : max, { key: entries[0][0], value: entries[0][1] });
+        return `${label}: ${dominant.key} (${dominant.value}%)`;
+      }
+      return `${label}: Complex`;
+    }
+    
+    // Format simple values
+    if (typeof value === 'number') {
+      return `${label}: ${value}${key === 'urbanization' ? '%' : ''}`;
+    }
+    
+    return `${label}: ${value}`;
+  };
+
+  return (
+    <div className="coalitions-list">
+      {coalitionData.map((coalition) => (
+        <div key={coalition.id} className="coalition-item">
+          <div className="coalition-header">
+            <h5>{coalition.name || `Coalition ${coalition.id}`}</h5>
+            <span className="support-base">
+              Support Base: {(coalition.supportBase * 100).toFixed(1)}%
+            </span>
+          </div>
+          
+          <div className="coalition-details">
+            <div className="demographic-profile">
+              <h6>Demographics:</h6>
+              <div className="demo-stats">
+                {coalition.demographics && Object.entries(coalition.demographics).map(([key, value]) => (
+                  <div key={key} className="demo-stat">
+                    {formatDemographicValue(key, value)}
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            <div className="party-preferences">
+              <h6>Party Preferences:</h6>
+              {getPartyAlignmentForCoalition(coalition, parties).map(({ partyId, partyName, partyColor, alignment }) => (
+                <div key={partyId} className="party-alignment">
+                  <span className="party-name" style={{ color: partyColor }}>
+                    {partyName}
+                  </span>
+                  <span className="alignment-score">
+                    {alignment.toFixed(0)}%
+                  </span>
+                </div>
+              ))}
+            </div>
+            
+            <div className="mobilization-control">
+              <label>Mobilization Level:</label>
+              <div className="slider-with-value">
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={coalition.mobilization}
+                  onChange={(e) => handleMobilizationChange(coalition.id, e.target.value)}
+                />
+                <span>{coalition.mobilization}%</span>
+              </div>
+            </div>
+            
+            <div className="electorate-profile-section">
+              <button 
+                className="profile-toggle-btn"
+                onClick={() => toggleElectorateProfile(coalition.id)}
+              >
+                {expandedProfiles.has(coalition.id) ? '▼' : '▶'} Electorate Profile
+              </button>
+              
+              {expandedProfiles.has(coalition.id) && (
+                <div className="electorate-profile-details">
+                  <div className="profile-header">
+                    <div className="ideology-info">
+                      <h6>Primary Ideology:</h6>
+                      <span className="ideology-value">{coalition.ideology || 'Moderate'}</span>
+                    </div>
+                    <div className="profile-actions">
+                      {editingProfiles.has(coalition.id) ? (
+                        <>
+                          <button 
+                            className="save-btn" 
+                            onClick={() => saveProfileChanges(coalition.id)}
+                          >
+                            Save
+                          </button>
+                          <button 
+                            className="cancel-btn" 
+                            onClick={() => cancelEditingProfile(coalition.id)}
+                          >
+                            Cancel
+                          </button>
+                        </>
+                      ) : (
+                        <button 
+                          className="edit-btn" 
+                          onClick={() => startEditingProfile(coalition.id)}
+                        >
+                          Edit
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="policy-stances">
+                    <h6>Policy Stances:</h6>
+                    <div className="policy-grid">
+                      {coalition.policyStances && Array.from(coalition.policyStances.entries()).map(([policyId, stance]) => {
+                        const policyLabel = policyId.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                        const isEditing = editingProfiles.has(coalition.id);
+                        const currentValue = isEditing ? 
+                          (tempPolicyStances.get(coalition.id)?.get(policyId) ?? stance) : stance;
+                        const stanceValue = typeof currentValue === 'number' ? currentValue : 0;
+                        
+                        if (isEditing) {
+                          return (
+                            <div key={policyId} className="policy-stance editing">
+                              <label className="policy-name">{policyLabel}:</label>
+                              <div className="stance-editor">
+                                <input
+                                  type="range"
+                                  min="-5"
+                                  max="5"
+                                  step="0.5"
+                                  value={stanceValue}
+                                  onChange={(e) => updateTempPolicyStance(coalition.id, policyId, e.target.value)}
+                                  className="stance-slider"
+                                />
+                                <span className={`stance-value stance-${Math.sign(stanceValue)}`}>
+                                  {stanceValue > 0 ? '+' : ''}{stanceValue}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        } else {
+                          const stanceLabel = stanceValue > 2 ? 'Strong Support' :
+                                            stanceValue > 0 ? 'Support' :
+                                            stanceValue === 0 ? 'Neutral' :
+                                            stanceValue > -2 ? 'Oppose' : 'Strong Opposition';
+                          return (
+                            <div key={policyId} className="policy-stance">
+                              <span className="policy-name">{policyLabel}:</span>
+                              <span className={`stance-value stance-${Math.sign(stanceValue)}`}>
+                                {stanceLabel} ({stanceValue > 0 ? '+' : ''}{stanceValue})
+                              </span>
+                            </div>
+                          );
+                        }
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      ))}
     </div>
   );
 };

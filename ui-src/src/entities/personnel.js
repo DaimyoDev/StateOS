@@ -42,6 +42,82 @@ export const createPartyStaffObject = (params = {}) => ({
   partyId: params.partyId || null,
 });
 
+export const createCommitteeMemberObject = (params = {}) => ({
+  id: `committee_member_${generateId()}`,
+  name: params.name || "Committee Member",
+  role: params.role || "Member", // "Chair", "Vice-Chair", "Member"
+  background: params.background || getRandomElement([
+    "Local Business Owner",
+    "Community Leader",
+    "Former Official",
+    "Policy Expert",
+    "Activist",
+    "Academic",
+    "Union Representative",
+    "Nonprofit Director"
+  ]),
+  expertise: params.expertise || getRandomElement([
+    "Finance & Economics",
+    "Public Policy",
+    "Communications",
+    "Grassroots Organizing",
+    "Legal Affairs",
+    "Environmental Issues",
+    "Healthcare Policy",
+    "Education",
+    "Technology",
+    "Defense & Security"
+  ]),
+  attributes: params.attributes || {
+    influence: getRandomInt(20, 80),
+    expertise_level: getRandomInt(30, 90),
+    loyalty: getRandomInt(40, 95),
+    networking: getRandomInt(25, 85),
+  },
+  tenure: params.tenure || getRandomInt(1, 8), // Years on committee
+  age: params.age || getRandomInt(35, 70),
+  partyId: params.partyId || null,
+  committeeId: params.committeeId || null,
+  isActive: params.isActive !== undefined ? params.isActive : true,
+  joinedYear: params.joinedYear || (2025 - (params.tenure || getRandomInt(1, 8))),
+});
+
+export const createDonorObject = (params = {}) => ({
+  id: `donor_${generateId()}`,
+  name: params.name || "Anonymous Donor",
+  type: params.type || getRandomElement(["individual", "corporation", "union", "pac", "nonprofit"]),
+  totalDonated: params.totalDonated || 0,
+  lastDonationAmount: params.lastDonationAmount || 0,
+  lastDonationDate: params.lastDonationDate || { year: 2025, month: 1, day: 1 },
+  donationHistory: params.donationHistory || [],
+  donorCategory: params.donorCategory || getRandomElement(["small", "medium", "large", "major"]),
+  contactInfo: params.contactInfo || {
+    email: null,
+    phone: null,
+    address: null
+  },
+  motivations: params.motivations || [],
+  restrictions: params.restrictions || [], // What they won't fund
+  isActive: params.isActive !== undefined ? params.isActive : true,
+  industry: params.industry || null, // For corporate donors
+  occupation: params.occupation || null, // For individual donors
+  politicalLeanings: params.politicalLeanings || null,
+});
+
+export const createMerchandiseItem = (params = {}) => ({
+  id: `merch_${generateId()}`,
+  name: params.name || "Party Item",
+  type: params.type || getRandomElement(["clothing", "accessories", "promotional", "collectibles"]),
+  price: params.price || getRandomInt(5, 50),
+  cost: params.cost || Math.round((params.price || 25) * 0.4), // 40% cost ratio
+  inventory: params.inventory || getRandomInt(50, 500),
+  sold: params.sold || 0,
+  description: params.description || "Official party merchandise",
+  popularityRating: params.popularityRating || getRandomInt(1, 10),
+  seasonality: params.seasonality || null, // "election", "holiday", null
+  isActive: params.isActive !== undefined ? params.isActive : true,
+});
+
 export const politicians = {
   base: new Map(),
   attributes: new Map(),
@@ -206,6 +282,45 @@ export const createPartyObject = (params = {}) => ({
   mediaBias: params.mediaBias || 0,
   platform: params.platform || [],
   factions: params.factions,
+  committees: params.committees || [],
+  finances: params.finances || {
+    treasury: 0,
+    monthlyIncome: 0,
+    monthlyExpenses: 0,
+    lastMonthBalance: 0,
+    incomeSources: {
+      individualDonations: 0,
+      corporateDonations: 0,
+      membershipDues: 0,
+      merchandiseSales: 0,
+      eventTickets: 0,
+      grants: 0,
+      publicFunding: 0,
+      investmentReturns: 0,
+      otherIncome: 0
+    },
+    expenditures: {
+      staffSalaries: 0,
+      officeRent: 0,
+      advertising: 0,
+      events: 0,
+      travel: 0,
+      communications: 0,
+      research: 0,
+      legalFees: 0,
+      consultingFees: 0,
+      equipment: 0,
+      utilities: 0,
+      insurance: 0,
+      otherExpenses: 0
+    },
+    donors: [],
+    majorDonors: [],
+    merchandiseInventory: [],
+    upcomingExpenses: [],
+    financialGoals: [],
+    auditHistory: []
+  }
 });
 
 export const createFactionObject = (params = {}) => ({
@@ -216,6 +331,19 @@ export const createFactionObject = (params = {}) => ({
   leader: params.leader || null,
   memberIds: new Set(),
   policyStances: params.policyStances || {},
+});
+
+export const createCommitteeObject = (params = {}) => ({
+  id: `committee_${generateId()}`,
+  name: params.name || "Unnamed Committee",
+  focus: params.focus || "General",
+  description: params.description || "A party committee focused on various issues.",
+  chair: params.chair || null,
+  members: params.members || [],
+  importance: params.importance || getRandomInt(1, 5), // 1-5 scale of committee importance
+  meetingFrequency: params.meetingFrequency || "monthly",
+  budget: params.budget || getRandomInt(5000, 25000),
+  established: params.established || new Date().getFullYear(),
 });
 
 /**
@@ -804,6 +932,283 @@ export function generateFullAIPolitician(
 }
 
 /**
+ * Generates realistic party finances including donors, merchandise, and budget
+ * @param {string} partyId - The ID of the party
+ * @param {string} countryId - The country ID for generating names
+ * @param {number} partyPopularity - Party's popularity rating (0-100)
+ * @param {string} partyIdeology - Party's ideology for targeting donors
+ * @returns {object} Complete financial data for the party
+ */
+export const generatePartyFinances = (partyId, countryId, partyPopularity = 50, partyIdeology = "Centrist") => {
+  // Base monthly income scales with popularity
+  const baseMonthlyIncome = Math.round(partyPopularity * 500 + getRandomInt(10000, 30000));
+  
+  // Generate donors
+  const donors = [];
+  const majorDonors = [];
+  const numDonors = Math.round(partyPopularity * 2) + getRandomInt(20, 80);
+  
+  for (let i = 0; i < numDonors; i++) {
+    const donorName = useGameStore.getState().actions.generateDynamicName({ countryId });
+    const donationType = getRandomElement(["individual", "corporation", "union", "pac", "nonprofit"]);
+    const isLargeDonor = Math.random() < 0.1; // 10% are major donors
+    
+    const totalDonated = isLargeDonor ? getRandomInt(5000, 50000) : getRandomInt(25, 2500);
+    
+    const donor = createDonorObject({
+      name: donationType === "corporation" ? 
+        `${getRandomElement(["Global", "United", "National", "Premier", "Elite"])} ${getRandomElement(["Industries", "Corp", "Solutions", "Group", "Holdings"])}` : 
+        donorName,
+      type: donationType,
+      totalDonated: totalDonated,
+      lastDonationAmount: Math.round(totalDonated * (getRandomInt(10, 40) / 100)),
+      donorCategory: isLargeDonor ? "major" : 
+        totalDonated > 1000 ? "large" : 
+        totalDonated > 250 ? "medium" : "small",
+      industry: donationType === "corporation" ? getRandomElement([
+        "Technology", "Healthcare", "Finance", "Energy", "Manufacturing", 
+        "Real Estate", "Agriculture", "Entertainment", "Transportation"
+      ]) : null,
+      occupation: donationType === "individual" ? getRandomElement([
+        "Business Executive", "Doctor", "Lawyer", "Engineer", "Teacher", 
+        "Consultant", "Entrepreneur", "Retired", "Self-Employed"
+      ]) : null,
+      motivations: getRandomElement([
+        ["Policy Support"], ["Tax Benefits"], ["Business Interests"], 
+        ["Ideological Alignment"], ["Social Issues"], ["Economic Policy"]
+      ])
+    });
+    
+    donors.push(donor);
+    if (isLargeDonor) majorDonors.push(donor);
+  }
+  
+  // Generate merchandise inventory
+  const merchandiseInventory = [];
+  const merchTypes = [
+    { name: "Campaign T-Shirt", type: "clothing", price: 25, cost: 10 },
+    { name: "Bumper Stickers", type: "promotional", price: 5, cost: 1 },
+    { name: "Coffee Mug", type: "accessories", price: 15, cost: 6 },
+    { name: "Baseball Cap", type: "clothing", price: 20, cost: 8 },
+    { name: "Yard Sign", type: "promotional", price: 12, cost: 4 },
+    { name: "Pin/Button Set", type: "accessories", price: 8, cost: 2 },
+    { name: "Tote Bag", type: "accessories", price: 18, cost: 7 },
+    { name: "Water Bottle", type: "accessories", price: 22, cost: 9 }
+  ];
+  
+  merchTypes.forEach(item => {
+    const inventory = getRandomInt(25, 200);
+    const sold = getRandomInt(0, Math.floor(inventory * 0.6));
+    
+    merchandiseInventory.push(createMerchandiseItem({
+      name: item.name,
+      type: item.type,
+      price: item.price,
+      cost: item.cost,
+      inventory: inventory - sold,
+      sold: sold,
+      popularityRating: getRandomInt(3, 9)
+    }));
+  });
+  
+  // Calculate income sources
+  const totalDonations = donors.reduce((sum, donor) => sum + donor.totalDonated, 0);
+  const monthlyDonationIncome = Math.round(totalDonations * 0.15); // 15% of total donations per month
+  
+  const incomeSources = {
+    individualDonations: Math.round(monthlyDonationIncome * 0.6),
+    corporateDonations: Math.round(monthlyDonationIncome * 0.25),
+    membershipDues: Math.round(partyPopularity * 100 + getRandomInt(2000, 8000)),
+    merchandiseSales: merchandiseInventory.reduce((sum, item) => sum + (item.sold * (item.price - item.cost)), 0),
+    eventTickets: getRandomInt(1000, 8000),
+    grants: getRandomInt(0, 5000),
+    publicFunding: partyPopularity > 60 ? getRandomInt(5000, 15000) : 0,
+    investmentReturns: getRandomInt(100, 2000),
+    otherIncome: getRandomInt(500, 3000)
+  };
+  
+  // Calculate expenditures based on party size and activities
+  const totalIncome = Object.values(incomeSources).reduce((sum, val) => sum + val, 0);
+  
+  const expenditures = {
+    staffSalaries: Math.round(totalIncome * (getRandomInt(25, 35) / 100)),
+    officeRent: Math.round(totalIncome * (getRandomInt(8, 15) / 100)),
+    advertising: Math.round(totalIncome * (getRandomInt(15, 25) / 100)),
+    events: Math.round(totalIncome * (getRandomInt(5, 12) / 100)),
+    travel: Math.round(totalIncome * (getRandomInt(3, 8) / 100)),
+    communications: Math.round(totalIncome * (getRandomInt(4, 8) / 100)),
+    research: Math.round(totalIncome * (getRandomInt(2, 6) / 100)),
+    legalFees: Math.round(totalIncome * (getRandomInt(1, 4) / 100)),
+    consultingFees: Math.round(totalIncome * (getRandomInt(3, 7) / 100)),
+    equipment: Math.round(totalIncome * (getRandomInt(2, 5) / 100)),
+    utilities: Math.round(totalIncome * (getRandomInt(1, 3) / 100)),
+    insurance: Math.round(totalIncome * (getRandomInt(1, 2) / 100)),
+    otherExpenses: Math.round(totalIncome * (getRandomInt(2, 6) / 100))
+  };
+  
+  const totalExpenses = Object.values(expenditures).reduce((sum, val) => sum + val, 0);
+  const monthlyBalance = totalIncome - totalExpenses;
+  
+  return {
+    treasury: Math.max(0, getRandomInt(10000, 100000) + monthlyBalance * 3), // 3 months of balance
+    monthlyIncome: totalIncome,
+    monthlyExpenses: totalExpenses,
+    lastMonthBalance: monthlyBalance,
+    incomeSources,
+    expenditures,
+    donors,
+    majorDonors,
+    merchandiseInventory,
+    upcomingExpenses: [
+      { name: "Annual Convention", amount: getRandomInt(15000, 40000), dueDate: { year: 2025, month: 6, day: 15 }},
+      { name: "Campaign Software License", amount: getRandomInt(2000, 8000), dueDate: { year: 2025, month: 3, day: 1 }},
+      { name: "Office Lease Renewal", amount: getRandomInt(5000, 15000), dueDate: { year: 2025, month: 4, day: 1 }}
+    ],
+    financialGoals: [
+      { name: "Build War Chest", target: getRandomInt(100000, 500000), current: 0 },
+      { name: "Expand Regional Offices", target: getRandomInt(50000, 150000), current: 0 }
+    ],
+    auditHistory: []
+  };
+};
+
+/**
+ * Generates committees for a political party with chairs and members.
+ * @param {string} partyId - The ID of the parent party.
+ * @param {string} countryId - The country ID for generating politicians.
+ * @param {Array} allPartiesInScope - Available parties for politician generation.
+ * @param {object} countryData - Country data for context.
+ * @returns {Array<object>} An array of generated committee objects.
+ */
+export const generateCommitteesForParty = (
+  partyId,
+  countryId,
+  allPartiesInScope,
+  countryData
+) => {
+  const committees = [];
+  
+  // Define standard party committees with their focuses and descriptions
+  const committeeTemplates = [
+    {
+      name: "Finance Committee",
+      focus: "Fundraising & Budget",
+      description: "Oversees party fundraising activities, budget allocation, and financial strategy.",
+      importance: 5,
+      meetingFrequency: "monthly",
+    },
+    {
+      name: "Policy Committee",
+      focus: "Platform Development",
+      description: "Develops and refines the party's policy positions and platform.",
+      importance: 5,
+      meetingFrequency: "weekly",
+    },
+    {
+      name: "Communications Committee",
+      focus: "Media & Messaging",
+      description: "Manages party messaging, media relations, and public communications strategy.",
+      importance: 4,
+      meetingFrequency: "weekly",
+    },
+    {
+      name: "Campaign Committee",
+      focus: "Electoral Strategy",
+      description: "Coordinates campaign activities and electoral strategy across different races.",
+      importance: 4,
+      meetingFrequency: "monthly",
+    },
+    {
+      name: "Outreach Committee",
+      focus: "Community Relations",
+      description: "Builds relationships with community organizations and voter groups.",
+      importance: 3,
+      meetingFrequency: "monthly",
+    },
+    {
+      name: "Youth Committee",
+      focus: "Youth Engagement",
+      description: "Engages young voters and develops the next generation of party leaders.",
+      importance: 3,
+      meetingFrequency: "bi-weekly",
+    },
+    {
+      name: "Rules Committee",
+      focus: "Party Governance",
+      description: "Oversees party rules, procedures, and internal governance matters.",
+      importance: 2,
+      meetingFrequency: "quarterly",
+    }
+  ];
+
+  // Generate 4-6 committees randomly from the templates
+  const numCommittees = getRandomInt(4, 6);
+  const selectedTemplates = [...committeeTemplates]
+    .sort(() => 0.5 - Math.random())
+    .slice(0, numCommittees);
+
+  selectedTemplates.forEach(template => {
+    // Generate committee chair as a committee member object
+    const chairName = useGameStore.getState().actions.generateDynamicName({ countryId });
+    const chair = createCommitteeMemberObject({
+      name: chairName,
+      role: "Chair",
+      partyId: partyId,
+      expertise: template.focus.includes("Finance") ? "Finance & Economics" :
+                 template.focus.includes("Policy") ? "Public Policy" :
+                 template.focus.includes("Communications") ? "Communications" :
+                 template.focus.includes("Campaign") ? "Grassroots Organizing" :
+                 undefined, // Will use random if not matched
+      attributes: {
+        influence: getRandomInt(60, 90), // Chairs have higher influence
+        expertise_level: getRandomInt(70, 95), // Chairs are more expert
+        loyalty: getRandomInt(60, 95),
+        networking: getRandomInt(50, 90),
+      },
+      tenure: getRandomInt(2, 8), // Chairs tend to have longer tenure
+    });
+
+    // Generate 3-7 committee members as committee member objects
+    const numMembers = getRandomInt(3, 7);
+    const members = Array.from({ length: numMembers }, () => {
+      const memberName = useGameStore.getState().actions.generateDynamicName({ countryId });
+      return createCommitteeMemberObject({
+        name: memberName,
+        role: "Member",
+        partyId: partyId,
+        committeeId: `committee_${generateId()}`, // Will be set to actual committee ID later
+        expertise: template.focus.includes("Finance") ? "Finance & Economics" :
+                   template.focus.includes("Policy") ? "Public Policy" :
+                   template.focus.includes("Communications") ? "Communications" :
+                   template.focus.includes("Campaign") ? "Grassroots Organizing" :
+                   undefined, // Will use random if not matched
+      });
+    });
+
+    const committee = createCommitteeObject({
+      name: template.name,
+      focus: template.focus,
+      description: template.description,
+      chair: chair,
+      members: members,
+      importance: template.importance,
+      meetingFrequency: template.meetingFrequency,
+      budget: getRandomInt(5000, 25000),
+    });
+
+    // Set the actual committee ID for all members
+    chair.committeeId = committee.id;
+    members.forEach(member => {
+      member.committeeId = committee.id;
+    });
+
+    committees.push(committee);
+  });
+
+  return committees;
+};
+
+/**
  * Generates a set of internal factions for a political party based on its main ideology.
  * @param {string} partyIdeology - The main ideology of the parent party.
  * @returns {Array<object>} An array of generated faction objects.
@@ -977,7 +1382,7 @@ export const generateNationalParties = ({
       partyName: partyName,
     });
 
-    // UPDATED: Generate leadership and factions
+    // UPDATED: Generate leadership, factions, and committees
     const factions = generateFactionsForParty(
       partyIdeologyName,
       partyId,
@@ -985,6 +1390,17 @@ export const generateNationalParties = ({
       partiesWithScoresForContext,
       countryData
     );
+
+    const committees = generateCommitteesForParty(
+      partyId,
+      countryId,
+      partiesWithScoresForContext,
+      countryData
+    );
+
+    // Generate comprehensive finances for the party
+    const partyPopularity = getRandomInt(15, 85); // Will be replaced with actual popularity later
+    const finances = generatePartyFinances(partyId, countryId, partyPopularity, partyIdeologyName);
 
     const commsDirectorName = useGameStore
       .getState()
@@ -1013,6 +1429,8 @@ export const generateNationalParties = ({
       countryId: countryId,
       factions: factions,
       leadership: leadership,
+      committees: committees,
+      finances: finances,
     });
 
     const allPartyMembers = [

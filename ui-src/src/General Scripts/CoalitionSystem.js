@@ -86,7 +86,9 @@ export const createCoalitionSoA = () => ({
   policyStances: new Map(),  // aggregated policy preferences
   partyAlignment: new Map(), // calculated party preferences based on ideology
   state: new Map(),          // currentMood, satisfaction, mobilization
-  polling: new Map()         // cached polling calculations by candidate
+  polling: new Map(),        // cached polling calculations by candidate
+  mobilization: new Map(),   // UI-accessible mobilization levels (0-100)
+  supportBase: new Map()     // coalition size as percentage of total population
 });
 
 /**
@@ -222,6 +224,11 @@ export const generateCoalitions = (electorateProfile, demographics, availablePar
       satisfaction: 0.5 + getRandomInt(-10, 10) / 100, // 0.4 to 0.6
       mobilization: 0.5 + getRandomInt(-15, 15) / 100 // 0.35 to 0.65
     });
+    
+    // Initialize mobilization and supportBase for UI
+    const initialMobilization = (0.5 + getRandomInt(-15, 15) / 100) * 100; // Convert to percentage
+    coalitionSoA.mobilization.set(template.id, initialMobilization);
+    coalitionSoA.supportBase.set(template.id, adjustedSize);
     
     // Initialize empty polling cache
     coalitionSoA.polling.set(template.id, new Map());
@@ -519,6 +526,236 @@ export const aggregateCoalitionPolling = (coalitionSoA, candidateId) => {
   return totalWeight > 0 ? weightedSum / totalWeight : 0;
 };
 
+/**
+ * Calculate realistic voter turnout based on coalition mobilization levels
+ * @param {object} coalitionSoA - The coalition data structure
+ * @param {number} totalEligibleVoters - Total eligible voters in the jurisdiction
+ * @returns {object} Detailed turnout data by coalition and overall
+ */
+export const calculateCoalitionBasedTurnout = (coalitionSoA, totalEligibleVoters) => {
+  const coalitionTurnout = new Map();
+  let totalActualVotes = 0;
+  let totalCoalitionSize = 0;
+
+  // Base turnout rates by demographic profile (realistic historical patterns)
+  const getBaseTurnoutRate = (demographics) => {
+    let baseTurnout = 0.65; // Default 65%
+    
+    // Age effects (seniors vote more, young people vote less)
+    if (demographics.age === 'senior') baseTurnout = 0.75;
+    else if (demographics.age === 'young') baseTurnout = 0.55;
+    else if (demographics.age === 'middle_aged') baseTurnout = 0.68;
+    
+    // Education effects (higher education = higher turnout)
+    if (demographics.education === 'graduate') baseTurnout += 0.08;
+    else if (demographics.education === 'college') baseTurnout += 0.05;
+    else if (demographics.education === 'high_school') baseTurnout -= 0.03;
+    
+    // Location effects (suburban votes more than urban, urban more than rural)
+    if (demographics.location === 'suburban') baseTurnout += 0.03;
+    else if (demographics.location === 'rural') baseTurnout -= 0.02;
+    
+    // Occupation effects
+    if (demographics.occupation === 'professional') baseTurnout += 0.04;
+    else if (demographics.occupation === 'business_owner') baseTurnout += 0.06;
+    else if (demographics.occupation === 'working_class') baseTurnout -= 0.02;
+    else if (demographics.occupation === 'retired') baseTurnout += 0.05;
+    
+    // Ensure turnout stays within reasonable bounds
+    return Math.max(0.25, Math.min(0.90, baseTurnout));
+  };
+
+  // Calculate turnout for each coalition
+  for (const [coalitionId, base] of coalitionSoA.base) {
+    const state = coalitionSoA.state.get(coalitionId);
+    const demographics = coalitionSoA.demographics.get(coalitionId);
+    
+    // Calculate coalition's share of total eligible voters
+    const coalitionVoterCount = Math.round(base.size * totalEligibleVoters);
+    totalCoalitionSize += coalitionVoterCount;
+    
+    // Get base turnout rate for this demographic profile
+    const baseTurnout = getBaseTurnoutRate(demographics);
+    
+    // Apply mobilization modifier
+    // Mobilization ranges from 0-1, with 0.5 being neutral
+    // High mobilization (0.8+) can boost turnout significantly
+    // Low mobilization (0.3-) reduces turnout
+    const mobilizationEffect = (state.mobilization - 0.5) * 0.25; // ±12.5% effect
+    const finalTurnoutRate = Math.max(0.15, Math.min(0.95, baseTurnout + mobilizationEffect));
+    
+    // Calculate actual votes from this coalition
+    const coalitionActualVotes = Math.round(coalitionVoterCount * finalTurnoutRate);
+    totalActualVotes += coalitionActualVotes;
+    
+    coalitionTurnout.set(coalitionId, {
+      coalitionName: base.name,
+      eligibleVoters: coalitionVoterCount,
+      baseTurnoutRate: baseTurnout,
+      mobilization: state.mobilization,
+      mobilizationEffect: mobilizationEffect,
+      finalTurnoutRate: finalTurnoutRate,
+      actualVotes: coalitionActualVotes,
+      coalitionSize: base.size
+    });
+  }
+
+  const overallTurnoutRate = totalEligibleVoters > 0 ? totalActualVotes / totalEligibleVoters : 0;
+
+  return {
+    coalitionTurnout,
+    totalActualVotes,
+    totalEligibleVoters,
+    overallTurnoutRate: overallTurnoutRate * 100, // Convert to percentage
+    coalitionCoverage: totalCoalitionSize / totalEligibleVoters // Should be close to 1.0
+  };
+};
+
+/**
+ * Calculate expected turnout with uncertainty for pre-election forecasting
+ * Uses current coalition mobilization but adds realistic forecasting error
+ * @param {object} coalitionSoA - The coalition data structure
+ * @param {number} totalEligibleVoters - Total eligible voters in the jurisdiction
+ * @param {object} options - Forecasting options
+ * @returns {object} Expected turnout data with uncertainty range
+ */
+export const calculateExpectedTurnout = (coalitionSoA, totalEligibleVoters, options = {}) => {
+  const {
+    uncertaintyFactor = 0.10, // ±10% uncertainty by default
+    mobilizationVolatility = 0.05, // ±5% potential mobilization change
+    historicalBias = 0.02, // Small systematic bias (polls typically underestimate by 2%)
+  } = options;
+
+  let totalExpectedVotes = 0;
+  let totalCoalitionSize = 0;
+  const coalitionForecasts = new Map();
+
+  // Base turnout rates by demographic profile (same as actual calculation)
+  const getBaseTurnoutRate = (demographics) => {
+    let baseTurnout = 0.65;
+    
+    if (demographics.age === 'senior') baseTurnout = 0.75;
+    else if (demographics.age === 'young') baseTurnout = 0.55;
+    else if (demographics.age === 'middle_aged') baseTurnout = 0.68;
+    
+    if (demographics.education === 'graduate') baseTurnout += 0.08;
+    else if (demographics.education === 'college') baseTurnout += 0.05;
+    else if (demographics.education === 'high_school') baseTurnout -= 0.03;
+    
+    if (demographics.location === 'suburban') baseTurnout += 0.03;
+    else if (demographics.location === 'rural') baseTurnout -= 0.02;
+    
+    if (demographics.occupation === 'professional') baseTurnout += 0.04;
+    else if (demographics.occupation === 'business_owner') baseTurnout += 0.06;
+    else if (demographics.occupation === 'working_class') baseTurnout -= 0.02;
+    else if (demographics.occupation === 'retired') baseTurnout += 0.05;
+    
+    return Math.max(0.25, Math.min(0.90, baseTurnout));
+  };
+
+  // Calculate expected turnout for each coalition with forecasting uncertainty
+  for (const [coalitionId, base] of coalitionSoA.base) {
+    const state = coalitionSoA.state.get(coalitionId);
+    const demographics = coalitionSoA.demographics.get(coalitionId);
+    
+    const coalitionVoterCount = Math.round(base.size * totalEligibleVoters);
+    totalCoalitionSize += coalitionVoterCount;
+    
+    const baseTurnout = getBaseTurnoutRate(demographics);
+    
+    // Add uncertainty to mobilization prediction
+    // High volatility coalitions (young voters, populists) are harder to predict
+    const coalitionVolatility = base.volatility || 0.25;
+    const mobilizationUncertainty = mobilizationVolatility * coalitionVolatility;
+    
+    // Expected mobilization with some uncertainty
+    const expectedMobilization = state.mobilization + (Math.random() - 0.5) * mobilizationUncertainty * 2;
+    const clampedExpectedMobilization = Math.max(0, Math.min(1, expectedMobilization));
+    
+    // Calculate expected turnout rate
+    const mobilizationEffect = (clampedExpectedMobilization - 0.5) * 0.25;
+    const rawExpectedTurnout = baseTurnout + mobilizationEffect;
+    
+    // Add overall forecasting uncertainty
+    const forecastingError = (Math.random() - 0.5) * uncertaintyFactor * 2;
+    const expectedTurnoutRate = Math.max(0.15, Math.min(0.95, 
+      rawExpectedTurnout + forecastingError + historicalBias
+    ));
+    
+    const expectedVotes = Math.round(coalitionVoterCount * expectedTurnoutRate);
+    totalExpectedVotes += expectedVotes;
+    
+    coalitionForecasts.set(coalitionId, {
+      coalitionName: base.name,
+      expectedTurnoutRate,
+      expectedVotes,
+      forecastUncertainty: Math.abs(forecastingError),
+      mobilizationForecast: clampedExpectedMobilization
+    });
+  }
+
+  const overallExpectedTurnout = totalEligibleVoters > 0 ? totalExpectedVotes / totalEligibleVoters : 0;
+  
+  // Calculate confidence interval
+  const avgUncertainty = Array.from(coalitionForecasts.values())
+    .reduce((sum, forecast) => sum + forecast.forecastUncertainty, 0) / coalitionForecasts.size;
+  
+  const lowerBound = Math.max(0.15, overallExpectedTurnout - avgUncertainty);
+  const upperBound = Math.min(0.95, overallExpectedTurnout + avgUncertainty);
+
+  return {
+    expectedTurnoutRate: overallExpectedTurnout * 100, // Convert to percentage
+    expectedTotalVotes: totalExpectedVotes,
+    confidenceInterval: {
+      lower: lowerBound * 100,
+      upper: upperBound * 100,
+      margin: avgUncertainty * 100
+    },
+    coalitionForecasts,
+    forecastMetadata: {
+      uncertaintyFactor,
+      mobilizationVolatility,
+      historicalBias,
+      forecastAccuracy: 100 - (avgUncertainty * 100) // Rough accuracy estimate
+    }
+  };
+};
+
+/**
+ * Get detailed turnout breakdown for analysis/display
+ * @param {object} coalitionSoA - The coalition data structure  
+ * @param {number} totalEligibleVoters - Total eligible voters
+ * @returns {Array} Array of coalition turnout details sorted by impact
+ */
+export const getCoalitionTurnoutBreakdown = (coalitionSoA, totalEligibleVoters) => {
+  const turnoutData = calculateCoalitionBasedTurnout(coalitionSoA, totalEligibleVoters);
+  
+  const breakdown = Array.from(turnoutData.coalitionTurnout.values())
+    .sort((a, b) => b.actualVotes - a.actualVotes) // Sort by vote impact
+    .map(coalition => ({
+      name: coalition.coalitionName,
+      populationShare: (coalition.coalitionSize * 100).toFixed(1) + '%',
+      eligibleVoters: coalition.eligibleVoters.toLocaleString(),
+      baseTurnout: (coalition.baseTurnoutRate * 100).toFixed(1) + '%',
+      mobilization: (coalition.mobilization * 100).toFixed(1) + '%',
+      mobilizationImpact: coalition.mobilizationEffect >= 0 ? 
+        `+${(coalition.mobilizationEffect * 100).toFixed(1)}%` : 
+        `${(coalition.mobilizationEffect * 100).toFixed(1)}%`,
+      finalTurnout: (coalition.finalTurnoutRate * 100).toFixed(1) + '%',
+      actualVotes: coalition.actualVotes.toLocaleString(),
+      voteShare: ((coalition.actualVotes / turnoutData.totalActualVotes) * 100).toFixed(1) + '%'
+    }));
+  
+  return {
+    breakdown,
+    summary: {
+      totalEligibleVoters: turnoutData.totalEligibleVoters.toLocaleString(),
+      totalActualVotes: turnoutData.totalActualVotes.toLocaleString(),
+      overallTurnout: turnoutData.overallTurnoutRate.toFixed(1) + '%'
+    }
+  };
+};
+
 export default {
   createCoalitionSoA,
   generateCoalitions,
@@ -526,5 +763,8 @@ export default {
   updateCoalitionStates,
   getCoalitionPollingResults,
   aggregateCoalitionPolling,
-  calculateIdeologicalDistance
+  calculateIdeologicalDistance,
+  calculateCoalitionBasedTurnout,
+  calculateExpectedTurnout,
+  getCoalitionTurnoutBreakdown
 };

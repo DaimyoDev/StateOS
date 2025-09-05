@@ -19,10 +19,11 @@ import PoliticalEntitiesTab from "../components/game_tabs/PoliticalEntitiesTab";
 import PoliticiansTab from "../components/game_tabs/PoliticiansTab";
 import ArticleViewerModal from "../components/modals/ArticleViewerModal";
 import DonationModal from "../components/modals/DonationModal";
+import CommitteeMeetingModal from "../components/modals/CommitteeMeetingModal";
 import PollingTab from "../components/game_tabs/PollingTab";
 import NotificationIcon from "../components/notifications/NotificationIcon";
 import NotificationPanel from "../components/notifications/NotificationPanel";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const TABS = [
   { id: "Dashboard", label: "Dashboard" },
@@ -91,6 +92,10 @@ function CampaignGameScreen() {
     (state) => state.actions.closePolicyVoteDetailsModal
   );
   const isArticleModalOpen = useGameStore((state) => state.isArticleModalOpen);
+  
+  const isCommitteeMeetingModalOpen = useGameStore((state) => state.isCommitteeMeetingModalOpen);
+  const currentCommitteeMeeting = useGameStore((state) => state.currentCommitteeMeeting);
+  const checkScheduledMeetings = useGameStore((state) => state.actions.checkScheduledMeetings);
 
   const navigateTo = useGameStore((state) => state.actions.navigateTo);
   const advanceDay = useGameStore((state) => state.actions.advanceDay);
@@ -135,6 +140,13 @@ function CampaignGameScreen() {
       navigateTo("MainMenu");
     }
   }, [activeCampaign, navigateTo]);
+  
+  // Check for scheduled meetings when date changes
+  useEffect(() => {
+    if (activeCampaign?.currentDate && checkScheduledMeetings) {
+      checkScheduledMeetings();
+    }
+  }, [activeCampaign?.currentDate, checkScheduledMeetings]);
 
   if (!activeCampaign) {
     return <div>Loading campaign data or redirecting...</div>;
@@ -343,6 +355,10 @@ function CampaignGameScreen() {
         />
         {isArticleModalOpen && <ArticleViewerModal />}
         <DonationModal />
+        <CommitteeMeetingModal 
+          isOpen={isCommitteeMeetingModalOpen}
+          meeting={currentCommitteeMeeting}
+        />
       </div>
     </>
   );

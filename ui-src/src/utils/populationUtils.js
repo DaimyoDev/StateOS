@@ -1,10 +1,10 @@
 import { distributeValueProportionally, getRandomInt } from "./core";
 /**
  * Assigns random populations to a single country and its regions/provinces.
- * This is a pure function; it works on the object it's given and returns it.
- * @param {object} country - A raw country object from baseCountriesData.
+ * This function mutates the input country object directly for memory efficiency.
+ * @param {object} country - A country object that will be modified in place.
  * @param {object} countryPopulationRanges - The object mapping country IDs to min/max populations.
- * @returns {object} The country object with populations assigned.
+ * @returns {object} The same country object with populations assigned.
  */
 export const assignPopulationToCountry = (country, countryPopulationRanges) => {
   if (!country) return null;

@@ -105,7 +105,7 @@ function PoliticalEntitiesTab({ campaignData }) {
                   />
                 )}
                 <div className="party-info">
-                  <h4 style={{ color: party.color || "#000" }}>{party.name}</h4>
+                  <h4>{party.name}</h4>
                   <p>
                     <strong>Ideology:</strong> {party.ideology || "N/A"}
                   </p>

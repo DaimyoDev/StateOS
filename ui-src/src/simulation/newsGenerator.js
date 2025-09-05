@@ -3,6 +3,7 @@ import { createNewsArticleObject } from "../entities/organizationEntities";
 import { getRandomElement } from "../utils/core";
 import { CITY_POLICIES } from "../data/cityPolicyDefinitions";
 import { formatOfficeTitleForDisplay } from "../utils/governmentUtils";
+import { determineOutletStanceOnEvent } from "./randomEventsSystem";
 
 const ARTICLE_COMPONENTS = {
   positive_adjectives: [
@@ -423,6 +424,117 @@ const generateArticleComponents = (event, outlet, cityName) => {
         summary,
         `City officials say the project ${status === "completed" ? "represents a major step forward" : "remains on track despite challenges"} for infrastructure development in the region.`
       );
+      break;
+    }
+    case "random_event": {
+      // Handle random events from the random events system
+      const { eventName, eventCategory, severity, ...eventContext } = context;
+      
+      // Determine tone based on event severity and outlet stance
+      const eventStance = determineOutletStanceOnEvent({ context, relevantIdeologies: context.relevantIdeologies, relevantPolicies: context.relevantPolicies, category: context.eventCategory }, outlet);
+      tone = eventStance;
+      
+      // Use provided headline and summary or generate default ones
+      if (!event.headline) {
+        headline = generateRandomEventHeadline(eventName, eventCategory, severity, eventStance);
+      }
+      if (!event.summary) {
+        summary = generateRandomEventSummary(eventName, eventCategory, eventContext, eventStance);
+      }
+      
+      // Build the article body
+      fullBody.paragraphs.push(
+        summary || `A ${severity} event has occurred: ${eventName}.`
+      );
+      
+      // Add context-specific details
+      if (eventContext.jobsLost) {
+        fullBody.paragraphs.push(
+          `The event will result in the loss of ${eventContext.jobsLost} jobs, affecting families throughout the region.`
+        );
+      }
+      if (eventContext.jobsCreated) {
+        fullBody.paragraphs.push(
+          `This development is expected to create ${eventContext.jobsCreated} new employment opportunities.`
+        );
+      }
+      if (eventContext.peopleAffected) {
+        fullBody.paragraphs.push(
+          `An estimated ${eventContext.peopleAffected} people will be directly impacted by this event.`
+        );
+      }
+      if (eventContext.investment) {
+        fullBody.paragraphs.push(
+          `The total investment involved amounts to ${eventContext.investment}.`
+        );
+      }
+      
+      // Add stance-based commentary
+      if (eventStance === "positive") {
+        fullBody.paragraphs.push(
+          `This development represents a significant opportunity for progress and improvement in our community.`
+        );
+      } else if (eventStance === "negative") {
+        fullBody.paragraphs.push(
+          `Critics and concerned citizens are raising serious questions about the implications of this event.`
+        );
+      } else {
+        fullBody.paragraphs.push(
+          `The long-term implications of this event remain to be seen as the situation continues to develop.`
+        );
+      }
+      
+      // Add a relevant quote based on the event category
+      const eventQuotes = {
+        healthcare: [
+          "Access to quality healthcare is a fundamental right that must be protected.",
+          "We need to ensure our medical infrastructure can meet community needs.",
+          "This situation highlights the challenges facing our healthcare system."
+        ],
+        economic: [
+          "Economic stability is crucial for our community's future.",
+          "We must balance growth with the needs of working families.",
+          "These developments will shape our economic landscape for years to come."
+        ],
+        environmental: [
+          "Environmental protection and economic growth must go hand in hand.",
+          "We have a responsibility to future generations to act now.",
+          "The health of our environment directly impacts our quality of life."
+        ],
+        crime: [
+          "Public safety must remain our top priority.",
+          "We need comprehensive solutions that address root causes.",
+          "Community and law enforcement must work together."
+        ],
+        education: [
+          "Investing in education is investing in our future.",
+          "Every child deserves access to quality education.",
+          "Our schools are the foundation of our community."
+        ],
+        infrastructure: [
+          "Modern infrastructure is essential for economic competitiveness.",
+          "We can't afford to delay necessary infrastructure investments.",
+          "These projects will benefit residents for generations."
+        ],
+        social: [
+          "A strong community stands together in times of change.",
+          "We must ensure all voices are heard and respected.",
+          "Social cohesion is vital for our collective wellbeing."
+        ],
+        technology: [
+          "Technology offers tremendous opportunities but also new challenges.",
+          "We must ensure technological progress benefits everyone.",
+          "Digital transformation is reshaping how we live and work."
+        ]
+      };
+      
+      const categoryQuotes = eventQuotes[eventCategory] || eventQuotes.social;
+      fullBody.quotes.push({
+        text: getRandomElement(categoryQuotes),
+        source: "Local Community Leader",
+        sourceAffiliation: "Civic Organization"
+      });
+      
       break;
     }
     default:

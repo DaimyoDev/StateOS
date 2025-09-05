@@ -8,6 +8,11 @@ import {
   runAIBillProposals,
   runMonthlyRegionalUpdates,
 } from "../simulation/monthlyTick.js";
+import { 
+  shouldGenerateRandomEvent, 
+  generateRandomEvent, 
+  processRandomEvent 
+} from "../simulation/randomEventsSystem.js";
 import { simulateAICampaignDayForPolitician } from "../utils/aiUtils.js";
 import { rehydrateLeanCampaigner } from "../entities/personnel.js";
 import { pollingOptimizer } from "../General Scripts/OptimizedPollingFunctions.js";
@@ -347,6 +352,49 @@ export const createTimeSlice = (set, get) => {
         // On Mondays (dayOfWeek === 1), run the weekly polling update
         if (dayOfWeek === 1) {
           get().actions.runWeeklyPollingUpdates?.();
+        }
+
+        // --- PHASE 3b: Random Events Generation ---
+        // Check if we should generate a random event today
+        if (shouldGenerateRandomEvent(campaignAfterDateAdvance)) {
+          const gameContext = {
+            currentDate: effectiveDate,
+            locationName: campaignAfterDateAdvance.startingCity?.name,
+            cityName: campaignAfterDateAdvance.startingCity?.name,
+            countryId: campaignAfterDateAdvance.country?.id,
+            regionId: campaignAfterDateAdvance.parentState?.id,
+            recentEvents: [], // Could track recent events in the future
+            currentPolicies: [] // Could get from active legislation
+          };
+
+          const randomEvent = generateRandomEvent(gameContext);
+          if (randomEvent) {
+            const gameState = {
+              newsOutlets: campaignAfterDateAdvance.newsOutlets || [],
+              allPoliticians: Array.from(campaignAfterDateAdvance.politicians?.state?.values() || []),
+              cityName: campaignAfterDateAdvance.startingCity?.name,
+              lobbyingGroups: campaignAfterDateAdvance.lobbyingGroups || []
+            };
+
+            const processedEvent = processRandomEvent(randomEvent, gameState);
+            
+            // Add the generated news articles to the news system
+            if (processedEvent.newsArticles && processedEvent.newsArticles.length > 0) {
+              get().actions.addNewsArticle?.(processedEvent.newsArticles);
+            }
+            
+            // Store event in campaign (could be used for effects later)
+            set((state) => ({
+              activeCampaign: {
+                ...state.activeCampaign,
+                lastEventDate: effectiveDate,
+                recentRandomEvents: [
+                  ...(state.activeCampaign.recentRandomEvents || []).slice(0, 9), // Keep last 10 events
+                  processedEvent
+                ]
+              }
+            }));
+          }
         }
 
         // --- PHASE 3a: Daily Legislation Processing ---

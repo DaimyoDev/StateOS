@@ -317,3 +317,148 @@
   color: var(--secondary-text);
   margin-top: 10px;
 }
+
+/* Coalition Turnout Breakdown Styles */
+.coalition-turnout-details {
+  margin-top: 10px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--element-radius);
+  padding: 0;
+}
+
+.coalition-turnout-details summary {
+  padding: 8px 12px;
+  background-color: var(--secondary-bg);
+  border-radius: var(--element-radius);
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--primary-text);
+  user-select: none;
+}
+
+.coalition-turnout-details summary:hover {
+  background-color: var(--hover-bg);
+}
+
+.coalition-turnout-breakdown {
+  padding: 12px;
+  background-color: var(--card-bg);
+}
+
+.coalition-turnout-item {
+  margin-bottom: 12px;
+  padding: 8px;
+  background-color: var(--secondary-bg);
+  border-radius: 4px;
+  border-left: 3px solid var(--accent-color);
+}
+
+.coalition-turnout-item:last-child {
+  margin-bottom: 0;
+}
+
+.coalition-turnout-item strong {
+  display: block;
+  color: var(--primary-text);
+  margin-bottom: 4px;
+  font-size: 0.9em;
+}
+
+.turnout-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
+  font-size: 0.8em;
+}
+
+.turnout-stats span {
+  padding: 2px 6px;
+  background-color: var(--card-bg);
+  border-radius: 3px;
+  color: var(--secondary-text);
+  white-space: nowrap;
+}
+
+.turnout-note {
+  font-size: 0.8em;
+  color: var(--secondary-text);
+  font-style: italic;
+}
+
+.turnout-confidence {
+  font-size: 0.85em;
+  color: var(--accent-color);
+  font-weight: 500;
+}
+
+/* Expected Turnout Forecast Styles */
+.expected-turnout-details {
+  margin-top: 8px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--element-radius);
+  padding: 0;
+  font-size: 0.9em;
+}
+
+.expected-turnout-details summary {
+  padding: 6px 10px;
+  background-color: var(--secondary-bg);
+  border-radius: var(--element-radius);
+  cursor: pointer;
+  font-weight: 500;
+  color: var(--primary-text);
+  user-select: none;
+  font-size: 0.85em;
+}
+
+.expected-turnout-details summary:hover {
+  background-color: var(--hover-bg);
+}
+
+.expected-turnout-breakdown {
+  padding: 10px;
+  background-color: var(--card-bg);
+}
+
+.forecast-range {
+  margin-bottom: 8px;
+  padding: 4px 8px;
+  background-color: var(--secondary-bg);
+  border-radius: 4px;
+  font-size: 0.8em;
+}
+
+.expected-coalition-item {
+  margin-bottom: 8px;
+  padding: 6px;
+  background-color: var(--secondary-bg);
+  border-radius: 4px;
+  border-left: 2px solid var(--accent-color);
+  font-size: 0.8em;
+}
+
+.expected-coalition-item:last-child {
+  margin-bottom: 0;
+}
+
+.expected-coalition-item strong {
+  display: block;
+  color: var(--primary-text);
+  margin-bottom: 3px;
+  font-size: 0.9em;
+}
+
+.expected-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 6px;
+  font-size: 0.8em;
+}
+
+.expected-stats span {
+  padding: 1px 4px;
+  background-color: var(--card-bg);
+  border-radius: 2px;
+  color: var(--secondary-text);
+  white-space: nowrap;
+}

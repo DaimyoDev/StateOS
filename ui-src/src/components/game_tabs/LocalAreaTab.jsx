@@ -15,6 +15,10 @@ function LocalAreaTab({ campaignData }) {
   const currentTheme = useGameStore(
     (state) => state.availableThemes[state.activeThemeName]
   );
+  const { getCoalitionsForCity } = useGameStore((state) => state.actions);
+  
+  // Get coalition data for the city if available
+  const coalitionData = getCoalitionsForCity(startingCity?.id);
 
   if (!startingCity?.stats?.budget) {
     return (
@@ -217,6 +221,52 @@ function LocalAreaTab({ campaignData }) {
                 politicalLandscape={campaignData.parentState.politicalLandscape}
                 themeColors={currentTheme?.colors}
               />
+            </div>
+          </div>
+        )}
+
+        {/* Card 8: Coalition Data */}
+        {coalitionData && (
+          <div className="info-card coalition-data-card">
+            <h3>Political Coalitions - {cityName}</h3>
+            <p className="section-description">
+              Major voting blocs and demographic coalitions active in the city
+            </p>
+            <div className="coalitions-list">
+              {Array.from(coalitionData.base).map(([coalitionId, coalition]) => {
+                const demographics = coalitionData.demographics?.get(coalitionId);
+                const ideology = coalitionData.ideology?.get(coalitionId);
+                const state = coalitionData.state?.get(coalitionId);
+                
+                return (
+                  <div key={coalitionId} className="coalition-item">
+                    <div className="coalition-header">
+                      <h4>{coalition.name}</h4>
+                      <span className="coalition-size">
+                        {formatPercentage(coalition.size * 100, 1)} of electorate
+                      </span>
+                    </div>
+                    <div className="coalition-details">
+                      <p><strong>Ideology:</strong> {ideology || 'N/A'}</p>
+                      {demographics && (
+                        <>
+                          <p><strong>Location:</strong> {demographics.location}</p>
+                          <p><strong>Age Group:</strong> {demographics.age}</p>
+                          <p><strong>Education:</strong> {demographics.education}</p>
+                          <p><strong>Occupation:</strong> {demographics.occupation}</p>
+                        </>
+                      )}
+                      {state && (
+                        <p><strong>Current Mood:</strong> 
+                          <span className={state.currentMood >= 0 ? 'text-success' : 'text-error'}>
+                            {state.currentMood >= 0 ? 'Positive' : 'Negative'}
+                          </span>
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}

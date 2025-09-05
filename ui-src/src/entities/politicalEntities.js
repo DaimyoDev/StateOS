@@ -22,7 +22,6 @@ import {
   generateFullAIPolitician,
 } from "./personnel";
 import { IDEOLOGY_DEFINITIONS } from "../data/ideologiesData";
-import { deepCopy } from "../utils/objectUtils";
 import { normalizePartyPopularities } from "../utils/electionUtils";
 import usaCityParts from "../data/cityNames/usa_city_parts.json";
 import jpnCityParts from "../data/cityNames/jpn_city_parts.json";
@@ -217,11 +216,13 @@ export const generateFullSecondAdminRegionData = (params = {}) => {
     Array.isArray(parentStateData.politicalLandscape)
   ) {
     politicalLandscape = parentStateData.politicalLandscape.map((party) => {
-      const newParty = deepCopy(party);
       const shift = getRandomInt(-8, 8); // Smaller variation than states (-8% to +8%)
-      const basePopularity = newParty.popularity || 0;
-      newParty.popularity = Math.max(0, Math.min(100, basePopularity + shift));
-      return newParty;
+      const basePopularity = party.popularity || 0;
+      const newPopularity = Math.max(0, Math.min(100, basePopularity + shift));
+      return {
+        ...party,
+        popularity: newPopularity
+      };
     });
 
     // Normalize the political landscape to ensure percentages add up to 100%
@@ -904,11 +905,13 @@ export const generateFullCityData = (params = {}) => {
   // Each city gets a slight variation of the base regional political landscape
   const politicalLandscape = (params.basePoliticalLandscape || []).map(
     (party) => {
-      const newParty = deepCopy(party);
       const shift = getRandomInt(-5, 5);
-      const basePopularity = newParty.popularity || 0;
-      newParty.popularity = Math.max(0, Math.min(100, basePopularity + shift));
-      return newParty;
+      const basePopularity = party.popularity || 0;
+      const newPopularity = Math.max(0, Math.min(100, basePopularity + shift));
+      return {
+        ...party,
+        popularity: newPopularity
+      };
     }
   );
 
@@ -969,10 +972,12 @@ export const generateFullStateData = (params = {}) => {
   const { countryId, totalPopulation, id, nationalParties } = params;
 
   const baseRegionalLandscape = (nationalParties || []).map((party) => {
-    const newParty = deepCopy(party);
     const shift = getRandomInt(-10, 10);
-    newParty.popularity = Math.max(5, Math.min(95, 50 + shift));
-    return newParty;
+    const newPopularity = Math.max(5, Math.min(95, 50 + shift));
+    return {
+      ...party,
+      popularity: newPopularity
+    };
   });
   const normalizedBaseLandscape = normalizePartyPopularities(
     baseRegionalLandscape

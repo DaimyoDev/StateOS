@@ -89,7 +89,7 @@ const StateOverviewTab = ({ campaignData }) => {
   const [activeSubTab, setActiveSubTab] = useState("summary");
   const [governmentFilter, setGovernmentFilter] = useState("all");
 
-  const { openViewPoliticianModal, getCurrentStateGovernmentOffices } = useGameStore((state) => state.actions);
+  const { openViewPoliticianModal, getCurrentStateGovernmentOffices, getCoalitionsForEntity } = useGameStore((state) => state.actions);
   
   // Subscribe directly to government offices to force re-render when they change
   const governmentOfficesRaw = useGameStore((state) => state.activeCampaign?.governmentOffices);
@@ -136,6 +136,9 @@ const StateOverviewTab = ({ campaignData }) => {
   const stateGovernmentOffices = useMemo(() => {
     return getCurrentStateGovernmentOffices();
   }, [getCurrentStateGovernmentOffices, governmentOfficesRaw]);
+  
+  // Get coalition data for the state
+  const coalitionData = getCoalitionsForEntity('state', campaignData.regionId);
   
   // Debug logging
   console.log('[StateOverviewTab] Current region ID:', campaignData.regionId);
@@ -958,6 +961,57 @@ const StateOverviewTab = ({ campaignData }) => {
             )}
           </section>
         );
+      case "coalitions":
+        return (
+          <section className="city-section">
+            <h4>{stateName} Political Coalitions</h4>
+            {coalitionData && coalitionData.base ? (
+              <>
+                <p className="section-description">
+                  Major voting blocs and demographic coalitions in {stateName}
+                </p>
+                <div className="coalitions-grid">
+                  {Array.from(coalitionData.base).map(([coalitionId, coalition]) => {
+                    const demographics = coalitionData.demographics?.get(coalitionId);
+                    const ideology = coalitionData.ideology?.get(coalitionId);
+                    const state = coalitionData.state?.get(coalitionId);
+                    
+                    return (
+                      <div key={coalitionId} className="coalition-card">
+                        <div className="coalition-header">
+                          <h5>{coalition.name}</h5>
+                          <span className="coalition-size">
+                            {formatPercentage(coalition.size * 100, 1)} of electorate
+                          </span>
+                        </div>
+                        <div className="coalition-details">
+                          <p><strong>Ideology:</strong> <span>{ideology || 'N/A'}</span></p>
+                          {demographics && (
+                            <>
+                              <p><strong>Location:</strong> <span>{demographics.location}</span></p>
+                              <p><strong>Age Group:</strong> <span>{demographics.age}</span></p>
+                              <p><strong>Education:</strong> <span>{demographics.education}</span></p>
+                              <p><strong>Occupation:</strong> <span>{demographics.occupation}</span></p>
+                            </>
+                          )}
+                          {state && (
+                            <p><strong>Current Mood:</strong> 
+                              <span className={state.currentMood >= 0 ? 'text-success' : 'text-error'}>
+                                {state.currentMood >= 0 ? 'Positive' : 'Negative'}
+                              </span>
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            ) : (
+              <p>No coalition data available for {stateName}.</p>
+            )}
+          </section>
+        );
       default:
         return <p>Select a sub-tab to view details.</p>;
     }
@@ -1008,6 +1062,12 @@ const StateOverviewTab = ({ campaignData }) => {
           className={activeSubTab === "laws" ? "active" : ""}
         >
           {regionType} Laws
+        </button>
+        <button
+          onClick={() => setActiveSubTab("coalitions")}
+          className={activeSubTab === "coalitions" ? "active" : ""}
+        >
+          Coalitions
         </button>
       </div>
       <div className="sub-tab-content-area">{renderSubTabContent()}</div>

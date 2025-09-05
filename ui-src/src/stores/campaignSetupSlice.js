@@ -4,7 +4,10 @@ import {
   generateDetailedCountryData,
 } from "../data/countriesData";
 import { ELECTION_TYPES_BY_COUNTRY } from "../data/electionsData";
-import { generateInitialGovernmentOffices, flattenGovernmentOffices } from "../entities/politicalEntities";
+import {
+  generateInitialGovernmentOffices,
+  flattenGovernmentOffices,
+} from "../entities/politicalEntities";
 import { assignPopulationToCountry } from "../utils/populationUtils";
 
 // ADDED: Import the new generator functions and their dependencies
@@ -134,7 +137,6 @@ export const createCampaignSetupSlice = (set, get) => {
           availableParties: setupState.generatedPartiesInCountry,
           currentYear: 2025,
         });
-        
 
         // Extract politicians from the hierarchical structure
         const initialPoliticians = [];
@@ -247,72 +249,99 @@ export const createCampaignSetupSlice = (set, get) => {
 
         setLoadingGame(true, "Generating coalition systems...");
         await pause(20);
-        
+
         // Generate coalitions during campaign setup to avoid runtime regeneration
         const coalitionSystems = {};
-        const { generateCoalitions } = await import("../General Scripts/CoalitionSystem.js");
-        const availableParties = [...setupState.generatedPartiesInCountry, ...allCustomPartiesData];
-        
+        const { generateCoalitions } = await import(
+          "../General Scripts/CoalitionSystem.js"
+        );
+        const availableParties = [
+          ...setupState.generatedPartiesInCountry,
+          ...allCustomPartiesData,
+        ];
+
         // Helper function to generate coalitions for any entity with demographics and policy profile
         const generateCoalitionsForEntity = (entityId, entity, entityType) => {
-          const electorateProfile = entity?.stats?.electoratePolicyProfile || entity?.electoratePolicyProfile;
+          const electorateProfile =
+            entity?.stats?.electoratePolicyProfile ||
+            entity?.electoratePolicyProfile;
           const demographics = entity?.demographics;
-          
+
           if (demographics) {
             // Generate coalitions using demographics and default electorate profile
-            const defaultElectorateProfile = currentCountryData.stats?.electoratePolicyProfile || {};
+            const defaultElectorateProfile =
+              currentCountryData.stats?.electoratePolicyProfile || {};
             coalitionSystems[`${entityType}_${entityId}`] = generateCoalitions(
               defaultElectorateProfile,
               demographics,
               availableParties
             );
-            console.log(`Generated coalitions for ${entityType}: ${entity.name || entityId}`);
           } else {
             // Create basic coalitions using country-level defaults if no demographics
-            const defaultElectorateProfile = currentCountryData.stats?.electoratePolicyProfile || {};
+            const defaultElectorateProfile =
+              currentCountryData.stats?.electoratePolicyProfile || {};
             const defaultDemographics = currentCountryData.demographics || {
               ageDistribution: { young: 25, adult: 50, senior: 25 },
-              urbanization: 50
+              urbanization: 50,
             };
             coalitionSystems[`${entityType}_${entityId}`] = generateCoalitions(
               defaultElectorateProfile,
               defaultDemographics,
               availableParties
             );
-            console.log(`Generated default coalitions for ${entityType}: ${entity?.name || entityId}`);
+            console.log(
+              `Generated default coalitions for ${entityType}: ${
+                entity?.name || entityId
+              }`
+            );
           }
         };
 
         // 1. Generate coalitions for all cities in the selected state/region
         const allCitiesInRegion = currentRegionData?.cities || [];
-        allCitiesInRegion.forEach(city => {
-          generateCoalitionsForEntity(city.id, city, 'city');
+        allCitiesInRegion.forEach((city) => {
+          generateCoalitionsForEntity(city.id, city, "city");
         });
 
         // 2. Generate coalitions for all states/regions in the country
-        currentCountryData.regions?.forEach(region => {
-          generateCoalitionsForEntity(region.id, region, 'state');
+        currentCountryData.regions?.forEach((region) => {
+          generateCoalitionsForEntity(region.id, region, "state");
         });
 
         // 3. Generate coalitions for congressional districts (if they exist in the country data)
-        const congressionalDistricts = currentCountryData.congressionalDistricts || currentCountryData.nationalLowerHouseDistricts || [];
-        congressionalDistricts.forEach(district => {
-          generateCoalitionsForEntity(district.id, district, 'congressional_district');
+        const congressionalDistricts =
+          currentCountryData.congressionalDistricts ||
+          currentCountryData.nationalLowerHouseDistricts ||
+          [];
+        congressionalDistricts.forEach((district) => {
+          generateCoalitionsForEntity(
+            district.id,
+            district,
+            "congressional_district"
+          );
         });
 
         // 4. Generate coalitions for state legislative districts
-        currentCountryData.regions?.forEach(region => {
+        currentCountryData.regions?.forEach((region) => {
           // State house districts
           if (region.legislativeDistricts?.house) {
-            region.legislativeDistricts.house.forEach(district => {
-              generateCoalitionsForEntity(district.id, district, 'state_house_district');
+            region.legislativeDistricts.house.forEach((district) => {
+              generateCoalitionsForEntity(
+                district.id,
+                district,
+                "state_house_district"
+              );
             });
           }
-          
-          // State senate districts  
+
+          // State senate districts
           if (region.legislativeDistricts?.senate) {
-            region.legislativeDistricts.senate.forEach(district => {
-              generateCoalitionsForEntity(district.id, district, 'state_senate_district');
+            region.legislativeDistricts.senate.forEach((district) => {
+              generateCoalitionsForEntity(
+                district.id,
+                district,
+                "state_senate_district"
+              );
             });
           }
         });
@@ -320,36 +349,40 @@ export const createCampaignSetupSlice = (set, get) => {
         // 5. Generate coalitions for secondary regions (counties, provinces, etc.)
         // Counties are stored in currentCountryData.secondAdminRegions, not in region.counties
         const counties = currentCountryData.secondAdminRegions || [];
-        counties.forEach(county => {
-          generateCoalitionsForEntity(county.id, county, 'county');
+        counties.forEach((county) => {
+          generateCoalitionsForEntity(county.id, county, "county");
         });
 
         // Also check for any subregions at the region level
-        currentCountryData.regions?.forEach(region => {
+        currentCountryData.regions?.forEach((region) => {
           if (region.subregions) {
-            region.subregions.forEach(subregion => {
-              generateCoalitionsForEntity(subregion.id, subregion, 'subregion');
+            region.subregions.forEach((subregion) => {
+              generateCoalitionsForEntity(subregion.id, subregion, "subregion");
             });
           }
         });
 
         // 6. Generate national-level coalitions
-        generateCoalitionsForEntity(currentCountryData.id, currentCountryData, 'national');
+        generateCoalitionsForEntity(
+          currentCountryData.id,
+          currentCountryData,
+          "national"
+        );
 
         navigateTo("CampaignGameScreen");
         setActiveMainGameTab("Dashboard");
         resetCampaignSetup?.();
         generateScheduledElections();
         resetLegislationState();
-        
+
         // Store pre-generated coalitions in activeCampaign
         set((state) => ({
           activeCampaign: {
             ...state.activeCampaign,
-            coalitionSystems
-          }
+            coalitionSystems,
+          },
         }));
-        
+
         // Don't clear temporary politicians - they're referenced by government offices
         // clearTemporaryPoliticians();
 
@@ -382,7 +415,9 @@ export const createCampaignSetupSlice = (set, get) => {
           return;
         }
 
-        let countryToProcess = JSON.parse(JSON.stringify(selectedCountry));
+        // Work directly with the original object since there are no race conditions
+        // This eliminates unnecessary memory usage from copying large country objects
+        let countryToProcess = selectedCountry;
 
         setLoadingGame(true, "Calculating population distributions...");
         await pause(20);

@@ -17,6 +17,24 @@ const LOBBYING_ARCHETYPES = [
     policyDirection: "anti-regulation",
   },
   {
+    focus: "Banking & Financial Services",
+    keywords: ["banking", "financial", "credit", "investment"],
+    financialPower: 95,
+    policyDirection: "anti-regulation",
+  },
+  {
+    focus: "Real Estate Development",
+    keywords: ["housing", "zoning", "development", "construction"],
+    financialPower: 85,
+    policyDirection: "anti-regulation",
+  },
+  {
+    focus: "Retail & Consumer Goods",
+    keywords: ["retail", "consumer", "shopping", "sales"],
+    financialPower: 75,
+    policyDirection: "anti-regulation",
+  },
+  {
     focus: "Small Business Advocacy",
     keywords: ["business", "small business", "startup"],
     financialPower: 65,
@@ -141,6 +159,78 @@ const LOBBYING_ARCHETYPES = [
     financialPower: 60,
     policyDirection: "pro-regulation",
   },
+  {
+    focus: "Transportation & Logistics",
+    keywords: ["transport", "logistics", "shipping", "trucking"],
+    financialPower: 80,
+    policyDirection: "anti-regulation",
+  },
+  {
+    focus: "Agriculture & Farming",
+    keywords: ["agriculture", "farming", "crop", "livestock"],
+    financialPower: 70,
+    policyDirection: "anti-regulation",
+  },
+  {
+    focus: "Tourism & Hospitality",
+    keywords: ["tourism", "hotel", "hospitality", "entertainment"],
+    financialPower: 65,
+    policyDirection: "anti-regulation",
+  },
+  {
+    focus: "Professional Services",
+    keywords: ["professional", "consulting", "legal", "accounting"],
+    financialPower: 75,
+    policyDirection: "anti-regulation",
+  },
+  {
+    focus: "Consumer Protection",
+    keywords: ["consumer", "safety", "protection", "rights"],
+    financialPower: 55,
+    policyDirection: "pro-regulation",
+  },
+  {
+    focus: "Public Transportation",
+    keywords: ["transit", "public transport", "metro", "bus"],
+    financialPower: 60,
+    policyDirection: "pro-regulation",
+  },
+  {
+    focus: "Affordable Housing",
+    keywords: ["housing", "affordable", "rent", "homeless"],
+    financialPower: 50,
+    policyDirection: "pro-regulation",
+  },
+  {
+    focus: "Senior Citizens Advocacy",
+    keywords: ["senior", "elderly", "medicare", "retirement"],
+    financialPower: 65,
+    policyDirection: "pro-regulation",
+  },
+  {
+    focus: "Youth & Student Organizations",
+    keywords: ["youth", "student", "education", "college"],
+    financialPower: 45,
+    policyDirection: "pro-regulation",
+  },
+  {
+    focus: "Mental Health Advocacy",
+    keywords: ["mental health", "healthcare", "therapy", "wellness"],
+    financialPower: 50,
+    policyDirection: "pro-regulation",
+  },
+  {
+    focus: "Veterans Affairs",
+    keywords: ["veteran", "military", "service", "benefits"],
+    financialPower: 70,
+    policyDirection: "pro-regulation",
+  },
+  {
+    focus: "Manufacturing Association",
+    keywords: ["manufacturing", "industry", "production", "factory"],
+    financialPower: 85,
+    policyDirection: "anti-regulation",
+  },
 ];
 
 /**
@@ -243,31 +333,113 @@ export const createLobbyistObject = (params = {}) => ({
 // --- Organization Object Blueprints ---
 
 /**
- * Creates a new News Outlet object with detailed properties.
+ * Creates a new News Outlet object with detailed properties including contextual credibility.
  * @param {object} params - The parameters for the news outlet.
  * @param {string} [params.name] - The name of the publication (e.g., "The National Times").
  * @param {string} [params.type] - The type of outlet (e.g., "Newspaper", "TV/Radio", "Online").
- * @param {number} [params.reach] - The size of its audience (e.g., 1-100).
- * @param {number} [params.credibility] - Public trust in the outlet (e.g., 1-100).
+ * @param {string} [params.level] - The operational level ("national", "state", "local").
+ * @param {object} [params.reach] - Level-specific audience reach.
+ * @param {number} [params.reach.national] - National audience reach (0-100, only for national outlets).
+ * @param {number} [params.reach.state] - State audience reach (0-100, for state/national outlets).
+ * @param {number} [params.reach.local] - Local audience reach (0-100, for local outlets).
+ * @param {object} [params.credibility] - Base credibility metrics.
+ * @param {number} [params.credibility.base] - Base credibility score (0-100).
+ * @param {string} [params.credibility.primaryIdeology] - Main ideological alignment for credibility calculation.
+ * @param {number} [params.credibility.ideologicalIntensity] - How strongly ideological (0-10, 0=neutral, 10=very partisan).
  * @param {Array<object>} [params.staff] - An array of Journalist objects.
  * @param {object} [params.biases] - An object detailing the outlet's biases.
  * @param {object} [params.biases.partyBiases] - Key-value pairs of partyId and bias score (-10 to +10).
  * @param {object} [params.biases.ideologyBiases] - Key-value pairs of ideologyId and bias score.
  * @param {object} [params.biases.policyBiases] - Key-value pairs of policyQuestionId and preferred option value.
+ * @param {Array<string>} [params.coalitionAffiliations] - Coalition IDs this outlet tends to favor.
  * @returns {object} A new news outlet object.
  */
 export const createNewsOutletObject = (params = {}) => ({
   id: `news_${generateId()}`,
   name: params.name || "Unnamed Outlet",
   type: params.type || "Online",
-  reach: params.reach || getRandomInt(10, 80),
-  credibility: params.credibility || getRandomInt(30, 90),
+  level: params.level || "local", // "national", "state", "local"
+  
+  // Level-specific reach system with geographic distribution
+  reach: params.reach || {
+    national: params.level === "national" ? getRandomInt(10, 80) : 0,
+    state: params.level === "national" ? getRandomInt(15, 85) : 
+           params.level === "state" ? getRandomInt(20, 90) : 0,
+    local: params.level === "local" ? getRandomInt(30, 95) : 
+           params.level === "state" ? getRandomInt(10, 60) : 
+           params.level === "national" ? getRandomInt(5, 40) : 0,
+  },
+  
+  // Geographic reach data - areas where this outlet has strong influence
+  strongholdAreas: params.strongholdAreas || [],
+  
+  // Enhanced credibility system
+  credibility: params.credibility || {
+    base: getRandomInt(30, 90), // Base credibility rating
+    primaryIdeology: params.primaryIdeology || "centrist", // Main ideological lean
+    ideologicalIntensity: getRandomInt(2, 8), // How partisan (0=neutral, 10=very partisan)
+  },
+  
   staff: params.staff || [],
+  coalitionAffiliations: params.coalitionAffiliations || [], // Coalition IDs they favor
+  
   biases: params.biases || {
     partyBiases: {}, // e.g., { 'party_123': 8, 'party_456': -5 }
     ideologyBiases: {}, // e.g., { 'conservative': 7, 'socialist': -8 }
     policyBiases: {}, // e.g., { 'healthcare_spending': 'increase_significantly' }
   },
+  
+  // Method to calculate contextual credibility for a specific viewer
+  getContextualCredibility: function(viewerContext = {}) {
+    const { ideology, partyAffiliation, coalitionMemberships = [] } = viewerContext;
+    let credibilityModifier = 0;
+    
+    // Ideological alignment bonus/penalty
+    if (ideology && this.credibility.primaryIdeology) {
+      const ideologyAlignment = this.calculateIdeologyAlignment(ideology, this.credibility.primaryIdeology);
+      const intensityMultiplier = this.credibility.ideologicalIntensity / 10;
+      credibilityModifier += ideologyAlignment * 20 * intensityMultiplier;
+    }
+    
+    // Party bias effects
+    if (partyAffiliation && this.biases.partyBiases[partyAffiliation]) {
+      const partyBias = this.biases.partyBiases[partyAffiliation];
+      credibilityModifier += partyBias * 3; // Scale party bias to credibility impact
+    }
+    
+    // Coalition alignment bonus
+    const coalitionBonus = coalitionMemberships.filter(c => 
+      this.coalitionAffiliations.includes(c)
+    ).length * 10;
+    credibilityModifier += coalitionBonus;
+    
+    // Clamp final credibility between 0-100
+    return Math.max(0, Math.min(100, this.credibility.base + credibilityModifier));
+  },
+  
+  // Method to calculate reach for a specific level
+  getReachForLevel: function(level) {
+    return this.reach[level] || 0;
+  },
+  
+  // Helper method to calculate ideological alignment (-1 to 1, where 1 is perfect alignment)
+  calculateIdeologyAlignment: function(ideology1, ideology2) {
+    if (ideology1 === ideology2) return 1;
+    
+    // Define ideological spectrum for alignment calculation
+    const spectrum = {
+      "far-left": -2, "socialist": -1.5, "progressive": -1, "liberal": -0.5,
+      "centrist": 0, "moderate": 0,
+      "conservative": 0.5, "libertarian": 0.7, "nationalist": 1, "far-right": 1.5
+    };
+    
+    const pos1 = spectrum[ideology1?.toLowerCase()] ?? 0;
+    const pos2 = spectrum[ideology2?.toLowerCase()] ?? 0;
+    const distance = Math.abs(pos1 - pos2);
+    
+    // Convert distance to alignment score (closer = higher alignment)
+    return Math.max(-1, 1 - (distance / 2));
+  }
 });
 
 /**
@@ -343,12 +515,151 @@ export const createPollingFirmObject = (params = {}) => ({
 // --- Organization Generation Logic ---
 
 /**
- * Generates a set of news outlets for a specific political landscape (national or regional).
+ * Generates stronghold areas based on coalition demographic data and ideological alignment.
+ * Uses the existing coalition system to determine realistic stronghold areas.
+ * @param {string} ideology - The primary ideology of the outlet
+ * @param {string} level - The level of the outlet ('national', 'state', 'local')
+ * @param {object} coalitionData - Optional coalition data for the region (if available)
+ * @returns {Array<string>} Array of area names where the outlet has strong reach
+ */
+const generateStrongholdAreas = (ideology, level, coalitionData = null, locationContext = null) => {
+  // If coalition data is available, use it to generate data-driven strongholds
+  if (coalitionData && coalitionData.base && coalitionData.demographics) {
+    const strongholds = [];
+    const targetIdeology = ideology?.toLowerCase();
+    
+    // Find coalitions that align with the outlet's ideology
+    for (const [coalitionId, base] of coalitionData.base) {
+      const coalitionIdeology = coalitionData.ideology?.get(coalitionId);
+      const demographics = coalitionData.demographics?.get(coalitionId);
+      
+      if (coalitionIdeology && demographics && isIdeologyAligned(targetIdeology, coalitionIdeology)) {
+        // Generate area name based on coalition demographics and location
+        const areaName = generateAreaNameFromDemographics(demographics, base.name, locationContext);
+        if (areaName && strongholds.length < 4) {
+          strongholds.push(areaName);
+        }
+      }
+    }
+    
+    // If we found coalition-based strongholds, return them
+    if (strongholds.length > 0) {
+      return strongholds.slice(0, getRandomInt(2, Math.min(4, strongholds.length)));
+    }
+  }
+  
+  // Fallback to generic area types if no coalition data available
+  const conservativeAreas = {
+    national: ['Rural Regions', 'Agricultural States', 'Traditional Heartland', 'Industrial Centers', 'Religious Communities', 'Border Areas'],
+    state: ['Rural Districts', 'Agricultural Counties', 'Traditional Towns', 'Industrial Areas', 'Conservative Suburbs', 'Mining Regions'],
+    local: ['Old Town Districts', 'Industrial Neighborhoods', 'Suburban Areas', 'Rural Communities', 'Traditional Quarters', 'Working Class Areas']
+  };
+  
+  const liberalAreas = {
+    national: ['Urban Centers', 'Coastal Regions', 'University Cities', 'Metropolitan Areas', 'Cultural Hubs', 'Tech Centers'],
+    state: ['Urban Counties', 'University Towns', 'Metropolitan Districts', 'Cultural Centers', 'Progressive Communities', 'Tech Corridors'],
+    local: ['Downtown Core', 'University District', 'Arts Quarter', 'Creative Districts', 'Young Professional Areas', 'Cultural Centers']
+  };
+  
+  const moderateAreas = {
+    national: ['Swing Regions', 'Mixed Demographics', 'Suburban States', 'Moderate Centers', 'Balanced Districts', 'Centrist Areas'],
+    state: ['Suburban Counties', 'Mixed Communities', 'Swing Districts', 'Moderate Suburbs', 'Balanced Regions', 'Centrist Towns'],
+    local: ['Mixed Neighborhoods', 'Suburban Centers', 'Commercial Districts', 'Middle Class Areas', 'Residential Zones', 'Community Centers']
+  };
+
+  // Map ideologies to area types
+  const ideologyMapping = {
+    'conservative': conservativeAreas,
+    'libertarian': conservativeAreas, 
+    'nationalist': conservativeAreas,
+    'far-right': conservativeAreas,
+    'liberal': liberalAreas,
+    'progressive': liberalAreas,
+    'socialist': liberalAreas,
+    'far-left': liberalAreas,
+    'centrist': moderateAreas,
+    'moderate': moderateAreas
+  };
+
+  const areaPool = ideologyMapping[ideology?.toLowerCase()] || moderateAreas;
+  const availableAreas = areaPool[level] || areaPool.local;
+  
+  // Build location prefix for fallback areas
+  const locationPrefix = locationContext && locationContext.locationName ? `${locationContext.locationName} ` : '';
+  
+  // Randomly select 2-4 stronghold areas
+  const numStrongholds = getRandomInt(2, Math.min(4, availableAreas.length));
+  const selectedAreas = [];
+  const shuffledAreas = [...availableAreas].sort(() => 0.5 - Math.random());
+  
+  for (let i = 0; i < numStrongholds; i++) {
+    selectedAreas.push(`${locationPrefix}${shuffledAreas[i]}`);
+  }
+  
+  return selectedAreas;
+};
+
+/**
+ * Check if two ideologies are aligned for stronghold purposes
+ */
+const isIdeologyAligned = (targetIdeology, coalitionIdeology) => {
+  const alignmentGroups = {
+    conservative: ['conservative', 'libertarian', 'nationalist'],
+    liberal: ['liberal', 'progressive', 'socialist'],
+    moderate: ['centrist', 'moderate', 'pragmatist']
+  };
+  
+  for (const [group, ideologies] of Object.entries(alignmentGroups)) {
+    if (ideologies.includes(targetIdeology) && ideologies.includes(coalitionIdeology)) {
+      return true;
+    }
+  }
+  return false;
+};
+
+/**
+ * Generate area name based on coalition demographics
+ */
+const generateAreaNameFromDemographics = (demographics, coalitionName, locationContext = null) => {
+  if (!demographics) return null;
+  
+  const { location, education, occupation, age } = demographics;
+  
+  // Build location prefix based on context
+  let locationPrefix = '';
+  if (locationContext && locationContext.locationName) {
+    locationPrefix = `${locationContext.locationName} `;
+  }
+  
+  // Generate descriptive area names based on demographic composition
+  if (location === 'urban' && education === 'graduate') {
+    return `${locationPrefix}University Districts`;
+  } else if (location === 'urban' && occupation === 'professional') {
+    return `${locationPrefix}Professional Urban Areas`;
+  } else if (location === 'rural' && occupation === 'working_class') {
+    return `${locationPrefix}Rural Working Communities`;
+  } else if (location === 'suburban' && education === 'college') {
+    return `${locationPrefix}Educated Suburban Areas`;
+  } else if (location === 'suburban' && age === 'senior') {
+    return `${locationPrefix}Senior Suburban Communities`;
+  } else if (occupation === 'business_owner') {
+    return `${locationPrefix}Business Districts`;
+  } else {
+    // Use simplified coalition name as fallback
+    return `${locationPrefix}${coalitionName.replace(/s$/, ' Areas')}`;
+  }
+};
+
+/**
+ * Generates a set of news outlets for a specific political landscape with enhanced credibility and reach systems.
  * @param {object} options - The options for generation.
- * @param {string} options.level - The level of the outlets ('national' or 'regional').
+ * @param {string} options.level - The level of the outlets ('national', 'state', or 'local').
  * @param {Array<object>} options.parties - The list of political parties to base biases on.
  * @param {string} options.locationName - The name of the country or region.
  * @param {string} options.countryId - The ID of the country for naming context.
+ * @param {string} [options.regionId] - The ID of the region for regional outlets.
+ * @param {Array<string>} [options.availableCoalitions] - Available coalition IDs for affiliation.
+ * @param {object} [options.coalitionData] - Coalition data for generating realistic strongholds.
  * @returns {Array<object>} An array of fully-formed news outlet objects.
  */
 export const generateNewsOutlets = ({
@@ -357,64 +668,114 @@ export const generateNewsOutlets = ({
   locationName,
   countryId,
   regionId,
+  availableCoalitions = [],
 }) => {
   const outlets = [];
-  const numOutlets = getRandomInt(3, 5); // Generate 3-5 outlets per level
+  
+  // Adjust outlet count based on level
+  const outletCounts = {
+    national: getRandomInt(6, 10), // More national outlets
+    state: getRandomInt(4, 7), // Medium state outlets  
+    local: getRandomInt(3, 6), // Fewer local outlets
+  };
+  const numOutlets = outletCounts[level] || getRandomInt(3, 5);
+  
   const mediaTypes = ["Newspaper", "TV/Radio", "Online", "Online"]; // Skew towards online
-
   const availableParties = [...parties];
+  
+  // Create some neutral outlets too
+  const neutralOutletChance = 0.3; // 30% chance for neutral outlets
 
   for (let i = 0; i < numOutlets; i++) {
-    if (availableParties.length === 0) break;
-
-    const primaryParty = getRandomElement(availableParties);
-    // Remove party so it's not picked again as a primary
-    const partyIndex = availableParties.findIndex(
-      (p) => p.id === primaryParty.id
-    );
-    if (partyIndex > -1) availableParties.splice(partyIndex, 1);
-
-    const biases = { partyBiases: {}, ideologyBiases: {}, policyBiases: {} };
-    biases.partyBiases[primaryParty.id] = getRandomInt(5, 9);
-    biases.ideologyBiases[primaryParty.ideology] = getRandomInt(6, 10);
-
-    // Find an opposing party
-    const opposingParty = getRandomElement(
-      parties.filter((p) => p.ideology !== primaryParty.ideology)
-    );
-    if (opposingParty) {
-      biases.partyBiases[opposingParty.id] = getRandomInt(-9, -5);
+    let primaryParty = null;
+    let primaryIdeology = "centrist";
+    let ideologicalIntensity = getRandomInt(1, 3); // Low intensity for neutral
+    
+    // Decide if this outlet will be partisan or neutral
+    if (availableParties.length > 0 && Math.random() > neutralOutletChance) {
+      primaryParty = getRandomElement(availableParties);
+      primaryIdeology = primaryParty.ideology;
+      ideologicalIntensity = getRandomInt(4, 9); // Higher intensity for partisan outlets
+      
+      // Remove party so it's not picked again as a primary
+      const partyIndex = availableParties.findIndex(p => p.id === primaryParty.id);
+      if (partyIndex > -1) availableParties.splice(partyIndex, 1);
     }
 
+    // Build biases based on primary party (if any)
+    const biases = { partyBiases: {}, ideologyBiases: {}, policyBiases: {} };
+    
+    if (primaryParty) {
+      biases.partyBiases[primaryParty.id] = getRandomInt(5, 9);
+      biases.ideologyBiases[primaryParty.ideology] = getRandomInt(6, 10);
+
+      // Find an opposing party for negative bias
+      const opposingParty = getRandomElement(
+        parties.filter(p => p.ideology !== primaryParty.ideology)
+      );
+      if (opposingParty) {
+        biases.partyBiases[opposingParty.id] = getRandomInt(-9, -5);
+        biases.ideologyBiases[opposingParty.ideology] = getRandomInt(-10, -6);
+      }
+    }
+    
+    // Select coalition affiliations (0-2 coalitions)
+    const numCoalitions = Math.random() < 0.4 ? getRandomInt(0, 2) : 0;
+    const coalitionAffiliations = [];
+    for (let c = 0; c < numCoalitions && availableCoalitions.length > 0; c++) {
+      const coalition = getRandomElement(availableCoalitions);
+      if (!coalitionAffiliations.includes(coalition)) {
+        coalitionAffiliations.push(coalition);
+      }
+    }
+    
+    // Generate geographic stronghold areas based on ideological alignment
+    // Try to use coalition data if available, plus location context
+    const coalitionData = null; // Coalition data would need to be passed as a parameter
+    const locationContext = {
+      countryId: countryId,
+      regionId: regionId,
+      locationName: locationName,
+      level: level
+    };
+    const strongholdAreas = generateStrongholdAreas(primaryIdeology, level, coalitionData, locationContext);
+
     const newOutlet = createNewsOutletObject({
-      name: generateNewsOutletName(locationName, primaryParty.ideology),
+      name: generateNewsOutletName(locationName, primaryIdeology),
       type: getRandomElement(mediaTypes),
-      level,
-      reach: getRandomInt(20, 90),
-      credibility: getRandomInt(30, 85),
+      level: level === 'regional' ? 'state' : level, // Convert 'regional' to 'state'
+      primaryIdeology,
+      strongholdAreas,
+      credibility: {
+        base: getRandomInt(35, 90),
+        primaryIdeology,
+        ideologicalIntensity,
+      },
+      coalitionAffiliations,
       biases,
     });
 
+    // Generate staff aligned with the outlet's ideology
     const staff = [];
     const numStaff = getRandomInt(2, 4);
     for (let j = 0; j < numStaff; j++) {
-      // CORRECTED: Use the store's name generation service
       const staffName = useGameStore.getState().actions.generateDynamicName({
         countryId,
-        regionId: level === "regional" ? regionId : null,
+        regionId: level === "state" || level === "regional" ? regionId : null,
       });
 
       staff.push(
         createJournalistObject({
           name: staffName,
           employerId: newOutlet.id,
-          ideologyScores: { ...primaryParty.ideologyScores },
+          ideologyScores: primaryParty ? { ...primaryParty.ideologyScores } : {},
         })
       );
     }
     newOutlet.staff = staff;
     outlets.push(newOutlet);
   }
+  
   return outlets;
 };
 /**
@@ -422,13 +783,13 @@ export const generateNewsOutlets = ({
  * @param {object} options - Generation options.
  * @param {Array<object>} options.policyQuestions - The list of all policy questions.
  * @param {string} options.countryId - The ID of the country for naming context.
- * @param {number} [options.numGroups=7] - The number of groups to generate.
+ * @param {number} [options.numGroups=12] - The number of groups to generate.
  * @returns {Array<object>} An array of fully-formed lobbying group objects.
  */
 export const generateInitialLobbyingGroups = ({
   policyQuestions,
   countryId,
-  numGroups = 7,
+  numGroups = 12,
 }) => {
   const groups = [];
   const availableArchetypes = [...LOBBYING_ARCHETYPES];
@@ -549,4 +910,200 @@ export const generatePollingFirms = ({ level, locationName }) => {
     firms.push(firm);
   }
   return firms;
+};
+
+// --- Organization News Response System ---
+
+/**
+ * Determines if a lobbying group should respond to a random event
+ * @param {object} lobbyingGroup - The lobbying group
+ * @param {object} event - The random event
+ * @returns {boolean} Whether the group should respond
+ */
+export const shouldLobbyingGroupRespond = (lobbyingGroup, event) => {
+  if (!event || !lobbyingGroup) return false;
+  
+  // Check if event category matches group's focus keywords
+  const eventText = `${event.name} ${event.description} ${event.category}`.toLowerCase();
+  const hasRelevantKeywords = lobbyingGroup.focus && 
+    LOBBYING_ARCHETYPES.find(arch => arch.focus === lobbyingGroup.focus)?.keywords.some(keyword => 
+      eventText.includes(keyword)
+    );
+  
+  if (hasRelevantKeywords) {
+    // High severity events get more responses
+    const responseChance = {
+      'critical': 0.9,
+      'major': 0.7,
+      'moderate': 0.4,
+      'minor': 0.2
+    };
+    
+    return Math.random() < (responseChance[event.severity] || 0.3);
+  }
+  
+  return false;
+};
+
+/**
+ * Generates a lobbying group's response to a random event
+ * @param {object} lobbyingGroup - The lobbying group
+ * @param {object} event - The random event
+ * @param {object} outlet - The news outlet publishing the response
+ * @returns {object} News article object with the group's response
+ */
+export const generateLobbyingGroupResponse = (lobbyingGroup, event, outlet) => {
+  const archetype = LOBBYING_ARCHETYPES.find(arch => arch.focus === lobbyingGroup.focus);
+  const isProRegulation = archetype?.policyDirection === "pro-regulation";
+  
+  // Generate stance based on group's policy direction and event
+  let stance = "neutral";
+  let statementTone = "measured";
+  
+  // Economic events
+  if (event.category === "economic") {
+    if (event.context.jobsLost && isProRegulation) {
+      stance = "critical";
+      statementTone = "concerned";
+    } else if (event.context.jobsCreated && !isProRegulation) {
+      stance = "supportive";
+      statementTone = "optimistic";
+    }
+  }
+  
+  // Environmental events
+  if (event.category === "environmental") {
+    if (lobbyingGroup.focus.includes("Environmental") || lobbyingGroup.focus.includes("Green")) {
+      stance = event.severity === "critical" ? "critical" : "supportive";
+      statementTone = "urgent";
+    } else if (lobbyingGroup.focus.includes("Fossil Fuel") || lobbyingGroup.focus.includes("Corporate")) {
+      stance = "defensive";
+      statementTone = "cautious";
+    }
+  }
+  
+  // Healthcare events
+  if (event.category === "healthcare") {
+    if (lobbyingGroup.focus.includes("Healthcare") || lobbyingGroup.focus.includes("Pharmaceutical")) {
+      stance = archetype.policyDirection === "pro-regulation" ? "critical" : "defensive";
+      statementTone = "professional";
+    }
+  }
+  
+  const statements = generateLobbyingStatement(lobbyingGroup, event, stance, statementTone);
+  
+  return createNewsArticleObject({
+    headline: `${lobbyingGroup.name} ${getResponseAction(stance)} on ${event.name}`,
+    summary: statements.summary,
+    fullBody: {
+      paragraphs: statements.paragraphs,
+      quotes: statements.quotes
+    },
+    tone: statementTone,
+    outletId: outlet.id,
+    date: event.date,
+    type: "organization_response",
+    context: {
+      organizationId: lobbyingGroup.id,
+      organizationType: "lobbying_group",
+      eventId: event.id,
+      stance: stance
+    }
+  });
+};
+
+/**
+ * Gets action verb based on stance
+ */
+const getResponseAction = (stance) => {
+  const actions = {
+    supportive: ["Endorses", "Supports", "Welcomes", "Applauds"][Math.floor(Math.random() * 4)],
+    critical: ["Condemns", "Criticizes", "Opposes", "Denounces"][Math.floor(Math.random() * 4)],
+    defensive: ["Responds to", "Addresses", "Comments on", "Clarifies"][Math.floor(Math.random() * 4)],
+    neutral: ["Comments on", "Responds to", "Addresses", "Discusses"][Math.floor(Math.random() * 4)]
+  };
+  return actions[stance] || actions.neutral;
+};
+
+/**
+ * Generates detailed statement content for lobbying groups
+ */
+const generateLobbyingStatement = (group, event, stance, tone) => {
+  const groupName = group.name;
+  const eventName = event.name;
+  const context = event.context;
+  
+  const stanceTemplates = {
+    supportive: {
+      openings: [
+        `${groupName} today applauded the announcement of ${eventName}.`,
+        `${groupName} expressed strong support for ${eventName}.`,
+        `${groupName} welcomed news of ${eventName} as a positive development.`
+      ],
+      concerns: [
+        "This represents exactly the kind of progress our members have been advocating for.",
+        "We believe this development will benefit both our industry and the broader community.",
+        "This is a step in the right direction that aligns with our organization's goals."
+      ]
+    },
+    critical: {
+      openings: [
+        `${groupName} today condemned ${eventName} as harmful to community interests.`,
+        `${groupName} expressed serious concerns about ${eventName}.`,
+        `${groupName} criticized the handling of ${eventName}.`
+      ],
+      concerns: [
+        "This decision will have serious negative consequences for our members and the community.",
+        "We believe this represents poor policy that will harm economic growth and opportunity.",
+        "This development threatens the very foundations of what we've worked to build."
+      ]
+    },
+    defensive: {
+      openings: [
+        `${groupName} responded to reports about ${eventName}.`,
+        `${groupName} addressed concerns raised by ${eventName}.`,
+        `${groupName} clarified its position regarding ${eventName}.`
+      ],
+      concerns: [
+        "We want to ensure the public has accurate information about this situation.",
+        "Our organization remains committed to responsible practices and community benefit.",
+        "We will continue to work with all stakeholders to find balanced solutions."
+      ]
+    }
+  };
+  
+  const template = stanceTemplates[stance] || stanceTemplates.neutral || {
+    openings: [`${groupName} commented on ${eventName}.`],
+    concerns: ["We are monitoring this situation closely."]
+  };
+  
+  const opening = getRandomElement(template.openings);
+  const concern = getRandomElement(template.concerns);
+  
+  // Add context-specific details
+  let contextualInfo = "";
+  if (context.jobsLost) {
+    contextualInfo = ` With ${context.jobsLost} jobs at stake, this issue affects many of our members directly.`;
+  } else if (context.jobsCreated) {
+    contextualInfo = ` The creation of ${context.jobsCreated} new positions represents significant economic opportunity.`;
+  } else if (context.peopleAffected) {
+    contextualInfo = ` With ${context.peopleAffected} people affected, this is clearly a matter of public importance.`;
+  }
+  
+  const quote = `"${concern}${contextualInfo}"`;
+  const spokesperson = `${group.staff && group.staff.length > 0 ? group.staff[0].name : 'A spokesperson'}`;
+  
+  return {
+    summary: opening,
+    paragraphs: [
+      opening,
+      `${spokesperson}, speaking for ${groupName}, emphasized the organization's position. ${quote}`,
+      `The group indicated it will continue to monitor the situation and engage with policymakers as needed.`
+    ],
+    quotes: [{
+      text: concern + contextualInfo,
+      speaker: spokesperson,
+      title: `Representative, ${groupName}`
+    }]
+  };
 };

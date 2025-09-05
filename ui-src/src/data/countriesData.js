@@ -692,5 +692,64 @@ export const generateDetailedCountryData = (countryToProcess) => {
 
   processedCountry.stats = generateInitialNationalStats(processedCountry);
 
+  // Calculate national party popularity by aggregating from all states
+  if (processedCountry.regions && processedCountry.regions.length > 0 && processedCountry.nationalParties) {
+    const partyPopularityTotals = new Map();
+    let totalRegionPopulation = 0;
+
+    // Aggregate popularity weighted by region population
+    processedCountry.regions.forEach(region => {
+      if (region.politicalLandscape && region.population) {
+        const regionPop = region.population;
+        totalRegionPopulation += regionPop;
+        
+        region.politicalLandscape.forEach(party => {
+          const currentTotal = partyPopularityTotals.get(party.id) || 0;
+          partyPopularityTotals.set(party.id, currentTotal + (party.popularity * regionPop));
+        });
+      }
+    });
+
+    // Calculate weighted average popularity and update parties
+    if (totalRegionPopulation > 0) {
+      processedCountry.nationalParties = processedCountry.nationalParties.map(party => {
+        const weightedTotal = partyPopularityTotals.get(party.id) || 0;
+        const nationalPopularity = Math.round(weightedTotal / totalRegionPopulation);
+        
+        // Update party finances based on actual national popularity
+        const updatedFinances = { ...party.finances };
+        
+        // Recalculate income based on actual popularity
+        const baseMonthlyIncome = Math.round(nationalPopularity * 500 + getRandomInt(10000, 30000));
+        updatedFinances.monthlyIncome = baseMonthlyIncome;
+        
+        // Update income sources that scale with popularity
+        if (updatedFinances.incomeSources) {
+          updatedFinances.incomeSources.membershipDues = Math.round(nationalPopularity * 100 + getRandomInt(2000, 8000));
+          updatedFinances.incomeSources.publicFunding = nationalPopularity > 60 ? getRandomInt(5000, 15000) : 0;
+          
+          // Recalculate total monthly income
+          const totalIncome = Object.values(updatedFinances.incomeSources).reduce((sum, val) => sum + val, 0);
+          updatedFinances.monthlyIncome = totalIncome;
+        }
+        
+        return {
+          ...party,
+          popularity: nationalPopularity,
+          finances: updatedFinances
+        };
+      });
+    }
+
+    // Create national political landscape
+    processedCountry.politicalLandscape = processedCountry.nationalParties.map(party => ({
+      id: party.id,
+      name: party.name,
+      popularity: party.popularity,
+      color: party.color,
+      ideology: party.ideology
+    }));
+  }
+
   return processedCountry; // Return the fully processed country
 };

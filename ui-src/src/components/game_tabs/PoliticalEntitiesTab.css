@@ -223,3 +223,688 @@
   color: var(--secondary-text);
   opacity: 0.8;
 }
+
+/* --- Committee Styles --- */
+
+.committees-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 20px;
+}
+
+.committee-detail-card {
+  background-color: var(--secondary-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--element-radius);
+  padding: 18px;
+  box-shadow: var(--panel-shadow);
+  transition: all 0.2s ease-in-out;
+}
+
+.committee-detail-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+  border-color: var(--accent-color);
+}
+
+.committee-header {
+  margin-bottom: 12px;
+}
+
+.committee-header h4 {
+  margin: 0 0 8px 0;
+  font-size: 1.2em;
+  color: var(--primary-text);
+  font-family: var(--font-heading);
+}
+
+.committee-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.committee-focus {
+  background-color: var(--accent-color);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.75em;
+  font-weight: 600;
+}
+
+.committee-importance {
+  font-size: 0.8em;
+  font-weight: 500;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.committee-importance.importance-5 {
+  background-color: #e74c3c;
+  color: white;
+}
+
+.committee-importance.importance-4 {
+  background-color: #e67e22;
+  color: white;
+}
+
+.committee-importance.importance-3 {
+  background-color: #f39c12;
+  color: white;
+}
+
+.committee-importance.importance-2 {
+  background-color: #3498db;
+  color: white;
+}
+
+.committee-importance.importance-1 {
+  background-color: #95a5a6;
+  color: white;
+}
+
+.committee-description {
+  margin: 12px 0;
+  font-size: 0.9em;
+  color: var(--secondary-text);
+  line-height: 1.4;
+}
+
+.committee-details {
+  border-top: 1px solid var(--border-color);
+  padding-top: 12px;
+}
+
+.committee-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  font-size: 0.9em;
+  color: var(--secondary-text);
+}
+
+.committee-chair {
+  margin-bottom: 15px;
+}
+
+.committee-chair h5 {
+  margin: 0 0 8px 0;
+  font-size: 1em;
+  color: var(--primary-text);
+}
+
+.chair-card {
+  background-color: var(--primary-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 12px;
+  transition: all 0.2s ease-in-out;
+}
+
+.chair-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.chair-background {
+  font-size: 0.85em;
+  color: var(--secondary-text);
+  font-style: italic;
+}
+
+.chair-details {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.chair-expertise {
+  font-size: 0.8em;
+  color: var(--accent-color);
+  background-color: var(--secondary-bg);
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-weight: 500;
+}
+
+.chair-tenure {
+  font-size: 0.8em;
+  color: var(--secondary-text);
+  background-color: var(--border-color);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.committee-members h5 {
+  margin: 0 0 8px 0;
+  font-size: 1em;
+  color: var(--primary-text);
+}
+
+.members-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.committee-member-card {
+  background-color: var(--primary-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 10px;
+  transition: all 0.2s ease-in-out;
+}
+
+.committee-member-card:hover {
+  background-color: var(--secondary-bg);
+  border-color: var(--accent-color);
+  transform: translateY(-1px);
+}
+
+.member-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.member-tenure {
+  font-size: 0.75em;
+  color: var(--secondary-text);
+  background-color: var(--border-color);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.member-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: 8px;
+}
+
+.member-background {
+  font-size: 0.8em;
+  color: var(--secondary-text);
+  font-style: italic;
+}
+
+.member-expertise {
+  font-size: 0.75em;
+  color: var(--accent-color);
+  background-color: var(--secondary-bg);
+  padding: 2px 6px;
+  border-radius: 8px;
+  align-self: flex-start;
+  font-weight: 500;
+}
+
+.member-attributes {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.member-attribute {
+  font-size: 0.7em;
+  color: var(--secondary-text);
+  background-color: var(--border-color);
+  padding: 2px 4px;
+  border-radius: 3px;
+  flex: 1;
+  text-align: center;
+}
+
+.no-members-text {
+  color: var(--secondary-text);
+  font-style: italic;
+  text-align: center;
+  padding: 12px;
+}
+
+.committee-actions {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.committee-actions .action-button.small {
+  padding: 6px 12px;
+  font-size: 0.8em;
+  flex: 1;
+  min-width: 100px;
+}
+
+.committee-actions .action-button.warning {
+  background-color: #e74c3c;
+  border-color: #c0392b;
+}
+
+.committee-actions .action-button.warning:hover {
+  background-color: #c0392b;
+}
+
+/* --- Party Finances Styles --- */
+
+.finance-overview {
+  margin-bottom: 25px;
+}
+
+.finance-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.finance-card {
+  background-color: var(--secondary-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--element-radius);
+  padding: 15px;
+  text-align: center;
+  transition: all 0.2s ease-in-out;
+}
+
+.finance-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.finance-card h4 {
+  margin: 0 0 8px 0;
+  font-size: 0.9em;
+  color: var(--secondary-text);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.finance-card .amount {
+  font-size: 1.4em;
+  font-weight: 600;
+  color: var(--primary-text);
+}
+
+.finance-card.treasury {
+  border-left: 4px solid #3498db;
+}
+
+.finance-card.income .amount.positive,
+.finance-card.balance.positive .amount {
+  color: #27ae60;
+}
+
+.finance-card.expenses .amount.negative,
+.finance-card.balance.negative .amount {
+  color: #e74c3c;
+}
+
+.finance-section {
+  margin-bottom: 25px;
+}
+
+.finance-section h3 {
+  font-size: 1.2em;
+  color: var(--primary-text);
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 5px;
+}
+
+/* Income Sources */
+.income-sources-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.income-item {
+  background-color: var(--primary-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 10px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.2s ease-in-out;
+}
+
+.income-item:hover {
+  background-color: var(--secondary-bg);
+  border-color: var(--accent-color);
+}
+
+.income-label {
+  font-size: 0.9em;
+  color: var(--primary-text);
+  font-weight: 500;
+}
+
+.income-amount {
+  font-size: 0.9em;
+  color: #27ae60;
+  font-weight: 600;
+}
+
+/* Donors */
+.donors-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 15px;
+}
+
+.donor-card {
+  background-color: var(--primary-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 12px;
+  transition: all 0.2s ease-in-out;
+}
+
+.donor-card:hover {
+  background-color: var(--secondary-bg);
+  border-color: var(--accent-color);
+  transform: translateY(-1px);
+}
+
+.donor-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.donor-type {
+  font-size: 0.75em;
+  color: var(--accent-color);
+  background-color: var(--secondary-bg);
+  padding: 2px 6px;
+  border-radius: 8px;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+.donor-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.donor-amount {
+  font-size: 1.1em;
+  color: #27ae60;
+  font-weight: 600;
+}
+
+.donor-industry,
+.donor-occupation {
+  font-size: 0.8em;
+  color: var(--secondary-text);
+  background-color: var(--border-color);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+/* Merchandise */
+.merchandise-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.merch-item {
+  background-color: var(--primary-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 10px;
+  transition: all 0.2s ease-in-out;
+}
+
+.merch-item:hover {
+  background-color: var(--secondary-bg);
+  border-color: var(--accent-color);
+}
+
+.merch-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.merch-price {
+  font-size: 1em;
+  color: var(--accent-color);
+  font-weight: 600;
+}
+
+.merch-stats {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8em;
+  color: var(--secondary-text);
+}
+
+/* Upcoming Expenses */
+.upcoming-expenses {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.expense-item {
+  background-color: var(--primary-bg);
+  border: 1px solid var(--border-color);
+  border-left: 4px solid #e67e22;
+  border-radius: 6px;
+  padding: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.2s ease-in-out;
+}
+
+.expense-item:hover {
+  background-color: var(--secondary-bg);
+  border-color: var(--accent-color);
+  transform: translateX(2px);
+}
+
+.expense-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.expense-date {
+  font-size: 0.8em;
+  color: var(--secondary-text);
+}
+
+.expense-amount {
+  font-size: 1.1em;
+  color: #e67e22;
+  font-weight: 600;
+}
+
+/* --- Party Tab Count Badges --- */
+.tab-count {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-left: 4px;
+}
+
+.sub-tab-button.active .tab-count {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* --- Party Stances Modal Styling --- */
+.stances-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.stances-modal-content {
+  background: var(--primary-bg);
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  padding: 24px;
+  max-width: 800px;
+  max-height: 80vh;
+  width: 90vw;
+  overflow-y: auto;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.stances-modal-content h3 {
+  color: var(--accent-color);
+  margin: 0 0 20px 0;
+  font-size: 1.4em;
+  text-align: center;
+  border-bottom: 2px solid var(--border-color);
+  padding-bottom: 12px;
+}
+
+.stances-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.stance-card {
+  background: var(--secondary-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 16px;
+  transition: all 0.2s ease;
+}
+
+.stance-card:hover {
+  background: var(--surface-hover);
+  border-color: var(--accent-color);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.stance-policy {
+  font-weight: 600;
+  color: var(--primary-text);
+  margin-bottom: 8px;
+  font-size: 14px;
+  line-height: 1.3;
+}
+
+.stance-position {
+  color: var(--secondary-text);
+  font-size: 13px;
+  line-height: 1.4;
+  font-style: italic;
+}
+
+.stances-modal-content .menu-button {
+  display: block;
+  margin: 0 auto;
+  padding: 10px 24px;
+}
+
+/* --- News Outlet Enhancements --- */
+.coalition-affiliations {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.coalition-badge {
+  background: var(--accent-color);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Credibility color coding */
+.stat-item .positive {
+  color: #2ecc71;
+  font-weight: 600;
+}
+
+.stat-item .negative {
+  color: #e74c3c;
+  font-weight: 600;
+}
+
+/* News outlet level indicators */
+.outlet-level-national {
+  border-left: 4px solid #3498db;
+}
+
+.outlet-level-state {
+  border-left: 4px solid #9b59b6;
+}
+
+.outlet-level-local {
+  border-left: 4px solid #f39c12;
+}
+
+/* Stronghold Areas Styling */
+.stronghold-areas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.stronghold-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.4rem 0.8rem;
+  background: var(--button-action-bg);
+  color: var(--button-action-text);
+  border-radius: var(--element-radius);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  box-shadow: var(--button-shadow);
+  transition: var(--transition-speed);
+  border: var(--border-width) solid var(--button-action-bg);
+}
+
+.stronghold-badge:hover {
+  background: var(--button-action-hover-bg);
+  border-color: var(--button-action-hover-bg);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.section-description {
+  font-size: 0.9rem;
+  color: var(--secondary-text);
+  margin: 0.5rem 0;
+  line-height: 1.4;
+}

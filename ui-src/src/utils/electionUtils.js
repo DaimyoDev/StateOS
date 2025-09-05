@@ -6,6 +6,7 @@ import { generateId, getRandomElement, getRandomInt } from "./core.js";
 import { POLICY_QUESTIONS } from "../data/policyData.js";
 import { POSSIBLE_POLICY_FOCUSES } from "../data/governmentData.js";
 import { generateFullAIPolitician } from "../entities/personnel.js";
+import { calculateExpectedTurnout } from "../General Scripts/CoalitionSystem.js";
 import {
   isMayorLikeElection,
   generateMayorElectionInstances,
@@ -999,12 +1000,61 @@ export const initializeElectionObject = ({
     };
   }
 
-  let expectedTurnout = 55;
-  if (electionType.level?.startsWith("national_"))
-    expectedTurnout = getRandomInt(50, 75);
-  else if (electionType.level?.startsWith("local_state"))
-    expectedTurnout = getRandomInt(40, 65);
-  else expectedTurnout = getRandomInt(35, 60);
+  // Calculate total eligible voters (used for both expected turnout and election object)
+  const totalEligibleVoters = Math.floor(
+    (entityData.population || 0) * (0.6 + Math.random() * 0.25)
+  );
+  
+  // Calculate expected turnout using coalition data if available
+  let expectedTurnout = 55; // Default fallback
+  let expectedTurnoutData = null;
+  
+  // Try to get coalition data for more realistic expected turnout
+  
+  if (activeCampaign?.coalitionSystems && totalEligibleVoters > 0) {
+    
+    // Look for coalition system for this specific entity
+    let coalitionSoA = null;
+    const entityId = entityData.id;
+    
+    // Try different coalition system keys based on election type
+    const possibleKeys = [
+      entityId,
+      `city_${entityId}`,
+      `state_${entityId}`,
+      `county_${entityId}`,
+      `congressional_district_${entityId}`,
+      `state_house_district_${entityId}`,
+      `state_senate_district_${entityId}`,
+      `national_${activeCampaign.countryId}`
+    ];
+    
+    for (const key of possibleKeys) {
+      if (activeCampaign.coalitionSystems[key]) {
+        coalitionSoA = activeCampaign.coalitionSystems[key];
+        break;
+      }
+    }
+    
+    // Use coalition-based calculation if available
+    if (coalitionSoA) {
+      expectedTurnoutData = calculateExpectedTurnout(coalitionSoA, totalEligibleVoters, {
+        uncertaintyFactor: 0.10, // ±10% uncertainty
+        mobilizationVolatility: 0.05, // ±5% mobilization uncertainty
+        historicalBias: 0.02 // 2% systematic bias
+      });
+      expectedTurnout = Math.round(expectedTurnoutData.expectedTurnoutRate);
+    }
+  }
+  
+  // Fallback to level-based ranges if no coalition data
+  if (!expectedTurnoutData) {
+    if (electionType.level?.startsWith("national_"))
+      expectedTurnout = getRandomInt(50, 75);
+    else if (electionType.level?.startsWith("local_state"))
+      expectedTurnout = getRandomInt(40, 65);
+    else expectedTurnout = getRandomInt(35, 60);
+  }
 
   const electionObject = {
     id: `election_${instanceIdBase}_${electionYear}_${generateId()}`,
@@ -1027,10 +1077,9 @@ export const initializeElectionObject = ({
     numberOfSeatsToFill: seatDetails.numberOfSeats,
     seatDistributionMethod: seatDetails.seatDistributionMethod,
 
-    totalEligibleVoters: Math.floor(
-      (entityData.population || 0) * (0.6 + Math.random() * 0.25)
-    ),
+    totalEligibleVoters: totalEligibleVoters,
     voterTurnoutPercentage: expectedTurnout,
+    expectedTurnoutData: expectedTurnoutData, // Store detailed forecast data
     electorateIssues: electorateIssues,
     electorateLeaning: electorateLeaning,
     entityDataSnapshot: {

@@ -53,6 +53,8 @@ export const createUISlice = (set, get) => ({
   isBillAuthoringModalOpen: false,
   billAuthoringMode: 'new', // 'new', 'amend', 'repeal'
   billAuthoringTargetLaw: null,
+  isCommitteeMeetingModalOpen: false,
+  currentCommitteeMeeting: null,
 
   // --- ACTIONS ---
   actions: {
@@ -353,6 +355,20 @@ export const createUISlice = (set, get) => ({
         isBillAuthoringModalOpen: false,
         billAuthoringMode: 'new',
         billAuthoringTargetLaw: null,
+      });
+    },
+    
+    openCommitteeMeetingModal: (meeting) => {
+      set({
+        isCommitteeMeetingModalOpen: true,
+        currentCommitteeMeeting: meeting,
+      });
+    },
+    
+    closeCommitteeMeetingModal: () => {
+      set({
+        isCommitteeMeetingModalOpen: false,
+        currentCommitteeMeeting: null,
       });
     },
   },

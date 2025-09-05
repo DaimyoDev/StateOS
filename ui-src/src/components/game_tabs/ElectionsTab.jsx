@@ -383,20 +383,78 @@ const MemoizedElectionDetails = React.memo(function MemoizedElectionDetails({
           )}
         {selectedElection.voterTurnoutPercentage != null &&
           selectedElection.outcome?.status !== "concluded" && (
-            <p>
-              <strong>Expected Turnout:</strong>{" "}
-              {selectedElection.voterTurnoutPercentage}%
-            </p>
+            <div>
+              <p>
+                <strong>Expected Turnout:</strong>{" "}
+                {selectedElection.voterTurnoutPercentage}%
+                {selectedElection.expectedTurnoutData && (
+                  <span className="turnout-confidence">
+                    {" "}(±{selectedElection.expectedTurnoutData.confidenceInterval.margin.toFixed(1)}%, 
+                    {selectedElection.expectedTurnoutData.forecastMetadata.forecastAccuracy.toFixed(0)}% confidence)
+                  </span>
+                )}
+                <span className="turnout-note">
+                  {selectedElection.expectedTurnoutData && 
+                    " Based on current coalition mobilization levels"
+                  }
+                </span>
+              </p>
+              {selectedElection.expectedTurnoutData && (
+                <details className="expected-turnout-details">
+                  <summary>Coalition Turnout Forecast</summary>
+                  <div className="expected-turnout-breakdown">
+                    <p className="forecast-range">
+                      <strong>Forecast Range:</strong>{" "}
+                      {selectedElection.expectedTurnoutData.confidenceInterval.lower.toFixed(1)}% - {selectedElection.expectedTurnoutData.confidenceInterval.upper.toFixed(1)}%
+                    </p>
+                    {Array.from(selectedElection.expectedTurnoutData.coalitionForecasts.values())
+                      .sort((a, b) => b.expectedVotes - a.expectedVotes)
+                      .map((coalition, index) => (
+                        <div key={index} className="expected-coalition-item">
+                          <strong>{coalition.coalitionName}</strong>
+                          <div className="expected-stats">
+                            <span>Expected Rate: {(coalition.expectedTurnoutRate * 100).toFixed(1)}%</span>
+                            <span>Predicted Mobilization: {(coalition.mobilizationForecast * 100).toFixed(1)}%</span>
+                            <span>Expected Votes: {coalition.expectedVotes.toLocaleString()}</span>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </details>
+              )}
+            </div>
           )}
         {selectedElection.outcome?.status === "concluded" &&
           selectedElection.outcome?.voterTurnoutPercentageActual != null && (
-            <p>
-              <strong>Actual Turnout:</strong>{" "}
-              {selectedElection.outcome.voterTurnoutPercentageActual.toFixed(1)}
-              % (
-              {selectedElection.outcome.totalVotesActuallyCast?.toLocaleString()}{" "}
-              votes)
-            </p>
+            <div>
+              <p>
+                <strong>Actual Turnout:</strong>{" "}
+                {selectedElection.outcome.voterTurnoutPercentageActual.toFixed(1)}
+                % (
+                {selectedElection.outcome.totalVotesActuallyCast?.toLocaleString()}{" "}
+                votes)
+              </p>
+              {selectedElection.outcome.coalitionTurnoutData && (
+                <details className="coalition-turnout-details">
+                  <summary>Coalition Turnout Breakdown</summary>
+                  <div className="coalition-turnout-breakdown">
+                    {Array.from(selectedElection.outcome.coalitionTurnoutData.coalitionTurnout.values())
+                      .sort((a, b) => b.actualVotes - a.actualVotes)
+                      .map((coalition, index) => (
+                        <div key={index} className="coalition-turnout-item">
+                          <strong>{coalition.coalitionName}</strong>
+                          <div className="turnout-stats">
+                            <span>Base Rate: {(coalition.baseTurnoutRate * 100).toFixed(1)}%</span>
+                            <span>Mobilization: {(coalition.mobilization * 100).toFixed(1)}%</span>
+                            <span>Final Rate: {(coalition.finalTurnoutRate * 100).toFixed(1)}%</span>
+                            <span>Votes: {coalition.actualVotes.toLocaleString()}</span>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </details>
+              )}
+            </div>
           )}
         {selectedElection.incumbentInfo &&
           (Array.isArray(selectedElection.incumbentInfo)

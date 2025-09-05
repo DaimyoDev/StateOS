@@ -1,0 +1,274 @@
+/* ui-src/src/components/modals/CommitteeMeetingModal.css */
+
+.committee-meeting-modal .modal-content {
+  max-width: 800px;
+  max-height: 85vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+}
+
+/* Ensure the modal body is scrollable */
+.committee-meeting-modal .modal-body {
+  max-height: calc(85vh - 120px); /* Account for modal header and padding */
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 10px; /* Space for scrollbar */
+}
+
+.meeting-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 1rem;
+  background: var(--secondary-bg);
+  border-radius: var(--element-radius);
+  margin-bottom: 1.5rem;
+}
+
+.meeting-info h3 {
+  margin: 0 0 0.5rem 0;
+  color: var(--primary-text);
+}
+
+.meeting-date {
+  color: var(--secondary-text);
+  font-size: 0.9rem;
+  margin: 0.25rem 0;
+}
+
+.meeting-atmosphere {
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.atmosphere-productive,
+.atmosphere-collaborative,
+.atmosphere-energetic {
+  color: var(--success-text);
+  font-weight: 600;
+}
+
+.atmosphere-tense {
+  color: var(--error-text);
+  font-weight: 600;
+}
+
+.atmosphere-routine {
+  color: var(--secondary-text);
+  font-weight: 600;
+}
+
+.meeting-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.meeting-stats .stat-item {
+  padding: 0.5rem;
+  background: var(--ui-panel-bg);
+  border-radius: var(--element-radius);
+  font-size: 0.9rem;
+}
+
+.meeting-content {
+  min-height: 300px;
+  padding: 1rem;
+  background: var(--ui-panel-bg);
+  border-radius: var(--element-radius);
+  margin-bottom: 1.5rem;
+}
+
+.agenda-section h4,
+.discussion-section h4 {
+  color: var(--accent-color);
+  margin-bottom: 1rem;
+  border-bottom: 2px solid var(--border-color);
+  padding-bottom: 0.5rem;
+}
+
+.agenda-item {
+  margin-bottom: 1.5rem;
+}
+
+.agenda-topic {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--primary-text);
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  background: var(--secondary-bg);
+  border-left: 4px solid var(--accent-color);
+  border-radius: var(--element-radius);
+}
+
+.agenda-discussions,
+.general-discussions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+
+.discussion-item {
+  padding: 0.75rem;
+  background: var(--secondary-bg);
+  border-radius: var(--element-radius);
+  transition: var(--transition-speed);
+}
+
+.discussion-item:hover {
+  background: var(--highlight-bg);
+}
+
+.speaker-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.speaker-info strong {
+  color: var(--primary-text);
+  font-size: 0.95rem;
+}
+
+.speaker-role,
+.speaker-expertise {
+  font-size: 0.85rem;
+  color: var(--secondary-text);
+  font-style: italic;
+}
+
+.statement {
+  color: var(--primary-text);
+  line-height: 1.5;
+  margin: 0;
+  padding-left: 0.5rem;
+}
+
+.motion-section {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: var(--highlight-bg);
+  border-radius: var(--element-radius);
+  border: 1px solid var(--accent-border-color);
+}
+
+.motion-section h5 {
+  color: var(--accent-color);
+  margin: 0 0 0.75rem 0;
+}
+
+.motion-card {
+  background: var(--ui-panel-bg);
+  padding: 1rem;
+  border-radius: var(--element-radius);
+}
+
+.motion-text {
+  font-weight: 600;
+  color: var(--primary-text);
+  margin-bottom: 0.75rem;
+}
+
+.motion-result {
+  font-weight: 700;
+  padding: 0.5rem;
+  text-align: center;
+  border-radius: var(--element-radius);
+}
+
+.motion-result.passed {
+  color: var(--success-text);
+  background: rgba(40, 167, 69, 0.1);
+}
+
+.motion-result.failed {
+  color: var(--error-text);
+  background: rgba(220, 53, 69, 0.1);
+}
+
+.meeting-actions {
+  padding: 1rem;
+  background: var(--secondary-bg);
+  border-radius: var(--element-radius);
+}
+
+.notes-section {
+  margin-bottom: 1rem;
+}
+
+.notes-section label {
+  display: block;
+  font-weight: 600;
+  color: var(--primary-text);
+  margin-bottom: 0.5rem;
+}
+
+.notes-section textarea {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--element-radius);
+  background: var(--input-bg);
+  color: var(--input-text);
+  font-family: inherit;
+  resize: vertical;
+}
+
+.notes-section textarea:focus {
+  outline: none;
+  border-color: var(--accent-border-color);
+  box-shadow: 0 0 0 3px var(--input-focus-shadow-color);
+}
+
+.meeting-actions .action-buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+}
+
+.meeting-actions .action-button.secondary {
+  background: var(--button-bg);
+}
+
+.meeting-actions .action-button.secondary:hover:not(:disabled) {
+  background: var(--button-hover-bg);
+}
+
+.meeting-actions .action-button.secondary:disabled {
+  background: var(--disabled-bg);
+  color: var(--disabled-text);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.meeting-actions .action-button.primary {
+  background: var(--button-action-bg);
+  color: var(--button-action-text);
+}
+
+.meeting-actions .action-button.primary:hover {
+  background: var(--button-action-hover-bg);
+}
+
+/* Scrollbar styling for the modal */
+.committee-meeting-modal .modal-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.committee-meeting-modal .modal-content::-webkit-scrollbar-track {
+  background: var(--secondary-bg);
+  border-radius: var(--element-radius);
+}
+
+.committee-meeting-modal .modal-content::-webkit-scrollbar-thumb {
+  background: var(--accent-color);
+  border-radius: var(--element-radius);
+}
+
+.committee-meeting-modal .modal-content::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-border-color);
+}

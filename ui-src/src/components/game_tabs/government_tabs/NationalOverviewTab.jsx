@@ -14,9 +14,12 @@ const formatCurrency = (value) => value != null ? `$${value.toLocaleString()}` :
 
 const NationalOverviewTab = ({ campaignData }) => {
   const [activeSubTab, setActiveSubTab] = useState("summary");
-  const { openViewPoliticianModal, getNationalGovernmentOffices } = useGameStore((state) => state.actions);
+  const { openViewPoliticianModal, getNationalGovernmentOffices, getCoalitionsForEntity } = useGameStore((state) => state.actions);
   const politiciansSoA = useGameStore((state) => state.activeCampaign?.politicians);
   const governmentOfficesRaw = useGameStore((state) => state.activeCampaign?.governmentOffices);
+  
+  // Get coalition data for the country
+  const coalitionData = getCoalitionsForEntity('country', campaignData.countryId);
   const nationalGovernmentOffices = useMemo(() => {
     return getNationalGovernmentOffices();
   }, [getNationalGovernmentOffices, governmentOfficesRaw]);
@@ -304,6 +307,57 @@ const NationalOverviewTab = ({ campaignData }) => {
             )}
           </section>
         );
+      case "coalitions":
+        return (
+          <section className="city-section">
+            <h4>National Political Coalitions</h4>
+            {coalitionData && coalitionData.base ? (
+              <>
+                <p className="section-description">
+                  Major voting blocs and demographic coalitions across the nation
+                </p>
+                <div className="coalitions-grid">
+                  {Array.from(coalitionData.base).map(([coalitionId, coalition]) => {
+                    const demographics = coalitionData.demographics?.get(coalitionId);
+                    const ideology = coalitionData.ideology?.get(coalitionId);
+                    const state = coalitionData.state?.get(coalitionId);
+                    
+                    return (
+                      <div key={coalitionId} className="coalition-card">
+                        <div className="coalition-header">
+                          <h5>{coalition.name}</h5>
+                          <span className="coalition-size">
+                            {formatPercentage(coalition.size * 100, 1)} of electorate
+                          </span>
+                        </div>
+                        <div className="coalition-details">
+                          <p><strong>Ideology:</strong> <span>{ideology || 'N/A'}</span></p>
+                          {demographics && (
+                            <>
+                              <p><strong>Location:</strong> <span>{demographics.location}</span></p>
+                              <p><strong>Age Group:</strong> <span>{demographics.age}</span></p>
+                              <p><strong>Education:</strong> <span>{demographics.education}</span></p>
+                              <p><strong>Occupation:</strong> <span>{demographics.occupation}</span></p>
+                            </>
+                          )}
+                          {state && (
+                            <p><strong>Current Mood:</strong> 
+                              <span className={state.currentMood >= 0 ? 'text-success' : 'text-error'}>
+                                {state.currentMood >= 0 ? 'Positive' : 'Negative'}
+                              </span>
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            ) : (
+              <p>No coalition data available for the nation.</p>
+            )}
+          </section>
+        );
       default:
         return <p>Select a section.</p>;
     }
@@ -338,6 +392,12 @@ const NationalOverviewTab = ({ campaignData }) => {
           className={activeSubTab === "budget" ? "active" : ""}
         >
           Budget
+        </button>
+        <button
+          onClick={() => setActiveSubTab("coalitions")}
+          className={activeSubTab === "coalitions" ? "active" : ""}
+        >
+          Coalitions
         </button>
       </div>
       <div className="sub-tab-content-area">{renderSubTabContent()}</div>

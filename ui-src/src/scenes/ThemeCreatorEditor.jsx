@@ -12,6 +12,148 @@ const FONT_OPTIONS = [
   { name: "Roboto Mono", value: "'Roboto Mono', monospace" },
 ];
 
+// Helper functions for random theme generation
+const hexToRgbString = (hex) => {
+  hex = hex.replace(/^#/, "");
+  const bigint = parseInt(hex, 16);
+  const r = (bigint >> 16) & 255;
+  const g = (bigint >> 8) & 255;
+  const b = bigint & 255;
+  return `${r}, ${g}, ${b}`;
+};
+
+const hslToHex = (h, s, l) => {
+  l /= 100;
+  const a = s * Math.min(l, 1 - l) / 100;
+  const f = n => {
+    const k = (n + h / 30) % 12;
+    const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+    return Math.round(255 * color).toString(16).padStart(2, '0');
+  };
+  return `#${f(0)}${f(8)}${f(4)}`;
+};
+
+const generateRandomTheme = () => {
+  // Generate base hue (0-360)
+  const baseHue = Math.floor(Math.random() * 360);
+  
+  // Generate complementary and triadic colors
+  const complementaryHue = (baseHue + 180) % 360;
+  const triadicHue1 = (baseHue + 120) % 360;
+  const triadicHue2 = (baseHue + 240) % 360;
+  
+  // Choose color scheme type
+  const schemes = ['monochromatic', 'complementary', 'triadic', 'analogous'];
+  const scheme = schemes[Math.floor(Math.random() * schemes.length)];
+  
+  let primaryColor, accentColor, secondaryColor;
+  
+  switch (scheme) {
+    case 'complementary':
+      primaryColor = hslToHex(baseHue, 60 + Math.random() * 30, 45 + Math.random() * 15);
+      accentColor = hslToHex(complementaryHue, 70 + Math.random() * 20, 55 + Math.random() * 15);
+      secondaryColor = hslToHex(baseHue, 30 + Math.random() * 20, 75 + Math.random() * 15);
+      break;
+    case 'triadic':
+      primaryColor = hslToHex(baseHue, 60 + Math.random() * 30, 45 + Math.random() * 15);
+      accentColor = hslToHex(triadicHue1, 70 + Math.random() * 20, 55 + Math.random() * 15);
+      secondaryColor = hslToHex(triadicHue2, 50 + Math.random() * 20, 65 + Math.random() * 15);
+      break;
+    case 'analogous':
+      primaryColor = hslToHex(baseHue, 60 + Math.random() * 30, 45 + Math.random() * 15);
+      accentColor = hslToHex((baseHue + 30) % 360, 70 + Math.random() * 20, 55 + Math.random() * 15);
+      secondaryColor = hslToHex((baseHue - 30 + 360) % 360, 50 + Math.random() * 20, 65 + Math.random() * 15);
+      break;
+    default: // monochromatic
+      primaryColor = hslToHex(baseHue, 60 + Math.random() * 30, 45 + Math.random() * 15);
+      accentColor = hslToHex(baseHue, 80 + Math.random() * 15, 65 + Math.random() * 10);
+      secondaryColor = hslToHex(baseHue, 40 + Math.random() * 20, 75 + Math.random() * 15);
+  }
+  
+  // Generate light/dark theme preference
+  const isDark = Math.random() > 0.5;
+  
+  // Generate background colors
+  const primaryBg = isDark 
+    ? hslToHex(baseHue, 20 + Math.random() * 15, 8 + Math.random() * 12)
+    : hslToHex(baseHue, 10 + Math.random() * 20, 85 + Math.random() * 12);
+    
+  const secondaryBg = isDark
+    ? hslToHex(baseHue, 25 + Math.random() * 15, 15 + Math.random() * 10)
+    : hslToHex(baseHue, 15 + Math.random() * 15, 75 + Math.random() * 15);
+    
+  const uiPanelBg = isDark
+    ? hslToHex(baseHue, 15 + Math.random() * 10, 25 + Math.random() * 10)
+    : "#FFFFFF";
+  
+  // Generate text colors
+  const primaryText = isDark ? "#F0F0F0" : "#1A1A1A";
+  const secondaryText = isDark ? "#B0B0B0" : "#666666";
+  
+  // Generate random theme name
+  const adjectives = ['Mystic', 'Cosmic', 'Serene', 'Vibrant', 'Ethereal', 'Bold', 'Gentle', 'Dynamic', 'Elegant', 'Modern'];
+  const nouns = ['Aurora', 'Horizon', 'Dreams', 'Waves', 'Forest', 'Dawn', 'Twilight', 'Storm', 'Garden', 'Ocean'];
+  const themeName = `${adjectives[Math.floor(Math.random() * adjectives.length)]} ${nouns[Math.floor(Math.random() * nouns.length)]}`;
+  
+  // Random font selection
+  const mainFont = FONT_OPTIONS[Math.floor(Math.random() * FONT_OPTIONS.length)];
+  const headingFont = FONT_OPTIONS[Math.floor(Math.random() * FONT_OPTIONS.length)];
+  
+  return {
+    name: themeName,
+    colors: {
+      "--primary-bg": primaryBg,
+      "--secondary-bg": secondaryBg,
+      "--ui-panel-bg": uiPanelBg,
+      "--button-bg": primaryColor,
+      "--button-hover-bg": hslToHex(baseHue, 60, isDark ? 55 : 35),
+      "--button-active-bg": hslToHex(baseHue, 60, isDark ? 45 : 25),
+      "--button-text": isDark ? "#F0F0F0" : "#FFFFFF",
+      "--primary-text": primaryText,
+      "--secondary-text": secondaryText,
+      "--accent-color": accentColor,
+      "--accent-text": "#FFFFFF",
+      "--rgb-accent-color": hexToRgbString(accentColor),
+      "--highlight-bg": `rgba(${hexToRgbString(accentColor)}, 0.15)`,
+      "--border-color": isDark ? hslToHex(baseHue, 20, 35) : hslToHex(baseHue, 15, 70),
+      "--accent-border-color": accentColor,
+      "--error-text": "#DC3545",
+      "--success-text": "#28A745",
+      "--disabled-bg": isDark ? hslToHex(baseHue, 10, 20) : "#E9ECEF",
+      "--disabled-text": isDark ? "#666666" : "#6C757D",
+      "--button-action-bg": accentColor,
+      "--button-action-hover-bg": hslToHex((baseHue + (scheme === 'complementary' ? 180 : 30)) % 360, 70, isDark ? 65 : 45),
+      "--button-action-text": "#FFFFFF",
+      "--button-delete-bg": "#DC3545",
+      "--button-delete-hover-bg": "#C82333",
+      "--button-delete-text": "#FFFFFF",
+      "--input-bg": isDark ? hslToHex(baseHue, 15, 30) : "#FFFFFF",
+      "--input-text": primaryText,
+      "--input-placeholder-text": isDark ? "#888888" : "#A0A0A0",
+      "--progress-track-bg": isDark ? hslToHex(baseHue, 20, 25) : "#E9ECEF",
+      "--map-background-color": isDark ? hslToHex(baseHue, 25, 12) : "#F8F8F8",
+      "--map-region-default-fill": secondaryColor,
+      "--map-region-border": isDark ? "#FFFFFF" : "#FFFFFF",
+      "--map-region-hover-fill": `rgba(${hexToRgbString(accentColor)}, 0.4)`,
+    },
+    fonts: {
+      "--font-main": mainFont.value,
+      "--font-heading": headingFont.value,
+    },
+    styles: {
+      "--panel-shadow": isDark ? "0 4px 12px rgba(0,0,0,0.5)" : "0 2px 8px rgba(0,0,0,0.1)",
+      "--button-shadow": isDark ? "0 2px 4px rgba(0,0,0,0.3)" : "0 1px 2px rgba(0,0,0,0.05)",
+      "--element-radius": `${3 + Math.floor(Math.random() * 5)}px`,
+      "--border-width": "1px",
+      "--focus-ring-color": accentColor,
+      "--progress-value-color": primaryColor,
+      "--checkbox-accent-color": accentColor,
+      "--input-focus-shadow-color": `rgba(${hexToRgbString(accentColor)}, 0.25)`,
+      "--transition-speed": "0.15s ease-in-out",
+    },
+  };
+};
+
 function ThemeCreatorEditor() {
   const actions = useGameStore((state) => state.actions);
   const themeToEdit = useGameStore((state) => state.themeToEdit);
@@ -142,6 +284,17 @@ function ThemeCreatorEditor() {
     if (isNewTheme) {
       setThemeKeyInput(newName.toLowerCase().replace(/\s/g, "_"));
     }
+  };
+
+  const handleGenerateRandomTheme = () => {
+    const randomTheme = generateRandomTheme();
+    setCurrentTheme(randomTheme);
+    setIsNewTheme(true);
+    setThemeKeyInput(randomTheme.name.toLowerCase().replace(/\s/g, "_"));
+    actions.addToast({
+      message: `Generated random theme: ${randomTheme.name}`,
+      type: "success",
+    });
   };
 
   const handleSaveTheme = () => {
@@ -328,6 +481,13 @@ function ThemeCreatorEditor() {
       </div>
 
       <div className="editor-actions">
+        <button
+          className="action-button"
+          onClick={handleGenerateRandomTheme}
+          title="Generate a random theme with harmonious colors"
+        >
+          🎲 Generate Random Theme
+        </button>
         <button
           className="action-button"
           onClick={() => setShowSaveModal(true)}

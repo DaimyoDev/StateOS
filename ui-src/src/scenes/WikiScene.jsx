@@ -127,6 +127,79 @@ const sections = [
       </div>
     )
   },
+  {
+    id: 'political-parties',
+    title: 'Political Parties',
+    content: (
+      <>
+        <p>
+          Political parties are organized groups that share common ideological goals and work together 
+          to advance their political agenda through elections and governance.
+        </p>
+
+        <h3>Party Structure</h3>
+        <ul>
+          <li><strong>Leadership</strong>: Each party has a chairperson and other key officers</li>
+          <li><strong>Committees</strong>: Specialized groups focusing on different areas like finance, outreach, and policy</li>
+          <li><strong>Internal Factions</strong>: Organized subgroups within parties with distinct viewpoints</li>
+          <li><strong>Members</strong>: Politicians and committee members who belong to the party</li>
+          <li><strong>Ideology</strong>: Core beliefs and policy positions that define the party</li>
+        </ul>
+
+        <h3>Committee System</h3>
+        <p>Parties organize their work through various committees:</p>
+        <ul>
+          <li><strong>Finance Committee</strong>: Manages fundraising and budget oversight</li>
+          <li><strong>Policy Committee</strong>: Develops party platform and legislative priorities</li>
+          <li><strong>Campaign Committee</strong>: Coordinates electoral strategy and candidate support</li>
+          <li><strong>Outreach Committee</strong>: Handles public relations and community engagement</li>
+          <li><strong>Rules Committee</strong>: Governs internal party procedures and discipline</li>
+        </ul>
+        <p>Each committee has a chair and several members with relevant expertise and backgrounds.</p>
+
+        <h3>Internal Factions</h3>
+        <p>Most parties contain organized factions that represent different wings or ideological perspectives:</p>
+        <ul>
+          <li><strong>Faction Leaders</strong>: Prominent politicians who lead and represent each faction</li>
+          <li><strong>Ideological Differences</strong>: Factions may emphasize different policy priorities or approaches</li>
+          <li><strong>Influence Levels</strong>: Factions vary in size and power within the party structure</li>
+          <li><strong>Coalition Building</strong>: Factions often work together or compete for party direction</li>
+          <li><strong>Electoral Impact</strong>: Faction support can influence primary elections and endorsements</li>
+        </ul>
+        <p>
+          Understanding faction dynamics is crucial for navigating party politics. Some factions may be 
+          more progressive or conservative relative to the party mainstream, while others focus on 
+          specific issues like economic policy, social issues, or foreign affairs.
+        </p>
+
+        <h3>Party Finances</h3>
+        <p>Parties maintain complex financial operations including:</p>
+        <ul>
+          <li><strong>Monthly Budget</strong>: Regular income and expenditures</li>
+          <li><strong>Donations</strong>: Individual and organizational contributions</li>
+          <li><strong>Merchandise Sales</strong>: Campaign materials and branded items</li>
+          <li><strong>Event Revenue</strong>: Fundraisers and speaking engagements</li>
+          <li><strong>Operational Costs</strong>: Staff salaries, office expenses, and campaigns</li>
+        </ul>
+
+        <h3>Player Interactions</h3>
+        <ul>
+          <li><strong>Join a Party</strong>: Affiliate with a party that matches your ideology</li>
+          <li><strong>Donate</strong>: Support parties financially to improve relationships</li>
+          <li><strong>Request Endorsement</strong>: Seek party backing for your campaigns</li>
+          <li><strong>Attend Events</strong>: Network at fundraisers and party gatherings</li>
+          <li><strong>View Finances</strong>: Request access to detailed financial records</li>
+        </ul>
+
+        <h3>Party Relationships</h3>
+        <p>
+          Your standing with different parties affects your political career. Supporting a party 
+          through donations and alignment can lead to endorsements and resources, while opposing 
+          their agenda may create political obstacles.
+        </p>
+      </>
+    )
+  },
 ];
 
 const WikiScene = () => {

@@ -71,7 +71,7 @@ const CityOverviewTab = () => {
   const [governmentFilter, setGovernmentFilter] = useState("all");
 
   const activeCampaign = useGameStore((state) => state.activeCampaign);
-  const { openViewPoliticianModal } = useGameStore((state) => state.actions);
+  const { openViewPoliticianModal, getCoalitionsForCity } = useGameStore((state) => state.actions);
   const governmentOffices = useGameStore((state) => state.activeCampaign?.governmentOffices);
   const currentTheme = useGameStore(
     (state) => state.availableThemes[state.activeThemeName]
@@ -120,6 +120,9 @@ const CityOverviewTab = () => {
 
   const { startingCity } = activeCampaign || {};
   const cityId = startingCity?.id;
+  
+  // Get coalition data for the city if available
+  const coalitionData = getCoalitionsForCity(cityId);
   const cityGovernmentOffices = useMemo(() => {
     if (!governmentOffices || !cityId) return { executive: [], legislative: [] };
     return governmentOffices.cities?.[cityId] || { executive: [], legislative: [] };
@@ -954,6 +957,57 @@ const CityOverviewTab = () => {
             )}
           </section>
         );
+      case "coalitions":
+        return (
+          <section className="city-section">
+            <h4>City Political Coalitions</h4>
+            {coalitionData && coalitionData.base ? (
+              <>
+                <p className="section-description">
+                  Major voting blocs and demographic coalitions in {cityName}
+                </p>
+                <div className="coalitions-grid">
+                  {Array.from(coalitionData.base).map(([coalitionId, coalition]) => {
+                    const demographics = coalitionData.demographics?.get(coalitionId);
+                    const ideology = coalitionData.ideology?.get(coalitionId);
+                    const state = coalitionData.state?.get(coalitionId);
+                    
+                    return (
+                      <div key={coalitionId} className="coalition-card">
+                        <div className="coalition-header">
+                          <h5>{coalition.name}</h5>
+                          <span className="coalition-size">
+                            {formatPercentage(coalition.size * 100, 1)} of electorate
+                          </span>
+                        </div>
+                        <div className="coalition-details">
+                          <p><strong>Ideology:</strong> <span>{ideology || 'N/A'}</span></p>
+                          {demographics && (
+                            <>
+                              <p><strong>Location:</strong> <span>{demographics.location}</span></p>
+                              <p><strong>Age Group:</strong> <span>{demographics.age}</span></p>
+                              <p><strong>Education:</strong> <span>{demographics.education}</span></p>
+                              <p><strong>Occupation:</strong> <span>{demographics.occupation}</span></p>
+                            </>
+                          )}
+                          {state && (
+                            <p><strong>Current Mood:</strong> 
+                              <span className={state.currentMood >= 0 ? 'text-success' : 'text-error'}>
+                                {state.currentMood >= 0 ? 'Positive' : 'Negative'}
+                              </span>
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            ) : (
+              <p>No coalition data available for the city.</p>
+            )}
+          </section>
+        );
       default:
         return <p>Select a sub-tab to view details.</p>;
     }
@@ -1001,7 +1055,13 @@ const CityOverviewTab = () => {
           className={activeSubTab === "laws" ? "active" : ""}
         >
           City Laws
-        </button>{" "}
+        </button>
+        <button
+          onClick={() => setActiveSubTab("coalitions")}
+          className={activeSubTab === "coalitions" ? "active" : ""}
+        >
+          Coalitions
+        </button>
       </div>
 
       <div className="sub-tab-content-area">{renderSubTabContent()}</div>
