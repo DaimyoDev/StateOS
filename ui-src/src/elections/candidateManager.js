@@ -1,10 +1,11 @@
 import { generateFullAIPolitician } from "../entities/personnel";
 import { normalizePollingOptimized } from "../General Scripts/OptimizedPollingFunctions.js";
+import { calculateCoalitionPolling, aggregateCoalitionPolling } from "../General Scripts/CoalitionSystem.js";
 
 /**
  * Generates AI candidates for a specific race
  */
-export const generateCandidatesForRace = (parties, selectedCountryId, totalPopulation) => {
+export const generateCandidatesForRace = (parties, selectedCountryId, totalPopulation, coalitionSoA = null) => {
   if (parties.length === 0) {
     return { success: false, message: "No parties configured." };
   }
@@ -26,11 +27,18 @@ export const generateCandidatesForRace = (parties, selectedCountryId, totalPopul
     })
     .filter(Boolean);
 
-  const normalizedCandidatesMap = normalizePollingOptimized(
-    newCandidates,
-    totalPopulation
-  );
-  const finalCandidates = Array.from(normalizedCandidatesMap.values());
+  // Use coalition-based polling if coalitions are available
+  let finalCandidates;
+  if (coalitionSoA && coalitionSoA.base && coalitionSoA.base.size > 0) {
+    finalCandidates = calculateCoalitionBasedPolling(newCandidates, coalitionSoA, totalPopulation);
+  } else {
+    // Fallback to original normalized polling
+    const normalizedCandidatesMap = normalizePollingOptimized(
+      newCandidates,
+      totalPopulation
+    );
+    finalCandidates = Array.from(normalizedCandidatesMap.values());
+  }
 
   return { success: true, candidates: finalCandidates };
 };
@@ -105,4 +113,79 @@ export const processSavedPoliticians = (savedPoliticians, currentCandidates) => 
   }
   
   return politiciansArray.filter((p) => !currentCandidateIds.has(p.id));
+};
+
+/**
+ * Simple aggregation of coalition polling scores
+ */
+const aggregatePollingScores = (coalitionScores, coalitionSoA) => {
+  if (!coalitionScores || coalitionScores.size === 0) return 0;
+  
+  let weightedSum = 0;
+  let totalWeight = 0;
+  
+  // Weight each coalition's score by its size
+  for (const [coalitionId, score] of coalitionScores) {
+    const coalitionBase = coalitionSoA.base.get(coalitionId);
+    if (coalitionBase) {
+      const coalitionSize = coalitionBase.size || 1;
+      weightedSum += score * coalitionSize;
+      totalWeight += coalitionSize;
+    }
+  }
+  
+  return totalWeight > 0 ? weightedSum / totalWeight : 0;
+};
+
+/**
+ * Calculate coalition-based polling for candidates
+ */
+export const calculateCoalitionBasedPolling = (candidates, coalitionSoA, totalPopulation) => {
+  if (!candidates || candidates.length === 0) {
+    return [];
+  }
+
+  const candidatesWithCoalitionScores = candidates.map(candidate => {
+    // Calculate how this candidate polls with each coalition
+    const coalitionScores = calculateCoalitionPolling(candidate.id, candidate, coalitionSoA);
+    
+    // Aggregate the coalition polling to get overall polling percentage
+    const overallPolling = aggregatePollingScores(coalitionScores, coalitionSoA);
+    
+    return {
+      ...candidate,
+      polling: Math.max(1, Math.min(99, overallPolling)), // Clamp between 1-99%
+      coalitionScores: coalitionScores // Store for debugging/analysis
+    };
+  });
+
+  // Normalize to 100%
+  const totalPolling = candidatesWithCoalitionScores.reduce((sum, c) => sum + c.polling, 0);
+  
+  if (totalPolling === 0) {
+    // If all candidates have 0 polling, distribute evenly
+    const equalShare = 100 / candidates.length;
+    return candidatesWithCoalitionScores.map(candidate => ({
+      ...candidate,
+      polling: equalShare
+    }));
+  }
+
+  return candidatesWithCoalitionScores.map(candidate => ({
+    ...candidate,
+    polling: (candidate.polling / totalPolling) * 100
+  }));
+};
+
+/**
+ * Repoll candidates using coalition-based calculations
+ */
+export const repollCandidatesWithCoalitions = (candidates, coalitionSoA, totalPopulation) => {
+  if (!coalitionSoA || !coalitionSoA.base || coalitionSoA.base.size === 0) {
+    // Fallback to simple normalization if no coalitions
+    const normalizedCandidatesMap = normalizePollingOptimized(candidates, totalPopulation);
+    return Array.from(normalizedCandidatesMap.values());
+  }
+
+  return calculateCoalitionBasedPolling(candidates, coalitionSoA, totalPopulation);
 };

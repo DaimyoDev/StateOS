@@ -172,15 +172,30 @@ const getIdeologyBiasForQuestion = (question, ideologyDef) => {
   
   // Map question categories to ideology dimensions
   const categoryMappings = {
+    // Handle both lowercase and actual categories used in policy data
     'economic': ['economic', 'state_intervention_scope'],
+    'Economy': ['economic', 'state_intervention_scope'],
     'social': ['social_traditionalism', 'personal_liberty'],
+    'Social Issues': ['social_traditionalism', 'personal_liberty'],
     'environment': ['ecology'],
+    'Environment': ['ecology'],
+    'Environmental Policy': ['ecology'],
     'governance': ['governance_approach', 'authority_structure'],
+    'Governance': ['governance_approach', 'authority_structure'],
+    'Government Structure': ['governance_approach', 'authority_structure'],
+    'Constitutional Structure': ['governance_approach', 'authority_structure'],
     'technology': ['digitalization'],
-    'foreign': ['sovereignty']
+    'Technology': ['digitalization'],
+    'foreign': ['sovereignty'],
+    'Foreign Policy': ['sovereignty'],
+    'Defense': ['sovereignty', 'authority_structure'],
+    'National Defense': ['sovereignty', 'authority_structure'],
+    'Healthcare': ['state_intervention_scope', 'social_traditionalism'],
+    'Education': ['state_intervention_scope', 'social_traditionalism'],
+    'Justice and Law': ['authority_structure', 'personal_liberty']
   };
   
-  const relevantDimensions = categoryMappings[question.category] || ['economic'];
+  const relevantDimensions = categoryMappings[question.category] || categoryMappings[question.category?.toLowerCase()] || ['state_intervention_scope'];
   let bias = 0;
   
   for (const dimension of relevantDimensions) {

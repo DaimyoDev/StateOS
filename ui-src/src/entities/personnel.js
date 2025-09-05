@@ -1365,7 +1365,8 @@ export const generateNationalParties = ({
     )[0];
     const partyIdeologyName = selectedIdeologyObject.name;
     const partyIdeologyId = selectedIdeologyObject.id;
-    const baseColor = selectedIdeologyObject.color || "#808080";
+    // Generate a random base color instead of using ideology default
+    const baseColor = `#${Math.floor(Math.random()*16777215).toString(16).padStart(6, '0')}`;
     const partyColor = generateNuancedColor(
       baseColor,
       getRandomInt(0, 100),

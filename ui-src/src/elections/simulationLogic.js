@@ -2,43 +2,62 @@ import { generateCoalitions } from "../General Scripts/CoalitionSystem.js";
 import { generateDetailedCountryData } from "../data/countriesData";
 import { normalizePollingOptimized } from "../General Scripts/OptimizedPollingFunctions.js";
 import { generateId } from "../utils/core";
+import { repollCandidatesWithCoalitions } from "./candidateManager.js";
+import { generateHierarchicalCoalitions, getCoalitionsForElection } from "./hierarchicalCoalitions.js";
 
 /**
  * Generates coalitions for election simulation based on parties and demographics
+ * Now supports hierarchical coalition generation for different election levels
  */
-export const generateCoalitionsForSimulation = (parties) => {
+export const generateCoalitionsForSimulation = (parties, electionSetup = null) => {
   if (parties.length === 0) {
     return { coalitionSystems: null, coalitionsGenerated: false };
   }
 
-  // Generate default demographics and electorate profile for simulation
-  const defaultDemographics = {
-    ageDistribution: { young: 25, adult: 50, senior: 25 },
-    urbanization: 60,
-    educationLevel: { highSchool: 30, college: 45, graduate: 25 },
-    incomeLevel: { low: 25, middle: 50, high: 25 },
-    occupation: { whiteCollar: 40, blueCollar: 35, service: 25 }
-  };
+  // Require elections to be selected before generating coalitions
+  if (!electionSetup || !electionSetup.electionInstances) {
+    return { coalitionSystems: null, coalitionsGenerated: false };
+  }
 
-  const defaultElectorateProfile = {
-    economic_policy: 0,
-    social_policy: 0,
-    foreign_policy: 0,
-    environmental_policy: 0,
-    civil_liberties: 0
-  };
+  const allInstances = Object.values(electionSetup.electionInstances).flat();
+  if (allInstances.length === 0) {
+    return { coalitionSystems: null, coalitionsGenerated: false };
+  }
 
-  // Generate coalitions using the coalition system
-  const coalitionSoA = generateCoalitions(
-    defaultElectorateProfile,
-    defaultDemographics,
-    parties
-  );
+  // Generate hierarchical coalitions based on selected elections
+  const hierarchicalCoalitions = generateHierarchicalCoalitions(electionSetup, allInstances);
+    
+    // Also generate default for backwards compatibility
+    const defaultDemographics = {
+      ageDistribution: { young: 25, adult: 50, senior: 25 },
+      urbanization: 60,
+      educationLevel: { highSchool: 30, college: 45, graduate: 25 },
+      incomeLevel: { low: 25, middle: 50, high: 25 },
+      occupation: { whiteCollar: 40, blueCollar: 35, service: 25 }
+    };
 
-  return { 
-    coalitionSystems: { "simulation_default": coalitionSoA }, 
-    coalitionsGenerated: true 
-  };
+    const defaultElectorateProfile = {
+      economic_policy: 0,
+      social_policy: 0,
+      foreign_policy: 0,
+      environmental_policy: 0,
+      civil_liberties: 0
+    };
+
+    const defaultCoalitionSoA = generateCoalitions(
+      defaultElectorateProfile,
+      defaultDemographics,
+      parties
+    );
+    
+    return {
+      coalitionSystems: { 
+        "simulation_default": defaultCoalitionSoA,
+        "hierarchical": hierarchicalCoalitions
+      },
+      coalitionsGenerated: true,
+      isHierarchical: true
+    };
 };
 
 /**
@@ -84,9 +103,9 @@ export const createElectionInstance = (electionTypeId, availableElectionTypes, c
 };
 
 /**
- * Repoll candidates based on electorate changes
+ * Repoll candidates based on coalition changes
  */
-export const repollCandidatesForElections = (candidatesByElection, electionInstances) => {
+export const repollCandidatesForElections = (candidatesByElection, electionInstances, coalitionSoA, totalPopulation) => {
   const allElectionInstances = Object.values(electionInstances).flat();
   const updatedCandidatesByElection = { ...candidatesByElection };
   let totalCandidatesRepolled = 0;
@@ -94,24 +113,31 @@ export const repollCandidatesForElections = (candidatesByElection, electionInsta
   allElectionInstances.forEach(electionInstance => {
     const candidates = updatedCandidatesByElection[electionInstance.id] || [];
     if (candidates.length > 0) {
-      // Repoll each candidate based on new electorate profile
-      const repolledCandidates = candidates.map(candidate => ({
-        ...candidate,
-        polling: Math.max(1, Math.min(99, 
-          // Base polling with some random variation
-          candidate.polling + (Math.random() - 0.5) * 20
-        ))
-      }));
+      // Use coalition-based repolling if coalitions are available
+      let repolledCandidates;
+      if (coalitionSoA && coalitionSoA.base && coalitionSoA.base.size > 0) {
+        // Use coalition-based repolling
+        repolledCandidates = repollCandidatesWithCoalitions(candidates, coalitionSoA, totalPopulation);
+      } else {
+        // Fallback to simple random variation + normalization
+        const modifiedCandidates = candidates.map(candidate => ({
+          ...candidate,
+          polling: Math.max(1, Math.min(99, 
+            // Base polling with some random variation
+            candidate.polling + (Math.random() - 0.5) * 20
+          ))
+        }));
 
-      // Normalize polling to 100%
-      const totalPolling = repolledCandidates.reduce((sum, c) => sum + c.polling, 0);
-      const normalizedCandidates = repolledCandidates.map(candidate => ({
-        ...candidate,
-        polling: (candidate.polling / totalPolling) * 100
-      }));
+        // Normalize polling to 100%
+        const totalPolling = modifiedCandidates.reduce((sum, c) => sum + c.polling, 0);
+        repolledCandidates = modifiedCandidates.map(candidate => ({
+          ...candidate,
+          polling: (candidate.polling / totalPolling) * 100
+        }));
+      }
 
-      updatedCandidatesByElection[electionInstance.id] = normalizedCandidates;
-      totalCandidatesRepolled += normalizedCandidates.length;
+      updatedCandidatesByElection[electionInstance.id] = repolledCandidates;
+      totalCandidatesRepolled += repolledCandidates.length;
     }
   });
 
@@ -171,12 +197,10 @@ export const createSimulatedElections = (setupConfig) => {
     const raceCandidates = candidatesByElection[electionInstance.id] || [];
     if (raceCandidates.length === 0) continue;
 
-    const normalizedRaceCandidates = normalizePollingOptimized(
-      raceCandidates,
-      populationForSim
-    );
+    // Don't re-normalize if candidates already have coalition-based polling
+    // Use the existing candidates directly to preserve coalition-based polling
     const candidatesMap = new Map(
-      Array.from(normalizedRaceCandidates.values()).map((c) => [c.id, c])
+      raceCandidates.map((c) => [c.id, c])
     );
 
     let officeName = selectedElectionTypeDetails.officeNameTemplate
@@ -245,7 +269,7 @@ export const validateSimulationSetup = (setupConfig) => {
 
   if (allElectionInstances.length === 0) missing.push("select election types");
   if (parties.length === 0) missing.push("configure parties");
-  if (!coalitionsGenerated) missing.push("generate coalitions");
+  if (allElectionInstances.length > 0 && !coalitionsGenerated) missing.push("generate coalitions");
 
   return {
     isValid: missing.length === 0,

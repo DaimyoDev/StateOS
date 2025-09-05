@@ -11,6 +11,7 @@ import {
   electoralCollegeSystem,
 } from "../General Scripts/ElectoralCollegeSystem";
 import ElectoralCollegeMap from "../components/ElectoralCollegeMap/ElectoralCollegeMap";
+import { calculateCoalitionBasedPolling } from "../elections/candidateManager.js";
 
 // Import county maps for state detail view
 import AlabamaMap from "../maps/usaCounties/AlabamaMap";
@@ -95,12 +96,29 @@ const generateRandomColor = () => {
   return colors[Math.floor(Math.random() * colors.length)];
 };
 
-const distributeVoteChunkProportionally = (candidates, voteChunk) => {
-  let processedCandidates = candidates.map((c) => ({
-    ...c,
-    currentVotes: c.currentVotes || 0,
-    basePolling: c.polling || c.baseScore || 1,
-  }));
+const distributeVoteChunkProportionally = (candidates, voteChunk, coalitionSoA = null, totalPopulation = null) => {
+  let processedCandidates;
+  
+  // Use coalition-based polling if available
+  if (coalitionSoA && coalitionSoA.base && coalitionSoA.base.size > 0 && totalPopulation) {
+    // Calculate coalition-based polling for realistic vote distribution
+    const candidatesWithCoalitionPolling = calculateCoalitionBasedPolling(
+      candidates.map(c => ({ ...c, currentVotes: c.currentVotes || 0 })), 
+      coalitionSoA, 
+      totalPopulation
+    );
+    processedCandidates = candidatesWithCoalitionPolling.map(c => ({
+      ...c,
+      basePolling: c.polling || c.baseScore || 1,
+    }));
+  } else {
+    // Fallback to original polling
+    processedCandidates = candidates.map((c) => ({
+      ...c,
+      currentVotes: c.currentVotes || 0,
+      basePolling: c.polling || c.baseScore || 1,
+    }));
+  }
 
   if (voteChunk <= 0 || processedCandidates.length === 0) {
     return candidates.map((c) => ({ ...c, currentVotes: c.currentVotes || 0 }));
@@ -864,7 +882,7 @@ const ElectoralCollegeCard = ({
       currentCountryData = election.countryData;
       campaignToUse = {
         countryId: election.regionId,
-        coalitionSystems: null, // Simulation mode doesn't use coalition systems
+        coalitionSystems: election.coalitionSoA ? { simulation_default: election.coalitionSoA } : null,
       };
     }
 
@@ -1896,7 +1914,9 @@ const ElectionNightScreen = () => {
           newLiveElectionsData[i].candidates =
             distributeVoteChunkProportionally(
               election.candidates,
-              votesThisTick
+              votesThisTick,
+              election.coalitionSoA,
+              election.totalEligibleVoters
             );
         }
 
@@ -2024,7 +2044,9 @@ const ElectionNightScreen = () => {
         if (election.isComplete && election.winnerAnnounced) return election;
         const finalCands = distributeVoteChunkProportionally(
           election.candidates.map((c) => ({ ...c, currentVotes: 0 })),
-          election.totalExpectedVotes
+          election.totalExpectedVotes,
+          election.coalitionSoA,
+          election.totalEligibleVoters
         );
         const sortedCands = [...finalCands].sort(
           (a, b) => (b.currentVotes || 0) - (a.currentVotes || 0)

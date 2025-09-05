@@ -5,6 +5,8 @@ import {
   calculateCoalitionPolling,
   aggregateCoalitionPolling,
 } from "./CoalitionSystem.js";
+import { distributeValueProportionally } from "../utils/core.js";
+import { usaStates } from "../data/states/usaStates.js";
 
 /**
  * Electoral vote allocations by state (USA)
@@ -764,14 +766,46 @@ export class ElectoralCollegeSystem {
   }
 
   /**
+   * Distribute total population to states based on population weights
+   * @param {number} totalPopulation - Total population to distribute
+   * @param {Array} states - Array of state objects
+   * @returns {Map} Map of stateId -> population
+   */
+  distributePopulationToStates(totalPopulation, states) {
+    // Get population weights from usaStates data
+    const stateWeights = states.map(state => {
+      const usaStateData = usaStates.find(s => s.id === state.id);
+      return {
+        ...state,
+        populationWeight: usaStateData?.populationWeight || 1
+      };
+    });
+    
+    // Use the same distribution function as campaign mode
+    const distributedPopulations = distributeValueProportionally(
+      totalPopulation,
+      stateWeights
+    );
+    
+    // Create map of stateId -> population
+    const populationMap = new Map();
+    states.forEach((state, index) => {
+      populationMap.set(state.id, distributedPopulations[index] || 10000);
+    });
+    
+    return populationMap;
+  }
+
+  /**
    * Fallback calculation when coalition system isn't available
    */
   fallbackElectoralCalculation(candidates, countryData) {
-    console.warn("Using fallback electoral college calculation");
+    console.warn("Using fallback electoral college calculation with population distribution");
     console.log("[DEBUG] Fallback calculation with:", {
       candidatesCount: candidates?.length || 0,
       statesCount: countryData?.regions?.length || 0,
       countryId: countryData?.id,
+      totalPopulation: countryData?.population || 0,
     });
 
     const results = {
@@ -789,8 +823,20 @@ export class ElectoralCollegeSystem {
     });
 
     const states = countryData?.regions || [];
+    
+    // Distribute population realistically if available
+    let statePopulations = new Map();
+    if (countryData?.population) {
+      statePopulations = this.distributePopulationToStates(countryData.population, states);
+    }
+    
     states.forEach((state) => {
-      const stateResult = this.fallbackStateCalculation(state, candidates);
+      // Pass distributed population to state calculation
+      const stateWithPopulation = {
+        ...state,
+        population: statePopulations.get(state.id) || state.population || 100000
+      };
+      const stateResult = this.fallbackStateCalculation(stateWithPopulation, candidates);
       if (stateResult) {
         // Set reporting information for fallback calculation (always complete when not using progressive)
         stateResult.stateName = state.name;
@@ -817,30 +863,56 @@ export class ElectoralCollegeSystem {
   }
 
   /**
-   * Fallback state calculation using simple party popularity
+   * Fallback state calculation using population-weighted scoring
    */
   fallbackStateCalculation(state, candidates) {
     const electoralVotes = ELECTORAL_VOTES_BY_STATE[state.id] || 0;
     if (electoralVotes === 0) return null;
 
     const candidateScores = new Map();
+    
+    // Use population to influence voting patterns
+    const statePopulation = state.population || 100000;
+    const urbanizationFactor = Math.min(1, statePopulation / 5000000); // More urban states lean differently
 
     candidates.forEach((candidate) => {
-      let score = 25; // Base score
+      let score = 30; // Base score
 
-      // Party popularity in state
+      // Party popularity in state (if available)
       if (candidate.partyId && state.politicalLandscape) {
         const party = state.politicalLandscape.find(
           (p) => p.id === candidate.partyId
         );
         if (party) {
-          score += party.popularity;
+          score += party.popularity * 0.8; // Weight party popularity
         }
       }
+      
+      // Use candidate attributes if available
+      if (candidate.attributes) {
+        score += ((candidate.attributes.charisma || 50) - 50) * 0.2;
+        score += ((candidate.attributes.integrity || 50) - 50) * 0.15;
+      }
+      
+      // Apply urbanization influence (simplified model)
+      if (candidate.ideology) {
+        if (candidate.ideology.includes("Progressive") || candidate.ideology.includes("Liberal")) {
+          score += urbanizationFactor * 10;
+        } else if (candidate.ideology.includes("Conservative")) {
+          score += (1 - urbanizationFactor) * 10;
+        }
+      }
+      
+      // Add realistic state-level variation (smaller than before)
+      const stateVariation = (Math.random() - 0.5) * 15;
+      score += stateVariation;
+      
+      // Use polling if available as a strong indicator
+      if (candidate.polling) {
+        score = score * 0.3 + candidate.polling * 0.7; // Blend calculated score with polling
+      }
 
-      // Random variation
-      score += (Math.random() - 0.5) * 20;
-      candidateScores.set(candidate.id, Math.max(5, score));
+      candidateScores.set(candidate.id, Math.max(5, Math.min(95, score)));
     });
 
     // Normalize and find winner
