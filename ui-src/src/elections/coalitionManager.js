@@ -5,17 +5,17 @@
 /**
  * Updates mobilization level for a specific coalition
  */
-export const updateCoalitionMobilization = (coalitionSoA, coalitionId, newMobilization) => {
-  // Initialize mobilization map if it doesn't exist
-  if (!coalitionSoA.mobilization) {
-    coalitionSoA.mobilization = new Map();
-  }
+export const updateCoalitionMobilization = (coalitionSoA, coalitionId, newMobilizationValue) => {
+  // Create a completely new mobilization map
+  const newMobilizationMap = new Map(coalitionSoA.mobilization || new Map());
+  newMobilizationMap.set(coalitionId, parseFloat(newMobilizationValue));
   
+  // Return a completely new object with new map references
   const updatedCoalitionSoA = {
     ...coalitionSoA,
-    mobilization: new Map(coalitionSoA.mobilization)
+    mobilization: newMobilizationMap
   };
-  updatedCoalitionSoA.mobilization.set(coalitionId, parseFloat(newMobilization));
+  
   return updatedCoalitionSoA;
 };
 

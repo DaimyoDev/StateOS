@@ -58,7 +58,7 @@ export const useGameStore = create(
       const customEntitySlice = createCustomEntitySlice(set, get);
       const personnelSlice = createPersonnelSlice(set, get);
       const dataSliceData = createDataSlice(set, get);
-            const pollingSliceData = createPollingSlice(set, get);
+      const pollingSliceData = createPollingSlice(set, get);
       const notificationSlice = createNotificationSlice(set, get);
       const cityManagementSlice = createCityManagementSlice(set, get);
 
@@ -94,9 +94,9 @@ export const useGameStore = create(
         politicianRelationships: personnelSlice.politicianRelationships,
         politicianIntel: personnelSlice.politicianIntel,
         favoritePoliticians: personnelSlice.favoritePoliticians,
-                recentPollsByElection: pollingSliceData.recentPollsByElection,
+        recentPollsByElection: pollingSliceData.recentPollsByElection,
         notifications: notificationSlice.notifications,
-        
+
         // City Management
         availableCities: cityManagementSlice.availableCities,
         currentCityId: cityManagementSlice.currentCityId,
@@ -120,7 +120,7 @@ export const useGameStore = create(
           ...customEntitySlice.actions,
           ...personnelSlice.actions,
           ...dataSliceData.actions,
-                    ...pollingSliceData.actions,
+          ...pollingSliceData.actions,
           ...notificationSlice.actions,
           ...cityManagementSlice.actions,
 
@@ -134,31 +134,40 @@ export const useGameStore = create(
           },
 
           getCoalitionsForCity: (cityId) => {
-            return get().actions.getCoalitionsForEntity('city', cityId);
+            return get().actions.getCoalitionsForEntity("city", cityId);
           },
 
           getCoalitionsForState: (stateId) => {
-            return get().actions.getCoalitionsForEntity('state', stateId);
+            return get().actions.getCoalitionsForEntity("state", stateId);
           },
 
           getCoalitionsForCongressionalDistrict: (districtId) => {
-            return get().actions.getCoalitionsForEntity('congressional_district', districtId);
+            return get().actions.getCoalitionsForEntity(
+              "congressional_district",
+              districtId
+            );
           },
 
           getCoalitionsForStateHouseDistrict: (districtId) => {
-            return get().actions.getCoalitionsForEntity('state_house_district', districtId);
+            return get().actions.getCoalitionsForEntity(
+              "state_house_district",
+              districtId
+            );
           },
 
           getCoalitionsForStateSenateDistrict: (districtId) => {
-            return get().actions.getCoalitionsForEntity('state_senate_district', districtId);
+            return get().actions.getCoalitionsForEntity(
+              "state_senate_district",
+              districtId
+            );
           },
 
           getCoalitionsForCounty: (countyId) => {
-            return get().actions.getCoalitionsForEntity('county', countyId);
+            return get().actions.getCoalitionsForEntity("county", countyId);
           },
 
           getCoalitionsForNational: (countryId) => {
-            return get().actions.getCoalitionsForEntity('national', countryId);
+            return get().actions.getCoalitionsForEntity("national", countryId);
           },
 
           getAllAvailableCoalitions: () => {
@@ -592,7 +601,9 @@ export const useGameStore = create(
           getAllGovernmentOffices: () => {
             const state = get();
             if (!state.activeCampaign?.governmentOffices) return [];
-            return flattenGovernmentOffices(state.activeCampaign.governmentOffices);
+            return flattenGovernmentOffices(
+              state.activeCampaign.governmentOffices
+            );
           },
 
           // PERFORMANCE: Optimized version that only flattens national and state offices
@@ -606,18 +617,24 @@ export const useGameStore = create(
 
             // National offices
             if (govOffices.national) {
-              if (govOffices.national.executive) offices.push(...govOffices.national.executive);
-              if (govOffices.national.legislative?.lowerHouse) offices.push(...govOffices.national.legislative.lowerHouse);
-              if (govOffices.national.legislative?.upperHouse) offices.push(...govOffices.national.legislative.upperHouse);
-              if (govOffices.national.judicial) offices.push(...govOffices.national.judicial);
+              if (govOffices.national.executive)
+                offices.push(...govOffices.national.executive);
+              if (govOffices.national.legislative?.lowerHouse)
+                offices.push(...govOffices.national.legislative.lowerHouse);
+              if (govOffices.national.legislative?.upperHouse)
+                offices.push(...govOffices.national.legislative.upperHouse);
+              if (govOffices.national.judicial)
+                offices.push(...govOffices.national.judicial);
             }
 
             // State offices (still much smaller than cities)
             if (govOffices.states) {
-              Object.values(govOffices.states).forEach(state => {
+              Object.values(govOffices.states).forEach((state) => {
                 if (state.executive) offices.push(...state.executive);
-                if (state.legislative?.lowerHouse) offices.push(...state.legislative.lowerHouse);
-                if (state.legislative?.upperHouse) offices.push(...state.legislative.upperHouse);
+                if (state.legislative?.lowerHouse)
+                  offices.push(...state.legislative.lowerHouse);
+                if (state.legislative?.upperHouse)
+                  offices.push(...state.legislative.upperHouse);
                 if (state.judicial) offices.push(...state.judicial);
               });
             }
@@ -628,56 +645,74 @@ export const useGameStore = create(
           getNationalGovernmentOffices: () => {
             const state = get();
             const govOffices = state.activeCampaign?.governmentOffices;
-            if (!govOffices) return { executive: [], legislative: { lowerHouse: [], upperHouse: [] }, judicial: [] };
-            return govOffices.national || { executive: [], legislative: { lowerHouse: [], upperHouse: [] }, judicial: [] };
+            if (!govOffices)
+              return {
+                executive: [],
+                legislative: { lowerHouse: [], upperHouse: [] },
+                judicial: [],
+              };
+            return (
+              govOffices.national || {
+                executive: [],
+                legislative: { lowerHouse: [], upperHouse: [] },
+                judicial: [],
+              }
+            );
           },
 
           getStateGovernmentOffices: (stateId) => {
             const state = get();
             const govOffices = state.activeCampaign?.governmentOffices;
-            console.log('[getStateGovernmentOffices] Looking for stateId:', stateId);
-            console.log('[getStateGovernmentOffices] Available states in govOffices:', govOffices?.states ? Object.keys(govOffices.states) : 'No states');
-            if (!govOffices || !stateId) return { executive: [], legislative: { lowerHouse: [], upperHouse: [] } };
-            const result = govOffices.states?.[stateId] || { executive: [], legislative: { lowerHouse: [], upperHouse: [] } };
-            console.log('[getStateGovernmentOffices] Returning result for', stateId, ':', result);
+            if (!govOffices || !stateId)
+              return {
+                executive: [],
+                legislative: { lowerHouse: [], upperHouse: [] },
+              };
+            const result = govOffices.states?.[stateId] || {
+              executive: [],
+              legislative: { lowerHouse: [], upperHouse: [] },
+            };
             return result;
           },
 
           getCurrentStateGovernmentOffices: () => {
             const state = get();
             const regionId = state.activeCampaign?.regionId;
-            console.log('[getCurrentStateGovernmentOffices] Region ID:', regionId);
+            console.log(
+              "[getCurrentStateGovernmentOffices] Region ID:",
+              regionId
+            );
             const result = get().actions.getStateGovernmentOffices(regionId);
-            console.log('[getCurrentStateGovernmentOffices] Result:', result);
             return result;
           },
 
           getCityGovernmentOffices: (cityId) => {
             const state = get();
             const govOffices = state.activeCampaign?.governmentOffices;
-            console.log('[getCityGovernmentOffices] CityId:', cityId);
-            console.log('[getCityGovernmentOffices] Available cities:', Object.keys(govOffices?.cities || {}));
             if (!govOffices || !cityId) {
-              console.log('[getCityGovernmentOffices] No govOffices or cityId, returning empty');
               return { executive: [], legislative: [] };
             }
-            const result = govOffices.cities?.[cityId] || { executive: [], legislative: [] };
-            console.log('[getCityGovernmentOffices] Result for city:', cityId, result);
+            const result = govOffices.cities?.[cityId] || {
+              executive: [],
+              legislative: [],
+            };
             return result;
           },
 
           getCurrentCityGovernmentOffices: () => {
             const state = get();
             const cityId = state.activeCampaign?.startingCity?.id;
-            console.log('[getCurrentCityGovernmentOffices] CityId:', cityId);
             const result = get().actions.getCityGovernmentOffices(cityId);
-            console.log('[getCurrentCityGovernmentOffices] Result:', result);
             return result;
           },
 
           // PERFORMANCE OPTIMIZATION: Context-aware government office fetching
           // Only fetches the specific city/state/nation needed, avoiding massive flattening
-          getGovernmentOfficesForContext: (level, cityId = null, stateId = null) => {
+          getGovernmentOfficesForContext: (
+            level,
+            cityId = null,
+            stateId = null
+          ) => {
             const state = get();
             const govOffices = state.activeCampaign?.governmentOffices;
             if (!govOffices) return [];
@@ -686,26 +721,38 @@ export const useGameStore = create(
 
             // Always include national offices for all levels
             if (govOffices.national) {
-              if (govOffices.national.executive) offices.push(...govOffices.national.executive);
-              if (govOffices.national.legislative?.lowerHouse) offices.push(...govOffices.national.legislative.lowerHouse);
-              if (govOffices.national.legislative?.upperHouse) offices.push(...govOffices.national.legislative.upperHouse);
-              if (govOffices.national.judicial) offices.push(...govOffices.national.judicial);
+              if (govOffices.national.executive)
+                offices.push(...govOffices.national.executive);
+              if (govOffices.national.legislative?.lowerHouse)
+                offices.push(...govOffices.national.legislative.lowerHouse);
+              if (govOffices.national.legislative?.upperHouse)
+                offices.push(...govOffices.national.legislative.upperHouse);
+              if (govOffices.national.judicial)
+                offices.push(...govOffices.national.judicial);
             }
 
             // Include state offices if state-level or city-level
-            if ((level === 'state' || level === 'city') && stateId && govOffices.states?.[stateId]) {
+            if (
+              (level === "state" || level === "city") &&
+              stateId &&
+              govOffices.states?.[stateId]
+            ) {
               const stateOffices = govOffices.states[stateId];
-              if (stateOffices.executive) offices.push(...stateOffices.executive);
-              if (stateOffices.legislative?.lowerHouse) offices.push(...stateOffices.legislative.lowerHouse);
-              if (stateOffices.legislative?.upperHouse) offices.push(...stateOffices.legislative.upperHouse);
+              if (stateOffices.executive)
+                offices.push(...stateOffices.executive);
+              if (stateOffices.legislative?.lowerHouse)
+                offices.push(...stateOffices.legislative.lowerHouse);
+              if (stateOffices.legislative?.upperHouse)
+                offices.push(...stateOffices.legislative.upperHouse);
               if (stateOffices.judicial) offices.push(...stateOffices.judicial);
             }
 
             // Include city offices only if city-level
-            if (level === 'city' && cityId && govOffices.cities?.[cityId]) {
+            if (level === "city" && cityId && govOffices.cities?.[cityId]) {
               const cityOffices = govOffices.cities[cityId];
               if (cityOffices.executive) offices.push(...cityOffices.executive);
-              if (cityOffices.legislative) offices.push(...cityOffices.legislative);
+              if (cityOffices.legislative)
+                offices.push(...cityOffices.legislative);
               if (cityOffices.judicial) offices.push(...cityOffices.judicial);
             }
 

@@ -9,6 +9,7 @@ const CoalitionsList = ({ coalitionSoA, parties, onCoalitionUpdate }) => {
   const [expandedProfiles, setExpandedProfiles] = useState(new Set());
   const [editingProfiles, setEditingProfiles] = useState(new Set());
   const [tempPolicyStances, setTempPolicyStances] = useState(new Map());
+  const [localMobilization, setLocalMobilization] = useState(new Map());
 
   if (!coalitionSoA || !coalitionSoA.base) {
     return <p className="help-text">No coalitions data available.</p>;
@@ -18,8 +19,22 @@ const CoalitionsList = ({ coalitionSoA, parties, onCoalitionUpdate }) => {
   const coalitionData = convertCoalitionSoAToArray(coalitionSoA);
 
   const handleMobilizationChange = (coalitionId, newMobilization) => {
-    const updatedCoalitionSoA = updateCoalitionMobilization(coalitionSoA, coalitionId, newMobilization);
+    const mobilizationValue = parseFloat(newMobilization);
+    
+    // Update local state immediately for UI responsiveness
+    setLocalMobilization(prev => {
+      const newMap = new Map(prev);
+      newMap.set(coalitionId, mobilizationValue);
+      return newMap;
+    });
+    
+    // Also update the parent state
+    const updatedCoalitionSoA = updateCoalitionMobilization(coalitionSoA, coalitionId, mobilizationValue);
     onCoalitionUpdate(updatedCoalitionSoA);
+  };
+  
+  const getMobilizationValue = (coalition) => {
+    return localMobilization.get(coalition.id) ?? coalition.mobilization;
   };
 
   const toggleElectorateProfile = (coalitionId) => {
@@ -156,10 +171,12 @@ const CoalitionsList = ({ coalitionSoA, parties, onCoalitionUpdate }) => {
                   type="range"
                   min="0"
                   max="100"
-                  value={coalition.mobilization}
+                  step="1"
+                  value={Math.round(getMobilizationValue(coalition)) || 50}
                   onChange={(e) => handleMobilizationChange(coalition.id, e.target.value)}
+                  onInput={(e) => handleMobilizationChange(coalition.id, e.target.value)}
                 />
-                <span>{coalition.mobilization}%</span>
+                <span>{Math.round(getMobilizationValue(coalition))}%</span>
               </div>
             </div>
             

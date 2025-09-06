@@ -257,11 +257,21 @@ function LocalAreaTab({ campaignData }) {
                         </>
                       )}
                       {state && (
-                        <p><strong>Current Mood:</strong> 
-                          <span className={state.currentMood >= 0 ? 'text-success' : 'text-error'}>
-                            {state.currentMood >= 0 ? 'Positive' : 'Negative'}
-                          </span>
-                        </p>
+                        <>
+                          <p><strong>Current Mood:</strong> 
+                            <span className={state.currentMood >= 0 ? 'text-success' : 'text-error'}>
+                              {state.currentMood >= 0 ? 'Positive' : 'Negative'}
+                            </span>
+                          </p>
+                          <p><strong>Mobilization:</strong> 
+                            <span className="mobilization-value">
+                              {state.mobilization != null ? 
+                                formatPercentage(state.mobilization * 100, 1) : 
+                                "50.0%"
+                              }
+                            </span>
+                          </p>
+                        </>
                       )}
                     </div>
                   </div>

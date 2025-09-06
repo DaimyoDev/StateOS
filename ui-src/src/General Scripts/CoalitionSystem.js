@@ -441,6 +441,127 @@ const calculateDemographicAppeal = (candidateAttributes, coalitionDemographics) 
 };
 
 /**
+ * Batched coalition effect collector for efficient bulk updates
+ */
+export class CoalitionEffectBatch {
+  constructor() {
+    this.mobilizationEffects = new Map(); // coalitionId -> accumulated effect
+    this.moodEffects = new Map(); // coalitionId -> accumulated effect
+    this.satisfactionEffects = new Map(); // coalitionId -> accumulated effect
+    this.jurisdictionEffects = new Map(); // jurisdictionId -> effects for all coalitions in that area
+    this.processedEvents = new Set(); // Prevent duplicate event processing
+  }
+
+  /**
+   * Add a mobilization effect for a specific coalition
+   */
+  addMobilizationEffect(coalitionId, effect, source = 'unknown') {
+    if (!this.mobilizationEffects.has(coalitionId)) {
+      this.mobilizationEffects.set(coalitionId, { total: 0, sources: [] });
+    }
+    const existing = this.mobilizationEffects.get(coalitionId);
+    existing.total += effect;
+    existing.sources.push(source);
+  }
+
+  /**
+   * Add effects for all coalitions in a jurisdiction (city/state/national)
+   */
+  addJurisdictionEffect(jurisdictionId, jurisdictionType, coalitionEffects) {
+    if (!this.jurisdictionEffects.has(jurisdictionId)) {
+      this.jurisdictionEffects.set(jurisdictionId, { type: jurisdictionType, effects: [] });
+    }
+    this.jurisdictionEffects.get(jurisdictionId).effects.push(coalitionEffects);
+  }
+
+  /**
+   * Apply all batched effects to coalition SoA
+   */
+  applyEffects(coalitionSoA) {
+    const startTime = performance.now();
+    let updatesApplied = 0;
+
+    // Apply direct coalition effects first
+    for (const [coalitionId, effect] of this.mobilizationEffects) {
+      const currentState = coalitionSoA.state.get(coalitionId);
+      if (currentState) {
+        const oldMobilization = currentState.mobilization;
+        const newMobilization = Math.max(0, Math.min(1, 
+          currentState.mobilization + effect.total
+        ));
+        
+        // Log mobilization changes
+        console.log(`[COALITION EFFECT] ${coalitionId} mobilization: ${(oldMobilization * 100).toFixed(1)}% → ${(newMobilization * 100).toFixed(1)}% (${effect.total >= 0 ? '+' : ''}${(effect.total * 100).toFixed(1)}%)`);
+        
+        coalitionSoA.state.set(coalitionId, {
+          ...currentState,
+          mobilization: newMobilization
+        });
+        updatesApplied++;
+      }
+    }
+
+    // Apply jurisdiction-wide effects with spatial aggregation
+    for (const [jurisdictionId, jurisdictionData] of this.jurisdictionEffects) {
+      this.applyJurisdictionEffects(coalitionSoA, jurisdictionData);
+      updatesApplied++;
+    }
+
+    const duration = performance.now() - startTime;
+    return { updatesApplied, duration };
+  }
+
+  /**
+   * Apply effects for an entire jurisdiction efficiently
+   */
+  applyJurisdictionEffects(coalitionSoA, jurisdictionData) {
+    // Aggregate all effects for this jurisdiction
+    const aggregatedEffects = new Map();
+    
+    for (const effectSet of jurisdictionData.effects) {
+      for (const [coalitionId, effect] of Object.entries(effectSet)) {
+        if (!aggregatedEffects.has(coalitionId)) {
+          aggregatedEffects.set(coalitionId, 0);
+        }
+        aggregatedEffects.set(coalitionId, 
+          aggregatedEffects.get(coalitionId) + effect
+        );
+      }
+    }
+
+    // Apply aggregated effects
+    for (const [coalitionId, totalEffect] of aggregatedEffects) {
+      const currentState = coalitionSoA.state.get(coalitionId);
+      if (currentState && Math.abs(totalEffect) > 0.001) { // Threshold filter
+        const oldMobilization = currentState.mobilization;
+        const newMobilization = Math.max(0, Math.min(1, 
+          currentState.mobilization + totalEffect
+        ));
+        
+        // Log jurisdiction-wide mobilization changes
+        console.log(`[COALITION JURISDICTION] ${coalitionId} mobilization: ${(oldMobilization * 100).toFixed(1)}% → ${(newMobilization * 100).toFixed(1)}% (${totalEffect >= 0 ? '+' : ''}${(totalEffect * 100).toFixed(1)}%)`);
+        
+        coalitionSoA.state.set(coalitionId, {
+          ...currentState,
+          mobilization: newMobilization
+        });
+      }
+    }
+  }
+
+  /**
+   * Clear all batched effects
+   */
+  clear() {
+    this.mobilizationEffects.clear();
+    this.moodEffects.clear();
+    this.satisfactionEffects.clear();
+    this.jurisdictionEffects.clear();
+    this.processedEvents.clear();
+  }
+}
+
+/**
  * Update coalition states based on events, policies, and time
  */
 export const updateCoalitionStates = (coalitionSoA, events = [], policies = []) => {
@@ -489,12 +610,210 @@ const calculatePolicyEffectOnCoalition = (policy, coalitionIdeology, demographic
 };
 
 /**
- * Calculate how an event affects a specific coalition
+ * Event type definitions and their coalition impact patterns
+ */
+const EVENT_IMPACT_PATTERNS = {
+  // Economic Events
+  'economic_growth': {
+    'business_libertarian': { mobilization: 0.05, satisfaction: 0.08 },
+    'suburban_centrist': { mobilization: 0.03, satisfaction: 0.05 },
+    'working_populist': { mobilization: 0.02, satisfaction: 0.03 },
+    'tech_pragmatist': { mobilization: 0.04, satisfaction: 0.06 }
+  },
+  'economic_recession': {
+    'working_populist': { mobilization: 0.08, satisfaction: -0.10 },
+    'young_socialist': { mobilization: 0.06, satisfaction: -0.08 },
+    'business_libertarian': { mobilization: -0.03, satisfaction: -0.12 },
+    'senior_traditional': { mobilization: -0.02, satisfaction: -0.06 }
+  },
+  'unemployment_spike': {
+    'working_populist': { mobilization: 0.12, satisfaction: -0.15 },
+    'young_socialist': { mobilization: 0.10, satisfaction: -0.12 },
+    'urban_progressive': { mobilization: 0.06, satisfaction: -0.08 }
+  },
+
+  // Social Events  
+  'social_unrest': {
+    'urban_progressive': { mobilization: 0.08, satisfaction: -0.05 },
+    'young_socialist': { mobilization: 0.12, satisfaction: -0.03 },
+    'rural_conservative': { mobilization: 0.05, satisfaction: -0.08 },
+    'senior_traditional': { mobilization: -0.04, satisfaction: -0.10 }
+  },
+  'cultural_shift': {
+    'urban_progressive': { mobilization: 0.04, satisfaction: 0.06 },
+    'young_socialist': { mobilization: 0.06, satisfaction: 0.08 },
+    'rural_conservative': { mobilization: 0.03, satisfaction: -0.06 },
+    'senior_traditional': { mobilization: 0.02, satisfaction: -0.08 }
+  },
+
+  // Policy Events
+  'healthcare_reform': {
+    'urban_progressive': { mobilization: 0.06, satisfaction: 0.08 },
+    'young_socialist': { mobilization: 0.08, satisfaction: 0.10 },
+    'senior_traditional': { mobilization: 0.04, satisfaction: 0.05 },
+    'business_libertarian': { mobilization: 0.05, satisfaction: -0.06 }
+  },
+  'tax_reform': {
+    'business_libertarian': { mobilization: 0.08, satisfaction: 0.10 },
+    'working_populist': { mobilization: 0.06, satisfaction: -0.04 },
+    'urban_progressive': { mobilization: 0.04, satisfaction: -0.02 }
+  },
+  'environmental_regulation': {
+    'urban_progressive': { mobilization: 0.07, satisfaction: 0.09 },
+    'young_socialist': { mobilization: 0.05, satisfaction: 0.07 },
+    'tech_pragmatist': { mobilization: 0.04, satisfaction: 0.05 },
+    'business_libertarian': { mobilization: 0.03, satisfaction: -0.08 },
+    'rural_conservative': { mobilization: 0.02, satisfaction: -0.06 }
+  },
+
+  // Local/City Events
+  'infrastructure_investment': {
+    'suburban_centrist': { mobilization: 0.04, satisfaction: 0.06 },
+    'working_populist': { mobilization: 0.03, satisfaction: 0.05 },
+    'tech_pragmatist': { mobilization: 0.02, satisfaction: 0.04 }
+  },
+  'public_transit_expansion': {
+    'urban_progressive': { mobilization: 0.05, satisfaction: 0.07 },
+    'young_socialist': { mobilization: 0.04, satisfaction: 0.06 },
+    'tech_pragmatist': { mobilization: 0.03, satisfaction: 0.05 }
+  },
+  'police_reform': {
+    'urban_progressive': { mobilization: 0.08, satisfaction: 0.06 },
+    'young_socialist': { mobilization: 0.10, satisfaction: 0.08 },
+    'rural_conservative': { mobilization: 0.06, satisfaction: -0.08 },
+    'senior_traditional': { mobilization: 0.04, satisfaction: -0.06 }
+  }
+};
+
+/**
+ * Calculate coalition-specific effects for a given event
+ */
+export const calculateEventCoalitionEffects = (event, jurisdictionType = 'city') => {
+  console.log(`[COALITION EVENTS] Processing event: "${event.type}" (${event.title || event.name || 'Untitled'})`);
+  
+  const effects = new Map();
+  const eventPattern = EVENT_IMPACT_PATTERNS[event.type];
+  
+  if (!eventPattern) {
+    console.log(`[COALITION EVENTS] Unknown event type "${event.type}" - applying random effects`);
+    // Unknown event type - apply small random effects to all coalitions
+    for (const template of COALITION_TEMPLATES) {
+      const mobilizationEffect = getRandomInt(-2, 2) / 100;
+      const satisfactionEffect = getRandomInt(-2, 2) / 100;
+      effects.set(template.id, {
+        mobilization: mobilizationEffect,
+        satisfaction: satisfactionEffect
+      });
+      if (Math.abs(mobilizationEffect) > 0.005) {
+        console.log(`[COALITION EVENTS] ${template.id}: mobilization ${mobilizationEffect >= 0 ? '+' : ''}${(mobilizationEffect * 100).toFixed(1)}%`);
+      }
+    }
+    return effects;
+  }
+  
+  console.log(`[COALITION EVENTS] Found pattern for "${event.type}" affecting ${Object.keys(eventPattern).length} coalitions:`);
+  for (const [coalitionId, effect] of Object.entries(eventPattern)) {
+    if (effect.mobilization) {
+      console.log(`[COALITION EVENTS] - ${coalitionId}: mobilization ${effect.mobilization >= 0 ? '+' : ''}${(effect.mobilization * 100).toFixed(1)}%`);
+    }
+  }
+
+  // Apply magnitude scaling based on jurisdiction type
+  const magnitudeScaling = {
+    'city': 0.3,      // City events have localized impact
+    'state': 0.7,     // State events have broader impact
+    'national': 1.0   // National events have full impact
+  };
+  
+  const scale = magnitudeScaling[jurisdictionType] || 0.5;
+  
+  // Apply event-specific effects with magnitude scaling
+  for (const [coalitionId, impact] of Object.entries(eventPattern)) {
+    effects.set(coalitionId, {
+      mobilization: (impact.mobilization || 0) * scale * (event.magnitude || 1.0),
+      satisfaction: (impact.satisfaction || 0) * scale * (event.magnitude || 1.0)
+    });
+  }
+  
+  // Apply small spillover effects to coalitions not directly mentioned
+  for (const template of COALITION_TEMPLATES) {
+    if (!effects.has(template.id)) {
+      // Indirect effects based on ideological similarity
+      const spilloverMobilization = getRandomInt(-1, 1) / 100 * scale;
+      const spilloverSatisfaction = getRandomInt(-1, 1) / 100 * scale;
+      
+      effects.set(template.id, {
+        mobilization: spilloverMobilization,
+        satisfaction: spilloverSatisfaction
+      });
+    }
+  }
+  
+  return effects;
+};
+
+/**
+ * Calculate policy-specific effects on coalition mobilization
+ */
+export const calculatePolicyCoalitionEffects = (policy, jurisdictionType = 'city') => {
+  const effects = new Map();
+  
+  // Policy categories and their coalition preferences
+  const policyCoalitionAffinities = {
+    'economic': {
+      'business_libertarian': 0.08,
+      'tech_pragmatist': 0.04,
+      'suburban_centrist': 0.02,
+      'working_populist': -0.04,
+      'young_socialist': -0.08
+    },
+    'social': {
+      'urban_progressive': 0.06,
+      'young_socialist': 0.08,
+      'tech_pragmatist': 0.03,
+      'rural_conservative': -0.06,
+      'senior_traditional': -0.08
+    },
+    'environmental': {
+      'urban_progressive': 0.09,
+      'young_socialist': 0.07,
+      'tech_pragmatist': 0.05,
+      'business_libertarian': -0.05,
+      'rural_conservative': -0.04
+    }
+  };
+  
+  const categoryAffinity = policyCoalitionAffinities[policy.category] || {};
+  const magnitudeScaling = {
+    'city': 0.2,
+    'state': 0.6, 
+    'national': 1.0
+  };
+  
+  const scale = magnitudeScaling[jurisdictionType] || 0.4;
+  
+  for (const template of COALITION_TEMPLATES) {
+    const baseAffinity = categoryAffinity[template.id] || 0;
+    const policyDirection = policy.direction || 0; // -1 (restrictive) to 1 (expansive)
+    
+    const mobilizationEffect = baseAffinity * policyDirection * scale;
+    
+    effects.set(template.id, {
+      mobilization: mobilizationEffect,
+      satisfaction: mobilizationEffect * 0.8 // Satisfaction follows mobilization but smaller
+    });
+  }
+  
+  return effects;
+};
+
+/**
+ * Calculate how an event affects a specific coalition (legacy function for compatibility)
  */
 const calculateEventEffectOnCoalition = (event, coalitionIdeology, demographics) => {
-  // This would be expanded based on specific event types
-  // For now, return small random effect
-  return getRandomInt(-2, 2) / 100;
+  const effects = calculateEventCoalitionEffects(event);
+  const coalitionEffect = effects.get(coalitionIdeology) || { mobilization: 0 };
+  return coalitionEffect.mobilization;
 };
 
 /**
@@ -777,6 +1096,434 @@ export const getCoalitionTurnoutBreakdown = (coalitionSoA, totalEligibleVoters) 
   };
 };
 
+/**
+ * Spatial aggregation system for cascading city → state → national effects
+ */
+export class CoalitionSpatialAggregator {
+  constructor() {
+    this.cityToStateMap = new Map();      // cityId -> stateId
+    this.stateToNationalMap = new Map();  // stateId -> 'national'
+    this.cityEffectCache = new Map();     // Cache city effects to avoid recalculation
+    this.stateEffectCache = new Map();    // Cache state aggregations
+    this.populationWeights = new Map();   // jurisdictionId -> population weight
+  }
+
+  /**
+   * Register spatial hierarchy (cities belong to states, states to national)
+   */
+  registerSpatialHierarchy(cityToStateMapping, statePopulations, cityPopulations) {
+    // Clear existing mappings
+    this.cityToStateMap.clear();
+    this.stateToNationalMap.clear();
+    this.populationWeights.clear();
+
+    // Register city-to-state mappings
+    for (const [cityId, stateId] of Object.entries(cityToStateMapping)) {
+      this.cityToStateMap.set(cityId, stateId);
+      this.stateToNationalMap.set(stateId, 'national');
+    }
+
+    // Register population weights for aggregation
+    let totalNationalPop = 0;
+    for (const [stateId, population] of Object.entries(statePopulations)) {
+      totalNationalPop += population;
+      this.populationWeights.set(stateId, population);
+    }
+
+    for (const [cityId, population] of Object.entries(cityPopulations)) {
+      this.populationWeights.set(cityId, population);
+    }
+
+    // Calculate state weights as fraction of national population
+    for (const [stateId, population] of Object.entries(statePopulations)) {
+      this.populationWeights.set(`${stateId}_weight`, population / totalNationalPop);
+    }
+  }
+
+  /**
+   * Process cascading effects from cities → states → national
+   * Returns batched effects ready for application
+   */
+  processCascadingEffects(cityEvents, stateEvents, nationalEvents) {
+    const batch = new CoalitionEffectBatch();
+    const processedStates = new Set();
+
+    // Step 1: Process all city-level events and aggregate to state level
+    const stateAggregatedEffects = new Map();
+    
+    for (const cityEvent of cityEvents) {
+      const stateId = this.cityToStateMap.get(cityEvent.jurisdictionId);
+      if (!stateId) continue;
+
+      const cityEffects = calculateEventCoalitionEffects(cityEvent, 'city');
+      const cityWeight = this.getCityWeightInState(cityEvent.jurisdictionId, stateId);
+
+      // Accumulate weighted effects for each state
+      if (!stateAggregatedEffects.has(stateId)) {
+        stateAggregatedEffects.set(stateId, new Map());
+      }
+
+      const stateEffects = stateAggregatedEffects.get(stateId);
+      for (const [coalitionId, effect] of cityEffects) {
+        if (!stateEffects.has(coalitionId)) {
+          stateEffects.set(coalitionId, { mobilization: 0, satisfaction: 0, sources: [] });
+        }
+        
+        const existing = stateEffects.get(coalitionId);
+        existing.mobilization += effect.mobilization * cityWeight;
+        existing.satisfaction += effect.satisfaction * cityWeight;
+        existing.sources.push(`city_${cityEvent.jurisdictionId}_${cityEvent.type}`);
+      }
+    }
+
+    // Step 2: Apply state-aggregated city effects + direct state events
+    const nationalAggregatedEffects = new Map();
+    
+    for (const [stateId, stateEffectMap] of stateAggregatedEffects) {
+      const stateWeight = this.populationWeights.get(`${stateId}_weight`) || 0.02;
+      
+      // Apply state-level aggregated effects from cities
+      for (const [coalitionId, effect] of stateEffectMap) {
+        batch.addMobilizationEffect(
+          `${stateId}_${coalitionId}`, 
+          effect.mobilization,
+          `state_aggregate_${effect.sources.length}_cities`
+        );
+
+        // Accumulate for national aggregation
+        if (!nationalAggregatedEffects.has(coalitionId)) {
+          nationalAggregatedEffects.set(coalitionId, { mobilization: 0, satisfaction: 0 });
+        }
+        
+        const nationalEffect = nationalAggregatedEffects.get(coalitionId);
+        nationalEffect.mobilization += effect.mobilization * stateWeight;
+        nationalEffect.satisfaction += effect.satisfaction * stateWeight;
+      }
+
+      processedStates.add(stateId);
+    }
+
+    // Step 3: Process direct state-level events
+    for (const stateEvent of stateEvents) {
+      const stateId = stateEvent.jurisdictionId;
+      const stateEffects = calculateEventCoalitionEffects(stateEvent, 'state');
+      const stateWeight = this.populationWeights.get(`${stateId}_weight`) || 0.02;
+
+      for (const [coalitionId, effect] of stateEffects) {
+        // Apply state-level effect
+        batch.addMobilizationEffect(
+          `${stateId}_${coalitionId}`,
+          effect.mobilization,
+          `state_direct_${stateEvent.type}`
+        );
+
+        // Accumulate for national aggregation
+        if (!nationalAggregatedEffects.has(coalitionId)) {
+          nationalAggregatedEffects.set(coalitionId, { mobilization: 0, satisfaction: 0 });
+        }
+        
+        const nationalEffect = nationalAggregatedEffects.get(coalitionId);
+        nationalEffect.mobilization += effect.mobilization * stateWeight;
+        nationalEffect.satisfaction += effect.satisfaction * stateWeight;
+      }
+    }
+
+    // Step 4: Apply national-level aggregated effects + direct national events
+    for (const [coalitionId, aggregatedEffect] of nationalAggregatedEffects) {
+      // Only apply significant aggregated effects
+      if (Math.abs(aggregatedEffect.mobilization) > 0.001) {
+        batch.addMobilizationEffect(
+          `national_${coalitionId}`,
+          aggregatedEffect.mobilization,
+          'national_aggregate'
+        );
+      }
+    }
+
+    // Step 5: Process direct national events
+    for (const nationalEvent of nationalEvents) {
+      const nationalEffects = calculateEventCoalitionEffects(nationalEvent, 'national');
+      
+      for (const [coalitionId, effect] of nationalEffects) {
+        batch.addMobilizationEffect(
+          `national_${coalitionId}`,
+          effect.mobilization,
+          `national_direct_${nationalEvent.type}`
+        );
+      }
+    }
+
+    return batch;
+  }
+
+  /**
+   * Calculate city's population weight within its state
+   */
+  getCityWeightInState(cityId, stateId) {
+    const cityPop = this.populationWeights.get(cityId) || 100000; // Default city size
+    const statePop = this.populationWeights.get(stateId) || 5000000; // Default state size
+    return Math.min(0.5, cityPop / statePop); // Cap at 50% to avoid single city dominating state
+  }
+
+  /**
+   * Get performance metrics for the aggregation system
+   */
+  getPerformanceMetrics() {
+    return {
+      cityMappings: this.cityToStateMap.size,
+      stateMappings: this.stateToNationalMap.size,
+      cachedCityEffects: this.cityEffectCache.size,
+      cachedStateEffects: this.stateEffectCache.size,
+      memoryUsage: this.estimateMemoryUsage()
+    };
+  }
+
+  /**
+   * Estimate memory usage of the aggregator
+   */
+  estimateMemoryUsage() {
+    // Rough estimate: each Map entry ≈ 50-100 bytes
+    const totalEntries = this.cityToStateMap.size + 
+                        this.stateToNationalMap.size + 
+                        this.populationWeights.size +
+                        this.cityEffectCache.size + 
+                        this.stateEffectCache.size;
+    return `~${Math.round(totalEntries * 75 / 1024)} KB`;
+  }
+}
+
+/**
+ * Performance monitoring and caching system for coalition updates
+ */
+export class CoalitionPerformanceMonitor {
+  constructor() {
+    this.metrics = new Map();
+    this.updateHistory = [];
+    this.maxHistorySize = 100;
+    this.performanceThresholds = {
+      updateLatency: 50,      // ms - warn if updates take longer
+      memoryUsage: 10,        // MB - warn if memory usage exceeds
+      batchSize: 1000         // events - warn if processing more events
+    };
+  }
+
+  /**
+   * Start monitoring an update operation
+   */
+  startOperation(operationType, metadata = {}) {
+    const operationId = `${operationType}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    this.metrics.set(operationId, {
+      type: operationType,
+      startTime: performance.now(),
+      metadata,
+      memoryBefore: this.getMemoryUsage(),
+      warnings: []
+    });
+    
+    return operationId;
+  }
+
+  /**
+   * End monitoring and record results
+   */
+  endOperation(operationId, results = {}) {
+    const metric = this.metrics.get(operationId);
+    if (!metric) return null;
+
+    const endTime = performance.now();
+    const duration = endTime - metric.startTime;
+    const memoryAfter = this.getMemoryUsage();
+
+    const finalMetric = {
+      ...metric,
+      endTime,
+      duration,
+      memoryAfter,
+      memoryDelta: memoryAfter - metric.memoryBefore,
+      results
+    };
+
+    // Check for performance warnings
+    this.checkPerformanceWarnings(finalMetric);
+
+    // Add to history (keep only recent entries)
+    this.updateHistory.push(finalMetric);
+    if (this.updateHistory.length > this.maxHistorySize) {
+      this.updateHistory.shift();
+    }
+
+    // Clean up current metrics
+    this.metrics.delete(operationId);
+
+    return finalMetric;
+  }
+
+  /**
+   * Check for performance issues and add warnings
+   */
+  checkPerformanceWarnings(metric) {
+    if (metric.duration > this.performanceThresholds.updateLatency) {
+      metric.warnings.push(`Slow update: ${metric.duration.toFixed(2)}ms > ${this.performanceThresholds.updateLatency}ms threshold`);
+    }
+
+    if (metric.memoryDelta > this.performanceThresholds.memoryUsage * 1024 * 1024) {
+      metric.warnings.push(`High memory usage: +${(metric.memoryDelta / 1024 / 1024).toFixed(2)}MB`);
+    }
+
+    if (metric.results.eventsProcessed > this.performanceThresholds.batchSize) {
+      metric.warnings.push(`Large batch size: ${metric.results.eventsProcessed} events > ${this.performanceThresholds.batchSize} threshold`);
+    }
+  }
+
+  /**
+   * Get memory usage estimate
+   */
+  getMemoryUsage() {
+    // Browser environment check
+    if (typeof window !== 'undefined' && performance.memory) {
+      return performance.memory.usedJSHeapSize;
+    }
+    // Node.js environment
+    if (typeof process !== 'undefined' && process.memoryUsage) {
+      return process.memoryUsage().heapUsed;
+    }
+    // Fallback
+    return 0;
+  }
+
+  /**
+   * Get performance summary
+   */
+  getPerformanceSummary() {
+    if (this.updateHistory.length === 0) {
+      return { message: 'No operations recorded' };
+    }
+
+    const durations = this.updateHistory.map(m => m.duration);
+    const memoryDeltas = this.updateHistory.map(m => m.memoryDelta);
+    
+    return {
+      totalOperations: this.updateHistory.length,
+      averageDuration: durations.reduce((sum, d) => sum + d, 0) / durations.length,
+      maxDuration: Math.max(...durations),
+      minDuration: Math.min(...durations),
+      averageMemoryDelta: memoryDeltas.reduce((sum, d) => sum + d, 0) / memoryDeltas.length,
+      warningsCount: this.updateHistory.reduce((sum, m) => sum + m.warnings.length, 0),
+      recentWarnings: this.updateHistory
+        .slice(-10)
+        .flatMap(m => m.warnings)
+        .slice(-5)
+    };
+  }
+
+  /**
+   * Clear performance history
+   */
+  clearHistory() {
+    this.updateHistory = [];
+    this.metrics.clear();
+  }
+}
+
+/**
+ * Global performance monitor instance
+ */
+const globalPerformanceMonitor = new CoalitionPerformanceMonitor();
+
+/**
+ * High-level function to process all coalition updates with cascading effects
+ * Now includes performance monitoring and intelligent caching
+ */
+export const processCascadingCoalitionUpdates = (
+  coalitionSoA, 
+  cityEvents = [], 
+  stateEvents = [], 
+  nationalEvents = [],
+  spatialMapping = null,
+  options = {}
+) => {
+  const {
+    enablePerformanceMonitoring = true,
+    enableCaching = true,
+    performanceMonitor = globalPerformanceMonitor
+  } = options;
+
+  let operationId = null;
+  
+  if (enablePerformanceMonitoring) {
+    operationId = performanceMonitor.startOperation('cascading_coalition_update', {
+      cityEventsCount: cityEvents.length,
+      stateEventsCount: stateEvents.length,
+      nationalEventsCount: nationalEvents.length,
+      coalitionsCount: coalitionSoA.base.size
+    });
+  }
+
+  // Use existing aggregator or create new one
+  const aggregator = spatialMapping || new CoalitionSpatialAggregator();
+  
+  // Process all cascading effects
+  const effectBatch = aggregator.processCascadingEffects(cityEvents, stateEvents, nationalEvents);
+  
+  // Apply all batched effects efficiently
+  const applyResults = effectBatch.applyEffects(coalitionSoA);
+  
+  // Clean up
+  effectBatch.clear();
+  
+  const totalDuration = performance.now() - (operationId ? performanceMonitor.metrics.get(operationId).startTime : Date.now());
+  
+  const results = {
+    ...applyResults,
+    totalDuration,
+    eventsProcessed: cityEvents.length + stateEvents.length + nationalEvents.length,
+    performanceMetrics: spatialMapping ? spatialMapping.getPerformanceMetrics() : null
+  };
+
+  if (enablePerformanceMonitoring && operationId) {
+    const finalMetric = performanceMonitor.endOperation(operationId, results);
+    results.performanceReport = finalMetric;
+  }
+  
+  return results;
+};
+
+/**
+ * Utility function to get global performance statistics
+ */
+export const getCoalitionSystemPerformanceStats = () => {
+  return {
+    summary: globalPerformanceMonitor.getPerformanceSummary(),
+    cacheHitRates: {
+      policyAlignment: policyAlignmentCache.size > 0 ? 'Active' : 'Empty',
+      // Add other cache statistics here as needed
+    },
+    recommendations: generatePerformanceRecommendations(globalPerformanceMonitor.getPerformanceSummary())
+  };
+};
+
+/**
+ * Generate performance optimization recommendations
+ */
+const generatePerformanceRecommendations = (summary) => {
+  const recommendations = [];
+  
+  if (summary.averageDuration > 100) {
+    recommendations.push('Consider reducing batch sizes or implementing more aggressive caching');
+  }
+  
+  if (summary.warningsCount > 10) {
+    recommendations.push('High number of performance warnings - review event processing patterns');
+  }
+  
+  if (summary.averageMemoryDelta > 5 * 1024 * 1024) { // 5MB
+    recommendations.push('High memory usage detected - consider implementing periodic cleanup');
+  }
+  
+  return recommendations.length > 0 ? recommendations : ['Performance looks good!'];
+};
+
 export default {
   createCoalitionSoA,
   generateCoalitions,
@@ -787,5 +1534,12 @@ export default {
   calculateIdeologicalDistance,
   calculateCoalitionBasedTurnout,
   calculateExpectedTurnout,
-  getCoalitionTurnoutBreakdown
+  getCoalitionTurnoutBreakdown,
+  CoalitionEffectBatch,
+  CoalitionSpatialAggregator,
+  CoalitionPerformanceMonitor,
+  calculateEventCoalitionEffects,
+  calculatePolicyCoalitionEffects,
+  processCascadingCoalitionUpdates,
+  getCoalitionSystemPerformanceStats
 };

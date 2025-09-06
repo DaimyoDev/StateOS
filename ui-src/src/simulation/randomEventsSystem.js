@@ -4,6 +4,11 @@ import { RANDOM_EVENT_TEMPLATES, getRandomEvent } from '../data/randomEventsData
 import { generateNewsForEvent } from './newsGenerator';
 import { getRandomElement } from '../utils/core';
 import { shouldLobbyingGroupRespond, generateLobbyingGroupResponse } from '../entities/organizationEntities';
+import { 
+  calculateEventCoalitionEffects, 
+  processCascadingCoalitionUpdates,
+  CoalitionSpatialAggregator 
+} from '../General Scripts/CoalitionSystem';
 
 /**
  * Generate a random event based on current game context
@@ -378,4 +383,178 @@ const calculateDaysBetween = (date1, date2) => {
   const days1 = date1.year * 360 + date1.month * 30 + date1.day;
   const days2 = date2.year * 360 + date2.month * 30 + date2.day;
   return Math.abs(days2 - days1);
+};
+
+/**
+ * Process coalition effects from a city event
+ * @param {object} event - The processed event with news articles
+ * @param {object} coalitionSoA - The coalition data structure
+ * @param {object} cityData - City context data
+ * @returns {object} Results of coalition processing
+ */
+export const processEventCoalitionEffects = (event, coalitionSoA, cityData = {}) => {
+  console.log(`[COALITION EVENTS PROCESSOR] Processing event:`, {
+    id: event.id,
+    category: event.category,
+    templateId: event.templateId,
+    hasCoalitionSoA: !!coalitionSoA
+  });
+
+  if (!event || !coalitionSoA) {
+    console.log(`[COALITION EVENTS PROCESSOR] Missing data - event:`, !!event, 'coalitionSoA:', !!coalitionSoA);
+    return { coalitionUpdates: null, performanceMetrics: null };
+  }
+
+  // Convert the random event to coalition system format
+  const coalitionType = mapEventCategoryToCoalitionType(event.category, event.templateId);
+  console.log(`[COALITION EVENTS PROCESSOR] Mapped event "${event.templateId}" (${event.category}) to coalition type: "${coalitionType}"`);
+  
+  const coalitionEvent = {
+    id: event.id,
+    type: coalitionType,
+    jurisdictionId: cityData.id || 'current_city',
+    jurisdictionType: 'city',
+    magnitude: getEventMagnitudeFromSeverity(event.severity),
+    date: event.date,
+    context: event.context
+  };
+
+  try {
+    // Process the event using the coalition system
+    const results = processCascadingCoalitionUpdates(
+      coalitionSoA,
+      [coalitionEvent], // City events
+      [], // No state events for now
+      [], // No national events for now
+      null, // Will use default spatial aggregator
+      {
+        enablePerformanceMonitoring: true,
+        enableCaching: true
+      }
+    );
+
+    return {
+      coalitionUpdates: results,
+      performanceMetrics: results.performanceReport
+    };
+  } catch (error) {
+    console.error('Error processing event coalition effects:', error);
+    return { coalitionUpdates: null, performanceMetrics: null };
+  }
+};
+
+/**
+ * Map event categories to coalition system event types
+ * @param {string} category - Event category from randomEventsData
+ * @param {string} templateId - Specific event template ID
+ * @returns {string} Coalition system event type
+ */
+const mapEventCategoryToCoalitionType = (category, templateId) => {
+  // Map event template IDs to coalition system event types
+  const templateMapping = {
+    // Healthcare events
+    'hospital_closure': 'healthcare_crisis',
+    'medical_breakthrough': 'healthcare_improvement',
+    'drug_shortage': 'healthcare_crisis',
+    
+    // Economic events
+    'factory_closure': 'economic_recession',
+    'tech_expansion': 'economic_growth',
+    'housing_crisis': 'economic_recession',
+    
+    // Environmental events
+    'pollution_spike': 'environmental_crisis',
+    'renewable_milestone': 'environmental_progress',
+    
+    // Crime events
+    'crime_wave': 'crime_surge',
+    'police_reform': 'police_reform',
+    
+    // Education events
+    'school_crisis': 'education_crisis',
+    'education_achievement': 'education_improvement',
+    
+    // Infrastructure events
+    'bridge_collapse': 'infrastructure_failure',
+    'transit_expansion': 'infrastructure_investment',
+    
+    // Social events
+    'protest_march': 'social_unrest',
+    'community_achievement': 'community_improvement',
+    
+    // Technology events
+    'data_breach': 'cyber_security_incident',
+    'ai_innovation': 'tech_innovation'
+  };
+
+  // Return specific mapping or fall back to category-based mapping
+  return templateMapping[templateId] || mapCategoryToCoalitionType(category);
+};
+
+/**
+ * Map general event categories to coalition event types
+ * @param {string} category - Event category
+ * @returns {string} Coalition event type
+ */
+const mapCategoryToCoalitionType = (category) => {
+  const categoryMapping = {
+    'healthcare': 'healthcare_reform',
+    'economic': 'economic_growth',
+    'environmental': 'environmental_regulation', 
+    'crime': 'police_reform',
+    'education': 'education_reform',
+    'infrastructure': 'infrastructure_investment',
+    'social': 'social_unrest',
+    'technology': 'ai_innovation'
+  };
+  
+  return categoryMapping[category] || 'general_policy_change';
+};
+
+/**
+ * Convert event severity to coalition magnitude
+ * @param {string} severity - Event severity level
+ * @returns {number} Magnitude for coalition calculations (0.5 to 2.0)
+ */
+const getEventMagnitudeFromSeverity = (severity) => {
+  const severityMagnitudes = {
+    'minor': 0.5,
+    'moderate': 0.8,
+    'major': 1.2,
+    'critical': 2.0
+  };
+  
+  return severityMagnitudes[severity] || 1.0;
+};
+
+/**
+ * Generate and process a city event with coalition effects
+ * @param {object} gameContext - Current game context
+ * @param {object} coalitionSoA - Coalition data structure
+ * @param {object} gameState - Full game state for news processing
+ * @returns {object} Event with news articles and coalition effects
+ */
+export const generateAndProcessCityEvent = (gameContext, coalitionSoA, gameState) => {
+  // Generate the base event
+  const event = generateRandomEvent(gameContext);
+  if (!event) return null;
+
+  // Process news coverage
+  const processedEvent = processRandomEvent(event, gameState);
+
+  // Process coalition effects if coalition system is available
+  let coalitionResults = null;
+  if (coalitionSoA) {
+    const coalitionProcessing = processEventCoalitionEffects(
+      processedEvent, 
+      coalitionSoA, 
+      gameContext
+    );
+    coalitionResults = coalitionProcessing.coalitionUpdates;
+  }
+
+  return {
+    ...processedEvent,
+    coalitionEffects: coalitionResults
+  };
 };

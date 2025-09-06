@@ -996,15 +996,24 @@ const ElectionSimulatorScreen = () => {
         currentSetup.isHierarchical &&
         currentSetup.coalitionSystems?.hierarchical
       ) {
-        // Import the function to get election-specific coalitions
-        const { getCoalitionsForElection } = await import(
-          "../elections/hierarchicalCoalitions.js"
-        );
-        electionCoalitionSoA =
-          getCoalitionsForElection(
-            currentSetup.coalitionSystems.hierarchical,
-            electionInstance.id
-          ) || currentSetup.coalitionSystems?.simulation_default;
+        // For Electoral College elections, don't aggregate - keep state-specific data
+        if (selectedElectionTypeDetails.electoralSystem === "ElectoralCollege") {
+          // Use the national-level base coalitions for display, but keep hierarchical data intact
+          const electionData = currentSetup.coalitionSystems.hierarchical.electionSpecific.get(electionInstance.id);
+          if (electionData) {
+            electionCoalitionSoA = electionData.baseCoalitions || currentSetup.coalitionSystems?.simulation_default;
+          }
+        } else {
+          // For other elections, use the aggregated coalitions
+          const { getCoalitionsForElection } = await import(
+            "../elections/hierarchicalCoalitions.js"
+          );
+          electionCoalitionSoA =
+            getCoalitionsForElection(
+              currentSetup.coalitionSystems.hierarchical,
+              electionInstance.id
+            ) || currentSetup.coalitionSystems?.simulation_default;
+        }
       }
 
       const simulatedElection = {

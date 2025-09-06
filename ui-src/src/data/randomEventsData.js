@@ -72,6 +72,22 @@ export const RANDOM_EVENT_TEMPLATES = {
       })
     },
     {
+      id: 'unemployment_spike',
+      name: 'Unemployment Rate Surge',
+      description: 'Regional unemployment rises sharply amid economic uncertainty',
+      category: 'economic',
+      relevantPolicies: ['minimum_wage', 'job_training', 'unemployment_benefits'],
+      relevantIdeologies: ['populist', 'socialist', 'progressive'],
+      severity: 'major',
+      newsWorthiness: 8,
+      contextGenerator: (location) => ({
+        oldRate: (Math.random() * 3 + 4).toFixed(1), // 4.0-7.0%
+        newRate: (Math.random() * 3 + 7).toFixed(1), // 7.0-10.0%
+        sector: ['manufacturing', 'retail', 'hospitality', 'construction'][Math.floor(Math.random() * 4)],
+        duration: `${Math.floor(Math.random() * 3) + 1} month${Math.floor(Math.random() * 3) + 1 > 1 ? 's' : ''}`
+      })
+    },
+    {
       id: 'tech_expansion',
       name: 'Tech Company Expansion',
       description: 'Major technology company announces new facility',
@@ -84,6 +100,36 @@ export const RANDOM_EVENT_TEMPLATES = {
         companyName: ['DataCore Systems', 'CloudNet Solutions', 'AI Innovations'][Math.floor(Math.random() * 3)],
         jobsCreated: Math.floor(Math.random() * 1000) + 200,
         investment: `$${Math.floor(Math.random() * 500) + 100} million`
+      })
+    },
+    {
+      id: 'economic_recession',
+      name: 'Economic Downturn Hits Region',
+      description: 'Local economy faces significant challenges as recession deepens',
+      category: 'economic',
+      relevantPolicies: ['economic_stimulus', 'minimum_wage', 'small_business_support'],
+      relevantIdeologies: ['populist', 'socialist', 'progressive'],
+      severity: 'major',
+      newsWorthiness: 9,
+      contextGenerator: (location) => ({
+        gdpDrop: (Math.random() * 3 + 2).toFixed(1), // 2.0-5.0%
+        jobsAtRisk: Math.floor(Math.random() * 5000) + 2000,
+        sectors: ['manufacturing', 'retail', 'hospitality', 'construction', 'services']
+      })
+    },
+    {
+      id: 'economic_growth',
+      name: 'Economic Growth Accelerates',
+      description: 'Regional economy shows strong growth indicators',
+      category: 'economic',
+      relevantPolicies: ['tax_policy', 'infrastructure_spending', 'business_incentives'],
+      relevantIdeologies: ['libertarian', 'conservative', 'technocratic'],
+      severity: 'moderate',
+      newsWorthiness: 7,
+      contextGenerator: (location) => ({
+        gdpGrowth: (Math.random() * 2 + 3).toFixed(1), // 3.0-5.0%
+        jobsCreated: Math.floor(Math.random() * 3000) + 1000,
+        leadingSectors: ['technology', 'healthcare', 'finance', 'green energy']
       })
     },
     {
@@ -255,6 +301,51 @@ export const RANDOM_EVENT_TEMPLATES = {
         cause: ['racial justice', 'economic inequality', 'climate action', 'workers rights'][Math.floor(Math.random() * 4)],
         attendance: Math.floor(Math.random() * 10000) + 2000,
         duration: `${Math.floor(Math.random() * 5) + 1} days`
+      })
+    },
+    {
+      id: 'social_unrest',
+      name: 'Social Tensions Escalate',
+      description: 'Rising social tensions lead to community unrest',
+      category: 'social',
+      relevantPolicies: ['police_funding', 'social_justice', 'community_relations'],
+      relevantIdeologies: ['progressive', 'socialist', 'conservative'],
+      severity: 'major',
+      newsWorthiness: 8,
+      contextGenerator: () => ({
+        trigger: ['police incident', 'economic inequality', 'housing displacement', 'racial tensions'][Math.floor(Math.random() * 4)],
+        duration: `${Math.floor(Math.random() * 5) + 1} days`,
+        incidents: Math.floor(Math.random() * 20) + 5
+      })
+    },
+    {
+      id: 'cultural_shift',
+      name: 'Cultural Demographic Changes',
+      description: 'Community sees significant cultural and demographic transitions',
+      category: 'social',
+      relevantPolicies: ['immigration', 'housing', 'community_development'],
+      relevantIdeologies: ['progressive', 'conservative', 'populist'],
+      severity: 'moderate',
+      newsWorthiness: 6,
+      contextGenerator: () => ({
+        change: ['new immigrant community', 'generational transition', 'economic gentrification'][Math.floor(Math.random() * 3)],
+        percentage: Math.floor(Math.random() * 15) + 5,
+        timeframe: `${Math.floor(Math.random() * 3) + 2} years`
+      })
+    },
+    {
+      id: 'police_reform',
+      name: 'Police Department Reforms',
+      description: 'Major police department announces comprehensive reform initiatives',
+      category: 'social',
+      relevantPolicies: ['police_funding', 'criminal_justice_reform', 'community_relations'],
+      relevantIdeologies: ['progressive', 'conservative', 'moderate'],
+      severity: 'moderate',
+      newsWorthiness: 7,
+      contextGenerator: () => ({
+        reforms: ['body cameras', 'community policing', 'bias training', 'oversight board'][Math.floor(Math.random() * 4)],
+        budget: `$${Math.floor(Math.random() * 10) + 2} million`,
+        timeline: `${Math.floor(Math.random() * 12) + 6} months`
       })
     },
     {

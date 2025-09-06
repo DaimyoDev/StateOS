@@ -18,6 +18,15 @@ import {
 import { normalizePartyPopularities } from "../utils/electionUtils.js";
 import { strategicAIBillProposal } from "./aiStrategicProposal.js";
 import { generateNewsForEvent } from "./newsGenerator.js";
+import { 
+  generateAndProcessCityEvent, 
+  shouldGenerateRandomEvent 
+} from "./randomEventsSystem.js";
+import { 
+  generateCoalitions,
+  createCoalitionSoA,
+  processCascadingCoalitionUpdates
+} from "../General Scripts/CoalitionSystem.js";
 
 /**
  * Derives a qualitative rating (e.g., "Good", "Poor") from a numerical stat.
@@ -734,6 +743,163 @@ const calculateOppositionBonus = (stats, level) => {
   }
 
   return Math.min(0.5, bonus); // Cap opposition bonus
+};
+
+/**
+ * Process random events and their coalition effects for the current city
+ * @param {object} campaign - The current campaign state
+ * @param {object} coalitionSoA - Coalition data structure (optional)
+ * @returns {object} { events: Array, coalitionUpdates: object | null, newsItems: Array }
+ */
+export const runMonthlyEventProcessing = (campaign, coalitionSoA = null) => {
+  const results = {
+    events: [],
+    coalitionUpdates: null,
+    newsItems: [],
+    performanceMetrics: null
+  };
+
+  // Check if we should generate a random event this month
+  if (!shouldGenerateRandomEvent(campaign)) {
+    return results;
+  }
+
+  try {
+    // Set up game context for event generation
+    const gameContext = {
+      currentDate: campaign.currentDate,
+      locationName: campaign.startingCity?.name,
+      cityName: campaign.startingCity?.name,
+      countryId: campaign.country?.id,
+      regionId: campaign.startingCity?.regionId,
+      recentEvents: campaign.recentEvents || [],
+      currentPolicies: campaign.activeLegislation || []
+    };
+
+    // Set up game state for news processing
+    const gameState = {
+      newsOutlets: campaign.newsOutlets || [],
+      allPoliticians: campaign.politicians ? 
+        Array.from(campaign.politicians.base.values()) : [],
+      cityName: campaign.startingCity?.name,
+      lobbyingGroups: campaign.lobbyingGroups || []
+    };
+
+    // Generate and process the event with coalition effects
+    const processedEvent = generateAndProcessCityEvent(
+      gameContext,
+      coalitionSoA,
+      gameState
+    );
+
+    if (processedEvent) {
+      results.events.push(processedEvent);
+      
+      // Extract news articles for the main news feed
+      if (processedEvent.newsArticles && processedEvent.newsArticles.length > 0) {
+        results.newsItems.push(...processedEvent.newsArticles);
+      }
+      
+      // Extract coalition effects if they exist
+      if (processedEvent.coalitionEffects) {
+        results.coalitionUpdates = processedEvent.coalitionEffects;
+        results.performanceMetrics = processedEvent.coalitionEffects.performanceReport;
+      }
+
+      // Update campaign with this event (for future reference)
+      const updatedRecentEvents = [...(campaign.recentEvents || []), processedEvent]
+        .slice(-10); // Keep only last 10 events
+      
+      results.campaignUpdates = {
+        recentEvents: updatedRecentEvents,
+        lastEventDate: campaign.currentDate
+      };
+    }
+  } catch (error) {
+    console.error('Error processing monthly events:', error);
+    // Continue without failing the entire monthly tick
+  }
+
+  return results;
+};
+
+/**
+ * Initialize coalition system for a city if not already present
+ * @param {object} city - City data
+ * @param {Array} availableParties - Available political parties
+ * @returns {object} Coalition SoA structure
+ */
+export const initializeCityCoalitions = (city, availableParties = []) => {
+  try {
+    // Create coalition structure
+    const coalitionSoA = createCoalitionSoA();
+    
+    // Generate coalitions based on city demographics and electorate
+    const generatedCoalitions = generateCoalitions(
+      city.stats?.electoratePolicyProfile || {},
+      city.demographics || {},
+      availableParties
+    );
+    
+    // Merge generated data into SoA structure
+    Object.assign(coalitionSoA, generatedCoalitions);
+    
+    return coalitionSoA;
+  } catch (error) {
+    console.error('Error initializing city coalitions:', error);
+    return createCoalitionSoA(); // Return empty structure
+  }
+};
+
+/**
+ * Update city coalition mobilization based on policy changes, stats, and events
+ * @param {object} coalitionSoA - Coalition data structure
+ * @param {object} campaign - Campaign state
+ * @param {Array} policyEvents - Policy changes that occurred this month
+ * @returns {object} Coalition update results
+ */
+export const updateCityCoalitionMobilization = (coalitionSoA, campaign, policyEvents = []) => {
+  if (!coalitionSoA || !campaign.startingCity) {
+    return { coalitionUpdates: null, performanceMetrics: null };
+  }
+
+  try {
+    // Convert policy events to coalition events
+    const coalitionPolicyEvents = policyEvents.map(policyEvent => ({
+      id: `policy_${policyEvent.id}_${Date.now()}`,
+      type: `${policyEvent.category}_policy_change`,
+      jurisdictionId: campaign.startingCity.id,
+      jurisdictionType: 'city',
+      magnitude: policyEvent.impact || 1.0,
+      date: campaign.currentDate,
+      context: {
+        policyId: policyEvent.id,
+        policyName: policyEvent.name,
+        direction: policyEvent.direction || 0
+      }
+    }));
+
+    // Process coalition effects from policy changes
+    const results = processCascadingCoalitionUpdates(
+      coalitionSoA,
+      coalitionPolicyEvents, // City events
+      [], // No state events for now
+      [], // No national events for now
+      null, // Default spatial aggregator
+      {
+        enablePerformanceMonitoring: true,
+        enableCaching: true
+      }
+    );
+
+    return {
+      coalitionUpdates: results,
+      performanceMetrics: results.performanceReport
+    };
+  } catch (error) {
+    console.error('Error updating coalition mobilization:', error);
+    return { coalitionUpdates: null, performanceMetrics: null };
+  }
 };
 
 export const runMonthlyPlayerApprovalUpdate = (campaign, getFromStore) => {

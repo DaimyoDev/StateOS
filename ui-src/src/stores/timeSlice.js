@@ -378,6 +378,28 @@ export const createTimeSlice = (set, get) => {
 
             const processedEvent = processRandomEvent(randomEvent, gameState);
             
+            // Process coalition effects if coalition system is available
+            const coalitionSoA = get().actions.getCoalitionsForCity?.(campaignAfterDateAdvance.startingCity?.id);
+            let coalitionResults = null;
+            if (coalitionSoA) {
+              console.log(`[TIME SLICE] Processing coalition effects for event: ${processedEvent.name || processedEvent.title}`);
+              import("../simulation/randomEventsSystem.js").then(({ processEventCoalitionEffects }) => {
+                coalitionResults = processEventCoalitionEffects(
+                  processedEvent, 
+                  coalitionSoA, 
+                  campaignAfterDateAdvance.startingCity
+                );
+                
+                // Apply coalition updates if any occurred
+                if (coalitionResults?.coalitionUpdates) {
+                  console.log(`[TIME SLICE] Applying coalition updates from event effects`);
+                  get().actions.updateCityCoalitions?.(campaignAfterDateAdvance.startingCity.id, coalitionResults.coalitionUpdates);
+                }
+              });
+            } else {
+              console.log(`[TIME SLICE] No coalition system available for event: ${processedEvent.name || processedEvent.title}`);
+            }
+            
             // Add the generated news articles to the news system
             if (processedEvent.newsArticles && processedEvent.newsArticles.length > 0) {
               get().actions.addNewsArticle?.(processedEvent.newsArticles);
@@ -391,7 +413,11 @@ export const createTimeSlice = (set, get) => {
                 recentRandomEvents: [
                   ...(state.activeCampaign.recentRandomEvents || []).slice(0, 9), // Keep last 10 events
                   processedEvent
-                ]
+                ],
+                // Store coalition results if available
+                ...(coalitionResults && {
+                  lastCoalitionEffects: coalitionResults
+                })
               }
             }));
           }

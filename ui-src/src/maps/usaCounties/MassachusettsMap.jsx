@@ -1,11 +1,6 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import useGameStore from "../../store";
-import {
-  getMapThemeColors,
-  getRegionStyle,
-  calculateHeatmapRange,
-} from "../../utils/mapHeatmapUtils";
-import { getDistrictRegionStyle } from "../../utils/mapDistrictUtils";
+import { getMapThemeColors, getRegionStyle } from "../../utils/mapHeatmapUtils";
 import "../JapanMap.css";
 
 const COUNTY_DATA = {
@@ -89,25 +84,29 @@ function MassachusettsMap({
   );
 
   const themeColors = getMapThemeColors(currentTheme);
-  useMemo(
-    () => calculateHeatmapRange(heatmapData, viewType),
-    [heatmapData, viewType]
-  );
 
   const getCountyStyle = useCallback(
-    (countyGameId) => {
-      if (viewType === "districts") {
-        return getDistrictRegionStyle(countyGameId, heatmapData, themeColors);
-      }
-      return getRegionStyle(
-        countyGameId,
+    (svgId) => {
+      return getRegionStyle({
+        regionId: null,
+        svgId,
+        regionData: COUNTY_DATA,
         heatmapData,
         viewType,
-        themeColors,
-        selectedCountyGameId === countyGameId
-      );
+        theme: themeColors,
+        hoveredId: hoveredCountyId,
+        selectedId: selectedCountyGameId,
+        isClickable: !!onSelectCounty,
+      });
     },
-    [heatmapData, viewType, themeColors, selectedCountyGameId]
+    [
+      heatmapData,
+      viewType,
+      themeColors,
+      hoveredCountyId,
+      selectedCountyGameId,
+      onSelectCounty,
+    ]
   );
   const handleCountyClick = useCallback(
     (svgId) => {
@@ -121,37 +120,58 @@ function MassachusettsMap({
     [onSelectCounty]
   );
 
-  const handleCountyMouseEnter = useCallback(
-    (e, svgId) => {
-      const county = COUNTY_DATA[svgId];
-      if (!county) return;
+  const handleMouseEnter = useCallback(
+    (svgId, event) => {
+      const countyInfo = COUNTY_DATA[svgId];
+      if (!countyInfo) return;
 
-      setHoveredCountyId(county.gameId);
-      setMousePosition({ x: e.clientX, y: e.clientY });
+      setHoveredCountyId(countyInfo.gameId);
 
-      const countyData = heatmapData?.[county.gameId];
-      if (countyData) {
-        setTooltipData({
-          name: county.name,
-          value: countyData.value,
-          formattedValue: countyData.formattedValue,
-        });
-      }
-
+      // Call the external hover handler if provided (for election night tooltips)
       if (onCountyHover) {
-        onCountyHover(county.gameId, county.name, countyData);
+        onCountyHover(countyInfo.gameId, event);
+      } else {
+        // Fallback to internal tooltip for other uses
+        if (viewType === "congressional_districts" && heatmapData?.mapData) {
+          const mapDataItem = heatmapData.mapData.find(
+            (item) => item.id === countyInfo.gameId
+          );
+          if (mapDataItem) {
+            setTooltipData({
+              name: countyInfo.name,
+              isSplit: mapDataItem.isSplit,
+              splitDetails: mapDataItem.splitDetails,
+              districtLabel: mapDataItem.value,
+            });
+          }
+        } else {
+          setTooltipData({
+            name: countyInfo.name,
+            isSplit: false,
+            splitDetails: null,
+            districtLabel: null,
+          });
+        }
+
+        setMousePosition({ x: event.clientX, y: event.clientY });
       }
     },
-    [heatmapData, onCountyHover]
+    [onCountyHover, viewType, heatmapData]
   );
 
-  const handleCountyMouseLeave = useCallback(() => {
+  const handleMouseLeave = useCallback(() => {
     setHoveredCountyId(null);
     setTooltipData(null);
+
+    // Call the external leave handler if provided
     if (onCountyLeave) {
       onCountyLeave();
     }
   }, [onCountyLeave]);
+
+  const handleMouseMove = useCallback((event) => {
+    setMousePosition({ x: event.clientX, y: event.clientY });
+  }, []);
 
   const renderCountyPath = (svgId) => {
     const countyInfo = COUNTY_DATA[svgId];
@@ -177,42 +197,82 @@ function MassachusettsMap({
         } ${
           hoveredCountyId === countyInfo.gameId ? "hovered" : ""
         }`}
-        style={getCountyStyle(countyInfo.gameId)}
+        style={getCountyStyle(svgId)}
+        onMouseEnter={(e) => handleMouseEnter(svgId, e)}
+        onMouseLeave={handleMouseLeave}
+        onMouseMove={handleMouseMove}
         onClick={() => handleCountyClick(svgId)}
-        onMouseEnter={(e) => handleCountyMouseEnter(e, svgId)}
-        onMouseLeave={handleCountyMouseLeave}
         d={pathD}
       />
     );
   };
 
   return (
-    <div className="map-container">
+    <>
       <svg
         version="1.2"
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 810 502"
-        className="interactive-japan-map"
+        className="interactive-japan-map massachusetts-map"
         preserveAspectRatio="xMidYMid meet"
       >
-        <g id="massachusetts-counties-group">
+        <g id="massachusetts-counties-group" stroke="white" strokeWidth="1">
           {countyOrderFromSVG.map((svgId) => renderCountyPath(svgId))}
         </g>
       </svg>
-      {tooltipData && (
+      {tooltipData && !onCountyHover && (
         <div
-          className="map-tooltip"
           style={{
-            left: `${mousePosition.x + 10}px`,
-            top: `${mousePosition.y - 10}px`,
+            position: "fixed",
+            left: mousePosition.x + 10,
+            top: mousePosition.y - 10,
+            backgroundColor: "rgba(0, 0, 0, 0.9)",
+            color: "white",
+            padding: "8px 12px",
+            borderRadius: "4px",
+            fontSize: "12px",
+            pointerEvents: "none",
+            zIndex: 1000,
+            maxWidth: "250px",
+            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.3)",
           }}
         >
-          <div className="tooltip-title">{tooltipData.name}</div>
-          <div className="tooltip-value">{tooltipData.formattedValue}</div>
+          <div style={{ fontWeight: "bold", marginBottom: "4px" }}>
+            {tooltipData.name} County
+          </div>
+
+          {tooltipData.isSplit && tooltipData.splitDetails ? (
+            <div>
+              <div
+                style={{
+                  color: themeColors.selectedColor || "#ff6b35",
+                  fontWeight: "bold",
+                  marginBottom: "4px",
+                }}
+              >
+                Split County
+              </div>
+              <div style={{ fontSize: "11px" }}>
+                {tooltipData.splitDetails.map((detail, index) => (
+                  <div key={index} style={{ marginBottom: "2px" }}>
+                    District {detail.districtId}:{" "}
+                    {detail.population.toLocaleString()} people
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            tooltipData.districtLabel && (
+              <div style={{ fontSize: "11px" }}>
+                {tooltipData.districtLabel}
+              </div>
+            )
+          )}
         </div>
       )}
-    </div>
+    </>
   );
 }
 
 export default MassachusettsMap;
+export { countyPathData };

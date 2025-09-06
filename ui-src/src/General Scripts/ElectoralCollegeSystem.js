@@ -521,9 +521,15 @@ export class ElectoralCollegeSystem {
       return this.stateResultsCache.get(cacheKey);
     }
 
-    // Get coalition system for this state
+    // Get coalition system for this state - try state-specific first, then simulation_default
     const coalitionKey = `state_${stateId}`;
-    const coalitionSoA = coalitionSystems[coalitionKey];
+    let coalitionSoA = coalitionSystems[coalitionKey];
+    
+    // If no state-specific coalition, try to use simulation_default for all states
+    if (!coalitionSoA && coalitionSystems['simulation_default']) {
+      console.log(`Using simulation_default coalition for state: ${stateId}`);
+      coalitionSoA = coalitionSystems['simulation_default'];
+    }
 
     if (!coalitionSoA) {
       console.warn(
@@ -532,7 +538,7 @@ export class ElectoralCollegeSystem {
       return this.fallbackStateCalculation(state, candidates);
     }
 
-    // Calculate polling for each candidate using coalitions
+    // Calculate polling for each candidate using coalitions with state-specific variations
     const candidatePolling = new Map();
     const activeCampaignPoliticians = activeCampaign?.politicians;
 
@@ -564,10 +570,14 @@ export class ElectoralCollegeSystem {
         );
         coalitionSoA.polling.set(candidate.id, coalitionResults);
 
-        const overallScore = aggregateCoalitionPolling(
+        let overallScore = aggregateCoalitionPolling(
           coalitionSoA,
           candidate.id
         );
+        
+        // Apply state-specific variation to avoid identical results across all states
+        overallScore = this.applyStateSpecificVariation(overallScore, candidate, state, stateId);
+        
         candidatePolling.set(
           candidate.id,
           isNaN(overallScore) ? 25 : overallScore
@@ -613,6 +623,65 @@ export class ElectoralCollegeSystem {
     this.lastCalculationTime.set(cacheKey, Date.now());
 
     return result;
+  }
+
+  /**
+   * Apply state-specific variation to candidate polling to avoid identical results across states
+   */
+  applyStateSpecificVariation(baseScore, candidate, state, stateId) {
+    // Create a consistent seed based on state and candidate for reproducible variation
+    const stateHash = stateId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const candidateHash = candidate.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const seed = (stateHash + candidateHash) % 1000;
+    
+    // Seeded random function for consistent results
+    const seededRandom = (s) => {
+      const x = Math.sin(s) * 10000;
+      return x - Math.floor(x);
+    };
+    
+    // Apply demographic-based variations
+    let variation = 0;
+    
+    // Urban/Rural variation based on state characteristics
+    const statePopulation = state.population || 1000000;
+    const isLargeState = statePopulation > 5000000;
+    const urbanizationFactor = Math.min(1, statePopulation / 10000000); // 0 to 1
+    
+    // Different candidates perform better in different state types
+    if (candidate.partyName) {
+      // Simplified party-based state preferences
+      const partyName = candidate.partyName.toLowerCase();
+      
+      if (partyName.includes('democrat') || partyName.includes('liberal') || partyName.includes('progressive')) {
+        // Democrats/Liberals tend to do better in more urban states
+        variation += urbanizationFactor * 8 - 4; // -4 to +4 based on urbanization
+      } else if (partyName.includes('republican') || partyName.includes('conservative')) {
+        // Republicans/Conservatives tend to do better in more rural states  
+        variation += (1 - urbanizationFactor) * 8 - 4; // -4 to +4 based on rural nature
+      }
+    }
+    
+    // Add controlled random variation per state (-5% to +5%)
+    const randomVariation = (seededRandom(seed) - 0.5) * 10;
+    variation += randomVariation;
+    
+    // Regional effects based on state ID patterns
+    if (stateId.includes('_CA') || stateId.includes('_NY') || stateId.includes('_MA')) {
+      // Liberal-leaning states
+      if (candidate.partyName && candidate.partyName.toLowerCase().includes('democrat')) {
+        variation += 3;
+      }
+    } else if (stateId.includes('_TX') || stateId.includes('_FL') || stateId.includes('_GA')) {
+      // Conservative-leaning states  
+      if (candidate.partyName && candidate.partyName.toLowerCase().includes('republican')) {
+        variation += 3;
+      }
+    }
+    
+    // Apply variation and ensure reasonable bounds
+    const modifiedScore = baseScore + variation;
+    return Math.max(5, Math.min(95, modifiedScore));
   }
 
   /**

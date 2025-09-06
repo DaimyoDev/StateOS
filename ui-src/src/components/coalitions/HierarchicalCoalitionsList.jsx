@@ -60,8 +60,12 @@ const CountyCoalitionEditor = ({ countyId, coalitionSoA, parties, onUpdate }) =>
                 type="range"
                 min="0"
                 max="100"
-                value={coalition.mobilization || 50}
+                step="1"
+                value={Math.round(coalition.mobilization || 50)}
                 onChange={(e) => onUpdate(coalition.id, { 
+                  mobilization: parseFloat(e.target.value) 
+                })}
+                onInput={(e) => onUpdate(coalition.id, { 
                   mobilization: parseFloat(e.target.value) 
                 })}
               />
@@ -73,11 +77,14 @@ const CountyCoalitionEditor = ({ countyId, coalitionSoA, parties, onUpdate }) =>
               <input
                 type="range"
                 min="0"
-                max="1"
-                step="0.01"
-                value={coalition.supportBase || 0}
+                max="100"
+                step="1"
+                value={Math.round((coalition.supportBase || 0) * 100)}
                 onChange={(e) => onUpdate(coalition.id, { 
-                  supportBase: parseFloat(e.target.value) 
+                  supportBase: parseFloat(e.target.value) / 100 
+                })}
+                onInput={(e) => onUpdate(coalition.id, { 
+                  supportBase: parseFloat(e.target.value) / 100 
                 })}
               />
               <span>{Math.round((coalition.supportBase || 0) * 100)}%</span>
