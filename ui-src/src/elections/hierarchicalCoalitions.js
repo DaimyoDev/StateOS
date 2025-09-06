@@ -31,13 +31,23 @@ export function generateHierarchicalCoalitions(electionSetup, electionInstances)
     if (electionType.includes('president')) {
       // Presidential election - national level with state/county distribution
       hierarchicalCoalitions.national = generateNationalCoalitions(electionSetup);
+      const stateDistributions = distributeCoalitionsToStates(
+        hierarchicalCoalitions.national,
+        electionSetup.selectedCountryId
+      );
+      
+      // Generate county-level distributions for each state
+      const countyDistributions = new Map();
+      for (const [stateId, stateCoalitions] of stateDistributions) {
+        const stateCountyDistributions = distributeCoalitionsToCounties(stateCoalitions, stateId);
+        countyDistributions.set(stateId, stateCountyDistributions);
+      }
+      
       hierarchicalCoalitions.electionSpecific.set(electionId, {
         level: 'national',
         baseCoalitions: hierarchicalCoalitions.national,
-        stateDistributions: distributeCoalitionsToStates(
-          hierarchicalCoalitions.national,
-          electionSetup.selectedCountryId
-        )
+        stateDistributions: stateDistributions,
+        countyDistributions: countyDistributions // Add 3rd tier
       });
     } else if (electionType.includes('governor')) {
       // Governor election - state level with county distribution
@@ -285,6 +295,7 @@ function applyRegionalVariation(baseCoalitions, region, level) {
     ideology: new Map(baseCoalitions.ideology),
     partyAlignment: new Map(baseCoalitions.partyAlignment),
     policyStances: new Map(baseCoalitions.policyStances),
+    state: new Map(baseCoalitions.state || new Map()), // Include the state Map for compatibility
     mobilization: new Map(baseCoalitions.mobilization),
     supportBase: new Map(baseCoalitions.supportBase),
     polling: new Map(baseCoalitions.polling)

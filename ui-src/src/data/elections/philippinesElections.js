@@ -79,7 +79,7 @@ export const philippinesElections = [
   },
   {
     id: stateElectionIds.vice_governor,
-    officeNameTemplate: "Vice-Governor of {provinceName}",
+    officeNameTemplate: "Vice-Governor of {stateName}",
     level: "local_province",
     frequencyYears: 3,
     electionMonth: 5,
@@ -164,7 +164,7 @@ export const philippinesElections = [
     mmpListSeatsRatio: null,
   },
   {
-    id: nationalElectionIds.national_hr,
+    id: `${nationalElectionIds.national_hr}_partylist`,
     officeNameTemplate: "Party-List Representative",
     level: "national_lower_house_partylist",
     frequencyYears: 3,

@@ -880,9 +880,28 @@ const ElectoralCollegeCard = ({
     } else {
       // Simulation mode - use election's embedded data
       currentCountryData = election.countryData;
+      // For Electoral College elections, use hierarchical coalitions if available
+      let coalitionSystems = null;
+      if (election.hierarchicalCoalitions && election.electionInstanceId) {
+        const electionData = election.hierarchicalCoalitions.electionSpecific.get(election.electionInstanceId);
+        
+        if (electionData && electionData.stateDistributions) {
+          // Convert hierarchical state distributions to the format expected by Electoral College system
+          coalitionSystems = {};
+          for (const [stateId, stateCoalitions] of electionData.stateDistributions) {
+            coalitionSystems[`state_${stateId}`] = stateCoalitions;
+          }
+        }
+      }
+      
+      // Fallback to default coalition system if hierarchical not available
+      if (!coalitionSystems && election.coalitionSoA) {
+        coalitionSystems = { simulation_default: election.coalitionSoA };
+      }
+      
       campaignToUse = {
         countryId: election.regionId,
-        coalitionSystems: election.coalitionSoA ? { simulation_default: election.coalitionSoA } : null,
+        coalitionSystems: coalitionSystems,
       };
     }
 

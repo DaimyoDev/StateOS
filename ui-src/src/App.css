@@ -347,3 +347,189 @@ html {
 *::-webkit-scrollbar-thumb:hover {
   background-color: var(--scrollbar-thumb-hover, var(--accent-color, #999));
 }
+
+/* Global Range Slider Styling */
+/* Base range input styling that applies to all range sliders */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 8px;
+  background: var(--progress-track-bg, var(--border-color, #ddd));
+  border-radius: 4px;
+  outline: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin: 8px 0;
+}
+
+input[type="range"]:hover {
+  box-shadow: 0 0 0 4px var(--highlight-bg, rgba(0, 0, 0, 0.1));
+}
+
+input[type="range"]:focus {
+  box-shadow: 0 0 0 4px var(--highlight-bg, rgba(0, 0, 0, 0.1));
+}
+
+input[type="range"]:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* WebKit (Chrome, Safari, Edge) thumb styling */
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  background: var(--accent-color, var(--button-bg, #007bff));
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+  box-shadow: 0 3px 8px rgba(var(--rgb-accent-color, 0, 123, 255), 0.4);
+}
+
+input[type="range"]::-webkit-slider-thumb:active {
+  transform: scale(1.1);
+}
+
+input[type="range"]:disabled::-webkit-slider-thumb {
+  background: var(--disabled-bg, #ccc);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* WebKit track styling */
+input[type="range"]::-webkit-slider-track {
+  height: 8px;
+  background: var(--progress-track-bg, var(--border-color, #ddd));
+  border-radius: 4px;
+}
+
+/* Firefox thumb styling */
+input[type="range"]::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  background: var(--accent-color, var(--button-bg, #007bff));
+  border-radius: 50%;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+}
+
+input[type="range"]::-moz-range-thumb:hover {
+  transform: scale(1.2);
+}
+
+input[type="range"]::-moz-range-thumb:active {
+  transform: scale(1.1);
+}
+
+input[type="range"]:disabled::-moz-range-thumb {
+  background: var(--disabled-bg, #ccc);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Firefox track styling */
+input[type="range"]::-moz-range-track {
+  height: 8px;
+  background: var(--progress-track-bg, var(--border-color, #ddd));
+  border-radius: 4px;
+  border: none;
+}
+
+input[type="range"]::-moz-range-progress {
+  height: 8px;
+  background: var(--accent-color, var(--button-bg, #007bff));
+  border-radius: 4px;
+}
+
+/* Microsoft Edge (legacy) styling */
+input[type="range"]::-ms-thumb {
+  width: 18px;
+  height: 18px;
+  background: var(--accent-color, var(--button-bg, #007bff));
+  border-radius: 50%;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+input[type="range"]::-ms-track {
+  height: 8px;
+  background: var(--progress-track-bg, var(--border-color, #ddd));
+  border-radius: 4px;
+  border: none;
+  color: transparent;
+}
+
+input[type="range"]::-ms-fill-lower {
+  background: var(--accent-color, var(--button-bg, #007bff));
+  border-radius: 4px;
+}
+
+input[type="range"]::-ms-fill-upper {
+  background: var(--progress-track-bg, var(--border-color, #ddd));
+  border-radius: 4px;
+}
+
+/* Range slider container for consistent styling */
+.range-slider-container {
+  position: relative;
+  margin: 12px 0;
+}
+
+.range-slider-label {
+  display: block;
+  font-size: 13px;
+  color: var(--secondary-text, #666);
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+
+.range-slider-value {
+  display: inline-block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--primary-text, #333);
+  background: var(--secondary-bg, #f8f9fa);
+  padding: 4px 8px;
+  border-radius: 4px;
+  min-width: 40px;
+  text-align: center;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  input[type="range"] {
+    background: var(--progress-track-bg, #000);
+    border: 1px solid var(--primary-text, #fff);
+  }
+  
+  input[type="range"]::-webkit-slider-thumb {
+    background: var(--primary-text, #fff);
+    border: 2px solid var(--primary-bg, #000);
+  }
+  
+  input[type="range"]::-moz-range-thumb {
+    background: var(--primary-text, #fff);
+    border: 2px solid var(--primary-bg, #000);
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  input[type="range"],
+  input[type="range"]::-webkit-slider-thumb,
+  input[type="range"]::-moz-range-thumb {
+    transition: none;
+  }
+}

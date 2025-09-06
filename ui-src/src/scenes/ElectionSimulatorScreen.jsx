@@ -162,6 +162,7 @@ const ElectionSimulatorScreen = () => {
               )
               .replace(/{countryName}/g, countryName)
               .replace(/{cityName}|{cityNameOrMunicipalityName}/g, cityName)
+              .replace(/{districtName}/g, regionName) // Districts use region name as fallback
               .replace(/{.*?}/g, "")
               .trim();
           }
@@ -940,6 +941,7 @@ const ElectionSimulatorScreen = () => {
           electionRegionName
         )
         .replace("{countryName}", electionCountryName)
+        .replace(/{districtName}/g, electionRegionName) // Districts use region name as fallback
         .replace(/{.*?}/g, "")
         .trim();
 
@@ -1267,6 +1269,7 @@ const ElectionSimulatorScreen = () => {
                                           currentSetup.customCity?.name ||
                                             "City"
                                         )
+                                        .replace(/{districtName}/g, regionName) // Districts use region name as fallback
                                         .replace(/{.*?}/g, "")
                                         .trim();
                                   }

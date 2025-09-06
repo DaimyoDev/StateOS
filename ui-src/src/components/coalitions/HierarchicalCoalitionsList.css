@@ -1,0 +1,441 @@
+/* Hierarchical Coalitions List Styles */
+
+.hierarchical-coalitions {
+  padding: 20px;
+  background: linear-gradient(135deg, var(--secondary-bg) 0%, var(--primary-bg) 100%);
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Election Selector */
+.election-selector {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+  padding: 16px;
+  background: var(--ui-panel-bg);
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.election-selector label {
+  font-weight: 600;
+  color: var(--primary-text);
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.election-selector select {
+  flex: 1;
+  padding: 10px 14px;
+  border: 2px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 15px;
+  background: var(--input-bg);
+  color: var(--input-text);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.election-selector select:hover {
+  border-color: var(--accent-color);
+}
+
+.election-selector select:focus {
+  outline: none;
+  border-color: var(--accent-border-color);
+  box-shadow: 0 0 0 3px var(--highlight-bg);
+}
+
+/* Level Tabs */
+.level-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+  padding: 4px;
+  background: var(--ui-panel-bg);
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.tab-button {
+  flex: 1;
+  padding: 12px 20px;
+  border: none;
+  background: transparent;
+  color: var(--secondary-text);
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.tab-button:hover:not(.active) {
+  background: var(--secondary-bg);
+  color: var(--primary-text);
+}
+
+.tab-button.active {
+  background: var(--button-action-bg);
+  color: var(--button-action-text);
+  box-shadow: 0 4px 12px rgba(var(--rgb-accent-color), 0.3);
+}
+
+/* Top Level Coalitions */
+.top-level-coalitions {
+  background: var(--ui-panel-bg);
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.top-level-coalitions h5 {
+  margin: 0 0 16px 0;
+  color: var(--primary-text);
+  font-size: 18px;
+  font-weight: 600;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--border-color);
+}
+
+/* Sub Level Coalitions */
+.sub-level-coalitions {
+  background: var(--ui-panel-bg);
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.sub-level-coalitions h5 {
+  margin: 0 0 20px 0;
+  color: var(--primary-text);
+  font-size: 18px;
+  font-weight: 600;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--border-color);
+}
+
+/* State Coalition Section (Electoral College) */
+.state-coalition-section {
+  margin-bottom: 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  background: var(--ui-panel-bg);
+}
+
+.state-coalition-section:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+}
+
+.state-header {
+  padding: 16px 20px;
+  background: linear-gradient(135deg, var(--secondary-bg) 0%, var(--primary-bg) 100%);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: background 0.3s ease;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.state-header:hover {
+  background: linear-gradient(135deg, var(--primary-bg) 0%, var(--secondary-bg) 100%);
+}
+
+.state-header h6 {
+  margin: 0;
+  color: var(--primary-text);
+  font-size: 16px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.state-coalition-content {
+  padding: 20px;
+  animation: slideDown 0.3s ease;
+}
+
+.state-coalition-content h6 {
+  margin: 0 0 12px 0;
+  color: var(--secondary-text);
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* County Coalition Section */
+.county-coalition-section,
+.county-coalition-subsection {
+  margin-bottom: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--secondary-bg);
+}
+
+.county-header,
+.county-subheader {
+  padding: 12px 16px;
+  background: linear-gradient(135deg, var(--ui-panel-bg) 0%, var(--secondary-bg) 100%);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: all 0.3s ease;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.county-header:hover,
+.county-subheader:hover {
+  background: linear-gradient(135deg, var(--secondary-bg) 0%, var(--primary-bg) 100%);
+}
+
+.county-header h6,
+.county-subheader .county-name {
+  margin: 0;
+  color: var(--secondary-text);
+  font-size: 14px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.county-coalition-content {
+  padding: 16px;
+  background: var(--ui-panel-bg);
+  animation: slideDown 0.3s ease;
+}
+
+/* County Distributions Section */
+.county-distributions-section {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 2px solid var(--border-color);
+}
+
+.county-distributions-section h6 {
+  margin: 0 0 16px 0;
+  color: var(--secondary-text);
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* County Coalition Editor */
+.county-coalition-editor {
+  display: grid;
+  gap: 12px;
+}
+
+.county-coalition-item {
+  padding: 16px;
+  background: linear-gradient(135deg, var(--secondary-bg) 0%, var(--ui-panel-bg) 100%);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  transition: all 0.3s ease;
+}
+
+.county-coalition-item:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transform: translateX(4px);
+  border-color: var(--accent-color);
+}
+
+.coalition-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.coalition-name {
+  font-weight: 600;
+  color: var(--primary-text);
+  font-size: 15px;
+}
+
+.coalition-size {
+  color: var(--secondary-text);
+  font-size: 13px;
+  font-weight: 500;
+  background: var(--secondary-bg);
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+/* Coalition Controls */
+.coalition-controls {
+  display: grid;
+  gap: 12px;
+}
+
+.mobilization-control,
+.support-base-control {
+  display: grid;
+  grid-template-columns: 120px 1fr 60px;
+  align-items: center;
+  gap: 12px;
+}
+
+.mobilization-control label,
+.support-base-control label {
+  font-size: 13px;
+  color: var(--secondary-text);
+  font-weight: 500;
+}
+
+.mobilization-control input[type="range"],
+.support-base-control input[type="range"] {
+  height: 8px;
+  background: linear-gradient(to right, var(--progress-track-bg) 0%, var(--accent-color) 0%);
+  border-radius: 4px;
+  outline: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.mobilization-control input[type="range"]:hover,
+.support-base-control input[type="range"]:hover {
+  box-shadow: 0 0 0 4px var(--highlight-bg);
+}
+
+.mobilization-control input[type="range"]::-webkit-slider-thumb,
+.support-base-control input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  background: var(--accent-color);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+}
+
+.mobilization-control input[type="range"]::-webkit-slider-thumb:hover,
+.support-base-control input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+  box-shadow: 0 3px 8px rgba(var(--rgb-accent-color), 0.4);
+}
+
+.mobilization-control input[type="range"]::-moz-range-thumb,
+.support-base-control input[type="range"]::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  background: var(--accent-color);
+  border-radius: 50%;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+}
+
+.mobilization-control span,
+.support-base-control span {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--primary-text);
+  text-align: right;
+  background: var(--secondary-bg);
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+/* Help Text */
+.help-text {
+  padding: 16px;
+  background: var(--secondary-bg);
+  border-left: 4px solid var(--accent-color);
+  border-radius: 4px;
+  color: var(--secondary-text);
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 16px 0;
+}
+
+/* Animations */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Expand/Collapse Indicators */
+.state-header h6::after,
+.county-header h6::after,
+.county-subheader .county-name::after {
+  content: '▶';
+  margin-left: auto;
+  transition: transform 0.3s ease;
+  color: #7f8c8d;
+}
+
+.state-coalition-section.expanded .state-header h6::after,
+.county-coalition-section.expanded .county-header h6::after,
+.county-coalition-subsection.expanded .county-subheader .county-name::after {
+  transform: rotate(90deg);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .hierarchical-coalitions {
+    padding: 12px;
+  }
+
+  .level-tabs {
+    flex-direction: column;
+  }
+
+  .tab-button {
+    width: 100%;
+  }
+
+  .mobilization-control,
+  .support-base-control {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .mobilization-control label,
+  .support-base-control label {
+    margin-bottom: 4px;
+  }
+}
+
+/* Loading States */
+.loading-coalitions {
+  text-align: center;
+  padding: 40px;
+  color: #7f8c8d;
+}
+
+.loading-coalitions::after {
+  content: '...';
+  animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+  0%, 20% { content: '.'; }
+  40% { content: '..'; }
+  60%, 100% { content: '...'; }
+}

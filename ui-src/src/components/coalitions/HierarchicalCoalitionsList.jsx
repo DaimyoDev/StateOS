@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { convertCoalitionSoAToArray } from "../../elections/coalitionManager.js";
+import "./HierarchicalCoalitionsList.css";
 
 // Helper component to display county name
 const CountyName = ({ countyId }) => {
@@ -16,6 +17,23 @@ const CountyName = ({ countyId }) => {
   }, [countyId]);
   
   return <span>{countyName}</span>;
+};
+
+// Helper component to display state name
+const StateName = ({ stateId }) => {
+  const [stateName, setStateName] = useState(stateId);
+  
+  React.useEffect(() => {
+    // Import and find state name
+    import('../../data/states/usaStates.js').then(({ usaStates }) => {
+      const state = usaStates.find(state => state.id === stateId);
+      if (state) {
+        setStateName(state.name);
+      }
+    });
+  }, [stateId]);
+  
+  return <span>{stateName}</span>;
 };
 
 // County Coalition Editor Component
@@ -37,7 +55,7 @@ const CountyCoalitionEditor = ({ countyId, coalitionSoA, parties, onUpdate }) =>
           
           <div className="coalition-controls">
             <div className="mobilization-control">
-              <label>Mobilization:</label>
+              <label>📊 Mobilization:</label>
               <input
                 type="range"
                 min="0"
@@ -51,7 +69,7 @@ const CountyCoalitionEditor = ({ countyId, coalitionSoA, parties, onUpdate }) =>
             </div>
             
             <div className="support-base-control">
-              <label>Support Base:</label>
+              <label>👥 Support Base:</label>
               <input
                 type="range"
                 min="0"
@@ -173,7 +191,13 @@ const HierarchicalCoalitionsList = ({
 
       {selectedElectionData && selectedLevel === 'state' && (
         <div className="top-level-coalitions">
-          <h5>{isElectoralCollege ? 'National-Level Coalitions' : 'State-Level Coalitions'}</h5>
+          <h5>
+            {isElectoralCollege ? (
+              <>🇺🇸 National-Level Coalitions</>
+            ) : (
+              <>🏛️ State-Level Coalitions</>
+            )}
+          </h5>
           <CoalitionsList 
             coalitionSoA={selectedElectionData.baseCoalitions}
             parties={parties}
@@ -184,30 +208,67 @@ const HierarchicalCoalitionsList = ({
 
       {selectedElectionData && selectedLevel === 'county' && (
         <div className="sub-level-coalitions">
-          <h5>{isElectoralCollege ? 'State-Level Coalitions' : 'County-Level Coalitions'}</h5>
+          <h5>
+            {isElectoralCollege ? (
+              <>🏛️ State-Level Coalitions</>
+            ) : (
+              <>🏘️ County-Level Coalitions</>
+            )}
+          </h5>
           {isElectoralCollege ? (
             // Electoral College: Show state distributions
             selectedElectionData.stateDistributions && 
             Array.from(selectedElectionData.stateDistributions.entries()).map(([stateId, stateCoalitions]) => (
-              <div key={stateId} className="state-coalition-section">
+              <div key={stateId} className={`state-coalition-section ${expandedCounties.has(stateId) ? 'expanded' : ''}`}>
                 <div 
                   className="state-header" 
                   onClick={() => toggleCountyExpanded(stateId)}
                 >
                   <h6>
-                    {stateId}
-                    {' '}
-                    {expandedCounties.has(stateId) ? '▼' : '▶'}
+                    🏛️ <StateName stateId={stateId} />
                   </h6>
                 </div>
                 
                 {expandedCounties.has(stateId) && (
                   <div className="state-coalition-content">
+                    <h6>🏛️ State-Level Coalitions</h6>
                     <CoalitionsList 
                       coalitionSoA={stateCoalitions}
                       parties={parties}
                       onCoalitionUpdate={onCoalitionUpdate}
                     />
+                    
+                    {/* Show county-level coalitions if available */}
+                    {selectedElectionData.countyDistributions?.has(stateId) && (
+                      <div className="county-distributions-section">
+                        <h6>🏘️ County-Level Coalitions</h6>
+                        {Array.from(selectedElectionData.countyDistributions.get(stateId).entries()).map(([countyId, countyCoalitions]) => (
+                          <div key={countyId} className={`county-coalition-subsection ${expandedCounties.has(countyId) ? 'expanded' : ''}`}>
+                            <div 
+                              className="county-subheader"
+                              onClick={() => toggleCountyExpanded(countyId)}
+                            >
+                              <span className="county-name">
+                                🏘️ <CountyName countyId={countyId} />
+                              </span>
+                            </div>
+                            
+                            {expandedCounties.has(countyId) && (
+                              <div className="county-coalition-content">
+                                <CountyCoalitionEditor
+                                  countyId={countyId}
+                                  coalitionSoA={countyCoalitions}
+                                  parties={parties}
+                                  onUpdate={(coalitionId, changes) => 
+                                    handleCountyCoalitionUpdate(countyId, coalitionId, changes)
+                                  }
+                                />
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -216,15 +277,13 @@ const HierarchicalCoalitionsList = ({
             // Governor: Show county distributions
             selectedElectionData.countyDistributions && 
             Array.from(selectedElectionData.countyDistributions.entries()).map(([countyId, countyCoalitions]) => (
-              <div key={countyId} className="county-coalition-section">
+              <div key={countyId} className={`county-coalition-section ${expandedCounties.has(countyId) ? 'expanded' : ''}`}>
                 <div 
                   className="county-header" 
                   onClick={() => toggleCountyExpanded(countyId)}
                 >
                   <h6>
-                    <CountyName countyId={countyId} />
-                    {' '}
-                    {expandedCounties.has(countyId) ? '▼' : '▶'}
+                    🏘️ <CountyName countyId={countyId} />
                   </h6>
                 </div>
                 

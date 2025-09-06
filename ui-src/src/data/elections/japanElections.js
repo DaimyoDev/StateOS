@@ -51,7 +51,7 @@ export const japanElections = [
   },
   {
     id: stateElectionIds.governor,
-    officeNameTemplate: "Governor of {prefectureName}",
+    officeNameTemplate: "Governor of {stateName}",
     level: "local_state",
     frequencyYears: 4,
     electionMonth: 4,
@@ -68,7 +68,7 @@ export const japanElections = [
   },
   {
     id: stateElectionIds.state_hr,
-    officeNameTemplate: "Prefectural Assembly Member - {districtName}",
+    officeNameTemplate: "Prefectural Assembly Member - {stateName}",
     level: "local_state_lower_house",
     frequencyYears: 4,
     electionMonth: 4,
@@ -108,7 +108,7 @@ export const japanElections = [
     mmpListSeatsRatio: null,
   },
   {
-    id: nationalElectionIds.national_hr,
+    id: `${nationalElectionIds.national_hr}_pr`,
     officeNameTemplate:
       "Member of House of Representatives (PR Bloc - {blocName})",
     level: "national_lower_house_pr_bloc",
@@ -144,7 +144,7 @@ export const japanElections = [
     mmpListSeatsRatio: null,
   },
   {
-    id: nationalElectionIds.national_senate,
+    id: `${nationalElectionIds.national_senate}_pr`,
     officeNameTemplate: "Member of House of Councillors (Nationwide PR)",
     level: "national_upper_house_pr_national",
     frequencyYears: 3,

@@ -509,11 +509,12 @@ export const getCoalitionPollingResults = (coalitionSoA, candidateId) => {
     const base = coalitionSoA.base.get(coalitionId);
     const polling = pollingCache.get(coalitionId) || 0;
     
+    const supportBase = coalitionSoA.supportBase.get(coalitionId) || base.size || 0;
     results.set(coalitionId, {
       name: base.name,
-      size: base.size,
+      size: supportBase,
       polling: polling,
-      weightedPolling: polling * base.size
+      weightedPolling: polling * supportBase
     });
   }
   
@@ -534,8 +535,11 @@ export const aggregateCoalitionPolling = (coalitionSoA, candidateId) => {
   for (const [coalitionId, base] of coalitionSoA.base) {
     const polling = coalitionResults.get(coalitionId) || 0;
     
-    weightedSum += polling * base.size;
-    totalWeight += base.size;
+    // Use supportBase for weighting instead of base.size to capture state-specific variations
+    const supportBase = coalitionSoA.supportBase.get(coalitionId) || base.size || 0;
+    
+    weightedSum += polling * supportBase;
+    totalWeight += supportBase;
   }
   
   return totalWeight > 0 ? weightedSum / totalWeight : 0;
@@ -585,8 +589,9 @@ export const calculateCoalitionBasedTurnout = (coalitionSoA, totalEligibleVoters
     const state = coalitionSoA.state.get(coalitionId);
     const demographics = coalitionSoA.demographics.get(coalitionId);
     
-    // Calculate coalition's share of total eligible voters
-    const coalitionVoterCount = Math.round(base.size * totalEligibleVoters);
+    // Calculate coalition's share of total eligible voters using supportBase for state-specific variations
+    const supportBase = coalitionSoA.supportBase.get(coalitionId) || base.size || 0;
+    const coalitionVoterCount = Math.round(supportBase * totalEligibleVoters);
     totalCoalitionSize += coalitionVoterCount;
     
     // Get base turnout rate for this demographic profile
@@ -611,7 +616,7 @@ export const calculateCoalitionBasedTurnout = (coalitionSoA, totalEligibleVoters
       mobilizationEffect: mobilizationEffect,
       finalTurnoutRate: finalTurnoutRate,
       actualVotes: coalitionActualVotes,
-      coalitionSize: base.size
+      coalitionSize: supportBase
     });
   }
 
@@ -673,7 +678,8 @@ export const calculateExpectedTurnout = (coalitionSoA, totalEligibleVoters, opti
     const state = coalitionSoA.state.get(coalitionId);
     const demographics = coalitionSoA.demographics.get(coalitionId);
     
-    const coalitionVoterCount = Math.round(base.size * totalEligibleVoters);
+    const supportBase = coalitionSoA.supportBase.get(coalitionId) || base.size || 0;
+    const coalitionVoterCount = Math.round(supportBase * totalEligibleVoters);
     totalCoalitionSize += coalitionVoterCount;
     
     const baseTurnout = getBaseTurnoutRate(demographics);

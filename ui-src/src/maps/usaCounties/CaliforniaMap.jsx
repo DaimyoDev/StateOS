@@ -1,10 +1,11 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import useGameStore from "../../store";
 import {
   getMapThemeColors,
   getRegionStyle,
   calculateHeatmapRange,
 } from "../../utils/mapHeatmapUtils";
+import { getDistrictRegionStyle } from "../../utils/mapDistrictUtils";
 import "../JapanMap.css"; // Using the shared CSS for all maps
 
 const COUNTY_DATA = {
@@ -242,6 +243,8 @@ function CaliforniaMap({
   selectedCountyGameId,
   heatmapData,
   viewType,
+  onCountyHover,
+  onCountyLeave,
 }) {
   const [hoveredCountyId, setHoveredCountyId] = useState(null);
   const [tooltipData, setTooltipData] = useState(null);
@@ -256,67 +259,110 @@ function CaliforniaMap({
     [heatmapData, viewType]
   );
 
-  const getCountyStyle = (svgId) => {
-    return getRegionStyle({
-      regionId: null,
-      svgId,
-      regionData: COUNTY_DATA,
+  const getCountyStyle = useCallback(
+    (svgId) => {
+      // Use district styling if viewType is congressional_districts
+      if (viewType === "congressional_districts" && heatmapData?.districtData) {
+        const countyInfo = COUNTY_DATA[svgId];
+        const mapDataItem = heatmapData.mapData?.find(
+          (item) => item.id === countyInfo?.gameId
+        );
+
+        return getDistrictRegionStyle({
+          svgId,
+          countyData: COUNTY_DATA,
+          districtData: heatmapData.districtData,
+          districtColors: heatmapData.districtColors,
+          selectedDistrictId: heatmapData.selectedDistrictId,
+          theme: themeColors,
+          hoveredId: hoveredCountyId,
+          isClickable: !!onSelectCounty,
+          isSplit: mapDataItem?.isSplit || false,
+          splitDetails: mapDataItem?.splitDetails || null,
+        });
+      }
+
+      // Default heatmap styling
+      return getRegionStyle({
+        regionId: null,
+        svgId,
+        regionData: COUNTY_DATA,
+        heatmapData,
+        viewType,
+        theme: themeColors,
+        hoveredId: hoveredCountyId,
+        selectedId: selectedCountyGameId,
+        isClickable: !!onSelectCounty,
+      });
+    },
+    [
       heatmapData,
       viewType,
-      theme: themeColors,
-      hoveredId: hoveredCountyId,
-      selectedId: selectedCountyGameId,
-      isClickable: !!onSelectCounty,
-    });
-  };
+      themeColors,
+      hoveredCountyId,
+      selectedCountyGameId,
+      onSelectCounty,
+    ]
+  );
 
-  const handleCountyClick = (svgId) => {
+  const handleCountyClick = useCallback((svgId) => {
     const county = COUNTY_DATA[svgId];
     if (county && onSelectCounty) {
       onSelectCounty(county.gameId, county.name);
     } else {
       console.warn(`No game data found for SVG ID: ${svgId}`);
     }
-  };
+  }, [onSelectCounty]);
 
-  const handleMouseEnter = (svgId, event) => {
+  const handleMouseEnter = useCallback((svgId, event) => {
     const countyInfo = COUNTY_DATA[svgId];
     if (!countyInfo) return;
 
     setHoveredCountyId(countyInfo.gameId);
 
-    if (viewType === "congressional_districts" && heatmapData?.mapData) {
-      const mapDataItem = heatmapData.mapData.find(
-        (item) => item.id === countyInfo.gameId
-      );
-      if (mapDataItem) {
+    // Call the external hover handler if provided (for election night tooltips)
+    if (onCountyHover) {
+      onCountyHover(countyInfo.gameId, event);
+    } else {
+      // Fallback to internal tooltip for other uses
+      if (viewType === "congressional_districts" && heatmapData?.mapData) {
+        const mapDataItem = heatmapData.mapData.find(
+          (item) => item.id === countyInfo.gameId
+        );
+        if (mapDataItem) {
+          setTooltipData({
+            name: countyInfo.name,
+            isSplit: mapDataItem.isSplit,
+            splitDetails: mapDataItem.splitDetails,
+            districtLabel: mapDataItem.value,
+          });
+        }
+      } else {
         setTooltipData({
           name: countyInfo.name,
-          isSplit: mapDataItem.isSplit,
-          splitDetails: mapDataItem.splitDetails,
-          districtLabel: mapDataItem.value,
+          isSplit: false,
+          splitDetails: null,
+          districtLabel: null,
         });
       }
-    } else {
-      setTooltipData({
-        name: countyInfo.name,
-        isSplit: false,
-        splitDetails: null,
-        districtLabel: null,
-      });
+
+      setMousePosition({ x: event.clientX, y: event.clientY });
     }
+  }, [onCountyHover, viewType, heatmapData]);
 
-    setMousePosition({ x: event.clientX, y: event.clientY });
-  };
-
-  const handleMouseLeave = () => {
+  const handleMouseLeave = useCallback(() => {
     setHoveredCountyId(null);
     setTooltipData(null);
-  };
+    
+    // Call the external leave handler if provided
+    if (onCountyLeave) {
+      onCountyLeave();
+    }
+  }, [onCountyLeave]);
 
-  const handleMouseMove = (event) => {
+  const handleMouseMove = useCallback((event) => {
     setMousePosition({ x: event.clientX, y: event.clientY });
-  };
+  }, []);
 
   const renderCountyPath = (svgId) => {
     const countyInfo = COUNTY_DATA[svgId];
@@ -359,7 +405,7 @@ function CaliforniaMap({
           {countyOrderFromSVG.map((svgId) => renderCountyPath(svgId))}
         </g>
       </svg>
-      {tooltipData && (
+      {tooltipData && !onCountyHover && (
         <div
           style={{
             position: "fixed",

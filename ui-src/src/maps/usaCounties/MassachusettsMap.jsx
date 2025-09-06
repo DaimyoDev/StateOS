@@ -1,4 +1,11 @@
-import React from "react";
+import React, { useState, useMemo, useCallback } from "react";
+import useGameStore from "../../store";
+import {
+  getMapThemeColors,
+  getRegionStyle,
+  calculateHeatmapRange,
+} from "../../utils/mapHeatmapUtils";
+import { getDistrictRegionStyle } from "../../utils/mapDistrictUtils";
 import "../JapanMap.css";
 
 const COUNTY_DATA = {
@@ -66,15 +73,85 @@ const countyOrderFromSVG = [
   "Norfolk",
 ];
 
-function MassachusettsMap({ onSelectCounty, selectedCountyGameId }) {
-  const handleCountyClick = (svgId) => {
-    const county = COUNTY_DATA[svgId];
-    if (county && onSelectCounty) {
-      onSelectCounty(county.gameId, county.name);
-    } else {
-      console.warn(`No game data found for SVG ID: ${svgId}`);
+function MassachusettsMap({
+  onSelectCounty,
+  selectedCountyGameId,
+  heatmapData,
+  viewType,
+  onCountyHover,
+  onCountyLeave,
+}) {
+  const [hoveredCountyId, setHoveredCountyId] = useState(null);
+  const [tooltipData, setTooltipData] = useState(null);
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const currentTheme = useGameStore(
+    (state) => state.availableThemes[state.activeThemeName]
+  );
+
+  const themeColors = getMapThemeColors(currentTheme);
+  useMemo(
+    () => calculateHeatmapRange(heatmapData, viewType),
+    [heatmapData, viewType]
+  );
+
+  const getCountyStyle = useCallback(
+    (countyGameId) => {
+      if (viewType === "districts") {
+        return getDistrictRegionStyle(countyGameId, heatmapData, themeColors);
+      }
+      return getRegionStyle(
+        countyGameId,
+        heatmapData,
+        viewType,
+        themeColors,
+        selectedCountyGameId === countyGameId
+      );
+    },
+    [heatmapData, viewType, themeColors, selectedCountyGameId]
+  );
+  const handleCountyClick = useCallback(
+    (svgId) => {
+      const county = COUNTY_DATA[svgId];
+      if (county && onSelectCounty) {
+        onSelectCounty(county.gameId, county.name);
+      } else {
+        console.warn(`No game data found for SVG ID: ${svgId}`);
+      }
+    },
+    [onSelectCounty]
+  );
+
+  const handleCountyMouseEnter = useCallback(
+    (e, svgId) => {
+      const county = COUNTY_DATA[svgId];
+      if (!county) return;
+
+      setHoveredCountyId(county.gameId);
+      setMousePosition({ x: e.clientX, y: e.clientY });
+
+      const countyData = heatmapData?.[county.gameId];
+      if (countyData) {
+        setTooltipData({
+          name: county.name,
+          value: countyData.value,
+          formattedValue: countyData.formattedValue,
+        });
+      }
+
+      if (onCountyHover) {
+        onCountyHover(county.gameId, county.name, countyData);
+      }
+    },
+    [heatmapData, onCountyHover]
+  );
+
+  const handleCountyMouseLeave = useCallback(() => {
+    setHoveredCountyId(null);
+    setTooltipData(null);
+    if (onCountyLeave) {
+      onCountyLeave();
     }
-  };
+  }, [onCountyLeave]);
 
   const renderCountyPath = (svgId) => {
     const countyInfo = COUNTY_DATA[svgId];
@@ -97,25 +174,44 @@ function MassachusettsMap({ onSelectCounty, selectedCountyGameId }) {
         title={countyInfo.name}
         className={`prefecture-path ${
           selectedCountyGameId === countyInfo.gameId ? "selected" : ""
+        } ${
+          hoveredCountyId === countyInfo.gameId ? "hovered" : ""
         }`}
+        style={getCountyStyle(countyInfo.gameId)}
         onClick={() => handleCountyClick(svgId)}
+        onMouseEnter={(e) => handleCountyMouseEnter(e, svgId)}
+        onMouseLeave={handleCountyMouseLeave}
         d={pathD}
       />
     );
   };
 
   return (
-    <svg
-      version="1.2"
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 810 502"
-      className="interactive-japan-map"
-      preserveAspectRatio="xMidYMid meet"
-    >
-      <g id="massachusetts-counties-group">
-        {countyOrderFromSVG.map((svgId) => renderCountyPath(svgId))}
-      </g>
-    </svg>
+    <div className="map-container">
+      <svg
+        version="1.2"
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 810 502"
+        className="interactive-japan-map"
+        preserveAspectRatio="xMidYMid meet"
+      >
+        <g id="massachusetts-counties-group">
+          {countyOrderFromSVG.map((svgId) => renderCountyPath(svgId))}
+        </g>
+      </svg>
+      {tooltipData && (
+        <div
+          className="map-tooltip"
+          style={{
+            left: `${mousePosition.x + 10}px`,
+            top: `${mousePosition.y - 10}px`,
+          }}
+        >
+          <div className="tooltip-title">{tooltipData.name}</div>
+          <div className="tooltip-value">{tooltipData.formattedValue}</div>
+        </div>
+      )}
+    </div>
   );
 }
 
