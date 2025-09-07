@@ -574,27 +574,125 @@ export const useGameStore = create(
             }));
           },
 
-          // Election Setup Actions
-          saveElectionSetup: (setupData) => {
-            set((state) => ({
-              savedElectionSetups: [...state.savedElectionSetups, setupData],
-            }));
+          // Election Setup Actions - now using file system
+          saveElectionSetup: async (setupData) => {
+            try {
+              console.log("saveElectionSetup called, window.electronAPI available:", !!window.electronAPI);
+              if (window.electronAPI) {
+                console.log("Using Electron file system storage");
+                const result = await window.electronAPI.saveElectionSetup(setupData);
+                if (result.success) {
+                  // Update in-memory state
+                  set((state) => {
+                    const existingIndex = state.savedElectionSetups.findIndex(s => s.id === setupData.id);
+                    if (existingIndex >= 0) {
+                      // Update existing
+                      return {
+                        savedElectionSetups: state.savedElectionSetups.map((setup) =>
+                          setup.id === setupData.id ? setupData : setup
+                        ),
+                      };
+                    } else {
+                      // Add new
+                      return {
+                        savedElectionSetups: [...state.savedElectionSetups, setupData],
+                      };
+                    }
+                  });
+                } else {
+                  console.error("Failed to save election setup:", result.error);
+                }
+                return result;
+              } else {
+                // Fallback to localStorage for non-Electron environments
+                set((state) => ({
+                  savedElectionSetups: [...state.savedElectionSetups, setupData],
+                }));
+                return { success: true };
+              }
+            } catch (error) {
+              console.error("Error saving election setup:", error);
+              return { success: false, error: error.message };
+            }
           },
 
-          updateElectionSetup: (setupData) => {
-            set((state) => ({
-              savedElectionSetups: state.savedElectionSetups.map((setup) =>
-                setup.id === setupData.id ? setupData : setup
-              ),
-            }));
+          updateElectionSetup: async (setupData) => {
+            try {
+              if (window.electronAPI) {
+                const result = await window.electronAPI.saveElectionSetup(setupData);
+                if (result.success) {
+                  // Update in-memory state
+                  set((state) => ({
+                    savedElectionSetups: state.savedElectionSetups.map((setup) =>
+                      setup.id === setupData.id ? setupData : setup
+                    ),
+                  }));
+                }
+                return result;
+              } else {
+                // Fallback to localStorage for non-Electron environments
+                set((state) => ({
+                  savedElectionSetups: state.savedElectionSetups.map((setup) =>
+                    setup.id === setupData.id ? setupData : setup
+                  ),
+                }));
+                return { success: true };
+              }
+            } catch (error) {
+              console.error("Error updating election setup:", error);
+              return { success: false, error: error.message };
+            }
           },
 
-          deleteElectionSetup: (setupId) => {
-            set((state) => ({
-              savedElectionSetups: state.savedElectionSetups.filter(
-                (setup) => setup.id !== setupId
-              ),
-            }));
+          deleteElectionSetup: async (setupId) => {
+            try {
+              if (window.electronAPI) {
+                const result = await window.electronAPI.deleteElectionSetup(setupId);
+                if (result.success) {
+                  // Update in-memory state
+                  set((state) => ({
+                    savedElectionSetups: state.savedElectionSetups.filter(
+                      (setup) => setup.id !== setupId
+                    ),
+                  }));
+                }
+                return result;
+              } else {
+                // Fallback to localStorage for non-Electron environments
+                set((state) => ({
+                  savedElectionSetups: state.savedElectionSetups.filter(
+                    (setup) => setup.id !== setupId
+                  ),
+                }));
+                return { success: true };
+              }
+            } catch (error) {
+              console.error("Error deleting election setup:", error);
+              return { success: false, error: error.message };
+            }
+          },
+
+          loadElectionSetups: async () => {
+            try {
+              if (window.electronAPI) {
+                const result = await window.electronAPI.loadElectionSetups();
+                if (result.success) {
+                  // Update in-memory state with loaded setups
+                  set((state) => ({
+                    savedElectionSetups: result.setups,
+                  }));
+                } else {
+                  console.error("Failed to load election setups:", result.error);
+                }
+                return result;
+              } else {
+                // For non-Electron environments, data is already loaded from localStorage
+                return { success: true, setups: get().savedElectionSetups };
+              }
+            } catch (error) {
+              console.error("Error loading election setups:", error);
+              return { success: false, error: error.message, setups: [] };
+            }
           },
 
           // Government office helper functions
@@ -801,7 +899,7 @@ export const useGameStore = create(
         activeThemeName: state.activeThemeName,
         availableThemes: state.availableThemes,
         hasAcknowledgedDisclaimer: state.hasAcknowledgedDisclaimer,
-        savedElectionSetups: state.savedElectionSetups,
+        // Removed savedElectionSetups - now handled by file system
       }),
       onRehydrateStorage: () => {
         return (hydratedState, error) => {

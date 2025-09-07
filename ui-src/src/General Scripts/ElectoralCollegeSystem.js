@@ -127,9 +127,6 @@ export class ElectoralCollegeSystem {
         speedMultiplier = Math.min(45.0, Math.max(0.5, simulationSpeed / 1250));
     }
 
-    console.log(
-      `[DEBUG] Simulation speed: ${simulationSpeed}, multiplier: ${speedMultiplier}x`
-    );
     const reportingOrder = [...states];
 
     // Sort states by various factors for realistic reporting order
@@ -196,18 +193,6 @@ export class ElectoralCollegeSystem {
         finalResults: null,
       });
 
-      // Debug logging for timing (remove in production)
-      const startMinutes = Math.floor(startDelay / 60000);
-      const startSeconds = Math.floor((startDelay % 60000) / 1000);
-      const durationMinutes = Math.floor(reportingDuration / 60000);
-      const durationSeconds = Math.floor((reportingDuration % 60000) / 1000);
-      console.log(
-        `[DEBUG] ${state.name}: starts at ${startMinutes}:${startSeconds
-          .toString()
-          .padStart(2, "0")}, reports for ${durationMinutes}:${durationSeconds
-          .toString()
-          .padStart(2, "0")} (${electoralVotes} EV)`
-      );
     });
   }
 
@@ -296,34 +281,9 @@ export class ElectoralCollegeSystem {
     activeCampaign,
     countryData,
     useProgressiveReporting = false,
-    simulationSpeed = 5000
+    simulationSpeed = 5000,
+    statePollingOverrides = null
   ) {
-    console.log(
-      "[DEBUG] ElectoralCollegeSystem.calculateElectoralCollege called with:",
-      {
-        candidatesCount: candidates?.length || 0,
-        candidates: candidates?.map((c) => ({
-          id: c.id,
-          name: c.name,
-          votes: c.votes,
-        })),
-        activeCampaign: activeCampaign
-          ? {
-              countryId: activeCampaign.countryId,
-              coalitionSystems: activeCampaign.coalitionSystems
-                ? Object.keys(activeCampaign.coalitionSystems)
-                : null,
-            }
-          : null,
-        countryData: countryData
-          ? {
-              id: countryData.id,
-              name: countryData.name,
-              regionsCount: countryData.regions?.length || 0,
-            }
-          : null,
-      }
-    );
 
     // If we're using progressive reporting, don't fall back even without coalition systems
     if (!useProgressiveReporting && !activeCampaign?.coalitionSystems) {
@@ -357,12 +317,6 @@ export class ElectoralCollegeSystem {
 
     // Initialize progressive reporting if requested and not already initialized
     if (useProgressiveReporting && this.reportingSimulation.size === 0) {
-      console.log(
-        "[DEBUG] Initializing progressive reporting for",
-        states.length,
-        "states with speed",
-        simulationSpeed
-      );
       this.initializeProgressiveReporting(states, simulationSpeed);
     }
 
@@ -388,9 +342,6 @@ export class ElectoralCollegeSystem {
           // State needs calculation or recalculation due to reporting progress
           const isFirstCalculation = !existingResult;
           const prevReporting = existingResult?.reportingPercent || 0;
-          console.log(
-            `[DEBUG] State ${state.name} ${isFirstCalculation ? 'started reporting' : 'reporting updated'} (${prevReporting}% → ${reportingInfo.reportingPercent}%) - ${isFirstCalculation ? 'calculating' : 'recalculating'} results`
-          );
 
           let stateResult;
           if (activeCampaign?.coalitionSystems) {
@@ -399,7 +350,8 @@ export class ElectoralCollegeSystem {
               candidates,
               activeCampaign.coalitionSystems,
               activeCampaign,
-              reportingInfo.reportingPercent
+              reportingInfo.reportingPercent,
+              statePollingOverrides
             );
           } else {
             // Use fallback calculation for individual state in simulation mode
@@ -421,15 +373,6 @@ export class ElectoralCollegeSystem {
               reportingInfo.reportingPercent >= MINIMUM_REPORTING_THRESHOLD ||
               reportingInfo.reportingComplete;
 
-            // Log polling changes for debugging
-            if (!isFirstCalculation && existingResult?.candidatePolling) {
-              const oldPolling = Array.from(existingResult.candidatePolling.entries()).slice(0, 2);
-              const newPolling = Array.from(stateResult.candidatePolling.entries()).slice(0, 2);
-              console.log(`[DEBUG] ${state.name} polling changes:`, {
-                old: oldPolling.map(([id, val]) => `${candidates.find(c => c.id === id)?.name}: ${val}%`),
-                new: newPolling.map(([id, val]) => `${candidates.find(c => c.id === id)?.name}: ${val}%`)
-              });
-            }
 
             // Cache/update the calculated result
             this.calculatedStates.set(state.id, stateResult);
@@ -495,7 +438,8 @@ export class ElectoralCollegeSystem {
             candidates,
             activeCampaign.coalitionSystems,
             activeCampaign,
-            100 // Non-progressive mode uses final results (100%)
+            100, // Non-progressive mode uses final results (100%)
+            statePollingOverrides
           );
         } else {
           stateResult = this.fallbackStateCalculation(state, candidates, 100); // Non-progressive mode uses final results
@@ -533,12 +477,6 @@ export class ElectoralCollegeSystem {
     // Determine overall winner (need 270+ electoral votes)
     this.determineElectoralWinner(results);
 
-    console.log(
-      `Electoral College Results: ${results.winner?.name || "No winner"} - ${
-        results.candidateElectoralVotes.get(results.winner?.id) || 0
-      } electoral votes`
-    );
-
     return results;
   }
 
@@ -550,7 +488,8 @@ export class ElectoralCollegeSystem {
     candidates,
     coalitionSystems,
     activeCampaign,
-    reportingPercent = null
+    reportingPercent = null,
+    statePollingOverrides = null
   ) {
     const stateId = state.id;
     const electoralVotes = ELECTORAL_VOTES_BY_STATE[stateId] || 0;
@@ -574,7 +513,6 @@ export class ElectoralCollegeSystem {
     
     // If no state-specific coalition, try to use simulation_default for all states
     if (!coalitionSoA && coalitionSystems['simulation_default']) {
-      console.log(`Using simulation_default coalition for state: ${stateId}`);
       coalitionSoA = coalitionSystems['simulation_default'];
     }
 
@@ -631,6 +569,17 @@ export class ElectoralCollegeSystem {
         );
       }
     });
+
+    // Apply county-based polling overrides if provided
+    if (statePollingOverrides && statePollingOverrides.has(stateId)) {
+      const overridePolling = statePollingOverrides.get(stateId);
+      
+      // Replace candidatePolling with the county-aggregated data
+      candidatePolling.clear();
+      overridePolling.forEach((polling, candidateId) => {
+        candidatePolling.set(candidateId, polling);
+      });
+    }
 
     // Normalize polling to ensure it sums to 100%
     let finalPolling = this.normalizeStatePolling(candidatePolling);
@@ -948,11 +897,6 @@ export class ElectoralCollegeSystem {
     // Ensure reasonable bounds
     threshold = Math.max(25, Math.min(90, threshold));
 
-    console.log(
-      `[DEBUG] ${state.name}: margin=${margin.toFixed(
-        1
-      )}%, EVs=${electoralVotes}, threshold=${threshold}%`
-    );
     return threshold;
   }
 
@@ -1018,12 +962,6 @@ export class ElectoralCollegeSystem {
    */
   fallbackElectoralCalculation(candidates, countryData) {
     console.warn("Using fallback electoral college calculation with population distribution");
-    console.log("[DEBUG] Fallback calculation with:", {
-      candidatesCount: candidates?.length || 0,
-      statesCount: countryData?.regions?.length || 0,
-      countryId: countryData?.id,
-      totalPopulation: countryData?.population || 0,
-    });
 
     const results = {
       candidateElectoralVotes: new Map(),
@@ -1217,14 +1155,16 @@ export function calculateElectoralCollegeResults(
   activeCampaign,
   countryData,
   useProgressiveReporting = false,
-  simulationSpeed = 5000
+  simulationSpeed = 5000,
+  statePollingOverrides = null
 ) {
   return electoralCollegeSystem.calculateElectoralCollege(
     candidates,
     activeCampaign,
     countryData,
     useProgressiveReporting,
-    simulationSpeed
+    simulationSpeed,
+    statePollingOverrides
   );
 }
 

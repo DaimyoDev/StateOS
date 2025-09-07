@@ -1,8 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import useGameStore from "../../store";
 import { getMapThemeColors, getRegionStyle } from "../../utils/mapHeatmapUtils";
-import { getDistrictRegionStyle } from "../../utils/mapDistrictUtils";
-import "../JapanMap.css";
+import "../JapanMap.css"; // Using the global CSS file as requested
 
 const COUNTY_DATA = {
   Anderson: { gameId: "USA_TX_001", name: "Anderson" },
@@ -1002,6 +1001,8 @@ function TexasMap({
   selectedCountyGameId,
   heatmapData,
   viewType,
+  onCountyHover,
+  onCountyLeave,
 }) {
   const [hoveredCountyId, setHoveredCountyId] = useState(null);
   const [tooltipData, setTooltipData] = useState(null);
@@ -1012,97 +1013,103 @@ function TexasMap({
 
   const themeColors = getMapThemeColors(currentTheme);
 
-  const getCountyStyle = (svgId) => {
-    // Use district styling if viewType is congressional_districts
-    if (viewType === "congressional_districts" && heatmapData?.districtData) {
-      const countyInfo = COUNTY_DATA[svgId];
-      const mapDataItem = heatmapData.mapData?.find(
-        (item) => item.id === countyInfo?.gameId
-      );
-
-      return getDistrictRegionStyle({
+  const getCountyStyle = useCallback(
+    (svgId) => {
+      return getRegionStyle({
+        regionId: null,
         svgId,
-        countyData: COUNTY_DATA,
-        districtData: heatmapData.districtData,
-        districtColors: heatmapData.districtColors,
-        selectedDistrictId: heatmapData.selectedDistrictId,
+        regionData: COUNTY_DATA,
+        heatmapData,
+        viewType,
         theme: themeColors,
         hoveredId: hoveredCountyId,
+        selectedId: selectedCountyGameId,
         isClickable: !!onSelectCounty,
-        isSplit: mapDataItem?.isSplit || false,
-        splitDetails: mapDataItem?.splitDetails || null,
       });
-    }
-
-    // Default heatmap styling
-    return getRegionStyle({
-      regionId: null,
-      svgId,
-      regionData: COUNTY_DATA,
+    },
+    [
       heatmapData,
       viewType,
-      theme: themeColors,
-      hoveredId: hoveredCountyId,
-      selectedId: selectedCountyGameId,
-      isClickable: !!onSelectCounty,
-    });
-  };
+      themeColors,
+      hoveredCountyId,
+      selectedCountyGameId,
+      onSelectCounty,
+    ]
+  );
 
-  const handleCountyClick = (svgId) => {
-    const county = COUNTY_DATA[svgId];
-    if (county && onSelectCounty) {
-      onSelectCounty(county.gameId, county.name);
-    } else {
-      console.warn(`No game data found for SVG ID: ${svgId}`);
-    }
-  };
-
-  const handleMouseEnter = (svgId, event) => {
-    const countyInfo = COUNTY_DATA[svgId];
-    if (!countyInfo) return;
-
-    setHoveredCountyId(countyInfo.gameId);
-
-    // Get split county details if in congressional districts view
-    if (viewType === "congressional_districts" && heatmapData?.mapData) {
-      const mapDataItem = heatmapData.mapData.find(
-        (item) => item.id === countyInfo.gameId
-      );
-      if (mapDataItem) {
-        setTooltipData({
-          name: countyInfo.name,
-          isSplit: mapDataItem.isSplit,
-          splitDetails: mapDataItem.splitDetails,
-          districtLabel: mapDataItem.value,
-        });
+  const handleCountyClick = useCallback(
+    (svgId) => {
+      const county = COUNTY_DATA[svgId];
+      if (county && onSelectCounty) {
+        onSelectCounty(county.gameId, county.name);
+      } else {
+        console.warn(`No game data found for SVG ID: ${svgId}`);
       }
-    } else {
-      setTooltipData({
-        name: countyInfo.name,
-        isSplit: false,
-        splitDetails: null,
-        districtLabel: null,
-      });
-    }
+    },
+    [onSelectCounty]
+  );
 
-    setMousePosition({ x: event.clientX, y: event.clientY });
-  };
+  const handleMouseEnter = useCallback(
+    (svgId, event) => {
+      const countyInfo = COUNTY_DATA[svgId];
+      if (!countyInfo) return;
 
-  const handleMouseLeave = () => {
+      setHoveredCountyId(countyInfo.gameId);
+
+      // Call the external hover handler if provided (for election night tooltips)
+      if (onCountyHover) {
+        onCountyHover(countyInfo.gameId, event);
+      } else {
+        // Fallback to internal tooltip for other uses
+        if (viewType === "congressional_districts" && heatmapData?.mapData) {
+          const mapDataItem = heatmapData.mapData.find(
+            (item) => item.id === countyInfo.gameId
+          );
+          if (mapDataItem) {
+            setTooltipData({
+              name: countyInfo.name,
+              isSplit: mapDataItem.isSplit,
+              splitDetails: mapDataItem.splitDetails,
+              districtLabel: mapDataItem.value,
+            });
+          }
+        } else {
+          setTooltipData({
+            name: countyInfo.name,
+            isSplit: false,
+            splitDetails: null,
+            districtLabel: null,
+          });
+        }
+
+        setMousePosition({ x: event.clientX, y: event.clientY });
+      }
+    },
+    [onCountyHover, viewType, heatmapData]
+  );
+
+  const handleMouseLeave = useCallback(() => {
     setHoveredCountyId(null);
     setTooltipData(null);
-  };
 
-  const handleMouseMove = (event) => {
+    // Call the external leave handler if provided
+    if (onCountyLeave) {
+      onCountyLeave();
+    }
+  }, [onCountyLeave]);
+
+  const handleMouseMove = useCallback((event) => {
     setMousePosition({ x: event.clientX, y: event.clientY });
-  };
+  }, []);
 
   const renderCountyPath = (svgId) => {
     const countyInfo = COUNTY_DATA[svgId];
-    if (!countyInfo) return null;
+    if (!countyInfo) {
+      console.warn(`No COUNTY_DATA found for SVG ID: ${svgId}`);
+      return null;
+    }
 
     const pathD = countyPathData[svgId];
-
     if (!pathD) {
       console.warn(`Path data (d attribute) missing for ${svgId}`);
       return null;
@@ -1132,7 +1139,7 @@ function TexasMap({
         version="1.2"
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 810 769"
-        className="interactive-japan-map"
+        className="interactive-japan-map texas-map"
         preserveAspectRatio="xMidYMid meet"
       >
         <g
@@ -1145,8 +1152,7 @@ function TexasMap({
         </g>
       </svg>
 
-      {/* Enhanced Tooltip for Split Counties */}
-      {tooltipData && (
+      {tooltipData && !onCountyHover && (
         <div
           style={{
             position: "fixed",

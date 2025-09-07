@@ -585,10 +585,22 @@ export const BASE_COUNTRIES_DATA = baseCountriesData;
 
 export const generateDetailedCountryData = (countryToProcess) => {
   if (!countryToProcess) return null;
-
+  
+  console.log(`[DEBUG-GENERATE] Starting generateDetailedCountryData for ${countryToProcess.name}`);
+  console.log(`[DEBUG-GENERATE] Input secondAdminRegions length:`, countryToProcess.secondAdminRegions?.length || 0);
+  
+  // Create a deep copy to avoid modifying the original country data
+  const countryForProcessing = {
+    ...countryToProcess,
+    regions: countryToProcess.regions?.map(r => ({ ...r })) || [],
+    secondAdminRegions: countryToProcess.secondAdminRegions?.map(c => ({ ...c })) || []
+  };
+  
+  console.log(`[DEBUG-GENERATE] After deep copy, secondAdminRegions length:`, countryForProcessing.secondAdminRegions?.length || 0);
+  
   // 1. Generate legislative districts by calling our new, focused function
   let processedCountry =
-    generateLegislativeDistrictsForCountry(countryToProcess);
+    generateLegislativeDistrictsForCountry(countryForProcessing);
 
   const nationalParties = generateNationalParties({
     countryId: processedCountry.id,
@@ -618,10 +630,13 @@ export const generateDetailedCountryData = (countryToProcess) => {
     });
   }
 
+  console.log(`[DEBUG-GENERATE] After regions processing, secondAdminRegions length:`, processedCountry.secondAdminRegions?.length || 0);
+  
   if (
     processedCountry.secondAdminRegions &&
     Array.isArray(processedCountry.secondAdminRegions)
   ) {
+    console.log(`[DEBUG-GENERATE] Processing ${processedCountry.secondAdminRegions.length} counties`);
     processedCountry.secondAdminRegions =
       processedCountry.secondAdminRegions.map((staticSecondAdmin) => {
         // Find the parent state/region to provide context

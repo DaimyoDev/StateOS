@@ -245,16 +245,36 @@ function ElectoralCollegeMap({
             )}
           {tooltipContent.polling && (
             <div className="tooltip-polling">
-              {Array.from(tooltipContent.polling.entries()).map(
+              {Array.from(tooltipContent.polling.entries())
+                .sort(([, a], [, b]) => b - a)
+                .map(
                 ([candidateId, percentage]) => {
                   const candidate = candidates.find(
                     (c) => c.id === candidateId
                   );
                   return (
-                    <div key={candidateId} className="polling-item">
-                      <span style={{ color: candidateColors.get(candidateId) }}>
-                        {candidate?.name || candidateId}: {percentage}%
+                    <div key={candidateId} className="polling-item" style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      marginBottom: "3px"
+                    }}>
+                      <span style={{ 
+                        display: "flex", 
+                        alignItems: "center", 
+                        gap: "6px" 
+                      }}>
+                        <div style={{
+                          width: "10px",
+                          height: "10px",
+                          borderRadius: "2px",
+                          backgroundColor: candidateColors.get(candidateId),
+                          border: "1px solid rgba(0,0,0,0.2)",
+                          boxShadow: "0 0 0 1px rgba(255,255,255,0.8) inset"
+                        }} />
+                        <span>{candidate?.name || candidateId}</span>
                       </span>
+                      <strong>{percentage}%</strong>
                     </div>
                   );
                 }

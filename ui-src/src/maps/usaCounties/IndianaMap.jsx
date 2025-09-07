@@ -390,19 +390,29 @@ function IndianaMap({
 
   const themeColors = getMapThemeColors(currentTheme);
 
-  const getCountyStyle = (svgId) => {
-    return getRegionStyle({
-      regionId: null,
-      svgId,
-      regionData: COUNTY_DATA,
+  const getCountyStyle = useCallback(
+    (svgId) => {
+      return getRegionStyle({
+        regionId: null,
+        svgId,
+        regionData: COUNTY_DATA,
+        heatmapData,
+        viewType,
+        theme: themeColors,
+        hoveredId: hoveredCountyId,
+        selectedId: selectedCountyGameId,
+        isClickable: !!onSelectCounty,
+      });
+    },
+    [
       heatmapData,
       viewType,
-      theme: themeColors,
-      hoveredId: hoveredCountyId,
-      selectedId: selectedCountyGameId,
-      isClickable: !!onSelectCounty,
-    });
-  };
+      themeColors,
+      hoveredCountyId,
+      selectedCountyGameId,
+      onSelectCounty,
+    ]
+  );
 
   const handleCountyClick = useCallback((svgId) => {
     const county = COUNTY_DATA[svgId];
@@ -413,49 +423,50 @@ function IndianaMap({
     }
   }, [onSelectCounty]);
 
-  const handleMouseEnter = useCallback((svgId, event) => {
-    const countyInfo = COUNTY_DATA[svgId];
-    if (!countyInfo) return;
+  const handleMouseEnter = useCallback(
+    (svgId, event) => {
+      const countyInfo = COUNTY_DATA[svgId];
+      if (!countyInfo) return;
 
-    setHoveredCountyId(countyInfo.gameId);
+      setHoveredCountyId(countyInfo.gameId);
 
-    if (onCountyHover) {
-      onCountyHover({
-        countyId: countyInfo.gameId,
-        countyName: countyInfo.name,
-        mouseX: event.clientX,
-        mouseY: event.clientY,
-      });
-    }
+      // Call the external hover handler if provided (for election night tooltips)
+      if (onCountyHover) {
+        onCountyHover(countyInfo.gameId, event);
+      } else {
+        // Fallback to internal tooltip for other uses
+        if (viewType === "congressional_districts" && heatmapData?.mapData) {
+          const mapDataItem = heatmapData.mapData.find(
+            (item) => item.id === countyInfo.gameId
+          );
+          if (mapDataItem) {
+            setTooltipData({
+              name: countyInfo.name,
+              isSplit: mapDataItem.isSplit,
+              splitDetails: mapDataItem.splitDetails,
+              districtLabel: mapDataItem.value,
+            });
+          }
+        } else {
+          setTooltipData({
+            name: countyInfo.name,
+            isSplit: false,
+            splitDetails: null,
+            districtLabel: null,
+          });
+        }
 
-    if (viewType === "congressional_districts" && heatmapData?.mapData) {
-      const mapDataItem = heatmapData.mapData.find(
-        (item) => item.id === countyInfo.gameId
-      );
-      if (mapDataItem) {
-        setTooltipData({
-          name: countyInfo.name,
-          isSplit: mapDataItem.isSplit,
-          splitDetails: mapDataItem.splitDetails,
-          districtLabel: mapDataItem.value,
-        });
+        setMousePosition({ x: event.clientX, y: event.clientY });
       }
-    } else {
-      setTooltipData({
-        name: countyInfo.name,
-        isSplit: false,
-        splitDetails: null,
-        districtLabel: null,
-      });
-    }
-
-    setMousePosition({ x: event.clientX, y: event.clientY });
-  }, [onCountyHover, viewType, heatmapData]);
+    },
+    [onCountyHover, viewType, heatmapData]
+  );
 
   const handleMouseLeave = useCallback(() => {
     setHoveredCountyId(null);
     setTooltipData(null);
 
+    // Call the external leave handler if provided
     if (onCountyLeave) {
       onCountyLeave();
     }
@@ -468,13 +479,13 @@ function IndianaMap({
   const renderCountyPath = (svgId) => {
     const countyInfo = COUNTY_DATA[svgId];
     if (!countyInfo) {
-      console.warn(`No entry in COUNTY_DATA for SVG ID: ${svgId}`);
+      console.warn(`No COUNTY_DATA found for SVG ID: ${svgId}`);
       return null;
     }
 
     const pathD = countyPathData[svgId];
     if (!pathD) {
-      console.warn(`Path data (d attribute) missing for ${svgId}`);
+      console.warn(`Path data missing for ${svgId}`);
       return null;
     }
 

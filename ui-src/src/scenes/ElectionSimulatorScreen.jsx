@@ -19,7 +19,7 @@ import { ELECTION_TYPES_BY_COUNTRY } from "../data/electionsData";
 // Utility imports
 import { generateNuancedColor } from "../utils/generalUtils";
 import { normalizePollingOptimized } from "../General Scripts/OptimizedPollingFunctions.js";
-import { getRandomElement, getRandomInt, generateId } from "../utils/core";
+import { getRandomElement, getRandomInt, generateId, distributeValueProportionally } from "../utils/core";
 import {
   calculateIdeologyFromStances,
   generateNewPartyName,
@@ -85,6 +85,18 @@ const ElectionSimulatorScreen = () => {
   const [isSimulationChoiceModalOpen, setIsSimulationChoiceModalOpen] =
     useState(false);
   const [pendingSimulationData, setPendingSimulationData] = useState(null);
+
+  // Load election setups from file system on component mount
+  useEffect(() => {
+    const loadSetups = async () => {
+      try {
+        await actions.loadElectionSetups();
+      } catch (error) {
+        console.error("Failed to load election setups:", error);
+      }
+    };
+    loadSetups();
+  }, []);
 
   // Restore setup data when returning from Election Night
   useEffect(() => {
@@ -397,17 +409,40 @@ const ElectionSimulatorScreen = () => {
     setActiveElectionInCandidateTab("");
   };
 
-  const handleSaveSetup = () => {
-    const existingSetup = savedElectionSetups.find(
-      (s) => s.id === currentSetup.id
-    );
-    if (existingSetup) actions.updateElectionSetup(currentSetup);
-    else actions.saveElectionSetup(currentSetup);
-    actions.addToast({
-      id: `save-success-${Date.now()}`,
-      message: `Scenario "${currentSetup.name}" saved!`,
-      type: "success",
-    });
+  const handleSaveSetup = async () => {
+    try {
+      const existingSetup = savedElectionSetups.find(
+        (s) => s.id === currentSetup.id
+      );
+      
+      let result;
+      if (existingSetup) {
+        result = await actions.updateElectionSetup(currentSetup);
+      } else {
+        result = await actions.saveElectionSetup(currentSetup);
+      }
+
+      if (result.success) {
+        actions.addToast({
+          id: `save-success-${Date.now()}`,
+          message: `Scenario "${currentSetup.name}" saved successfully!`,
+          type: "success",
+        });
+      } else {
+        actions.addToast({
+          id: `save-error-${Date.now()}`,
+          message: `Failed to save scenario: ${result.error || 'Unknown error'}`,
+          type: "error",
+        });
+      }
+    } catch (error) {
+      console.error("Error saving setup:", error);
+      actions.addToast({
+        id: `save-error-${Date.now()}`,
+        message: `Failed to save scenario: ${error.message}`,
+        type: "error",
+      });
+    }
   };
 
   const handleLoadSetup = (setupId) => {
@@ -845,8 +880,27 @@ const ElectionSimulatorScreen = () => {
     };
     actions.setElectionSimulatorSetup(setupWithTabStates);
 
+    // Process country data to ensure counties have proper population distribution
+    const processedSimulationData = pendingSimulationData.map((election) => {
+      if (election.countryData && election.countryData.secondAdminRegions) {
+        console.log("[DEBUG] Processing country data for county populations:", election.countryData.name);
+        console.log("[DEBUG] Before processing - sample counties:", election.countryData.secondAdminRegions.slice(0, 3).map(c => ({name: c.name, pop: c.population})));
+        
+        const processedCountryData = generateDetailedCountryData(election.countryData);
+        
+        console.log("[DEBUG] After processing - sample counties:", processedCountryData.secondAdminRegions.slice(0, 3).map(c => ({name: c.name, pop: c.population})));
+        console.log("[DEBUG] New Hampshire counties:", processedCountryData.secondAdminRegions.filter(c => c.stateId === 'USA_NH').map(c => ({name: c.name, pop: c.population})));
+        
+        return {
+          ...election,
+          countryData: processedCountryData,
+        };
+      }
+      return election;
+    });
+
     actions.setIsSimulationMode(true);
-    actions.setSimulatedElections(pendingSimulationData);
+    actions.setSimulatedElections(processedSimulationData);
     setIsSimulationChoiceModalOpen(false);
     setPendingSimulationData(null);
     actions.navigateTo("ElectionNightScreen");
@@ -977,7 +1031,39 @@ const ElectionSimulatorScreen = () => {
         );
         countryDataForElection = generateDetailedCountryData(selectedCountry);
         // Override the generated population with user's input for consistent simulation
+        const originalTotalPopulation = countryDataForElection.population;
         countryDataForElection.population = currentSetup.totalPopulation;
+        
+        // Redistribute state populations proportionally to match the new total
+        if (countryDataForElection.regions && countryDataForElection.regions.length > 0) {
+          const distributedStatePopulations = distributeValueProportionally(
+            currentSetup.totalPopulation,
+            countryDataForElection.regions
+          );
+          
+          countryDataForElection.regions.forEach((state, index) => {
+            const newStatePopulation = distributedStatePopulations[index] || state.population;
+            console.log(`[DEBUG] State ${state.name} (${state.id}): ${state.population} -> ${newStatePopulation}`);
+            state.population = newStatePopulation;
+            
+            // Redistribute county populations within this state
+            if (countryDataForElection.secondAdminRegions) {
+              const stateCounties = countryDataForElection.secondAdminRegions.filter(
+                county => county.stateId === state.id
+              );
+              if (stateCounties.length > 0) {
+                const distributedCountyPopulations = distributeValueProportionally(
+                  newStatePopulation,
+                  stateCounties
+                );
+                stateCounties.forEach((county, countyIndex) => {
+                  county.population = distributedCountyPopulations[countyIndex] || 5000;
+                });
+              }
+            }
+          });
+        }
+        
         console.log(
           "[DEBUG] Generated country with",
           countryDataForElection?.regions?.length,

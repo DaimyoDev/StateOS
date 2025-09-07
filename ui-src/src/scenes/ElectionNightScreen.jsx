@@ -188,6 +188,7 @@ const StateDetailView = ({
   onBackToMap,
   countryData,
   setSelectedState,
+  election,
 }) => {
   const [activeTab, setActiveTab] = useState("map");
   const [tooltip, setTooltip] = useState({ show: false, x: 0, y: 0, content: null });
@@ -204,12 +205,8 @@ const StateDetailView = ({
       const stateCounties = (countryData.secondAdminRegions || [])
         .filter((county) => county.stateId === selectedState.stateId)
         .sort((a, b) => (b.population || 0) - (a.population || 0));
-      console.log(
-        `[DEBUG] Found state ${foundState.name} with ${stateCounties.length} counties`
-      );
       return { state: foundState, counties: stateCounties };
     }
-    console.log(`[DEBUG] State not found: ${selectedState.stateId}`);
     return { state: null, counties: [] };
   }, [selectedState?.stateId, countryData]);
 
@@ -225,26 +222,16 @@ const StateDetailView = ({
       : null;
   }
 
-  // Generate county-level election results based on state results
+  // Get county results from the electoral college system's state polling overrides
+  // This ensures consistency - StateDetailView displays what the national system calculated
   const countyResults = useMemo(() => {
-    if (
-      !counties.length ||
-      !candidates.length ||
-      !originalStatePolling.current
-    )
-      return [];
-
-    // Check if state has sufficient reporting to show county results
-    const stateReportingPercent = selectedState.stateResult.reportingPercent || 0;
-    const hasStartedReporting = selectedState.stateResult.hasStartedReporting || false;
-    
-    // Only show county results if state has started reporting
-    if (!hasStartedReporting) {
+    if (!counties.length || !selectedState?.stateResult?.candidatePolling) {
       return [];
     }
-    
-    // All counties show once state starts reporting, but each has its own reporting percentage
-    // Sort counties by population (larger counties report faster, like in real elections)
+
+    // Use the state's actual polling data for county calculations
+    const statePolling = selectedState.stateResult.candidatePolling;
+    const stateReportingPercent = selectedState.stateResult.reportingPercent || 0;
     const sortedCounties = [...counties].sort((a, b) => (b.population || 0) - (a.population || 0));
 
     // Simple hash function to generate consistent "random" numbers based on county ID
@@ -302,7 +289,7 @@ const StateDetailView = ({
 
       // Calculate the final results (what the county will end up with at 100% reporting)
       const finalCountyPolling = new Map();
-      originalStatePolling.current.forEach(
+      statePolling.forEach(
         (statePercent, candidateId) => {
           // Add county-specific variation (-5% to +5%) based on county characteristics using seeded random
           // Smaller variation to keep counties closer to state results
@@ -400,15 +387,15 @@ const StateDetailView = ({
         winnerPercent: maxPercent,
         totalVotes: Math.floor(
           Math.min(
-            (county.population || 0) * 0.3 * // 30% of population as eligible voters (more realistic)
-            (0.5 + seededRandom(countySeed * 999) * 0.3), // 50-80% turnout 
+            (county.population || 0) * 0.65 * // ~65% of population as eligible voters  
+            ((election?.voterTurnoutPercentage || 60) / 100), // Use election turnout or 60% default
             500000 // Cap at 500K votes for very large counties
           ) * (reportingPercent / 100) // Scale by reporting percentage
         ),
         isReporting: true
       };
     });
-  }, [counties, candidates, selectedState?.stateId, selectedState?.stateResult?.hasStartedReporting, selectedState?.stateResult?.reportingPercent]);
+  }, [counties, candidates, selectedState?.stateId, selectedState?.stateResult?.candidatePolling, selectedState?.stateResult?.hasStartedReporting, selectedState?.stateResult?.reportingPercent, election?.voterTurnoutPercentage]);
 
   // Calculate aggregate state polling from county results
   const aggregatedStatePolling = useMemo(() => {
@@ -440,54 +427,8 @@ const StateDetailView = ({
     return aggregatedPolling;
   }, [countyResults, candidates]);
 
-  // Update state polling when county results change - done directly in the county calculation
-  useEffect(() => {
-    if (aggregatedStatePolling && selectedState?.stateResult && setSelectedState) {
-      // Stop all recalculations if state is at 100% reporting - results are final
-      if (selectedState.stateResult.reportingPercent >= 100) {
-        return;
-      }
-      
-      // Check if polling has actually changed to prevent infinite loops
-      const currentPolling = selectedState.stateResult.candidatePolling;
-      let hasChanged = false;
-      
-      if (!currentPolling || currentPolling.size !== aggregatedStatePolling.size) {
-        hasChanged = true;
-      } else {
-        for (const [candidateId, newPolling] of aggregatedStatePolling.entries()) {
-          const currentValue = currentPolling.get(candidateId) || 0;
-          if (Math.abs(newPolling - currentValue) > 0.1) {
-            hasChanged = true;
-            break;
-          }
-        }
-      }
-      
-      if (hasChanged) {
-        // Calculate winner based on new polling
-        let newWinner = null;
-        let highestPolling = 0;
-        aggregatedStatePolling.forEach((polling, candidateId) => {
-          if (polling > highestPolling) {
-            highestPolling = polling;
-            newWinner = candidates.find(c => c.id === candidateId);
-          }
-        });
-        
-        const updatedStateResult = {
-          ...selectedState.stateResult,
-          candidatePolling: aggregatedStatePolling,
-          winner: newWinner
-        };
-        
-        setSelectedState(prev => ({
-          ...prev,
-          stateResult: updatedStateResult
-        }));
-      }
-    }
-  }, [aggregatedStatePolling, candidates, setSelectedState]);
+  // StateDetailView now just displays data - all calculations happen in ElectoralCollegeCard
+  // No separate county-to-state aggregation needed here
 
   // Create heatmap data for county map
   const countyHeatmapData = useMemo(() => {
@@ -548,14 +489,6 @@ const StateDetailView = ({
 
   // Render appropriate state county map (same pattern as StateDetailsScreen)
   const renderStateMap = () => {
-    console.log(
-      "[DEBUG] renderStateMap - state:",
-      state,
-      "stateId:",
-      selectedState?.stateId,
-      "counties:",
-      counties.length
-    );
 
     const mapProps = {
       heatmapData: countyHeatmapData,
@@ -891,16 +824,17 @@ const StateDetailView = ({
                       <span style={{ 
                         display: "flex", 
                         alignItems: "center", 
-                        gap: "6px",
-                        color: candidateColors.get(candidateId) 
+                        gap: "6px"
                       }}>
                         <div style={{
-                          width: "8px",
-                          height: "8px",
-                          borderRadius: "50%",
-                          backgroundColor: candidateColors.get(candidateId)
+                          width: "10px",
+                          height: "10px",
+                          borderRadius: "2px",
+                          backgroundColor: candidateColors.get(candidateId),
+                          border: "1px solid rgba(0,0,0,0.2)",
+                          boxShadow: "0 0 0 1px rgba(255,255,255,0.8) inset"
                         }} />
-                        {candidate.name}
+                        <span>{candidate.name}</span>
                       </span>
                       <span style={{ fontWeight: "bold" }}>
                         {candidateVotes.toLocaleString()} ({percentage.toFixed(1)}%)
@@ -953,9 +887,6 @@ const ElectoralCollegeCard = ({
 
         if (timeBasedComplete) {
           shouldContinueUpdating = false;
-          console.log(
-            "[DEBUG] Progressive reporting complete - stopping updates"
-          );
           return;
         }
 
@@ -969,21 +900,168 @@ const ElectoralCollegeCard = ({
   // Force update when skipToResults changes to true
   useEffect(() => {
     if (skipToResults) {
-      console.log(
-        "[DEBUG] Skipping to results - forcing Electoral College recalculation"
-      );
       // Just trigger recalculation without reset - let useProgressiveReporting=false handle it
       setUpdateTrigger((prev) => prev + 1);
     }
   }, [skipToResults]);
 
+  // Calculate county-to-state aggregated polling for all states
+  const statePollingOverrides = useMemo(() => {
+    if (!election?.isElectoralCollege || !countryData || !election.candidates) return null;
+
+    const candidatesArray = Array.from(election.candidates.values());
+    const stateOverrides = new Map();
+
+    // Get country data (active campaign or election's embedded data)
+    const currentCountryData = activeCampaign ? countryData?.[activeCampaign.countryId] : election.countryData || countryData?.['USA'];
+    
+    
+    // Check for both campaign structure (states/counties) and election structure (regions/secondAdminRegions)
+    const hasStates = currentCountryData?.states;
+    const hasRegions = currentCountryData?.regions && currentCountryData?.secondAdminRegions;
+    
+    if (!hasStates && !hasRegions) {
+      return null;
+    }
+
+    // Process each state to calculate county-based polling
+    const statesToProcess = hasStates ? 
+      Object.values(currentCountryData.states) : 
+      currentCountryData.regions;
+    
+    statesToProcess.forEach(state => {
+      const counties = hasStates ? 
+        (state.counties ? Object.values(state.counties) : []) :
+        currentCountryData.secondAdminRegions.filter(county => county.stateId === state.id);
+      if (counties.length === 0) return;
+
+      // Get current state result from electoral college system for reporting status
+      const currentStateResult = electoralCollegeSystem?.stateResultsCache?.get(state.id) || 
+                                  electoralCollegeSystem?.stateResults?.get(state.id);
+      if (!currentStateResult?.hasStartedReporting || !currentStateResult?.candidatePolling) return;
+
+      // Calculate county results for this state (exact same logic as StateDetailView)
+      // Sort counties by population (larger counties report faster, like in real elections)
+      const sortedCounties = [...counties].sort((a, b) => (b.population || 0) - (a.population || 0));
+      
+      const countyResults = sortedCounties.map((county, index) => {
+        // Use exact same logic as StateDetailView for county calculations
+        const countyPolling = new Map();
+        const countySeed = county.id.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
+        
+        const stateReportingPercent = currentStateResult.reportingPercent || 0;
+        const countySize = county.population || 10000;
+        const sizeBonus = Math.min(15, Math.log10(countySize / 1000) * 5); // 0-15% bonus for larger counties
+        const positionPenalty = index * 8; // Each position adds 8% delay (deterministic)
+        
+        let reportingPercent;
+        if (stateReportingPercent >= 100) {
+          reportingPercent = 100;
+        } else {
+          const seededRandom = (seed) => {
+            const x = Math.sin(seed) * 10000;
+            return x - Math.floor(x);
+          };
+          
+          const baseReporting = stateReportingPercent * (0.7 + seededRandom(countySeed) * 0.6);
+          reportingPercent = Math.max(0, Math.min(100, baseReporting + sizeBonus - positionPenalty));
+        }
+
+        if (reportingPercent < 0.1) {
+          return { county, reportingPercent: 0, polling: new Map(), isReporting: false, totalVotes: 0 };
+        }
+
+        // Get the state's current polling data
+        const statePolling = currentStateResult.candidatePolling;
+        if (!statePolling) return { county, reportingPercent: 0, polling: new Map(), isReporting: false, totalVotes: 0 };
+        
+        // Calculate the final results (what the county will end up with at 100% reporting)
+        const finalCountyPolling = new Map();
+        statePolling.forEach((statePercent, candidateId) => {
+          // Add county-specific variation (-5% to +5%) based on county characteristics using seeded random
+          const candidateSeed = countySeed + candidateId.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
+          let variation = (seededRandom(candidateSeed) - 0.5) * 10; // Reduced from 30 to 10
+          
+          // Find candidate for party-based variations
+          const candidate = candidatesArray.find((c) => c.id === candidateId);
+
+          // Add realistic bias based on county demographics and candidate
+          if (county.politicalLandscape) {
+            const topParty = county.politicalLandscape.reduce(
+              (max, p) => (p.popularity > max.popularity ? p : max),
+              { popularity: 0 }
+            );
+
+            // If candidate's party matches county's top party, boost slightly
+            if (candidate?.partyName === topParty.name) {
+              variation += 2; // Reduced from 5 to 2 for more realistic results
+            }
+          }
+
+          const countyPercent = Math.max(0, Math.min(100, statePercent + variation));
+          finalCountyPolling.set(candidateId, countyPercent);
+        });
+
+        // Use progressive reporting to show partial results
+        finalCountyPolling.forEach((finalPercent, candidateId) => {
+          const progressivePercent = finalPercent * (reportingPercent / 100);
+          countyPolling.set(candidateId, progressivePercent);
+        });
+
+        // Normalize and calculate votes
+        const total = Array.from(countyPolling.values()).reduce((sum, val) => sum + val, 0);
+        if (total > 0) {
+          countyPolling.forEach((val, candidateId) => {
+            countyPolling.set(candidateId, (val / total) * 100);
+          });
+        }
+
+        const turnoutRate = currentStateResult.voterTurnoutPercentage || 60;
+        
+        const totalVotes = Math.floor(Math.min(
+          (county.population || 0) * 0.65 * // ~65% of population as eligible voters
+          (turnoutRate / 100), // Use state turnout or 60% default
+          500000
+        ) * (reportingPercent / 100));
+
+        return {
+          county,
+          reportingPercent: Math.round(reportingPercent),
+          polling: countyPolling,
+          isReporting: reportingPercent >= 0.1,
+          totalVotes
+        };
+      });
+
+      // Aggregate county results to state level (similar to StateDetailView)
+      const reportingCounties = countyResults.filter(c => c.isReporting);
+      if (reportingCounties.length === 0) return;
+
+      const totalVotes = reportingCounties.reduce((sum, county) => sum + county.totalVotes, 0);
+      if (totalVotes === 0) return;
+
+      const aggregatedPolling = new Map();
+      candidatesArray.forEach(candidate => {
+        aggregatedPolling.set(candidate.id, 0);
+      });
+
+      reportingCounties.forEach(countyResult => {
+        const countyWeight = countyResult.totalVotes / totalVotes;
+        countyResult.polling.forEach((percentage, candidateId) => {
+          const current = aggregatedPolling.get(candidateId) || 0;
+          aggregatedPolling.set(candidateId, current + (percentage * countyWeight));
+        });
+      });
+
+      // Store the aggregated polling for this state
+      stateOverrides.set(state.id, aggregatedPolling);
+    });
+
+    return stateOverrides;
+  }, [election, countryData, activeCampaign, updateTrigger]); // updateTrigger ensures this recalculates
+
   const electoralResults = useMemo(() => {
     if (!election?.isElectoralCollege || !election.candidates) {
-      console.log("[DEBUG] ElectoralCollegeCard: Early return", {
-        isElectoralCollege: election?.isElectoralCollege,
-        hasCandidates: !!election?.candidates,
-        hasActiveCampaign: !!activeCampaign,
-      });
       return null;
     }
 
@@ -1025,31 +1103,8 @@ const ElectoralCollegeCard = ({
       };
     }
 
-    console.log("[DEBUG] ElectoralCollegeCard: Calculating electoral results", {
-      updateTrigger,
-      timestamp: new Date().toLocaleTimeString(),
-      mode: activeCampaign ? "campaign" : "simulation",
-      candidatesCount: candidatesArray.length,
-      candidates: candidatesArray.map((c) => ({
-        id: c.id,
-        name: c.name,
-        currentVotes: c.currentVotes,
-      })),
-      countryId: campaignToUse.countryId,
-      hasCountryData: !!currentCountryData,
-      hasCoalitionSystems: !!campaignToUse?.coalitionSystems,
-      coalitionSystemsKeys: campaignToUse?.coalitionSystems
-        ? Object.keys(campaignToUse.coalitionSystems)
-        : null,
-    });
 
     const useProgressiveReporting = !skipToResults;
-    console.log(
-      "[DEBUG] ElectoralCollegeCard: About to calculate with useProgressiveReporting =",
-      useProgressiveReporting,
-      "skipToResults =",
-      skipToResults
-    );
 
     // If skipping to results, reset the system right before calculation to ensure clean slate
     if (
@@ -1057,9 +1112,6 @@ const ElectoralCollegeCard = ({
       electoralCollegeSystem &&
       electoralCollegeSystem.reset
     ) {
-      console.log(
-        "[DEBUG] Resetting Electoral College system before non-progressive calculation"
-      );
       electoralCollegeSystem.reset();
     }
 
@@ -1068,21 +1120,10 @@ const ElectoralCollegeCard = ({
       campaignToUse,
       currentCountryData,
       useProgressiveReporting,
-      simulationSpeed
+      simulationSpeed,
+      statePollingOverrides
     );
 
-    // Debug logging to see if state percentages are changing
-    if (results?.stateResults) {
-      const sampleStates = Array.from(results.stateResults.entries()).slice(0, 3);
-      console.log("[DEBUG] Sample state results:", sampleStates.map(([stateId, state]) => ({
-        state: state.stateName,
-        reportingPercent: state.reportingPercent,
-        hasStartedReporting: state.hasStartedReporting,
-        candidatePolling: state.candidatePolling ? Array.from(state.candidatePolling.entries()) : null,
-        winner: state.winner?.name,
-        showResults: state.showResults
-      })));
-    }
 
     return results;
   }, [
@@ -1092,6 +1133,7 @@ const ElectoralCollegeCard = ({
     updateTrigger,
     simulationSpeed,
     skipToResults,
+    statePollingOverrides,
   ]);
 
   // Check for completion based on actual results
@@ -1107,9 +1149,7 @@ const ElectoralCollegeCard = ({
       );
 
     if (allStatesComplete) {
-      console.log(
-        "[DEBUG] All states at 100% reporting - electoral college complete"
-      );
+      // Electoral college reporting complete
     }
   }, [electoralResults, skipToResults]);
 
@@ -1249,8 +1289,7 @@ const ElectoralCollegeCard = ({
             candidates={Array.from(election.candidates.values())}
             viewMode={mapView}
             onStateClick={(stateId, stateName) => {
-              console.log(`Clicked state: ${stateName} (${stateId})`);
-              const stateResult = electoralResults?.stateResults?.get(stateId);
+                    const stateResult = electoralResults?.stateResults?.get(stateId);
               if (stateResult) {
                 setSelectedState({ stateId, stateName, stateResult });
               }
@@ -1264,6 +1303,7 @@ const ElectoralCollegeCard = ({
             onBackToMap={() => setSelectedState(null)}
             countryData={countryData || election.countryData}
             setSelectedState={setSelectedState}
+            election={election}
           />
         )}
       </div>
@@ -1735,7 +1775,6 @@ const ElectionNightScreen = () => {
         } else {
           // Existing logic for campaign elections (PartyListPR, MMP, other systems)
           if (election.electoralSystem === "PartyListPR") {
-            console.log(`   PartyListPR: Populating parties for simulation.`);
             if (
               election.partyLists &&
               Object.keys(election.partyLists).length > 0

@@ -1,10 +1,6 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useCallback } from "react";
 import useGameStore from "../../store";
-import {
-  getMapThemeColors,
-  getRegionStyle,
-  calculateHeatmapRange,
-} from "../../utils/mapHeatmapUtils";
+import { getMapThemeColors, getRegionStyle } from "../../utils/mapHeatmapUtils";
 import "../JapanMap.css";
 
 const COUNTY_DATA = {
@@ -299,89 +295,115 @@ function WisconsinMap({
   selectedCountyGameId,
   heatmapData,
   viewType,
+  onCountyHover,
+  onCountyLeave,
 }) {
   const [hoveredCountyId, setHoveredCountyId] = useState(null);
   const [tooltipData, setTooltipData] = useState(null);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-
   const currentTheme = useGameStore(
     (state) => state.availableThemes[state.activeThemeName]
   );
+
   const themeColors = getMapThemeColors(currentTheme);
 
-  useMemo(
-    () => calculateHeatmapRange(heatmapData, viewType),
-    [heatmapData, viewType]
-  );
-
-  const getCountyStyle = (svgId) => {
-    return getRegionStyle({
-      regionId: null,
-      svgId,
-      regionData: COUNTY_DATA,
+  const getCountyStyle = useCallback(
+    (svgId) => {
+      return getRegionStyle({
+        regionId: null,
+        svgId,
+        regionData: COUNTY_DATA,
+        heatmapData,
+        viewType,
+        theme: themeColors,
+        hoveredId: hoveredCountyId,
+        selectedId: selectedCountyGameId,
+        isClickable: !!onSelectCounty,
+      });
+    },
+    [
       heatmapData,
       viewType,
-      theme: themeColors,
-      hoveredId: hoveredCountyId,
-      selectedId: selectedCountyGameId,
-      isClickable: !!onSelectCounty,
-    });
-  };
+      themeColors,
+      hoveredCountyId,
+      selectedCountyGameId,
+      onSelectCounty,
+    ]
+  );
 
-  const handleCountyClick = (svgId) => {
-    const county = COUNTY_DATA[svgId];
-    if (county && onSelectCounty) {
-      onSelectCounty(county.gameId, county.name);
-    } else {
-      console.warn(`No game data found for SVG ID: ${svgId}`);
-    }
-  };
-
-  const handleMouseEnter = (svgId, event) => {
-    const countyInfo = COUNTY_DATA[svgId];
-    if (!countyInfo) return;
-
-    setHoveredCountyId(countyInfo.gameId);
-
-    if (viewType === "congressional_districts" && heatmapData?.mapData) {
-      const mapDataItem = heatmapData.mapData.find(
-        (item) => item.id === countyInfo.gameId
-      );
-      if (mapDataItem) {
-        setTooltipData({
-          name: countyInfo.name,
-          isSplit: mapDataItem.isSplit,
-          splitDetails: mapDataItem.splitDetails,
-          districtLabel: mapDataItem.value,
-        });
+  const handleCountyClick = useCallback(
+    (svgId) => {
+      const county = COUNTY_DATA[svgId];
+      if (county && onSelectCounty) {
+        onSelectCounty(county.gameId, county.name);
+      } else {
+        console.warn(`No game data found for SVG ID: ${svgId}`);
       }
-    } else {
-      setTooltipData({
-        name: countyInfo.name,
-        isSplit: false,
-        splitDetails: null,
-        districtLabel: null,
-      });
-    }
+    },
+    [onSelectCounty]
+  );
 
-    setMousePosition({ x: event.clientX, y: event.clientY });
-  };
+  const handleMouseEnter = useCallback(
+    (svgId, event) => {
+      const countyInfo = COUNTY_DATA[svgId];
+      if (!countyInfo) return;
 
-  const handleMouseLeave = () => {
+      setHoveredCountyId(countyInfo.gameId);
+
+      // Call the external hover handler if provided (for election night tooltips)
+      if (onCountyHover) {
+        onCountyHover(countyInfo.gameId, event);
+      } else {
+        // Fallback to internal tooltip for other uses
+        if (viewType === "congressional_districts" && heatmapData?.mapData) {
+          const mapDataItem = heatmapData.mapData.find(
+            (item) => item.id === countyInfo.gameId
+          );
+          if (mapDataItem) {
+            setTooltipData({
+              name: countyInfo.name,
+              isSplit: mapDataItem.isSplit,
+              splitDetails: mapDataItem.splitDetails,
+              districtLabel: mapDataItem.value,
+            });
+          }
+        } else {
+          setTooltipData({
+            name: countyInfo.name,
+            isSplit: false,
+            splitDetails: null,
+            districtLabel: null,
+          });
+        }
+
+        setMousePosition({ x: event.clientX, y: event.clientY });
+      }
+    },
+    [onCountyHover, viewType, heatmapData]
+  );
+
+  const handleMouseLeave = useCallback(() => {
     setHoveredCountyId(null);
     setTooltipData(null);
-  };
 
-  const handleMouseMove = (event) => {
+    // Call the external leave handler if provided
+    if (onCountyLeave) {
+      onCountyLeave();
+    }
+  }, [onCountyLeave]);
+
+  const handleMouseMove = useCallback((event) => {
     setMousePosition({ x: event.clientX, y: event.clientY });
-  };
+  }, []);
 
   const renderCountyPath = (svgId) => {
     const countyInfo = COUNTY_DATA[svgId];
-    if (!countyInfo) return null;
+    if (!countyInfo) {
+      console.warn(`No COUNTY_DATA found for SVG ID: ${svgId}`);
+      return null;
+    }
 
     const pathD = countyPathData[svgId];
-
     if (!pathD) {
       console.warn(`Path data (d attribute) missing for ${svgId}`);
       return null;
@@ -411,19 +433,14 @@ function WisconsinMap({
         version="1.2"
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 810 900"
-        className="interactive-japan-map"
+        className="interactive-japan-map wisconsin-map"
         preserveAspectRatio="xMidYMid meet"
       >
-        <g
-          id="wisconsin-counties-group"
-          transform="translate(5,5)"
-          stroke="white"
-          strokeWidth="1"
-        >
+        <g id="wisconsin-counties-group" stroke="white" strokeWidth="1">
           {countyOrderFromSVG.map((svgId) => renderCountyPath(svgId))}
         </g>
       </svg>
-      {tooltipData && (
+      {tooltipData && !onCountyHover && (
         <div
           style={{
             position: "fixed",
@@ -478,3 +495,4 @@ function WisconsinMap({
 }
 
 export default WisconsinMap;
+export { countyPathData };
