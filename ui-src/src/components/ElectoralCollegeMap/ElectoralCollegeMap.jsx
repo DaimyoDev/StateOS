@@ -134,38 +134,54 @@ function ElectoralCollegeMap({
   const handleStateHover = (stateId, stateName, event) => {
     if (!electoralResults?.stateResults) return;
 
-    const stateResult = electoralResults.stateResults.get(stateId);
-    const electoralVotes = ELECTORAL_VOTES_BY_STATE[stateId] || 0;
-
-    if (stateResult && event) {
-      const winnerName =
-        stateResult.winner?.name ||
-        (stateResult.hasStartedReporting
-          ? "Results pending"
-          : "Not yet reported");
-      const margin = stateResult.margin?.toFixed(1) || "0.0";
-
+    if (event) {
       setTooltip({
         show: true,
         x: event.clientX + 10,
         y: event.clientY - 10,
-        content: {
-          stateName: stateName,
-          electoralVotes,
-          winner: winnerName,
-          margin: `${margin}%`,
-          polling: stateResult.candidatePolling,
-          reportingPercent: stateResult.reportingPercent || 0,
-          hasStartedReporting: stateResult.hasStartedReporting || false,
-          reportingComplete: stateResult.reportingComplete || false,
-        },
+        stateId: stateId, // Store stateId to look up live data
+        stateName: stateName,
+        electoralVotes: ELECTORAL_VOTES_BY_STATE[stateId] || 0,
       });
     }
   };
 
   const handleStateLeave = () => {
-    setTooltip({ show: false, x: 0, y: 0, content: "" });
+    setTooltip({ show: false, x: 0, y: 0, stateId: null });
   };
+
+  // Get live tooltip content based on current data
+  const tooltipContent = useMemo(() => {
+    if (!tooltip.show || !tooltip.stateId || !electoralResults?.stateResults) return null;
+
+    const stateResult = electoralResults.stateResults.get(tooltip.stateId);
+    if (!stateResult) return null;
+
+    // Only show winner if results should be displayed (sufficient reporting or complete)
+    let winnerName;
+    if (!stateResult.hasStartedReporting) {
+      winnerName = "Not yet reported";
+    } else if (stateResult.showResults && stateResult.winner) {
+      winnerName = stateResult.winner.name;
+    } else if (stateResult.hasStartedReporting) {
+      winnerName = "Results pending";
+    } else {
+      winnerName = "Not yet reported";
+    }
+    
+    const margin = stateResult.margin?.toFixed(1) || "0.0";
+
+    return {
+      stateName: tooltip.stateName,
+      electoralVotes: tooltip.electoralVotes,
+      winner: winnerName,
+      margin: `${margin}%`,
+      polling: stateResult.candidatePolling,
+      reportingPercent: stateResult.reportingPercent || 0,
+      hasStartedReporting: stateResult.hasStartedReporting || false,
+      reportingComplete: stateResult.reportingComplete || false,
+    };
+  }, [tooltip.show, tooltip.stateId, tooltip.stateName, tooltip.electoralVotes, electoralResults]);
 
   // Create candidate color mapping for legend
   const candidateColors = useMemo(() => {
@@ -188,7 +204,7 @@ function ElectoralCollegeMap({
       />
 
       {/* Tooltip */}
-      {tooltip.show && tooltip.content && (
+      {tooltip.show && tooltipContent && (
         <div
           className="electoral-map-tooltip"
           style={{
@@ -199,34 +215,37 @@ function ElectoralCollegeMap({
           }}
         >
           <div className="tooltip-header">
-            <strong>{tooltip.content.stateName}</strong>
+            <strong>{tooltipContent.stateName}</strong>
             <span className="electoral-votes">
-              {tooltip.content.electoralVotes} EV
+              {tooltipContent.electoralVotes} EV
             </span>
           </div>
           <div className="tooltip-reporting">
-            <strong>Reporting: {tooltip.content.reportingPercent}%</strong>
-            {!tooltip.content.hasStartedReporting && (
+            <strong>Reporting: {tooltipContent.reportingPercent}%</strong>
+            {!tooltipContent.hasStartedReporting && (
               <span> (Polls not yet closed)</span>
             )}
-            {tooltip.content.hasStartedReporting &&
-              !tooltip.content.reportingComplete && <span> (In progress)</span>}
-            {tooltip.content.reportingComplete && <span> ✓</span>}
+            {tooltipContent.hasStartedReporting &&
+              !tooltipContent.reportingComplete && <span> (In progress)</span>}
+            {tooltipContent.reportingComplete && <span> ✓</span>}
           </div>
           <div className="tooltip-winner">
-            {tooltip.content.hasStartedReporting
-              ? `Winner: ${tooltip.content.winner}`
-              : "Results not yet available"}
+            {!tooltipContent.hasStartedReporting
+              ? "Results not yet available"
+              : tooltipContent.winner !== "Results pending"
+              ? `Winner: ${tooltipContent.winner}`
+              : "Results pending"}
           </div>
-          {tooltip.content.hasStartedReporting &&
-            tooltip.content.winner !== "Results pending" && (
+          {tooltipContent.hasStartedReporting &&
+            tooltipContent.winner !== "Results pending" &&
+            tooltipContent.winner !== "Not yet reported" && (
               <div className="tooltip-margin">
-                Margin: <strong>{tooltip.content.margin}</strong>
+                Margin: <strong>{tooltipContent.margin}</strong>
               </div>
             )}
-          {tooltip.content.polling && (
+          {tooltipContent.polling && (
             <div className="tooltip-polling">
-              {Array.from(tooltip.content.polling.entries()).map(
+              {Array.from(tooltipContent.polling.entries()).map(
                 ([candidateId, percentage]) => {
                   const candidate = candidates.find(
                     (c) => c.id === candidateId

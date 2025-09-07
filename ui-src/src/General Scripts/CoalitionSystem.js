@@ -682,6 +682,39 @@ const EVENT_IMPACT_PATTERNS = {
     'young_socialist': { mobilization: 0.10, satisfaction: 0.08 },
     'rural_conservative': { mobilization: 0.06, satisfaction: -0.08 },
     'senior_traditional': { mobilization: 0.04, satisfaction: -0.06 }
+  },
+  
+  // Education Events
+  'education_crisis': {
+    'urban_progressive': { mobilization: 0.07, satisfaction: -0.08 },
+    'young_socialist': { mobilization: 0.06, satisfaction: -0.10 },
+    'senior_traditional': { mobilization: 0.05, satisfaction: -0.06 },
+    'working_populist': { mobilization: 0.04, satisfaction: -0.05 }
+  },
+  'education_improvement': {
+    'urban_progressive': { mobilization: 0.04, satisfaction: 0.06 },
+    'tech_pragmatist': { mobilization: 0.05, satisfaction: 0.08 },
+    'senior_traditional': { mobilization: 0.03, satisfaction: 0.04 }
+  },
+  
+  // Infrastructure Events
+  'infrastructure_crisis': {
+    'urban_progressive': { mobilization: 0.06, satisfaction: -0.08 },
+    'working_populist': { mobilization: 0.08, satisfaction: -0.10 },
+    'business_libertarian': { mobilization: 0.04, satisfaction: -0.06 }
+  },
+  'infrastructure_investment': {
+    'urban_progressive': { mobilization: 0.05, satisfaction: 0.07 },
+    'tech_pragmatist': { mobilization: 0.06, satisfaction: 0.08 },
+    'working_populist': { mobilization: 0.04, satisfaction: 0.05 }
+  },
+  
+  // Crime Events
+  'crime_surge': {
+    'rural_conservative': { mobilization: 0.08, satisfaction: -0.10 },
+    'senior_traditional': { mobilization: 0.07, satisfaction: -0.08 },
+    'business_libertarian': { mobilization: 0.05, satisfaction: -0.06 },
+    'urban_progressive': { mobilization: 0.04, satisfaction: -0.04 }
   }
 };
 

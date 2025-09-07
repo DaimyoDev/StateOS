@@ -1,4 +1,4 @@
-import { normalizePollingOptimized, calculateCoalitionBasedPolling, calculateElectoralCollegePolling } from "../General Scripts/OptimizedPollingFunctions.js";
+import { normalizePollingOptimized, calculateCoalitionBasedPolling, calculateElectoralCollegePolling, calculatePlayerElectionPolling } from "../General Scripts/OptimizedPollingFunctions.js";
 
 export const createPollingSlice = (set) => ({
   // --- State ---
@@ -67,15 +67,13 @@ export const createPollingSlice = (set) => ({
             politicians
           );
         } else if (election.playerIsCandidate) {
-          // For player elections, use regular normalized polling (not coalition-based)
-          // Add timestamp to candidate data to force fresh calculation
-          const candidatesArray = Array.from(updatedCandidates.values()).map(candidate => ({
-            ...candidate,
-            _pollTimestamp: Date.now() // Force cache miss
-          }));
-          const adultPop = election.totalEligibleVoters / 0.7;
-          
-          groundTruthPollingMap = normalizePollingOptimized(candidatesArray, adultPop, false);
+          // For player elections, use enhanced player polling with coalition integration
+          console.log(`[POLLING FIRM] Using player election polling for: ${election.officeName}`);
+          groundTruthPollingMap = calculatePlayerElectionPolling(
+            { ...election, candidates: updatedCandidates },
+            { activeCampaign, startingCity: activeCampaign.startingCity },
+            politicians
+          );
         } else {
           // For non-player elections, use coalition-based polling for better performance
           groundTruthPollingMap = calculateCoalitionBasedPolling(
@@ -218,14 +216,13 @@ export const createPollingSlice = (set) => ({
               politicians
             );
           } else if (election.playerIsCandidate) {
-            // For player elections, use regular normalized polling (not coalition-based)
-            // Add timestamp to candidate data to force fresh calculation
-            const candidatesArray = Array.from(updatedCandidates.values()).map(candidate => ({
-              ...candidate,
-              _pollTimestamp: Date.now() // Force cache miss
-            }));
-            const adultPop = election.totalEligibleVoters / 0.7;
-            groundTruthPollingMap = normalizePollingOptimized(candidatesArray, adultPop, false);
+            // For player elections, use enhanced player polling with coalition integration
+            console.log(`[POLLING FIRM BATCH] Using player election polling for: ${election.officeName}`);
+            groundTruthPollingMap = calculatePlayerElectionPolling(
+              { ...election, candidates: updatedCandidates },
+              { activeCampaign, startingCity: activeCampaign.startingCity },
+              politicians
+            );
           } else {
             // For non-player elections, use coalition-based polling for better performance
             groundTruthPollingMap = calculateCoalitionBasedPolling(

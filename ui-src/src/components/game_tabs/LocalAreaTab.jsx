@@ -17,6 +17,9 @@ function LocalAreaTab({ campaignData }) {
   );
   const { getCoalitionsForCity } = useGameStore((state) => state.actions);
   
+  // Subscribe to coalition system changes directly from the store
+  const coalitionSystems = useGameStore((state) => state.activeCampaign?.coalitionSystems);
+  
   // Get coalition data for the city if available
   const coalitionData = getCoalitionsForCity(startingCity?.id);
 

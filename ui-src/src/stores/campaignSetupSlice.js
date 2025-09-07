@@ -308,40 +308,56 @@ export const createCampaignSetupSlice = (set, get) => {
           generateCoalitionsForEntity(region.id, region, "state");
         });
 
-        // 3. Generate coalitions for congressional districts (if they exist in the country data)
+        // 3. Generate coalitions for congressional districts (only if they have proper demographic data)
         const congressionalDistricts =
           currentCountryData.congressionalDistricts ||
           currentCountryData.nationalLowerHouseDistricts ||
           [];
         congressionalDistricts.forEach((district) => {
-          generateCoalitionsForEntity(
-            district.id,
-            district,
-            "congressional_district"
-          );
+          // Only generate coalitions for districts that have actual demographic data
+          if (district.demographics || district.stats?.electoratePolicyProfile) {
+            generateCoalitionsForEntity(
+              district.id,
+              district,
+              "congressional_district"
+            );
+            console.log(`Generated coalitions for congressional district: ${district.name || district.id}`);
+          } else {
+            console.log(`Skipped coalition generation for congressional district ${district.name || district.id} - insufficient demographic data`);
+          }
         });
 
-        // 4. Generate coalitions for state legislative districts
+        // 4. Generate coalitions for state legislative districts (only if they have proper demographic data)
         currentCountryData.regions?.forEach((region) => {
           // State house districts
           if (region.legislativeDistricts?.house) {
             region.legislativeDistricts.house.forEach((district) => {
-              generateCoalitionsForEntity(
-                district.id,
-                district,
-                "state_house_district"
-              );
+              if (district.demographics || district.stats?.electoratePolicyProfile) {
+                generateCoalitionsForEntity(
+                  district.id,
+                  district,
+                  "state_house_district"
+                );
+                console.log(`Generated coalitions for state house district: ${district.name || district.id}`);
+              } else {
+                console.log(`Skipped coalition generation for state house district ${district.name || district.id} - insufficient demographic data`);
+              }
             });
           }
 
           // State senate districts
           if (region.legislativeDistricts?.senate) {
             region.legislativeDistricts.senate.forEach((district) => {
-              generateCoalitionsForEntity(
-                district.id,
-                district,
-                "state_senate_district"
-              );
+              if (district.demographics || district.stats?.electoratePolicyProfile) {
+                generateCoalitionsForEntity(
+                  district.id,
+                  district,
+                  "state_senate_district"
+                );
+                console.log(`Generated coalitions for state senate district: ${district.name || district.id}`);
+              } else {
+                console.log(`Skipped coalition generation for state senate district ${district.name || district.id} - insufficient demographic data`);
+              }
             });
           }
         });
@@ -376,6 +392,7 @@ export const createCampaignSetupSlice = (set, get) => {
         resetLegislationState();
 
         // Store pre-generated coalitions in activeCampaign
+        console.log(`[COALITION SETUP] Generated coalition systems:`, Object.keys(coalitionSystems));
         set((state) => ({
           activeCampaign: {
             ...state.activeCampaign,

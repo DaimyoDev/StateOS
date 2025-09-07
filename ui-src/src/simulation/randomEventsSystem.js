@@ -392,12 +392,14 @@ const calculateDaysBetween = (date1, date2) => {
  * @param {object} cityData - City context data
  * @returns {object} Results of coalition processing
  */
-export const processEventCoalitionEffects = (event, coalitionSoA, cityData = {}) => {
+export const processEventCoalitionEffects = (event, coalitionSoA, cityData = {}, stateData = {}) => {
   console.log(`[COALITION EVENTS PROCESSOR] Processing event:`, {
     id: event.id,
     category: event.category,
     templateId: event.templateId,
-    hasCoalitionSoA: !!coalitionSoA
+    hasCoalitionSoA: !!coalitionSoA,
+    cityId: cityData?.id,
+    stateId: stateData?.id
   });
 
   if (!event || !coalitionSoA) {
@@ -412,7 +414,7 @@ export const processEventCoalitionEffects = (event, coalitionSoA, cityData = {})
   const coalitionEvent = {
     id: event.id,
     type: coalitionType,
-    jurisdictionId: cityData.id || 'current_city',
+    jurisdictionId: cityData?.id || 'current_city',
     jurisdictionType: 'city',
     magnitude: getEventMagnitudeFromSeverity(event.severity),
     date: event.date,
@@ -420,23 +422,157 @@ export const processEventCoalitionEffects = (event, coalitionSoA, cityData = {})
   };
 
   try {
-    // Process the event using the coalition system
-    const results = processCascadingCoalitionUpdates(
-      coalitionSoA,
-      [coalitionEvent], // City events
-      [], // No state events for now
-      [], // No national events for now
-      null, // Will use default spatial aggregator
-      {
-        enablePerformanceMonitoring: true,
-        enableCaching: true
+    // Direct application with state cascading
+    const useDirectApplication = true; // Back to direct for better control
+    
+    if (useDirectApplication) {
+      // Calculate the coalition effects for this event
+      const effects = calculateEventCoalitionEffects(coalitionEvent, 'city');
+      
+      console.log(`[COALITION EVENTS PROCESSOR] Calculated ${effects.size} coalition effects`);
+      
+      // Apply effects directly to the coalition system
+      let effectsApplied = 0;
+      for (const [coalitionId, effect] of effects) {
+        const currentState = coalitionSoA.state.get(coalitionId);
+        if (currentState) {
+          const oldMobilization = currentState.mobilization;
+          const newMobilization = Math.max(0, Math.min(1, 
+            currentState.mobilization + effect.mobilization
+          ));
+          
+          if (Math.abs(effect.mobilization) > 0.001) {
+            console.log(`[COALITION EFFECT APPLY] ${coalitionId}: ${(oldMobilization * 100).toFixed(1)}% → ${(newMobilization * 100).toFixed(1)}% (${effect.mobilization >= 0 ? '+' : ''}${(effect.mobilization * 100).toFixed(1)}%)`);
+            effectsApplied++;
+          }
+          
+          coalitionSoA.state.set(coalitionId, {
+            ...currentState,
+            mobilization: newMobilization,
+            satisfaction: Math.max(0, Math.min(1, currentState.satisfaction + effect.satisfaction))
+          });
+        }
       }
-    );
+      
+      console.log(`[COALITION EVENTS PROCESSOR] Applied ${effectsApplied} mobilization changes`);
 
-    return {
-      coalitionUpdates: results,
-      performanceMetrics: results.performanceReport
-    };
+      // Also apply population-weighted effects to state-level coalitions if state data is provided
+      if (stateData?.id && cityData?.population && stateData?.population) {
+        console.log(`[COALITION EVENTS PROCESSOR] Applying cascading effects to state: ${stateData.id}`);
+        
+        // Calculate population-weighted effect multiplier
+        // City population / State population = proportion of state affected
+        const cityPopulation = cityData.population || 300000; // fallback
+        const statePopulation = stateData.population || 3000000; // fallback
+        const populationWeight = cityPopulation / statePopulation;
+        
+        // Reduce the effect further since not all city residents are equally affected
+        // Use square root to dampen the effect (avoids tiny changes being meaningless)
+        const dampingFactor = 0.3; // Base dampening
+        const stateEffectMultiplier = Math.max(0.05, populationWeight * dampingFactor);
+        
+        console.log(`[COALITION CASCADE] City: ${cityPopulation.toLocaleString()}, State: ${statePopulation.toLocaleString()}`);
+        console.log(`[COALITION CASCADE] Population weight: ${(populationWeight * 100).toFixed(2)}%, Effect multiplier: ${(stateEffectMultiplier * 100).toFixed(2)}%`);
+        
+        // Try to get existing state coalition system from the global store
+        try {
+          import('../store.js').then(({ useGameStore }) => {
+            const getCoalitionsForState = useGameStore.getState().actions.getCoalitionsForState;
+            const stateCoalitionSoA = getCoalitionsForState(stateData.id);
+          
+            if (stateCoalitionSoA) {
+              let stateEffectsApplied = 0;
+              
+              // Apply population-weighted effects to state coalitions
+              for (const [coalitionId, effect] of effects) {
+                const stateCoalitionState = stateCoalitionSoA.state.get(coalitionId);
+                if (stateCoalitionState) {
+                  const scaledEffect = {
+                    mobilization: effect.mobilization * stateEffectMultiplier,
+                    satisfaction: effect.satisfaction * stateEffectMultiplier
+                  };
+                  
+                  const oldMobilization = stateCoalitionState.mobilization;
+                  const newMobilization = Math.max(0, Math.min(1, 
+                    oldMobilization + scaledEffect.mobilization
+                  ));
+                  
+                  if (Math.abs(scaledEffect.mobilization) > 0.001) {
+                    console.log(`[STATE COALITION EFFECT] ${coalitionId}: ${(oldMobilization * 100).toFixed(1)}% → ${(newMobilization * 100).toFixed(1)}% (${scaledEffect.mobilization >= 0 ? '+' : ''}${(scaledEffect.mobilization * 100).toFixed(2)}%)`);
+                    stateEffectsApplied++;
+                  }
+                  
+                  // Update state coalition
+                  stateCoalitionSoA.state.set(coalitionId, {
+                    ...stateCoalitionState,
+                    mobilization: newMobilization,
+                    satisfaction: Math.max(0, Math.min(1, stateCoalitionState.satisfaction + scaledEffect.satisfaction))
+                  });
+                }
+              }
+              
+              console.log(`[COALITION EVENTS PROCESSOR] Applied ${stateEffectsApplied} state-level mobilization changes`);
+            } else {
+              console.log(`[COALITION CASCADE] No state coalition data found for state: ${stateData.id}`);
+            }
+          }).catch(error => {
+            console.error('[COALITION CASCADE] Error accessing state coalitions:', error);
+          });
+        } catch (error) {
+          console.error('[COALITION CASCADE] Error importing store:', error);
+        }
+      }
+
+      return {
+        coalitionUpdates: coalitionSoA,
+        performanceMetrics: { 
+          effectsApplied, 
+          totalCoalitions: coalitionSoA.state.size,
+          stateCascaded: !!stateData?.id 
+        }
+      };
+    } else {
+      // Option 2: Use spatial aggregation (requires proper setup)
+      // Set up spatial aggregator with city-to-state mapping
+      const spatialAggregator = new CoalitionSpatialAggregator();
+      
+      // Register the city-to-state relationship if we have state data
+      if (cityData?.id && stateData?.id) {
+        // Map city to state
+        const cityToState = {};
+        cityToState[cityData.id] = stateData.id;
+        
+        // Map state to national
+        const stateToNational = {};
+        stateToNational[stateData.id] = 'USA';
+        
+        spatialAggregator.registerSpatialHierarchy(cityToState, stateToNational);
+        
+        // Set population weights (simplified - could be enhanced with real population data)
+        spatialAggregator.setPopulationWeights({
+          [cityData.id]: cityData.population || 100000,
+          [stateData.id]: stateData.population || 5000000
+        });
+      }
+      
+      // Process with spatial aggregation
+      const results = processCascadingCoalitionUpdates(
+        coalitionSoA,
+        [coalitionEvent], // City events
+        [], // No state events for now
+        [], // No national events for now
+        spatialAggregator,
+        {
+          enablePerformanceMonitoring: true,
+          enableCaching: true
+        }
+      );
+
+      return {
+        coalitionUpdates: coalitionSoA,
+        performanceMetrics: results.performanceReport
+      };
+    }
   } catch (error) {
     console.error('Error processing event coalition effects:', error);
     return { coalitionUpdates: null, performanceMetrics: null };

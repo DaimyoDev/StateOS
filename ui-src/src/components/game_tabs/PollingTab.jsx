@@ -1,7 +1,35 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import useGameStore from "../../store";
 import "./TabStyles.css";
 import "./PollingTab.css"; // We will create this file next
+
+// Helper function to create party abbreviations
+const abbreviatePartyName = (partyName) => {
+  if (!partyName || partyName === "Independent") return partyName;
+  
+  // Handle some common cases first
+  const commonAbbreviations = {
+    "Democratic Party": "Dem",
+    "Republican Party": "Rep", 
+    "Green Party": "Green",
+    "Libertarian Party": "Lib",
+    "Independent": "Ind"
+  };
+  
+  if (commonAbbreviations[partyName]) {
+    return commonAbbreviations[partyName];
+  }
+  
+  // For long party names (>25 chars), create abbreviation from first letters
+  if (partyName.length > 25) {
+    const words = partyName.split(' ').filter(word => word.length > 2); // Skip short words like "of", "the"
+    if (words.length > 1) {
+      return words.map(word => word.charAt(0).toUpperCase()).join('');
+    }
+  }
+  
+  return partyName;
+};
 
 // A reusable component to display a single poll's results
 const PollDetailsCard = React.memo(({ poll, election }) => {
@@ -11,22 +39,106 @@ const PollDetailsCard = React.memo(({ poll, election }) => {
     (a, b) => (b.polling || 0) - (a.polling || 0)
   );
 
+  const isPlayerElection = election?.playerIsCandidate;
+  const playerCandidate = sortedResults.find(c => c.isPlayer);
+
   return (
     <div className="poll-details-card">
       <div className="poll-details-header">
-        <h4>{election?.officeName || "Unknown Election"}</h4>
+        <h4>
+          {election?.officeName || "Unknown Election"}
+          {isPlayerElection && <span className="player-election-indicator"> (Player Election)</span>}
+        </h4>
         <span>{`${poll.date.month}/${poll.date.day}/${poll.date.year}`}</span>
       </div>
       <ul className="poll-results-list">
-        {sortedResults.map((candidate) => (
-          <li key={candidate.id} className="poll-result-item">
-            <span className="candidate-info">
-              {candidate.name} ({candidate.partyName || "Independent"})
-            </span>
-            <span className="candidate-polling">{candidate.polling}%</span>
+        {sortedResults.map((candidate) => {
+          const fullPartyName = candidate.partyName || "Independent";
+          const shortPartyName = abbreviatePartyName(fullPartyName);
+          const showTooltip = fullPartyName !== shortPartyName;
+          
+          return (
+            <li key={candidate.id} className={`poll-result-item ${candidate.isPlayer ? 'player-candidate' : ''}`}>
+              <span className="candidate-info">
+                {candidate.name} (
+                {showTooltip ? (
+                  <span 
+                    className="party-name-with-tooltip"
+                    onMouseEnter={(e) => {
+                      const tooltip = e.target.querySelector('.custom-tooltip');
+                      if (tooltip) {
+                        const rect = e.target.getBoundingClientRect();
+                        tooltip.style.left = `${rect.left + rect.width / 2}px`;
+                        tooltip.style.top = `${rect.top - 10}px`;
+                        tooltip.style.transform = 'translate(-50%, -100%)';
+                      }
+                    }}
+                  >
+                    {shortPartyName}
+                    <span className="custom-tooltip">{fullPartyName}</span>
+                  </span>
+                ) : (
+                  <span className="party-name-full">{shortPartyName}</span>
+                )}
+                )
+                {candidate.isPlayer && <span className="player-badge"> YOU</span>}
+              </span>
+            <div className="candidate-metrics">
+              <span className="candidate-polling">{candidate.polling}%</span>
+              {candidate.nameRecognition > 0 && (
+                <span 
+                  className="name-recognition metric-with-tooltip"
+                  onMouseEnter={(e) => {
+                    const tooltip = e.target.querySelector('.custom-tooltip');
+                    if (tooltip) {
+                      const rect = e.target.getBoundingClientRect();
+                      tooltip.style.left = `${rect.left + rect.width / 2}px`;
+                      tooltip.style.top = `${rect.top - 10}px`;
+                      tooltip.style.transform = 'translate(-50%, -100%)';
+                    }
+                  }}
+                >
+                  👁️ {candidate.nameRecognition}%
+                  <span className="custom-tooltip">Name Recognition - How well-known this candidate is to voters</span>
+                </span>
+              )}
+              {candidate.approvalRating !== 50 && (
+                <span 
+                  className={`approval-rating ${candidate.approvalRating > 50 ? 'positive' : 'negative'} metric-with-tooltip`}
+                  onMouseEnter={(e) => {
+                    const tooltip = e.target.querySelector('.custom-tooltip');
+                    if (tooltip) {
+                      const rect = e.target.getBoundingClientRect();
+                      tooltip.style.left = `${rect.left + rect.width / 2}px`;
+                      tooltip.style.top = `${rect.top - 10}px`;
+                      tooltip.style.transform = 'translate(-50%, -100%)';
+                    }
+                  }}
+                >
+                  {candidate.approvalRating > 50 ? '👍' : '👎'} {candidate.approvalRating}%
+                  <span className="custom-tooltip">Approval Rating - Public opinion of this candidate's performance</span>
+                </span>
+              )}
+            </div>
           </li>
-        ))}
+          );
+        })}
       </ul>
+      
+      {/* Show coalition breakdown for player candidate if available */}
+      {playerCandidate?.coalitionBreakdown && (
+        <div className="coalition-breakdown">
+          <h5>Coalition Support Breakdown (Player)</h5>
+          <div className="coalition-scores">
+            {Array.from(playerCandidate.coalitionBreakdown.entries()).map(([coalitionId, score]) => (
+              <div key={coalitionId} className="coalition-score-item">
+                <span className="coalition-name">{coalitionId.replace('_', ' ')}</span>
+                <span className="coalition-score">{Math.round(score)}%</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 });

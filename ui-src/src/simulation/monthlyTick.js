@@ -525,8 +525,8 @@ const updateCityPartyPopularity = (campaign, getFromStore) => {
       );
     }
 
-    // Policy alignment with electorate
-    totalShift += calculatePolicyAlignment(party, electorateProfile) * 0.3;
+    // Policy alignment with electorate (randomized for now)
+    totalShift += calculatePolicyAlignment() * 0.3;
 
     // Opposition benefit from poor governance
     if (!isMayorParty && councilInfluence < 0.3) {
@@ -583,8 +583,8 @@ const updateStatePartyPopularity = (campaign, getFromStore) => {
       totalShift += legislativeInfluence * 0.2; // Placeholder
     }
 
-    // Policy alignment with state electorate
-    totalShift += calculatePolicyAlignment(party, electorateProfile) * 0.25;
+    // Policy alignment with state electorate (randomized for now)
+    totalShift += calculatePolicyAlignment() * 0.25;
 
     // Opposition benefit
     if (!isGovernorParty && legislativeInfluence < 0.3) {

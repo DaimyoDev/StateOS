@@ -1,7 +1,6 @@
 // ui-src/src/General Scripts/OptimizedPollingFunctions.js
 // Optimized SoA-based polling functions for better performance
 
-import { calculateBaseCandidateScore } from "../utils/electionUtils.js";
 import { getRandomInt } from "../utils/core.js";
 import { 
   generateCoalitions, 
@@ -358,6 +357,22 @@ export function calculateInitialPollingOptimized(
 function getCoalitionSystem(electionId, electorateProfile, demographics, availableParties, activeCampaign) {
   // PRIORITY 1: Use pre-generated coalitions from campaign setup
   if (activeCampaign?.coalitionSystems) {
+    // Try direct match first
+    if (activeCampaign.coalitionSystems[electionId]) {
+      return activeCampaign.coalitionSystems[electionId];
+    }
+    
+    // For congressional elections, map to state coalition profile
+    if (electionId.includes('house_') || electionId.includes('senate_') || electionId.includes('congressional_')) {
+      const stateId = activeCampaign.regionId; // Use current state/region
+      const stateCoalitionKey = `state_${stateId}`;
+      
+      if (activeCampaign.coalitionSystems[stateCoalitionKey]) {
+        console.log(`[COALITION MAPPING] Congressional election ${electionId} using state coalitions: ${stateCoalitionKey}`);
+        return activeCampaign.coalitionSystems[stateCoalitionKey];
+      }
+    }
+    
     // Try to find coalition system by city/region ID from election
     const cityId = electionId.split('_')[0]; // Extract city ID from election ID
     
@@ -365,9 +380,16 @@ function getCoalitionSystem(electionId, electorateProfile, demographics, availab
       return activeCampaign.coalitionSystems[cityId];
     }
     
+    // Try city-specific key
+    const cityCoalitionKey = `city_${activeCampaign.startingCity?.id}`;
+    if (activeCampaign.coalitionSystems[cityCoalitionKey]) {
+      return activeCampaign.coalitionSystems[cityCoalitionKey];
+    }
+    
     // Fallback: use any available pre-generated coalition system
     const availableCoalitions = Object.values(activeCampaign.coalitionSystems);
     if (availableCoalitions.length > 0) {
+      console.log(`[COALITION FALLBACK] Using available coalition system for election: ${electionId}`);
       return availableCoalitions[0];
     }
   }
@@ -416,10 +438,11 @@ export function calculateCoalitionBasedPolling(election, campaignData, politicia
   
   // Single loop for all calculations using SoA pattern
   for (const candidate of candidates) {
-    // Skip coalition calculation for player politicians - use traditional method
+    // This function should only handle non-player elections
     if (candidate.isPlayer) {
-      const traditionalScore = calculateBaseCandidateScore(candidate, election, campaignData);
-      rawScoresSoA.set(candidate.id, traditionalScore);
+      console.warn(`[COALITION POLLING] Player candidate ${candidate.name} found in calculateCoalitionBasedPolling - this should use calculatePlayerElectionPolling instead`);
+      // Set a default score as fallback
+      rawScoresSoA.set(candidate.id, 15);
       continue;
     }
     
@@ -489,6 +512,156 @@ export function calculateCoalitionBasedPolling(election, campaignData, politicia
       ideologyScores: ideologyScores || candidate.ideologyScores || {},
       calculatedIdeology: baseData?.calculatedIdeology || candidate.calculatedIdeology,
       isPlayer: candidate.isPlayer || false
+    });
+  }
+  
+  return results;
+}
+
+/**
+ * Player-specific election polling that combines coalition analysis with player metrics
+ * This function is specifically for elections where the player is a candidate
+ * @param {object} election - The election object
+ * @param {object} campaignData - Campaign data including player info
+ * @param {object} politicians - Politicians SoA structure
+ * @returns {Map} Enhanced polling results with player-specific metrics
+ */
+export function calculatePlayerElectionPolling(election, campaignData, politicians) {
+  const { activeCampaign } = campaignData;
+  
+  if (!activeCampaign?.coalitionSystems) {
+    console.warn("No coalition systems available for player election calculation");
+    return calculateStandardElectionPolling(election, campaignData, politicians);
+  }
+  
+  // Get coalition system for this election (will map congressional to state)
+  const electorateProfile = activeCampaign.startingCity?.stats?.electoratePolicyProfile || {};
+  const demographics = activeCampaign.startingCity?.demographics || {};
+  const availableParties = activeCampaign.startingCity?.politicalLandscape || [];
+  
+  const coalitionSoA = getCoalitionSystem(
+    election.id,
+    electorateProfile,
+    demographics,
+    availableParties,
+    activeCampaign
+  );
+  
+  if (!coalitionSoA) {
+    console.warn("Could not obtain coalition system for player election");
+    return calculateStandardElectionPolling(election, campaignData, politicians);
+  }
+  
+  const candidates = Array.isArray(election.candidates) ? 
+    election.candidates : Array.from(election.candidates.values());
+    
+  const results = new Map();
+  const rawScoresSoA = new Map();
+  const candidateDataSoA = new Map();
+  
+  // Process each candidate with enhanced player metrics
+  for (const candidate of candidates) {
+    const candidateData = {
+      id: candidate.id,
+      name: politicians.base.get(candidate.id)?.name || candidate.name,
+      calculatedIdeology: politicians.base.get(candidate.id)?.calculatedIdeology,
+      policyStances: politicians.policyStances.get(candidate.id),
+      policyStancesByQuestion: politicians.policyStancesByQuestion,
+      partyId: politicians.base.get(candidate.id)?.partyId,
+      attributes: politicians.attributes.get(candidate.id),
+      // Enhanced player-specific metrics
+      nameRecognition: politicians.state.get(candidate.id)?.nameRecognition || candidate.nameRecognition || 0,
+      approvalRating: politicians.state.get(candidate.id)?.approvalRating || candidate.approvalRating || 50,
+      mediaBuzz: politicians.state.get(candidate.id)?.mediaBuzz || candidate.mediaBuzz || 0,
+      campaignFunds: politicians.finances.get(candidate.id)?.campaignFunds || candidate.campaignFunds || 0,
+      isPlayer: candidate.isPlayer || false
+    };
+    
+    candidateDataSoA.set(candidate.id, candidateData);
+    
+    // Calculate base coalition polling
+    const coalitionResults = calculateCoalitionPolling(candidate.id, candidateData, coalitionSoA);
+    coalitionSoA.polling.set(candidate.id, coalitionResults);
+    
+    // Get coalition-based score
+    let coalitionScore = aggregateCoalitionPolling(coalitionSoA, candidate.id);
+    coalitionScore = isNaN(coalitionScore) ? 50 : coalitionScore;
+    
+    // Apply player-specific enhancements
+    let finalScore = coalitionScore;
+    
+    if (candidateData.isPlayer || candidateData.nameRecognition > 0 || candidateData.campaignFunds > 0) {
+      // Name recognition boost (0-100 → 0-15% bonus)
+      const nameRecognitionBonus = (candidateData.nameRecognition / 100) * 15;
+      
+      // Approval rating modifier (-50 to +50 → -10% to +10%)
+      const approvalModifier = ((candidateData.approvalRating - 50) / 50) * 10;
+      
+      // Media buzz bonus (0-100 → 0-8% bonus)  
+      const mediaBuzzBonus = (candidateData.mediaBuzz / 100) * 8;
+      
+      // Campaign funding effect (logarithmic scaling to prevent dominance)
+      const fundingBonus = candidateData.campaignFunds > 0 ? 
+        Math.min(12, Math.log10(candidateData.campaignFunds / 1000) * 3) : 0;
+      
+      // Apply bonuses/penalties
+      finalScore += nameRecognitionBonus + approvalModifier + mediaBuzzBonus + fundingBonus;
+      
+      // Player candidates get slight incumbency/effort bonus
+      if (candidateData.isPlayer) {
+        finalScore += 5; // 5% player effort bonus
+      }
+      
+      console.log(`[PLAYER POLLING] ${candidateData.name}: Base=${coalitionScore.toFixed(1)}, NameRec=+${nameRecognitionBonus.toFixed(1)}, Approval=${approvalModifier >= 0 ? '+' : ''}${approvalModifier.toFixed(1)}, MediaBuzz=+${mediaBuzzBonus.toFixed(1)}, Funding=+${fundingBonus.toFixed(1)}, Final=${finalScore.toFixed(1)}`);
+    }
+    
+    // Clamp final score to reasonable bounds
+    finalScore = Math.max(5, Math.min(95, finalScore));
+    rawScoresSoA.set(candidate.id, finalScore);
+  }
+  
+  // Calculate proportional normalization
+  let totalScore = 0;
+  for (const score of rawScoresSoA.values()) {
+    totalScore += score;
+  }
+  
+  const avgScore = totalScore / rawScoresSoA.size;
+  const normalizationFactor = avgScore > 0 ? 50 / avgScore : 1;
+  
+  // Build final results with enhanced candidate data
+  for (const candidate of candidates) {
+    const candidateId = candidate.id;
+    const rawScore = rawScoresSoA.get(candidateId) || 0;
+    const normalizedPolling = Math.round(rawScore * normalizationFactor);
+    const candidateData = candidateDataSoA.get(candidateId);
+    
+    const baseData = politicians.base.get(candidateId);
+    const stateData = politicians.state.get(candidateId);
+    const attributesData = politicians.attributes.get(candidateId);
+    const financesData = politicians.finances.get(candidateId);
+    const ideologyScores = politicians.ideologyScores.get(candidateId);
+    
+    results.set(candidateId, {
+      id: candidateId,
+      name: baseData?.name || candidate.name || 'Unknown Candidate',
+      party: baseData?.partyName || candidate.party || 'Independent',
+      partyName: baseData?.partyName || candidate.partyName || 'Independent',
+      partyColor: baseData?.partyColor || candidate.partyColor || '#888888',
+      age: baseData?.age || candidate.age,
+      baseScore: rawScore,
+      polling: normalizedPolling,
+      // Enhanced player metrics
+      nameRecognition: candidateData?.nameRecognition || 0,
+      approvalRating: candidateData?.approvalRating || 50,
+      mediaBuzz: candidateData?.mediaBuzz || 0,
+      campaignFunds: financesData?.campaignFunds || candidateData?.campaignFunds || 0,
+      attributes: attributesData || candidate.attributes || {},
+      ideologyScores: ideologyScores || candidate.ideologyScores || {},
+      calculatedIdeology: baseData?.calculatedIdeology || candidate.calculatedIdeology,
+      isPlayer: candidate.isPlayer || false,
+      // Coalition breakdown for detailed analysis
+      coalitionBreakdown: coalitionSoA.polling.get(candidateId) || new Map()
     });
   }
   

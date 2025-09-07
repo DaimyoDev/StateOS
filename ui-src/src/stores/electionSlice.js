@@ -16,13 +16,37 @@ import { generateOptimizedElectionParticipants } from "../General Scripts/Optimi
 import { generateNewsForEvent } from "../simulation/newsGenerator.js";
 import { rehydratePolitician } from "../entities/personnel.js";
 import { _addPoliticiansToSoA_helper } from "./dataSlice.js";
-import { calculateBaseCandidateScore } from "../utils/electionUtils.js";
 import {
   normalizePollingOptimized,
   pollingOptimizer,
+  calculatePlayerElectionPolling,
 } from "../General Scripts/OptimizedPollingFunctions.js";
 
 // --- Local Helper Functions (To be moved to electionManager.js later) ---
+
+/**
+ * Checks if the player is a candidate in the given election
+ * @param {object} election - The election object
+ * @param {string} playerId - The player politician's ID
+ * @returns {boolean} - True if player is a candidate
+ */
+const isPlayerElection = (election, playerId) => {
+  if (!election.candidates || !playerId) return false;
+  
+  // Handle both Map and Array structures
+  if (election.candidates instanceof Map) {
+    return election.candidates.has(playerId);
+  } else if (Array.isArray(election.candidates)) {
+    return election.candidates.some(c => c.id === playerId);
+  } else if (election.candidates.values) {
+    // Generator/iterable
+    for (const candidate of election.candidates.values()) {
+      if (candidate.id === playerId) return true;
+    }
+  }
+  
+  return false;
+};
 
 /**
  * Checks if a player is eligible to declare candidacy for an election based on their location.
@@ -964,18 +988,15 @@ export const createElectionSlice = (set, get) => ({
               playerAsCandidate,
             ];
 
-            const adultPop = election.totalEligibleVoters / 0.7;
-            const candidatesWithScores = newCandidateList.map((c) => ({
-              ...c,
-              baseScore:
-                c.baseScore ||
-                calculateBaseCandidateScore(c, election, state.activeCampaign),
-            }));
-
-            const incorrectlyKeyedMap = normalizePollingOptimized(
-              candidatesWithScores,
-              adultPop
+            // Use enhanced player polling for candidate declaration
+            console.log(`[CANDIDACY DECLARATION] Using player election polling for: ${election.officeName}`);
+            const pollingResults = calculatePlayerElectionPolling(
+              { ...election, candidates: newCandidateList }, 
+              { activeCampaign: state.activeCampaign, startingCity: state.activeCampaign.startingCity },
+              state.activeCampaign.politicians || { base: new Map(), state: new Map(), attributes: new Map(), finances: new Map(), ideologyScores: new Map(), policyStances: new Map(), policyStancesByQuestion: new Map() }
             );
+            
+            const incorrectlyKeyedMap = pollingResults;
 
             const finalCandidatesMap = new Map();
             for (const candidate of incorrectlyKeyedMap.values()) {
@@ -1043,6 +1064,8 @@ export const createElectionSlice = (set, get) => ({
     updateDailyPolling: () => {
       set((state) => {
         if (!state.activeCampaign?.elections) return state;
+        
+        const playerId = state.activeCampaign?.politician?.id;
 
         const updatedElections = state.activeCampaign.elections.map(
           (election) => {
@@ -1050,28 +1073,47 @@ export const createElectionSlice = (set, get) => ({
               election.outcome?.status === "upcoming" ||
               election.outcome?.status === "campaigning"
             ) {
-              // --- FIX STARTS HERE ---
+              // Check if this is a player election
+              const isPlayerInElection = playerId && isPlayerElection(election, playerId);
+              
+              let pollingResults;
+              
+              if (isPlayerInElection) {
+                // Use enhanced player election polling with coalition integration
+                console.log(`[ELECTION POLLING] Using player election polling for: ${election.officeName}`);
+                pollingResults = calculatePlayerElectionPolling(
+                  election, 
+                  { activeCampaign: state.activeCampaign, startingCity: state.activeCampaign.startingCity },
+                  state.activeCampaign.politicians || { base: new Map(), state: new Map(), attributes: new Map(), finances: new Map(), ideologyScores: new Map(), policyStances: new Map(), policyStancesByQuestion: new Map() }
+                );
+              } else {
+                // Use standard polling for non-player elections
+                pollingResults = normalizePollingOptimized(
+                  election.candidates,
+                  election.totalEligibleVoters
+                );
+              }
 
-              // 1. Run the polling calculation as before.
-              const incorrectlyKeyedMap = normalizePollingOptimized(
-                election.candidates,
-                election.totalEligibleVoters // Using a more realistic population is better than 100
-              );
-
-              // 2. Create a new, empty map.
+              // Create a properly keyed map
               const correctlyKeyedMap = new Map();
 
-              // 3. Loop through the results and rebuild the map with the CORRECT ID as the key.
-              for (const candidate of incorrectlyKeyedMap.values()) {
-                if (candidate && candidate.id) {
-                  // Ensure candidate and id exist
-                  correctlyKeyedMap.set(candidate.id, candidate);
+              // Handle both Map and direct results
+              if (pollingResults instanceof Map) {
+                for (const [id, candidate] of pollingResults) {
+                  if (candidate && candidate.id) {
+                    correctlyKeyedMap.set(candidate.id, candidate);
+                  }
+                }
+              } else {
+                // Handle array-like results
+                for (const candidate of pollingResults.values ? pollingResults.values() : Object.values(pollingResults)) {
+                  if (candidate && candidate.id) {
+                    correctlyKeyedMap.set(candidate.id, candidate);
+                  }
                 }
               }
 
               return { ...election, candidates: correctlyKeyedMap };
-
-              // --- FIX ENDS HERE ---
             }
             return election;
           }

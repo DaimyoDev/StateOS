@@ -90,6 +90,12 @@ const generateRandomTheme = () => {
   const primaryText = isDark ? "#F0F0F0" : "#1A1A1A";
   const secondaryText = isDark ? "#B0B0B0" : "#666666";
   
+  // Generate additional colors for full theme compatibility with some randomization
+  const errorColor = hslToHex(0 + Math.random() * 20, 65 + Math.random() * 20, 45 + Math.random() * 15); // Red variants
+  const successColor = hslToHex(120 + Math.random() * 30, 60 + Math.random() * 25, 40 + Math.random() * 20); // Green variants  
+  const warningColor = hslToHex(45 + Math.random() * 15, 70 + Math.random() * 20, 50 + Math.random() * 15); // Orange/Yellow variants
+  const infoColor = hslToHex((baseHue + 60 + Math.random() * 40) % 360, 60 + Math.random() * 20, 50 + Math.random() * 15);
+  
   // Generate random theme name
   const adjectives = ['Mystic', 'Cosmic', 'Serene', 'Vibrant', 'Ethereal', 'Bold', 'Gentle', 'Dynamic', 'Elegant', 'Modern'];
   const nouns = ['Aurora', 'Horizon', 'Dreams', 'Waves', 'Forest', 'Dawn', 'Twilight', 'Storm', 'Garden', 'Ocean'];
@@ -117,8 +123,10 @@ const generateRandomTheme = () => {
       "--highlight-bg": `rgba(${hexToRgbString(accentColor)}, 0.15)`,
       "--border-color": isDark ? hslToHex(baseHue, 20, 35) : hslToHex(baseHue, 15, 70),
       "--accent-border-color": accentColor,
-      "--error-text": "#DC3545",
-      "--success-text": "#28A745",
+      "--error-text": errorColor,
+      "--success-text": successColor,
+      "--warning-text": warningColor,
+      "--info-text": infoColor,
       "--disabled-bg": isDark ? hslToHex(baseHue, 10, 20) : "#E9ECEF",
       "--disabled-text": isDark ? "#666666" : "#6C757D",
       "--button-action-bg": accentColor,
@@ -135,6 +143,11 @@ const generateRandomTheme = () => {
       "--map-region-default-fill": secondaryColor,
       "--map-region-border": isDark ? "#FFFFFF" : "#FFFFFF",
       "--map-region-hover-fill": `rgba(${hexToRgbString(accentColor)}, 0.4)`,
+      "--tooltip-bg": isDark ? hslToHex(baseHue, 20, 15) : "#333333",
+      "--tooltip-text": isDark ? "#F0F0F0" : "#FFFFFF",
+      "--scrollbar-track": isDark ? hslToHex(baseHue, 15, 25) : secondaryBg,
+      "--scrollbar-thumb": isDark ? hslToHex(baseHue, 20, 35) : hslToHex(baseHue, 15, 65),
+      "--scrollbar-thumb-hover": isDark ? hslToHex(baseHue, 25, 45) : hslToHex(baseHue, 20, 55),
     },
     fonts: {
       "--font-main": mainFont.value,
@@ -194,6 +207,8 @@ function ThemeCreatorEditor() {
           "--accent-border-color": "#FFC107",
           "--error-text": "#DC3545",
           "--success-text": "#28A745",
+          "--warning-text": "#FFC107",
+          "--info-text": "#17A2B8",
           "--disabled-bg": "#E9ECEF",
           "--disabled-text": "#6C757D",
           "--button-action-bg": "#28A745",
@@ -210,6 +225,8 @@ function ThemeCreatorEditor() {
           "--map-region-default-fill": "#B0C4DE",
           "--map-region-border": "#FFFFFF",
           "--map-region-hover-fill": "rgba(255, 193, 7, 0.4)",
+          "--tooltip-bg": "#333333",
+          "--tooltip-text": "#FFFFFF",
         },
         fonts: {
           "--font-main": FONT_OPTIONS[0].value,

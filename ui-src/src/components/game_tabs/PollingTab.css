@@ -49,8 +49,9 @@
   
   .polls-conducted-container {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
     gap: 15px;
+    overflow: visible; /* Allow tooltips to extend outside grid */
   }
   
   .poll-details-card {
@@ -58,6 +59,7 @@
     border: 1px solid var(--border-color);
     border-radius: var(--element-radius);
     padding: 15px;
+    overflow: visible; /* Allow tooltips to extend outside */
   }
   
   .poll-details-header {
@@ -77,4 +79,214 @@
   
   .poll-details-header span {
     color: var(--secondary-text);
+  }
+  
+  .player-election-indicator {
+    color: var(--accent-color);
+    font-weight: bold;
+  }
+  
+  /* Poll Results List */
+  .poll-results-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  
+  .poll-result-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-color);
+    gap: 15px;
+    flex-wrap: wrap;
+  }
+  
+  .poll-result-item:last-child {
+    border-bottom: none;
+  }
+  
+  .poll-result-item.player-candidate {
+    background-color: var(--accent-color-alpha, rgba(0, 123, 255, 0.05));
+    padding-left: 8px;
+    padding-right: 8px;
+    margin: 0 -8px;
+    border-radius: 4px;
+  }
+  
+  .candidate-info {
+    flex: 1 1 auto;
+    min-width: 200px; /* Minimum width before wrapping */
+    max-width: 70%; /* Prevent taking too much space */
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    hyphens: auto;
+    white-space: normal;
+    line-height: 1.3;
+  }
+  
+  .party-name-with-tooltip {
+    position: relative;
+    text-decoration: underline dotted;
+    text-decoration-color: var(--secondary-text);
+    cursor: pointer;
+  }
+  
+  .custom-tooltip {
+    visibility: hidden;
+    opacity: 0;
+    position: fixed;
+    background-color: var(--tooltip-bg, #333);
+    color: var(--tooltip-text, white);
+    text-align: center;
+    border-radius: 4px;
+    padding: 6px 10px;
+    z-index: 99999;
+    font-size: 0.85em;
+    white-space: nowrap;
+    pointer-events: none;
+    transition: opacity 0.2s, visibility 0.2s;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    /* Position will be calculated dynamically, but provide fallback */
+    top: 0;
+    left: 0;
+  }
+  
+  .custom-tooltip::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: var(--tooltip-bg, #333) transparent transparent transparent;
+  }
+  
+  .party-name-with-tooltip:hover .custom-tooltip,
+  .metric-with-tooltip:hover .custom-tooltip {
+    visibility: visible;
+    opacity: 1;
+  }
+  
+  .party-name-full {
+    /* No special styling needed for full names */
+  }
+
+  .player-badge {
+    background-color: var(--accent-color);
+    color: white;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.7em;
+    font-weight: bold;
+    margin-left: 5px;
+  }
+  
+  .candidate-metrics {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    flex: 0 0 auto;
+    min-width: 80px;
+  }
+  
+  .candidate-polling {
+    font-weight: bold;
+    font-size: 1.1em;
+    color: var(--accent-color);
+  }
+  
+  .metric-with-tooltip {
+    position: relative;
+    cursor: pointer;
+  }
+  
+  .name-recognition {
+    font-size: 0.85em;
+    color: var(--secondary-text);
+  }
+  
+  .approval-rating {
+    font-size: 0.85em;
+  }
+  
+  .approval-rating.positive {
+    color: #28a745;
+  }
+  
+  .approval-rating.negative {
+    color: #dc3545;
+  }
+  
+  /* Coalition Breakdown */
+  .coalition-breakdown {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid var(--border-color);
+  }
+  
+  .coalition-breakdown h5 {
+    margin: 0 0 10px 0;
+    color: var(--accent-color);
+    font-size: 0.9em;
+  }
+  
+  .coalition-scores {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 8px;
+  }
+  
+  .coalition-score-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 10px;
+    background-color: var(--secondary-bg, #f8f9fa);
+    border-radius: 4px;
+    font-size: 0.85em;
+  }
+  
+  .coalition-name {
+    text-transform: capitalize;
+    color: var(--primary-text);
+  }
+  
+  .coalition-score {
+    font-weight: bold;
+    color: var(--accent-color);
+  }
+  
+  /* Responsive adjustments */
+  @media (max-width: 900px) {
+    .polls-conducted-container {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .poll-result-item {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    .candidate-info {
+      max-width: 100%;
+      min-width: 0;
+    }
+    
+    .candidate-metrics {
+      flex-direction: row;
+      align-items: center;
+      gap: 12px;
+      align-self: flex-start;
+    }
+    
+    .coalition-scores {
+      grid-template-columns: 1fr;
+    }
   }

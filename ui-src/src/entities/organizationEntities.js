@@ -484,12 +484,12 @@ export const createLobbyingGroupObject = (params = {}) => ({
  */
 export const createNewsArticleObject = (params = {}) => ({
   id: `news_article_${generateId()}`,
-  headline: params.headline || "News Occurs",
-  summary: params.summary || "Something happened in the city today.",
+  headline: params.headline || "Local Development Announced",
+  summary: params.summary || "A new development has been announced affecting the local community.",
   // DEPRECATED: body is replaced by fullBody
-  body: params.summary || "Further details were not immediately available.",
+  body: params.summary || "City officials have announced a new initiative that will impact residents.",
   fullBody: params.fullBody || {
-    paragraphs: [params.summary || "No further details available."],
+    paragraphs: [params.summary || "Details about this development will be released as they become available."],
     quotes: [],
   },
   tone: params.tone || "neutral",

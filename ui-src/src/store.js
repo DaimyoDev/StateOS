@@ -799,6 +799,7 @@ export const useGameStore = create(
       }),
       partialize: (state) => ({
         activeThemeName: state.activeThemeName,
+        availableThemes: state.availableThemes,
         hasAcknowledgedDisclaimer: state.hasAcknowledgedDisclaimer,
         savedElectionSetups: state.savedElectionSetups,
       }),
@@ -809,7 +810,9 @@ export const useGameStore = create(
           } else if (hydratedState) {
             console.log(
               "Zustand: Rehydration finished. Persisted activeThemeName:",
-              hydratedState.activeThemeName
+              hydratedState.activeThemeName,
+              "Custom themes count:",
+              hydratedState.availableThemes ? Object.keys(hydratedState.availableThemes).length : 0
             );
           } else {
             console.log(

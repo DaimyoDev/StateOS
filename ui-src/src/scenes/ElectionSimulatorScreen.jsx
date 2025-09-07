@@ -1868,52 +1868,58 @@ const PartyEditorModalContent = ({ party, onSave, onCancel }) => {
 
   return (
     <div className="party-editor-modal-content">
-      <div className="form-group">
-        <label>Party Name:</label>
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-      </div>
-      <div className="form-group">
-        <label>Party Color:</label>
-        <input
-          type="color"
-          value={color}
-          onChange={(e) => setColor(e.target.value)}
-        />
-      </div>
-      <div className="form-group">
-        <label>Base Popularity (%):</label>
-        <input
-          type="number"
-          min="0"
-          max="100"
-          value={popularity}
-          onChange={(e) => setPopularity(parseInt(e.target.value) || 0)}
-        />
-      </div>
-      <h5>Ideological Stances:</h5>
-      {Object.keys(IDEOLOGY_DEFINITIONS.centrist.idealPoint).map((axis) => (
-        <div key={axis} className="config-group ideology-slider-group">
-          <label>{axis.replace(/_/g, " ")}:</label>
+      <div className="modal-scrollable-content">
+        <div className="form-group">
+          <label>Party Name:</label>
           <input
-            type="range"
-            min="-4"
-            max="4"
-            step="0.1"
-            value={ideologyScores[axis] || 0}
-            onChange={(e) =>
-              setIdeologyScores((prev) => ({
-                ...prev,
-                [axis]: parseFloat(e.target.value),
-              }))
-            }
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
           />
-          <span>{ideologyScores[axis]?.toFixed(1)}</span>
         </div>
-      ))}
+        <div className="form-group">
+          <label>Party Color:</label>
+          <input
+            type="color"
+            value={color}
+            onChange={(e) => setColor(e.target.value)}
+          />
+        </div>
+        <div className="form-group">
+          <label>Base Popularity (%):</label>
+          <input
+            type="number"
+            min="0"
+            max="100"
+            value={popularity}
+            onChange={(e) => setPopularity(parseInt(e.target.value) || 0)}
+          />
+        </div>
+        <div className="ideology-section">
+          <h5>Ideological Stances:</h5>
+          <div className="ideology-sliders-container">
+            {Object.keys(IDEOLOGY_DEFINITIONS.centrist.idealPoint).map((axis) => (
+              <div key={axis} className="config-group ideology-slider-group">
+                <label>{axis.replace(/_/g, " ")}:</label>
+                <input
+                  type="range"
+                  min="-4"
+                  max="4"
+                  step="0.1"
+                  value={ideologyScores[axis] || 0}
+                  onChange={(e) =>
+                    setIdeologyScores((prev) => ({
+                      ...prev,
+                      [axis]: parseFloat(e.target.value),
+                    }))
+                  }
+                />
+                <span>{ideologyScores[axis]?.toFixed(1)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
       <div className="modal-actions-override">
         <button className="action-button" onClick={handleSubmit}>
           Save Party

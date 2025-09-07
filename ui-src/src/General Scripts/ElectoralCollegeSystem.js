@@ -79,9 +79,10 @@ export class ElectoralCollegeSystem {
   constructor() {
     this.stateResultsCache = new Map();
     this.lastCalculationTime = new Map();
-    this.CACHE_DURATION = 10000; // 10 seconds
+    this.CACHE_DURATION = 2000; // Reduced to 2 seconds for more dynamic updates
     this.reportingSimulation = new Map(); // Track progressive reporting
     this.calculatedStates = new Map(); // Track which states have been calculated
+    this.highestReportingPercent = new Map(); // Track highest reporting percentage per state to prevent regression
   }
 
   /**
@@ -92,6 +93,7 @@ export class ElectoralCollegeSystem {
     this.calculatedStates.clear();
     this.stateResultsCache.clear();
     this.lastCalculationTime.clear();
+    this.highestReportingPercent.clear();
   }
 
   /**
@@ -210,18 +212,18 @@ export class ElectoralCollegeSystem {
   }
 
   /**
-   * Check if all states have finished reporting
+   * Check if all states have finished reporting (reached their realistic maximum)
    */
   isReportingComplete() {
     if (this.reportingSimulation.size === 0) return false;
 
-    const currentTime = Date.now();
-    for (const [stateId, data] of this.reportingSimulation) {
-      if (currentTime < data.reportingStartTime + data.reportingDuration) {
+    const reportingStatus = this.getReportingStatus();
+    for (const [stateId, status] of reportingStatus) {
+      if (!status.isComplete) {
         return false; // At least one state still reporting
       }
     }
-    return true; // All states done
+    return true; // All states done (at their realistic maximum)
   }
 
   /**
@@ -235,15 +237,37 @@ export class ElectoralCollegeSystem {
       if (currentTime >= data.reportingStartTime) {
         // State has started reporting - calculate percentage based on duration
         const timeSinceStart = currentTime - data.reportingStartTime;
-        const percent = Math.min(
-          100,
-          (timeSinceStart / data.reportingDuration) * 100
-        );
+        let rawPercent = (timeSinceStart / data.reportingDuration) * 100;
+        
+        // All states progress to 100% reporting
+        let reportingPercent = Math.min(100, rawPercent);
+        
+        // Apply consistent state-specific reporting speed variation (no time-based fluctuations)
+        if (reportingPercent < 100) {
+          // Create consistent seed for this state based on state ID only (not time)
+          const stateHash = stateId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+          
+          const seededRandom = (s) => {
+            const x = Math.sin(s) * 10000;
+            return x - Math.floor(x);
+          };
+          
+          // Each state has a consistent reporting speed characteristic
+          const baseSpeedVariation = 0.85 + seededRandom(stateHash) * 0.3; // 85% to 115% consistent speed
+          
+          // Apply the consistent speed variation
+          reportingPercent = Math.min(100, rawPercent * baseSpeedVariation);
+        }
+
+        // Ensure reporting percentage never decreases
+        const previousHighest = this.highestReportingPercent.get(stateId) || 0;
+        reportingPercent = Math.max(previousHighest, reportingPercent);
+        this.highestReportingPercent.set(stateId, reportingPercent);
 
         reportingStatus.set(stateId, {
           hasStarted: true,
-          reportingPercent: Math.floor(percent),
-          isComplete: percent >= 100,
+          reportingPercent: Math.floor(reportingPercent),
+          isComplete: reportingPercent >= 100, // Complete only when reaching exactly 100% reporting
         });
       } else {
         // State hasn't started reporting yet
@@ -257,6 +281,11 @@ export class ElectoralCollegeSystem {
 
     return reportingStatus;
   }
+
+  /**
+   * Get realistic maximum reporting percentage for a state
+   * Most states don't reach 100% due to provisional ballots, overseas votes, etc.
+   */
 
   /**
    * Calculate electoral college results for a presidential election
@@ -351,13 +380,16 @@ export class ElectoralCollegeSystem {
           reportingComplete: status?.isComplete || false,
         };
 
-        if (
-          reportingInfo.hasStartedReporting &&
-          !this.calculatedStates.has(state.id)
-        ) {
-          // State just started reporting - calculate its results now
+        // Check if we need to calculate/recalculate the state results
+        const existingResult = this.calculatedStates.get(state.id);
+        const shouldRecalculate = reportingInfo.hasStartedReporting && !reportingInfo.isComplete; // Only recalculate while reporting is in progress, stop at completion
+
+        if (shouldRecalculate) {
+          // State needs calculation or recalculation due to reporting progress
+          const isFirstCalculation = !existingResult;
+          const prevReporting = existingResult?.reportingPercent || 0;
           console.log(
-            `[DEBUG] State ${state.name} started reporting - calculating results`
+            `[DEBUG] State ${state.name} ${isFirstCalculation ? 'started reporting' : 'reporting updated'} (${prevReporting}% → ${reportingInfo.reportingPercent}%) - ${isFirstCalculation ? 'calculating' : 'recalculating'} results`
           );
 
           let stateResult;
@@ -366,11 +398,12 @@ export class ElectoralCollegeSystem {
               state,
               candidates,
               activeCampaign.coalitionSystems,
-              activeCampaign
+              activeCampaign,
+              reportingInfo.reportingPercent
             );
           } else {
             // Use fallback calculation for individual state in simulation mode
-            stateResult = this.fallbackStateCalculation(state, candidates);
+            stateResult = this.fallbackStateCalculation(state, candidates, reportingInfo.reportingPercent);
           }
 
           if (stateResult) {
@@ -388,7 +421,17 @@ export class ElectoralCollegeSystem {
               reportingInfo.reportingPercent >= MINIMUM_REPORTING_THRESHOLD ||
               reportingInfo.reportingComplete;
 
-            // Cache the calculated result
+            // Log polling changes for debugging
+            if (!isFirstCalculation && existingResult?.candidatePolling) {
+              const oldPolling = Array.from(existingResult.candidatePolling.entries()).slice(0, 2);
+              const newPolling = Array.from(stateResult.candidatePolling.entries()).slice(0, 2);
+              console.log(`[DEBUG] ${state.name} polling changes:`, {
+                old: oldPolling.map(([id, val]) => `${candidates.find(c => c.id === id)?.name}: ${val}%`),
+                new: newPolling.map(([id, val]) => `${candidates.find(c => c.id === id)?.name}: ${val}%`)
+              });
+            }
+
+            // Cache/update the calculated result
             this.calculatedStates.set(state.id, stateResult);
           }
         }
@@ -451,17 +494,19 @@ export class ElectoralCollegeSystem {
             state,
             candidates,
             activeCampaign.coalitionSystems,
-            activeCampaign
+            activeCampaign,
+            100 // Non-progressive mode uses final results (100%)
           );
         } else {
-          stateResult = this.fallbackStateCalculation(state, candidates);
+          stateResult = this.fallbackStateCalculation(state, candidates, 100); // Non-progressive mode uses final results
         }
 
         if (stateResult) {
+          // In non-progressive mode, show final results at 100%
           stateResult.stateName = state.name;
           stateResult.reportingPercent = 100;
           stateResult.hasStartedReporting = true;
-          stateResult.reportingComplete = true;
+          stateResult.reportingComplete = true; // Consider complete at max realistic level
           stateResult.showResults = true;
 
           results.stateResults.set(state.id, stateResult);
@@ -504,7 +549,8 @@ export class ElectoralCollegeSystem {
     state,
     candidates,
     coalitionSystems,
-    activeCampaign
+    activeCampaign,
+    reportingPercent = null
   ) {
     const stateId = state.id;
     const electoralVotes = ELECTORAL_VOTES_BY_STATE[stateId] || 0;
@@ -514,8 +560,9 @@ export class ElectoralCollegeSystem {
       return null;
     }
 
-    // Check cache
-    const cacheKey = `${stateId}_${candidates.map((c) => c.id).join("_")}`;
+    // Check cache - include reporting percentage in cache key for progressive results
+    const reportingKey = reportingPercent !== null ? `_${Math.floor(reportingPercent / 5) * 5}` : ''; // Cache in 5% increments
+    const cacheKey = `${stateId}_${candidates.map((c) => c.id).join("_")}${reportingKey}`;
     const lastCalc = this.lastCalculationTime.get(cacheKey);
     if (lastCalc && Date.now() - lastCalc < this.CACHE_DURATION) {
       return this.stateResultsCache.get(cacheKey);
@@ -535,7 +582,7 @@ export class ElectoralCollegeSystem {
       console.warn(
         `No coalition system found for state: ${stateId}, using fallback`
       );
-      return this.fallbackStateCalculation(state, candidates);
+      return this.fallbackStateCalculation(state, candidates, reportingPercent);
     }
 
     // Calculate polling for each candidate using coalitions with state-specific variations
@@ -586,13 +633,24 @@ export class ElectoralCollegeSystem {
     });
 
     // Normalize polling to ensure it sums to 100%
-    const normalizedPolling = this.normalizeStatePolling(candidatePolling);
+    let finalPolling = this.normalizeStatePolling(candidatePolling);
+    
+    // If we have reporting percentage, simulate progressive vote counting
+    let displayPolling = finalPolling;
+    if (reportingPercent !== null && reportingPercent > 0 && reportingPercent < 98) {
+      displayPolling = this.simulateProgressiveVoteCounting(
+        finalPolling, 
+        reportingPercent, 
+        stateId, 
+        candidates
+      );
+    }
 
-    // Determine winner (simple plurality for most states)
+    // Determine winner (simple plurality for most states) - use display polling for current leader
     let winner = null;
     let highestPolling = 0;
 
-    normalizedPolling.forEach((polling, candidateId) => {
+    displayPolling.forEach((polling, candidateId) => {
       if (polling > highestPolling) {
         highestPolling = polling;
         winner = candidates.find((c) => c.id === candidateId);
@@ -604,8 +662,8 @@ export class ElectoralCollegeSystem {
       stateName: state.name,
       electoralVotes: electoralVotes,
       winner: winner,
-      candidatePolling: normalizedPolling,
-      margin: this.calculateMargin(normalizedPolling),
+      candidatePolling: displayPolling, // Use progressive results for display
+      margin: this.calculateMargin(displayPolling),
       isSplitState: SPLIT_ELECTORAL_STATES.has(stateId),
     };
 
@@ -614,7 +672,7 @@ export class ElectoralCollegeSystem {
       result.splitResults = this.handleSplitElectoralState(
         state,
         candidates,
-        normalizedPolling
+        displayPolling
       );
     }
 
@@ -740,6 +798,96 @@ export class ElectoralCollegeSystem {
     }
 
     return normalized;
+  }
+
+  /**
+   * Simulate progressive vote counting based on different precinct types reporting over time
+   * This creates realistic shifts in results as urban/rural/suburban precincts report
+   */
+  simulateProgressiveVoteCounting(finalPolling, reportingPercent, stateId, candidates) {
+    if (reportingPercent >= 98) {
+      // Near complete reporting - show final results
+      return finalPolling;
+    }
+
+    // Create consistent seeded random for this state
+    const stateHash = stateId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const seededRandom = (s) => {
+      const x = Math.sin(s) * 10000;
+      return x - Math.floor(x);
+    };
+
+    const reportingProgress = reportingPercent / 100;
+    
+    // Simulate different precinct types reporting at different rates
+    // Early: Rural and small towns (0-40% of reporting)
+    // Middle: Suburban areas (40-75% of reporting) 
+    // Late: Urban core areas (75-100% of reporting)
+    
+    const ruralWeight = Math.max(0, Math.min(1, (0.4 - reportingProgress) / 0.4 + 0.3));
+    const suburbanWeight = reportingProgress < 0.4 ? 0.3 : 
+                          reportingProgress < 0.75 ? 0.7 : 
+                          Math.max(0.2, 1 - (reportingProgress - 0.75) / 0.25);
+    const urbanWeight = reportingProgress < 0.6 ? 0 :
+                       Math.min(1, (reportingProgress - 0.6) / 0.4);
+
+    const totalWeight = ruralWeight + suburbanWeight + urbanWeight;
+    const normalizedRural = ruralWeight / totalWeight;
+    const normalizedSuburban = suburbanWeight / totalWeight;
+    const normalizedUrban = urbanWeight / totalWeight;
+
+    const progressivePolling = new Map();
+
+    candidates.forEach((candidate) => {
+      const candidateHash = candidate.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+      const baseSeed = stateHash + candidateHash;
+      
+      // Get final percentage for this candidate
+      const finalPercent = finalPolling.get(candidate.id) || 0;
+      
+      // Create different performance in different precinct types
+      let ruralPerformance = finalPercent;
+      let suburbanPerformance = finalPercent;
+      let urbanPerformance = finalPercent;
+      
+      // Simulate realistic party/candidate performance by precinct type
+      if (candidate.partyName) {
+        const partyName = candidate.partyName.toLowerCase();
+        
+        if (partyName.includes('democrat') || partyName.includes('liberal') || partyName.includes('progressive')) {
+          // Democratic candidates typically perform worse in rural, better in urban
+          ruralPerformance = finalPercent * (0.6 + seededRandom(baseSeed + 1) * 0.3); // 60-90% of final
+          suburbanPerformance = finalPercent * (0.85 + seededRandom(baseSeed + 2) * 0.3); // 85-115% of final  
+          urbanPerformance = finalPercent * (1.1 + seededRandom(baseSeed + 3) * 0.3); // 110-140% of final
+        } else if (partyName.includes('republican') || partyName.includes('conservative')) {
+          // Republican candidates typically perform better in rural, worse in urban
+          ruralPerformance = finalPercent * (1.2 + seededRandom(baseSeed + 1) * 0.3); // 120-150% of final
+          suburbanPerformance = finalPercent * (0.95 + seededRandom(baseSeed + 2) * 0.3); // 95-125% of final
+          urbanPerformance = finalPercent * (0.7 + seededRandom(baseSeed + 3) * 0.3); // 70-100% of final
+        } else {
+          // Other parties/independents - more random variation
+          ruralPerformance = finalPercent * (0.8 + seededRandom(baseSeed + 1) * 0.4); // 80-120% of final
+          suburbanPerformance = finalPercent * (0.8 + seededRandom(baseSeed + 2) * 0.4); // 80-120% of final
+          urbanPerformance = finalPercent * (0.8 + seededRandom(baseSeed + 3) * 0.4); // 80-120% of final
+        }
+      }
+      
+      // Calculate weighted average based on which precincts have reported
+      const currentPerformance = 
+        (ruralPerformance * normalizedRural) + 
+        (suburbanPerformance * normalizedSuburban) + 
+        (urbanPerformance * normalizedUrban);
+      
+      // Add some additional realistic volatility for early returns
+      const volatilityFactor = Math.max(0, (0.6 - reportingProgress) / 0.6); // More volatility early on
+      const volatility = (seededRandom(baseSeed + 100) - 0.5) * volatilityFactor * 8; // ±4% max volatility
+      
+      const adjustedPerformance = Math.max(0.5, currentPerformance + volatility);
+      progressivePolling.set(candidate.id, adjustedPerformance);
+    });
+
+    // Re-normalize to ensure it sums to 100%
+    return this.normalizeStatePolling(progressivePolling);
   }
 
   /**
@@ -905,13 +1053,13 @@ export class ElectoralCollegeSystem {
         ...state,
         population: statePopulations.get(state.id) || state.population || 100000
       };
-      const stateResult = this.fallbackStateCalculation(stateWithPopulation, candidates);
+      const stateResult = this.fallbackStateCalculation(stateWithPopulation, candidates, 100); // Fallback mode shows final results
       if (stateResult) {
-        // Set reporting information for fallback calculation (always complete when not using progressive)
+        // Set reporting information for fallback calculation at 100%
         stateResult.stateName = state.name;
         stateResult.reportingPercent = 100;
         stateResult.hasStartedReporting = true;
-        stateResult.reportingComplete = true;
+        stateResult.reportingComplete = true; // Consider complete at realistic maximum
         stateResult.showResults = true;
 
         results.stateResults.set(state.id, stateResult);
@@ -934,7 +1082,7 @@ export class ElectoralCollegeSystem {
   /**
    * Fallback state calculation using population-weighted scoring
    */
-  fallbackStateCalculation(state, candidates) {
+  fallbackStateCalculation(state, candidates, reportingPercent = null) {
     const electoralVotes = ELECTORAL_VOTES_BY_STATE[state.id] || 0;
     if (electoralVotes === 0) return null;
 
@@ -985,11 +1133,23 @@ export class ElectoralCollegeSystem {
     });
 
     // Normalize and find winner
-    const normalizedScores = this.normalizeStatePolling(candidateScores);
+    let finalScores = this.normalizeStatePolling(candidateScores);
+    
+    // Apply progressive vote counting if reporting percentage is provided
+    let displayScores = finalScores;
+    if (reportingPercent !== null && reportingPercent > 0 && reportingPercent < 98) {
+      displayScores = this.simulateProgressiveVoteCounting(
+        finalScores,
+        reportingPercent,
+        state.id,
+        candidates
+      );
+    }
+    
     let winner = null;
     let highestScore = 0;
 
-    normalizedScores.forEach((score, candidateId) => {
+    displayScores.forEach((score, candidateId) => {
       if (score > highestScore) {
         highestScore = score;
         winner = candidates.find((c) => c.id === candidateId);
@@ -1001,8 +1161,8 @@ export class ElectoralCollegeSystem {
       stateName: state.name,
       electoralVotes: electoralVotes,
       winner: winner,
-      candidatePolling: normalizedScores,
-      margin: this.calculateMargin(normalizedScores),
+      candidatePolling: displayScores,
+      margin: this.calculateMargin(displayScores),
       isSplitState: SPLIT_ELECTORAL_STATES.has(state.id),
     };
   }

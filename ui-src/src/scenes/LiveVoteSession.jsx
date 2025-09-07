@@ -16,6 +16,7 @@ const LiveVoteSession = () => {
   // --- 1. Select state from the store ---
   const session = useGameStore((state) => state.activeVotingSessionDetails); // { billId, level }
   const playerId = useGameStore((state) => state.activeCampaign?.playerPoliticianId);
+  const activeCampaign = useGameStore((state) => state.activeCampaign);
   const governmentOffices = useMemo(() => {
     const state = useGameStore.getState();
     if (!state.activeVotingSessionDetails) return [];
@@ -24,7 +25,6 @@ const LiveVoteSession = () => {
     const stateId = (level === 'state' || level === 'city') ? state.activeCampaign?.regionId : null;
     return state.actions.getGovernmentOfficesForContext(level, cityId, stateId);
   }, [session, activeCampaign]);
-  const activeCampaign = useGameStore((state) => state.activeCampaign);
   const { endVotingSession, recordCouncilVote } = useGameStore((state) => state.actions);
 
   // --- 2. Derive complex data from the raw state using useMemo. ---

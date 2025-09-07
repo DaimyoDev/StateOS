@@ -128,6 +128,126 @@ const sections = [
     )
   },
   {
+    id: 'campaigning-elections',
+    title: 'Campaigning & Elections',
+    content: (
+      <>
+        <p>
+          Elections are the cornerstone of democratic governance, determining who holds office and 
+          shapes policy. The game features a comprehensive electoral system with realistic campaign 
+          mechanics, polling, and voting behavior.
+        </p>
+
+        <h3>Election Types & Scheduling</h3>
+        <ul>
+          <li><strong>Local Elections</strong>: Mayor, city council, and local offices</li>
+          <li><strong>State Elections</strong>: Governor, state legislature, and state-wide offices</li>
+          <li><strong>Federal Elections</strong>: President, Congress (House & Senate)</li>
+          <li><strong>Frequency</strong>: Elections occur based on term lengths and constitutional cycles</li>
+          <li><strong>Filing Deadlines</strong>: Candidates must register before the deadline to appear on ballots</li>
+        </ul>
+
+        <h3>Electoral Systems</h3>
+        <p>Different offices use various voting methods:</p>
+        <ul>
+          <li><strong>First-Past-The-Post (FPTP)</strong>: Winner takes all, used for most single-winner races</li>
+          <li><strong>Electoral College</strong>: Presidential elections with state-by-state winner-take-all</li>
+          <li><strong>Party List PR</strong>: Proportional representation for some multi-member districts</li>
+          <li><strong>Block Vote</strong>: Multiple winners selected simultaneously</li>
+          <li><strong>Mixed Systems</strong>: Some offices combine different methods</li>
+        </ul>
+
+        <h3>Campaign Mechanics</h3>
+        <h4>Player Campaigns</h4>
+        <ul>
+          <li><strong>Declare Candidacy</strong>: File to run for office before the deadline</li>
+          <li><strong>Campaign Funds</strong>: Raise money through donations and fundraising events</li>
+          <li><strong>Staff Management</strong>: Hire campaign managers, communications directors, and field organizers</li>
+          <li><strong>Issue Positioning</strong>: Take stances on policies that matter to voters</li>
+          <li><strong>Endorsements</strong>: Seek support from parties, organizations, and prominent figures</li>
+          <li><strong>Media Strategy</strong>: Manage relationships with news outlets and control messaging</li>
+        </ul>
+
+        <h4>Campaign Activities</h4>
+        <ul>
+          <li><strong>Fundraising Events</strong>: Host dinners, rallies, and donor meetings</li>
+          <li><strong>Town Halls</strong>: Direct voter engagement and policy discussions</li>
+          <li><strong>Media Interviews</strong>: Television, radio, and press appearances</li>
+          <li><strong>Door-to-Door Canvassing</strong>: Personal voter outreach</li>
+          <li><strong>Digital Campaigns</strong>: Social media and online advertising</li>
+          <li><strong>Debates</strong>: Public forums with other candidates</li>
+        </ul>
+
+        <h3>Polling & Public Opinion</h3>
+        <h4>Polling Firms</h4>
+        <ul>
+          <li><strong>Independent Pollsters</strong>: Various firms with different methodologies and biases</li>
+          <li><strong>Credibility Ratings</strong>: Firms have track records affecting poll reliability</li>
+          <li><strong>Reach & Coverage</strong>: Some focus on local races, others on state/national contests</li>
+          <li><strong>Methodology Bias</strong>: Pollsters may oversample certain demographics</li>
+          <li><strong>Ideological Skew</strong>: Some firms lean toward particular political perspectives</li>
+        </ul>
+
+        <h4>Coalition System</h4>
+        <p>Voter behavior is modeled through dynamic coalition groups:</p>
+        <ul>
+          <li><strong>Demographic Coalitions</strong>: Voters grouped by age, education, occupation, location</li>
+          <li><strong>Ideological Alignment</strong>: Coalitions have political preferences and issue priorities</li>
+          <li><strong>Mobilization Effects</strong>: Events and campaigns can energize or discourage coalition turnout</li>
+          <li><strong>Coalition Breakdown</strong>: See detailed support levels across different voter groups</li>
+          <li><strong>Population Weighting</strong>: Coalition influence reflects actual voter representation</li>
+        </ul>
+
+        <h4>Player Election Advantages</h4>
+        <p>As a player candidate, you benefit from additional factors beyond base coalition support:</p>
+        <ul>
+          <li><strong>Name Recognition</strong>: Higher visibility from your political activities</li>
+          <li><strong>Approval Rating</strong>: Public perception of your performance and character</li>
+          <li><strong>Media Buzz</strong>: Recent news coverage and public attention</li>
+          <li><strong>Campaign Spending</strong>: Financial resources translate to voter outreach</li>
+          <li><strong>Endorsement Network</strong>: Support from parties and organizations</li>
+          <li><strong>Incumbency</strong>: Advantages or disadvantages from current office</li>
+        </ul>
+
+        <h3>Election Day & Results</h3>
+        <h4>Voter Turnout</h4>
+        <ul>
+          <li><strong>Expected Turnout</strong>: Calculated based on coalition engagement and historical patterns</li>
+          <li><strong>Election Level Effects</strong>: National races typically have higher turnout than local</li>
+          <li><strong>Mobilization Impact</strong>: Campaign activities and coalition mood affect participation</li>
+          <li><strong>Weather & Events</strong>: External factors can influence actual turnout</li>
+        </ul>
+
+        <h4>Vote Counting</h4>
+        <ul>
+          <li><strong>District-by-District</strong>: Results calculated for each electoral unit</li>
+          <li><strong>Coalition Voting</strong>: Each coalition votes based on candidate appeal and mobilization</li>
+          <li><strong>Statistical Variation</strong>: Polls aren't perfect - expect some surprises</li>
+          <li><strong>Electoral Math</strong>: Different systems produce different winner determination</li>
+        </ul>
+
+        <h3>Post-Election</h3>
+        <ul>
+          <li><strong>Victory Conditions</strong>: Winners determined by electoral system rules</li>
+          <li><strong>Government Formation</strong>: New office holders take their positions</li>
+          <li><strong>Political Capital</strong>: Election results affect your influence and relationships</li>
+          <li><strong>Mandate Effects</strong>: Large victories provide more governing authority</li>
+          <li><strong>Coalition Shifts</strong>: Election outcomes can realign political coalitions</li>
+        </ul>
+
+        <h3>Strategic Considerations</h3>
+        <ul>
+          <li><strong>Target Demographics</strong>: Focus resources on winnable coalition groups</li>
+          <li><strong>Issue Selection</strong>: Emphasize policies that resonate with key voters</li>
+          <li><strong>Opponent Research</strong>: Understand competitor strengths and weaknesses</li>
+          <li><strong>Resource Management</strong>: Balance fundraising, spending, and time allocation</li>
+          <li><strong>Media Relations</strong>: Maintain positive coverage while avoiding scandals</li>
+          <li><strong>Coalition Building</strong>: Unite diverse voter groups behind your candidacy</li>
+        </ul>
+      </>
+    )
+  },
+  {
     id: 'political-parties',
     title: 'Political Parties',
     content: (

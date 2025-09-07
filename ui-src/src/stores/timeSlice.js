@@ -383,17 +383,34 @@ export const createTimeSlice = (set, get) => {
             let coalitionResults = null;
             if (coalitionSoA) {
               console.log(`[TIME SLICE] Processing coalition effects for event: ${processedEvent.name || processedEvent.title}`);
+              
+              // Log current mobilization values before applying effects
+              console.log(`[TIME SLICE] Coalition mobilization BEFORE effects:`);
+              for (const [coalitionId, state] of coalitionSoA.state) {
+                console.log(`  - ${coalitionId}: ${(state.mobilization * 100).toFixed(1)}%`);
+              }
+              
               import("../simulation/randomEventsSystem.js").then(({ processEventCoalitionEffects }) => {
                 coalitionResults = processEventCoalitionEffects(
                   processedEvent, 
                   coalitionSoA, 
-                  campaignAfterDateAdvance.startingCity
+                  campaignAfterDateAdvance.startingCity,
+                  campaignAfterDateAdvance.parentState
                 );
                 
                 // Apply coalition updates if any occurred
                 if (coalitionResults?.coalitionUpdates) {
                   console.log(`[TIME SLICE] Applying coalition updates from event effects`);
                   get().actions.updateCityCoalitions?.(campaignAfterDateAdvance.startingCity.id, coalitionResults.coalitionUpdates);
+                  
+                  // Log mobilization values after applying effects
+                  const updatedCoalitions = get().actions.getCoalitionsForCity?.(campaignAfterDateAdvance.startingCity?.id);
+                  if (updatedCoalitions) {
+                    console.log(`[TIME SLICE] Coalition mobilization AFTER effects:`);
+                    for (const [coalitionId, state] of updatedCoalitions.state) {
+                      console.log(`  - ${coalitionId}: ${(state.mobilization * 100).toFixed(1)}%`);
+                    }
+                  }
                 }
               });
             } else {

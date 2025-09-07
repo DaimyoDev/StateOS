@@ -19,7 +19,7 @@ const NationalOverviewTab = ({ campaignData }) => {
   const governmentOfficesRaw = useGameStore((state) => state.activeCampaign?.governmentOffices);
   
   // Get coalition data for the country
-  const coalitionData = getCoalitionsForEntity('country', campaignData.countryId);
+  const coalitionData = getCoalitionsForEntity('national', campaignData.countryId);
   const nationalGovernmentOffices = useMemo(() => {
     return getNationalGovernmentOffices();
   }, [getNationalGovernmentOffices, governmentOfficesRaw]);

@@ -1,5 +1,5 @@
 // ui-src/src/scenes/ElectionNightScreen.jsx
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import useGameStore from "../store"; //
 import "./ElectionNightScreen.css"; //
 import WinnerAnnouncementModal from "../components/modals/WinnerAnnouncementModal"; //
@@ -187,6 +187,7 @@ const StateDetailView = ({
   candidates,
   onBackToMap,
   countryData,
+  setSelectedState,
 }) => {
   const [activeTab, setActiveTab] = useState("map");
   const [tooltip, setTooltip] = useState({ show: false, x: 0, y: 0, content: null });
@@ -212,12 +213,24 @@ const StateDetailView = ({
     return { state: null, counties: [] };
   }, [selectedState?.stateId, countryData]);
 
+  // Store the original state polling for county calculations (before aggregation)
+  const originalStatePolling = useRef(null);
+  const originalStateId = useRef(null);
+  
+  // Reset original polling when state changes
+  if (selectedState?.stateId !== originalStateId.current) {
+    originalStateId.current = selectedState?.stateId;
+    originalStatePolling.current = selectedState?.stateResult?.candidatePolling 
+      ? new Map(selectedState.stateResult.candidatePolling) 
+      : null;
+  }
+
   // Generate county-level election results based on state results
   const countyResults = useMemo(() => {
     if (
       !counties.length ||
       !candidates.length ||
-      !selectedState?.stateResult?.candidatePolling
+      !originalStatePolling.current
     )
       return [];
 
@@ -248,18 +261,36 @@ const StateDetailView = ({
         .split("")
         .reduce((acc, char) => acc + char.charCodeAt(0), 0);
       
-      // Calculate individual county reporting percentage
-      // Larger counties (lower index) report faster and more completely
+      // Calculate county reporting based on state reporting percentage
+      // Larger counties report faster, but are constrained by state's official reporting
       const countySize = county.population || 10000;
-      const sizeBonus = Math.min(30, Math.log10(countySize / 1000) * 10); // 0-30% bonus for larger counties
-      const baseReporting = Math.max(0, stateReportingPercent - (index * 5)); // Each county lags behind by position
-      const countyReportingPercent = Math.min(100, Math.max(0, baseReporting + sizeBonus + (seededRandom(countySeed * 123) * 20 - 10)));
+      const sizeBonus = Math.min(15, Math.log10(countySize / 1000) * 5); // 0-15% bonus for larger counties
       
-      // If county hasn't started reporting yet, return a placeholder
-      if (countyReportingPercent < 5) {
+      // Position penalty - later counties in sorted order report slower
+      const positionPenalty = index * 8; // Each position adds 8% delay
+      
+      // Counties derive from state reporting with realistic variation
+      let reportingPercent;
+      
+      if (stateReportingPercent >= 100) {
+        // When state is at 100%, all counties must also be at 100%
+        reportingPercent = 100;
+      } else {
+        // During progressive reporting, counties lag behind with variation
+        const baseReporting = Math.max(0, stateReportingPercent * 0.8 - positionPenalty); // Counties lag state by 20% + position
+        const randomVariation = (seededRandom(countySeed * 123) - 0.5) * 20; // -10% to +10% variation
+        
+        reportingPercent = Math.min(
+          Math.min(95, stateReportingPercent * 0.9), // Counties can't exceed 90% of state reporting during progressive phase
+          Math.max(0, baseReporting + sizeBonus + randomVariation)
+        );
+      }
+      
+      // Counties show gradual reporting from any percentage > 0.1%
+      if (reportingPercent < 0.1) {
         return {
           county,
-          reportingPercent: Math.max(0, countyReportingPercent),
+          reportingPercent: Math.max(0, reportingPercent),
           polling: new Map(),
           winner: null,
           margin: 0,
@@ -271,7 +302,7 @@ const StateDetailView = ({
 
       // Calculate the final results (what the county will end up with at 100% reporting)
       const finalCountyPolling = new Map();
-      selectedState.stateResult.candidatePolling.forEach(
+      originalStatePolling.current.forEach(
         (statePercent, candidateId) => {
           // Add county-specific variation (-5% to +5%) based on county characteristics using seeded random
           // Smaller variation to keep counties closer to state results
@@ -309,12 +340,12 @@ const StateDetailView = ({
 
       // Calculate current results based on reporting percentage
       // Early results can be more volatile, gradually converging to final results
-      const reportingProgress = countyReportingPercent / 100;
+      const reportingProgress = reportingPercent / 100;
       finalCountyPolling.forEach((finalPercent, candidateId) => {
         // Add volatility for early returns (higher variation when less reporting)
         const volatilityFactor = (1 - reportingProgress) * 0.3; // 0-30% extra variation for early returns
         const candidateSeed = countySeed + candidateId.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
-        const volatilitySeed = candidateSeed + countySeed + Math.floor(countyReportingPercent / 10);
+        const volatilitySeed = candidateSeed + countySeed + Math.floor(reportingPercent / 10);
         const volatility = (seededRandom(volatilitySeed) - 0.5) * volatilityFactor * 20;
         
         // Current percentage gradually approaches final percentage as reporting increases
@@ -362,7 +393,7 @@ const StateDetailView = ({
 
       return {
         county,
-        reportingPercent: Math.round(countyReportingPercent),
+        reportingPercent: Math.round(reportingPercent),
         polling: countyPolling,
         winner,
         margin,
@@ -372,12 +403,91 @@ const StateDetailView = ({
             (county.population || 0) * 0.3 * // 30% of population as eligible voters (more realistic)
             (0.5 + seededRandom(countySeed * 999) * 0.3), // 50-80% turnout 
             500000 // Cap at 500K votes for very large counties
-          ) * (countyReportingPercent / 100) // Scale by reporting percentage
+          ) * (reportingPercent / 100) // Scale by reporting percentage
         ),
         isReporting: true
       };
     });
-  }, [counties, candidates, selectedState?.stateResult]);
+  }, [counties, candidates, selectedState?.stateId, selectedState?.stateResult?.hasStartedReporting, selectedState?.stateResult?.reportingPercent]);
+
+  // Calculate aggregate state polling from county results
+  const aggregatedStatePolling = useMemo(() => {
+    if (!countyResults.length || !selectedState?.stateResult) return null;
+
+    const reportingCounties = countyResults.filter(c => c.isReporting);
+    if (reportingCounties.length === 0) return null;
+
+    // Weight counties by their vote totals
+    const totalVotes = reportingCounties.reduce((sum, county) => sum + county.totalVotes, 0);
+    if (totalVotes === 0) return null;
+
+    const aggregatedPolling = new Map();
+    
+    // Initialize all candidates
+    candidates.forEach(candidate => {
+      aggregatedPolling.set(candidate.id, 0);
+    });
+
+    // Aggregate weighted results from reporting counties
+    reportingCounties.forEach(countyResult => {
+      const countyWeight = countyResult.totalVotes / totalVotes;
+      countyResult.polling.forEach((percentage, candidateId) => {
+        const current = aggregatedPolling.get(candidateId) || 0;
+        aggregatedPolling.set(candidateId, current + (percentage * countyWeight));
+      });
+    });
+
+    return aggregatedPolling;
+  }, [countyResults, candidates]);
+
+  // Update state polling when county results change - done directly in the county calculation
+  useEffect(() => {
+    if (aggregatedStatePolling && selectedState?.stateResult && setSelectedState) {
+      // Stop all recalculations if state is at 100% reporting - results are final
+      if (selectedState.stateResult.reportingPercent >= 100) {
+        return;
+      }
+      
+      // Check if polling has actually changed to prevent infinite loops
+      const currentPolling = selectedState.stateResult.candidatePolling;
+      let hasChanged = false;
+      
+      if (!currentPolling || currentPolling.size !== aggregatedStatePolling.size) {
+        hasChanged = true;
+      } else {
+        for (const [candidateId, newPolling] of aggregatedStatePolling.entries()) {
+          const currentValue = currentPolling.get(candidateId) || 0;
+          if (Math.abs(newPolling - currentValue) > 0.1) {
+            hasChanged = true;
+            break;
+          }
+        }
+      }
+      
+      if (hasChanged) {
+        // Calculate winner based on new polling
+        let newWinner = null;
+        let highestPolling = 0;
+        aggregatedStatePolling.forEach((polling, candidateId) => {
+          if (polling > highestPolling) {
+            highestPolling = polling;
+            newWinner = candidates.find(c => c.id === candidateId);
+          }
+        });
+        
+        const updatedStateResult = {
+          ...selectedState.stateResult,
+          candidatePolling: aggregatedStatePolling,
+          winner: newWinner
+        };
+        
+        setSelectedState(prev => ({
+          ...prev,
+          stateResult: updatedStateResult
+        }));
+      }
+    }
+  }, [aggregatedStatePolling, candidates, setSelectedState]);
 
   // Create heatmap data for county map
   const countyHeatmapData = useMemo(() => {
@@ -393,30 +503,39 @@ const StateDetailView = ({
 
   // Tooltip handlers for county maps
   const handleCountyHover = (countyGameId, event) => {
-    const countyResult = countyResults.find(result => result.county.id === countyGameId);
-    if (countyResult && event) {
-      const winnerName = countyResult.winner?.name || (countyResult.isReporting ? "Results pending" : "Not yet reported");
-      
+    if (event) {
       setTooltip({
         show: true,
         x: event.clientX + 10,
         y: event.clientY - 10,
-        content: {
-          countyName: countyResult.county.name,
-          winner: winnerName,
-          margin: `${countyResult.margin?.toFixed(1) || "0.0"}%`,
-          polling: countyResult.polling,
-          reportingPercent: countyResult.reportingPercent || 0,
-          hasStartedReporting: countyResult.isReporting,
-          totalVotes: countyResult.totalVotes,
-        },
+        countyId: countyGameId, // Store countyId to look up live data
       });
     }
   };
 
   const handleCountyLeave = () => {
-    setTooltip({ show: false, x: 0, y: 0, content: null });
+    setTooltip({ show: false, x: 0, y: 0, countyId: null });
   };
+
+  // Get live tooltip content for counties based on current data
+  const countyTooltipContent = useMemo(() => {
+    if (!tooltip.show || !tooltip.countyId) return null;
+
+    const countyResult = countyResults.find(result => result.county.id === tooltip.countyId);
+    if (!countyResult) return null;
+
+    const winnerName = countyResult.winner?.name || (countyResult.isReporting ? "Results pending" : "Not yet reported");
+
+    return {
+      countyName: countyResult.county.name,
+      winner: winnerName,
+      margin: `${countyResult.margin?.toFixed(1) || "0.0"}%`,
+      polling: countyResult.polling,
+      reportingPercent: countyResult.reportingPercent || 0,
+      hasStartedReporting: countyResult.isReporting,
+      totalVotes: countyResult.totalVotes,
+    };
+  }, [tooltip.show, tooltip.countyId, countyResults]);
 
   // Create candidate color mapping for tooltips
   const candidateColors = useMemo(() => {
@@ -721,7 +840,7 @@ const StateDetailView = ({
       </div>
 
       {/* County Tooltip */}
-      {tooltip.show && tooltip.content && (
+      {tooltip.show && countyTooltipContent && (
         <div
           className="county-map-tooltip"
           style={{
@@ -734,32 +853,32 @@ const StateDetailView = ({
         >
           <div className="tooltip-header">
             <div style={{ fontWeight: "bold", marginBottom: "6px", fontSize: "14px" }}>
-              {tooltip.content.countyName}
+              {countyTooltipContent.countyName}
             </div>
             <div style={{ fontSize: "12px", marginBottom: "8px", color: "var(--secondary-text, #666)" }}>
-              {tooltip.content.totalVotes > 0 
-                ? `${tooltip.content.totalVotes.toLocaleString()} votes (${tooltip.content.reportingPercent}% reporting)`
-                : `${tooltip.content.reportingPercent}% reporting`
+              {countyTooltipContent.totalVotes > 0 
+                ? `${countyTooltipContent.totalVotes.toLocaleString()} votes (${countyTooltipContent.reportingPercent}% reporting)`
+                : `${countyTooltipContent.reportingPercent}% reporting`
               }
             </div>
           </div>
           
-          {tooltip.content.hasStartedReporting && tooltip.content.winner !== "Results pending" && (
+          {countyTooltipContent.hasStartedReporting && countyTooltipContent.winner !== "Results pending" && (
             <div className="tooltip-margin" style={{ marginBottom: "6px", fontSize: "12px" }}>
-              Winner: <strong>{tooltip.content.winner}</strong> (Margin: <strong>{tooltip.content.margin}</strong>)
+              Winner: <strong>{countyTooltipContent.winner}</strong> (Margin: <strong>{countyTooltipContent.margin}</strong>)
             </div>
           )}
           
-          {tooltip.content.polling && tooltip.content.hasStartedReporting && (
+          {countyTooltipContent.polling && countyTooltipContent.hasStartedReporting && (
             <div className="tooltip-polling">
-              {Array.from(tooltip.content.polling.entries())
+              {Array.from(countyTooltipContent.polling.entries())
                 .sort(([, a], [, b]) => b - a)
                 .map(([candidateId, percentage]) => {
                   const candidate = candidates.find(c => c.id === candidateId);
                   if (!candidate) return null;
                   
                   // Calculate vote count for this candidate
-                  const candidateVotes = Math.floor((tooltip.content.totalVotes * percentage) / 100);
+                  const candidateVotes = Math.floor((countyTooltipContent.totalVotes * percentage) / 100);
                   
                   return (
                     <div key={candidateId} className="polling-item" style={{ 
@@ -793,7 +912,7 @@ const StateDetailView = ({
             </div>
           )}
           
-          {!tooltip.content.hasStartedReporting && (
+          {!countyTooltipContent.hasStartedReporting && (
             <div style={{ fontSize: "12px", color: "#ccc", textAlign: "center" }}>
               Results pending...
             </div>
@@ -809,6 +928,7 @@ const ElectoralCollegeCard = ({
   election,
   simulationSpeed = 5000,
   skipToResults = false,
+  isPaused = false,
 }) => {
   const { activeCampaign, countryData } = useGameStore();
   const [updateTrigger, setUpdateTrigger] = useState(0);
@@ -818,7 +938,7 @@ const ElectoralCollegeCard = ({
   const [currentProjection, setCurrentProjection] = useState(null);
   const [mapView, setMapView] = useState("results"); // "results", "margin", "projection"
 
-  // Timer for progressive reporting updates - only when progressive reporting is active
+  // Timer for progressive reporting updates - restored but more efficient
   useEffect(() => {
     if (!election?.isElectoralCollege || skipToResults) return;
 
@@ -826,8 +946,8 @@ const ElectoralCollegeCard = ({
     let shouldContinueUpdating = true;
 
     const interval = setInterval(() => {
-      // Only trigger updates if progressive reporting might still be happening
-      if (shouldContinueUpdating) {
+      // Only trigger updates if progressive reporting might still be happening and not paused
+      if (shouldContinueUpdating && !isPaused) {
         // Check if progressive reporting is complete using time-based check
         const timeBasedComplete = isProgressiveReportingComplete();
 
@@ -841,10 +961,10 @@ const ElectoralCollegeCard = ({
 
         setUpdateTrigger((prev) => prev + 1);
       }
-    }, 2000); // Update every 2 seconds for more responsive UI updates
+    }, 3000); // Update every 3 seconds instead of 2 - more efficient but still responsive
 
     return () => clearInterval(interval);
-  }, [election?.isElectoralCollege, skipToResults]);
+  }, [election?.isElectoralCollege, skipToResults, isPaused]);
 
   // Force update when skipToResults changes to true
   useEffect(() => {
@@ -1143,6 +1263,7 @@ const ElectoralCollegeCard = ({
             candidates={Array.from(election.candidates.values())}
             onBackToMap={() => setSelectedState(null)}
             countryData={countryData || election.countryData}
+            setSelectedState={setSelectedState}
           />
         )}
       </div>
@@ -2015,6 +2136,9 @@ const ElectionNightScreen = () => {
         setAllSimulationsComplete(allDone);
       }
 
+      // Electoral college updates are now handled by the ElectoralCollegeCard component itself
+      // via the county polling system - no separate trigger needed
+
       return newLiveElectionsData;
     });
   }, [createAnnouncementData]);
@@ -2234,6 +2358,7 @@ const ElectionNightScreen = () => {
                   election={featuredElection}
                   simulationSpeed={simulationSpeed}
                   skipToResults={skipElectoralToResults}
+                  isPaused={isPaused}
                   openViewPoliticianModal={openViewPoliticianModal}
                 />
               ) : (

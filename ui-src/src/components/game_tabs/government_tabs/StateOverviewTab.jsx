@@ -88,6 +88,9 @@ const getLegislativeChamberMembers = (
 const StateOverviewTab = ({ campaignData }) => {
   const [activeSubTab, setActiveSubTab] = useState("summary");
   const [governmentFilter, setGovernmentFilter] = useState("all");
+  
+  // Subscribe to coalition system changes directly from the store
+  const coalitionSystems = useGameStore((state) => state.activeCampaign?.coalitionSystems);
 
   const { openViewPoliticianModal, getCurrentStateGovernmentOffices, getCoalitionsForEntity } = useGameStore((state) => state.actions);
   
@@ -995,11 +998,21 @@ const StateOverviewTab = ({ campaignData }) => {
                             </>
                           )}
                           {state && (
-                            <p><strong>Current Mood:</strong> 
-                              <span className={state.currentMood >= 0 ? 'text-success' : 'text-error'}>
-                                {state.currentMood >= 0 ? 'Positive' : 'Negative'}
-                              </span>
-                            </p>
+                            <>
+                              <p><strong>Current Mood:</strong> 
+                                <span className={state.currentMood >= 0 ? 'text-success' : 'text-error'}>
+                                  {state.currentMood >= 0 ? 'Positive' : 'Negative'}
+                                </span>
+                              </p>
+                              <p><strong>Mobilization:</strong> 
+                                <span className="mobilization-value">
+                                  {state.mobilization != null ? 
+                                    formatPercentage(state.mobilization * 100, 1) : 
+                                    "50.0%"
+                                  }
+                                </span>
+                              </p>
+                            </>
                           )}
                         </div>
                       </div>

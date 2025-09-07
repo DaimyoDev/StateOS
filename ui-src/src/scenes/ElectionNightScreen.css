@@ -552,7 +552,7 @@
 
 .candidate-results-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 12px;
   margin-bottom: 20px;
 }
@@ -567,6 +567,8 @@
   box-shadow: var(--panel-shadow, 0 2px 4px rgba(0, 0, 0, 0.1));
   border-left: 4px solid transparent;
   border: 1px solid var(--border-color, #dee2e6);
+  min-width: 0; /* Allow flex items to shrink below their content size */
+  overflow: hidden; /* Prevent content from overflowing */
 }
 
 .candidate-indicator {
@@ -578,6 +580,8 @@
 
 .candidate-info {
   flex: 1;
+  min-width: 0; /* Allow flex item to shrink below content size */
+  overflow: hidden; /* Prevent text overflow */
 }
 
 .candidate-name {
@@ -585,19 +589,30 @@
   font-size: 1.1em;
   color: var(--primary-text, #333);
   margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .candidate-party {
   color: var(--secondary-text, #666);
   font-size: 0.9em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .candidate-percentage {
   font-weight: bold;
   font-size: 1.3em;
   color: var(--primary-text, #333);
-  min-width: 60px;
+  min-width: 70px;
+  max-width: 80px;
   text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
 }
 
 .state-winner-banner {
@@ -631,24 +646,32 @@
 
 .state-detail-tabs button {
   padding: 12px 24px;
-  background: var(--secondary-bg, #f8f9fa);
-  border: none;
+  background: var(--button-bg, var(--secondary-bg, #f8f9fa));
+  border: var(--border-width, 1px) solid var(--border-color, #dee2e6);
   border-top-left-radius: var(--element-radius, 8px);
   border-top-right-radius: var(--element-radius, 8px);
   cursor: pointer;
   font-weight: 500;
-  color: var(--primary-text, #333);
-  color: var(--secondary-text, #666);
-  transition: all 0.2s ease;
+  font-family: var(--font-main);
+  color: var(--button-text, var(--secondary-text, #666));
+  transition: all var(--transition-speed, 0.2s) ease;
+  border-bottom: none;
 }
 
 .state-detail-tabs button:hover {
-  background: var(--hover-bg, #e9ecef);
+  background: var(--button-hover-bg, var(--highlight-bg, #e9ecef));
+  color: var(--primary-text, #333);
+  border-color: var(--accent-color, #007bff);
 }
 
 .state-detail-tabs button.active {
-  background: var(--primary-bg, #007bff);
-  color: white;
+  background: var(--accent-color, #007bff);
+  color: var(--accent-text, white);
+  border-color: var(--accent-color, #007bff);
+}
+
+.state-detail-tabs button.active:hover {
+  background: var(--button-action-hover-bg, var(--accent-color, #0056b3));
 }
 
 .state-tab-content {
@@ -759,6 +782,8 @@
   padding: 6px 8px;
   border-radius: 4px;
   transition: background 0.2s ease;
+  min-width: 0; /* Allow flex items to shrink */
+  overflow: hidden; /* Prevent content overflow */
 }
 
 .county-candidate-row:hover {
@@ -782,22 +807,36 @@
   flex: 1;
   font-size: 0.9em;
   color: var(--primary-text, #333);
+  min-width: 0; /* Allow flex item to shrink */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .candidate-percentage-small {
   font-weight: 600;
   font-size: 0.9em;
   color: var(--primary-text, #333);
-  min-width: 45px;
+  min-width: 50px;
+  max-width: 60px;
   text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
 }
 
 .candidate-votes-small {
   font-weight: 600;
   font-size: 0.9em;
   color: var(--primary-text, #333);
-  min-width: 80px;
+  min-width: 90px;
+  max-width: 120px;
   text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
 }
 
 .county-map-tooltip {
@@ -882,49 +921,58 @@
 
 .view-button {
   padding: 8px 16px;
-  background: var(--primary-bg, #ffffff);
-  color: var(--primary-text, #333);
-  border: 1px solid var(--border-color, #dee2e6);
-  border-radius: 6px;
+  background: var(--button-bg, var(--ui-panel-bg, #ffffff));
+  color: var(--button-text, var(--primary-text, #333));
+  border: var(--border-width, 1px) solid var(--border-color, #dee2e6);
+  border-radius: var(--element-radius, 6px);
   cursor: pointer;
   font-size: 0.9em;
   font-weight: 500;
-  transition: all 0.2s ease;
+  font-family: var(--font-main);
+  transition: all var(--transition-speed, 0.2s) ease;
 }
 
 .view-button:hover {
-  background: var(--hover-bg, #e9ecef);
+  background: var(--button-hover-bg, var(--highlight-bg, #e9ecef));
   border-color: var(--accent-color, #007bff);
+  color: var(--primary-text, #333);
+  transform: translateY(-1px);
+  box-shadow: var(--button-shadow, 0 2px 4px rgba(0, 0, 0, 0.1));
 }
 
 .view-button.active {
   background: var(--accent-color, #007bff);
-  color: white;
+  color: var(--accent-text, white);
   border-color: var(--accent-color, #007bff);
 }
 
 .view-button.active:hover {
-  background: var(--accent-hover, #0056b3);
+  background: var(--button-action-hover-bg, var(--accent-color, #0056b3));
+  transform: translateY(-1px);
+  box-shadow: var(--button-shadow, 0 4px 8px rgba(0, 0, 0, 0.15));
 }
 
 /* Election Timer Styling */
 .election-timer {
-  background: var(--secondary-bg, #f8f9fa);
-  border: 1px solid var(--border-color, #dee2e6);
-  border-radius: 8px;
+  background: var(--ui-panel-bg, var(--secondary-bg, #f8f9fa));
+  border: var(--border-width, 1px) solid var(--border-color, #dee2e6);
+  border-radius: var(--element-radius, 8px);
   padding: 12px 16px;
   min-width: 200px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--panel-shadow, 0 2px 4px rgba(0, 0, 0, 0.05));
+  font-family: var(--font-main);
 }
 
 .election-timer.paused {
-  border-color: var(--warning-color, #ffc107);
-  background: var(--warning-bg, #fff3cd);
+  border-color: var(--warning-text, #ffc107);
+  background: var(--highlight-bg, #fff3cd);
+  color: var(--primary-text);
 }
 
 .election-timer.complete {
-  border-color: var(--success-color, #28a745);
-  background: var(--success-bg, #d4edda);
+  border-color: var(--success-text, #28a745);
+  background: var(--highlight-bg, #d4edda);
+  color: var(--primary-text);
 }
 
 .timer-label {
@@ -934,6 +982,7 @@
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 6px;
+  font-family: var(--font-main);
 }
 
 .timer-content {
@@ -946,6 +995,7 @@
 .timer-remaining {
   font-size: 0.9em;
   color: var(--primary-text, #333);
+  font-family: var(--font-main);
 }
 
 .timer-remaining {
@@ -956,14 +1006,16 @@
 .timer-value {
   font-size: 1.1em;
   font-weight: 600;
-  color: var(--success-color, #28a745);
+  color: var(--success-text, #28a745);
+  font-family: var(--font-main);
 }
 
 .timer-status {
   font-size: 0.8em;
   font-weight: 600;
-  color: var(--warning-color, #ffc107);
+  color: var(--warning-text, #ffc107);
   text-align: center;
+  font-family: var(--font-main);
   margin-top: 6px;
   padding: 4px;
   border-radius: 4px;
