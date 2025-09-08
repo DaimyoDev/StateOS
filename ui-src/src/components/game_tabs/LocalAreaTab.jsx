@@ -25,7 +25,7 @@ function LocalAreaTab({ campaignData }) {
 
   if (!startingCity?.stats?.budget) {
     return (
-      <div className="tab-content-container local-area-tab ui-panel">
+      <div className="tab-content-container local-area-tab ">
         <h2 className="tab-title">Local Area Information</h2>
         <p>No local area data available.</p>
       </div>
@@ -69,7 +69,7 @@ function LocalAreaTab({ campaignData }) {
   const debtSurplus = getDebtSurplusDisplay();
 
   return (
-    <div className="tab-content-container local-area-tab ui-panel">
+    <div className="tab-content-container local-area-tab ">
       <h2 className="tab-title">{cityName} - Detailed Overview</h2>
 
       <div className="local-info-grid">

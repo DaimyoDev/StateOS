@@ -1,186 +1,198 @@
 /* ui-src/src/scenes/CampaignGameScreen.css */
 .campaign-game-screen {
   display: flex;
-  flex-direction: row; /* Sidebar on left, content on right */
+  flex-direction: column;
   width: 100vw;
   height: 100vh;
   background-color: var(--primary-bg);
   color: var(--primary-text);
   font-family: var(--font-main);
-  overflow: hidden; /* Prevent overall screen scrolling */
+  overflow: hidden;
 }
 
-.game-sidebar {
-  flex: 0 0 400px; /* Fixed width for the sidebar (adjust as needed) */
-  /* Or use flex-basis: 280px; flex-shrink: 0; */
-  background-color: var(
-    --secondary-bg
-  ); /* Or a slightly different panel color */
-  border-right: 1px solid var(--border-color);
-  box-shadow: var(--panel-shadow); /* Optional */
-  padding: 20px 15px;
+/* Top Bar */
+.game-top-bar {
   display: flex;
-  flex-direction: column; /* Stack player info, nav, and footer */
-  overflow-y: auto; /* Allow sidebar itself to scroll if nav list is huge */
-}
-
-.player-info-summary {
-  padding: 10px;
-  margin-bottom: 20px;
+  align-items: center;
+  justify-content: space-between;
+  background-color: var(--secondary-bg);
   border-bottom: 1px solid var(--border-color);
-  flex-shrink: 0; /* Don't shrink this section */
-}
-.player-info-summary h3 {
-  font-family: var(--font-heading);
-  color: var(--accent-color);
-  font-size: 1.3em;
-  margin-bottom: 5px;
-}
-.player-info-summary p {
-  font-size: 0.9em;
-  color: var(--secondary-text);
-  margin-bottom: 3px;
+  padding: 10px 20px;
+  box-shadow: var(--panel-shadow);
+  z-index: 100;
+  flex-shrink: 0;
 }
 
-.tab-navigation {
+.top-bar-left {
+  flex: 0 0 auto;
+}
+
+.top-bar-center {
+  flex: 1 1 auto;
   display: flex;
-  flex-direction: column;
-  gap: 5px; /* Space between tab buttons */
-  flex-grow: 1; /* Allows this to push footer down if sidebar scrolls */
+  justify-content: center;
 }
 
-.tab-button {
-  /* Using menu-button as a base, but can be more specific */
-  background-color: transparent; /* Or var(--button-bg) if you want them more button-like */
-  color: var(--primary-text);
-  border: none;
-  /* border-left: 3px solid transparent; /* For active indicator */
-  padding: 12px 15px;
-  text-align: left;
-  width: 100%;
+.top-bar-right {
+  flex: 0 0 auto;
+}
+
+/* Tab Dropdown */
+.tab-dropdown-container {
+  position: relative;
+}
+
+.tab-dropdown-button {
+  background-color: var(--button-bg);
+  color: var(--button-text);
+  border: 1px solid var(--border-color);
+  padding: 8px 16px;
   border-radius: var(--element-radius);
   cursor: pointer;
   font-family: var(--font-main);
-  font-size: 1em;
-  transition: background-color var(--transition-speed),
-    color var(--transition-speed);
+  font-size: 14px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 200px;
+  justify-content: space-between;
+  transition: all var(--transition-speed);
 }
 
-.tab-button:focus {
-  outline: none;
+.tab-dropdown-button:hover {
+  background-color: var(--button-hover-bg);
+  border-color: var(--accent-color);
 }
 
-.tab-button:hover {
-  background-color: var(--highlight-bg);
+.dropdown-arrow {
+  font-size: 12px;
+  transition: transform 0.2s;
+}
+
+.tab-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  background-color: var(--ui-panel-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--element-radius);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  min-width: 200px;
+  z-index: 1000;
+  overflow: hidden;
+}
+
+.tab-dropdown-item {
+  display: block;
+  width: 100%;
+  padding: 10px 16px;
+  background: none;
+  border: none;
   color: var(--primary-text);
+  font-family: var(--font-main);
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--transition-speed);
 }
 
-.tab-button.active {
+.tab-dropdown-item:hover {
+  background-color: var(--highlight-bg);
+}
+
+.tab-dropdown-item.active {
   background-color: var(--accent-color);
   color: var(--accent-text);
-  font-weight: 600; /* Inter or Montserrat weight */
-  /* border-left-color: var(--accent-color); */
+  font-weight: 600;
 }
 
-.sidebar-footer-actions {
-  margin-top: auto; /* Pushes to bottom */
-  padding-top: 15px;
-  border-top: 1px solid var(--border-color);
-  flex-shrink: 0;
-  background-color: var(--secondary-bg);
-  align-items: stretch;
-}
-.sidebar-footer-actions .menu-button {
-  /* Make Main Menu button full width */
-  width: 100%;
-  background-color: var(--button-bg);
-  color: var(--button-text);
-  border: 1px solid var(--border-color); /* Add border for better definition */
-}
-.sidebar-footer-actions .menu-button:hover {
-  background-color: var(--button-hover-bg);
-}
-
-.sidebar-footer-actions .menu-button,
-.sidebar-footer-actions .action-button {
-  flex: 1; /* Fixes width */
-}
-
-.game-content-area {
-  flex-grow: 1; /* Takes up the rest of the horizontal space */
-  padding: 25px 30px; /* Padding for the content of the active tab */
-  overflow-y: auto; /* Allows content within a tab to scroll if it's too long */
-  background-color: var(
-    --primary-bg
-  ); /* Or a slightly lighter content area bg */
-}
-
-.next-day-action {
-  padding: 10px 0; /* Add some vertical padding */
-  margin-top: auto; /* This will push it towards the bottom if tab-navigation doesn't flex-grow */
-  flex-shrink: 0;
-}
-
-.next-day-button {
-  width: 100%;
-  padding: 15px 10px; /* Make it a prominent button */
-  font-size: 1.1em;
-  font-weight: 600; /* Inter or Montserrat weight */
-}
-
-.next-election-button {
-  margin: 10px;
-}
-
-.start-campaign {
-  margin: 10px;
-  min-width: 50%;
-}
-
-.next-year-button {
-  margin: 10px;
-}
-
-.election-day-modal-content {
-  padding: 15px 20px 20px 20px; /* Adjusted padding */
-  text-align: center;
-  color: var(--primary-text); /* Use theme variable */
+/* Player Info */
+.player-info-horizontal {
   display: flex;
-  flex-direction: column;
-  max-height: 80vh; /* Ensure modal itself doesn't get too tall */
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  color: var(--secondary-text);
+}
+
+.info-item {
+  white-space: nowrap;
+}
+
+.info-item strong {
+  color: var(--accent-color);
+  font-family: var(--font-heading);
+  font-weight: 600;
+}
+
+.info-separator {
+  color: var(--border-color);
+  user-select: none;
+}
+
+/* Main Content Area */
+.game-content-area {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0;
+  background-color: var(--primary-bg);
+}
+
+/* Bottom Bar */
+.game-bottom-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: var(--secondary-bg);
+  border-top: 1px solid var(--border-color);
+  padding: 12px 20px;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+  flex-shrink: 0;
+}
+
+.bottom-bar-left {
+  flex: 0 0 auto;
+}
+
+.bottom-bar-right {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 8px;
+}
+
+/* Keep existing modal styles */
+.election-day-modal-content {
+  padding: 20px 0;
 }
 
 .modal-subtitle {
   font-size: 1.1em;
-  margin-bottom: 10px;
-  color: var(--secondary-text); /* Use theme variable */
+  color: var(--secondary-text);
+  margin-bottom: 15px;
 }
 
-/* This is the container that will scroll */
 .modal-election-list-scroll-container {
-  max-height: 250px; /* <<<< ADJUST THIS VALUE AS NEEDED (e.g., 30vh or a fixed pixel value) */
-  overflow-y: auto; /* Show vertical scrollbar only when content exceeds max-height */
-  border: 1px solid var(--border-color, #e0e0e0);
-  padding: 10px;
+  max-height: 400px;
+  overflow-y: auto;
   margin-bottom: 20px;
-  background-color: var(--secondary-bg, #f9f9f9);
-  border-radius: var(--element-radius, 4px);
-  flex-grow: 1; /* Allow this to take available space before buttons */
-  min-height: 50px; /* Ensure it's visible even if empty initially */
+  padding: 10px;
+  background-color: var(--highlight-bg);
+  border-radius: var(--element-radius);
 }
 
 .modal-election-list {
   list-style: none;
   padding: 0;
   margin: 0;
-  text-align: left;
 }
 
 .modal-election-item {
-  padding: 6px 2px; /* Slightly less padding */
-  font-size: 0.95em;
-  border-bottom: 1px dotted var(--border-color, #eee);
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-color);
   color: var(--primary-text);
+  font-size: 0.95em;
 }
 
 .modal-election-item:last-child {
@@ -190,34 +202,110 @@
 .modal-empty-list-message {
   color: var(--secondary-text);
   font-style: italic;
+  text-align: center;
   padding: 20px 0;
 }
 
 .modal-actions {
-  margin-top: auto; /* Push actions to the bottom of the flex container if space allows */
-  padding-top: 15px; /* Space above buttons */
   display: flex;
-  justify-content: center; /* Or space-around */
-  gap: 15px;
-  flex-shrink: 0; /* Prevent buttons from shrinking */
+  gap: 10px;
+  justify-content: center;
+  padding-top: 10px;
 }
 
-/* Optional: if you have a secondary style for action buttons */
-.action-button.secondary {
-  background-color: var(--secondary-text); /* Example */
-  color: var(--primary-bg);
-}
-.action-button.secondary:hover {
-  background-color: var(--primary-text); /* Example */
+/* Old styles for backward compatibility - these can be removed later */
+.game-sidebar,
+.player-info-summary,
+.tab-navigation,
+.tab-button,
+.sidebar-footer-actions,
+.next-day-action {
+  display: none;
 }
 
-/* Top-right global actions (e.g., notification bell) */
-.top-right-actions {
-  position: fixed;
-  top: 12px;
-  right: 16px;
-  z-index: 998; /* Above main content and sidebar, below overlay(999)/panel(1000) */
+/* Subtab Dropdown - for use in individual tabs */
+.subtab-dropdown-container {
+  position: relative;
+  margin-bottom: 16px;
+}
+
+.subtab-dropdown-button {
+  background-color: var(--button-bg);
+  color: var(--button-text);
+  border: 1px solid var(--border-color);
+  padding: 8px 16px;
+  border-radius: var(--element-radius);
+  cursor: pointer;
+  font-family: var(--font-main);
+  font-size: 13px;
+  font-weight: 500;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  min-width: 180px;
+  justify-content: space-between;
+  transition: all var(--transition-speed);
+}
+
+.subtab-dropdown-button:hover {
+  background-color: var(--button-hover-bg);
+  border-color: var(--accent-color);
+}
+
+.subtab-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  background-color: var(--ui-panel-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--element-radius);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  min-width: 180px;
+  z-index: 999;
+  overflow: hidden;
+}
+
+.subtab-dropdown-item {
+  display: block;
+  width: 100%;
+  padding: 8px 14px;
+  background: none;
+  border: none;
+  color: var(--primary-text);
+  font-family: var(--font-main);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--transition-speed);
+}
+
+.subtab-dropdown-item:hover {
+  background-color: var(--highlight-bg);
+}
+
+.subtab-dropdown-item.active {
+  background-color: var(--accent-color);
+  color: var(--accent-text);
+  font-weight: 600;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .player-info-horizontal {
+    font-size: 12px;
+    gap: 8px;
+  }
+  
+  .info-separator {
+    margin: 0 4px;
+  }
+  
+  .game-top-bar,
+  .game-bottom-bar {
+    padding: 8px 12px;
+  }
+  
+  .bottom-bar-right {
+    flex-wrap: wrap;
+  }
 }

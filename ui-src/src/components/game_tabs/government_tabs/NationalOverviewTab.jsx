@@ -12,9 +12,8 @@ const formatBudgetKey = (key) =>
   key.replace(/([A-Z])/g, " $1").replace(/^./, (str) => str.toUpperCase());
 const formatCurrency = (value) => value != null ? `$${value.toLocaleString()}` : "N/A";
 
-const NationalOverviewTab = ({ campaignData }) => {
-  const [activeSubTab, setActiveSubTab] = useState("summary");
-  const { openViewPoliticianModal, getNationalGovernmentOffices, getCoalitionsForEntity } = useGameStore((state) => state.actions);
+const NationalOverviewTab = ({ campaignData, activeSubTab = "summary" }) => {
+  const { openViewPoliticianModal, getNationalGovernmentOffices, getCoalitionsForEntity, openSeatHistoryModal } = useGameStore((state) => state.actions);
   const politiciansSoA = useGameStore((state) => state.activeCampaign?.politicians);
   const governmentOfficesRaw = useGameStore((state) => state.activeCampaign?.governmentOffices);
   
@@ -248,63 +247,223 @@ const NationalOverviewTab = ({ campaignData }) => {
       case "government":
         return (
           <section className="city-officials-section city-section">
-            <h4>National Government</h4>
+            <h4>National Government Structure</h4>
+            
+            {/* Executive Branch Section */}
             {headOfState && (
-              <div className="chamber-section">
-                <h5>Head of State / Government</h5>
-                <div className="officials-cards-grid">
-                  <PoliticianCard
-                    politician={getUpdatedPolitician(headOfState.holder)}
-                    office={headOfState}
-                    onClick={openViewPoliticianModal}
-                    formatOfficeTitle={formatOfficeTitleForDisplay}
-                  />
+              <div className="government-branch-section executive-branch">
+                <div className="branch-header">
+                  <h5>Executive Branch</h5>
+                  <span className="branch-subtitle">National Leadership</span>
+                </div>
+                <div className="executive-officials-grid">
+                  <div className="mayor-card featured-official">
+                    <div className="official-role-badge">
+                      {headOfState.level?.includes("president") ? "President" : "Head of State"}
+                    </div>
+                    <div className="official-info">
+                      <div className="official-name-row">
+                        <h6 className="official-name" 
+                            onClick={() => handlePoliticianClick(getUpdatedPolitician(headOfState.holder))}>
+                          {getUpdatedPolitician(headOfState.holder)?.firstName} {getUpdatedPolitician(headOfState.holder)?.lastName}
+                        </h6>
+                        <button 
+                          className="seat-history-button"
+                          onClick={() => openSeatHistoryModal(headOfState)}
+                          title="View seat history"
+                        >
+                          📅
+                        </button>
+                      </div>
+                      <p className="official-party">
+                        {getUpdatedPolitician(headOfState.holder)?.partyName || "Independent"}
+                      </p>
+                      <div className="official-stats">
+                        <div className="stat-mini">
+                          <span className="stat-label">Approval</span>
+                          <span className="stat-value">
+                            {getUpdatedPolitician(headOfState.holder)?.approvalRating || "N/A"}%
+                          </span>
+                        </div>
+                        <div className="stat-mini">
+                          <span className="stat-label">Term</span>
+                          <span className="stat-value">
+                            {headOfState.termLength || "N/A"} years
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
-            {lowerHouse.length > 0 && (
-              <div className="chamber-section">
-                <h5>
-                  {countryData.nationalHrName || "Lower House"} (
-                  {lowerHouse.length} Seats)
-                </h5>
-                <div className="council-pie-chart-container">
-                  <CouncilCompositionPieChart
-                    councilCompositionData={lowerHouseComposition}
-                  />
+
+            {/* Legislative Branch Section */}
+            {(lowerHouse.length > 0 || upperHouse.length > 0) && (
+              <div className="government-branch-section legislative-branch">
+                <div className="branch-header">
+                  <h5>Legislative Branch</h5>
+                  <span className="branch-subtitle">
+                    National Legislature • {lowerHouse.length + upperHouse.length} Members
+                  </span>
                 </div>
-                <div className="officials-cards-grid">
-                  {lowerHouse.map((office) => (
-                    <PoliticianCard
-                      key={office.officeId}
-                      politician={getUpdatedPolitician(office.holder)}
-                      office={office}
-                      onClick={openViewPoliticianModal}
-                      formatOfficeTitle={formatOfficeTitleForDisplay}
-                    />
-                  ))}
-                </div>
+
+                {/* Lower House Section */}
+                {lowerHouse.length > 0 && (
+                  <div className="legislature-chamber-section">
+                    <div className="chamber-header">
+                      <h6>{countryData.nationalHrName || "Lower House"}</h6>
+                      <span className="chamber-subtitle">{lowerHouse.length} Members</span>
+                    </div>
+                    
+                    {/* Chamber Composition Overview */}
+                    {lowerHouseComposition.length > 0 && (
+                      <div className="council-overview">
+                        <div className="council-composition-stats">
+                          <div className="composition-chart">
+                            <CouncilCompositionPieChart
+                              councilCompositionData={lowerHouseComposition}
+                            />
+                          </div>
+                          <div className="composition-legend">
+                            <h6>Party Distribution</h6>
+                            {lowerHouseComposition.map((party) => (
+                              <div key={party.id || party.name} className="legend-item">
+                                <span className="party-color-dot" style={{ backgroundColor: party.color }}></span>
+                                <span className="party-name">{party.name}</span>
+                                <span className="party-count">{party.popularity} seats</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Members Section */}
+                    <div className="council-members-section">
+                      <div className="section-header">
+                        <h6>Lower House Members</h6>
+                      </div>
+                      
+                      <div className="council-members-grid">
+                        {lowerHouse.length > 0 ? (
+                          lowerHouse.map((office) => {
+                            const politician = getUpdatedPolitician(office.holder);
+                            
+                            return (
+                              <div key={office.officeId} className="council-member-card">
+                                <div className="member-header">
+                                  <span className="seat-number">
+                                    {formatOfficeTitleForDisplay(office)}
+                                  </span>
+                                </div>
+                                <div className="member-info">
+                                  <div className="member-name-row">
+                                    <p className="member-name"
+                                       onClick={() => handlePoliticianClick(politician)}>
+                                      {politician?.firstName} {politician?.lastName}
+                                    </p>
+                                    <button 
+                                      className="seat-history-button small"
+                                      onClick={() => openSeatHistoryModal(office)}
+                                      title="View seat history"
+                                    >
+                                      📅
+                                    </button>
+                                  </div>
+                                  <p className="member-party" style={{ color: politician?.partyColor || "#888" }}>
+                                    {politician?.partyName || "Independent"}
+                                  </p>
+                                </div>
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <p className="no-officials-message">No lower house members currently in office</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Upper House Section */}
+                {upperHouse.length > 0 && (
+                  <div className="legislature-chamber-section">
+                    <div className="chamber-header">
+                      <h6>{countryData.nationalSenateName || "Upper House"}</h6>
+                      <span className="chamber-subtitle">{upperHouse.length} Members</span>
+                    </div>
+                    
+                    {/* Members Section */}
+                    <div className="council-members-section">
+                      <div className="section-header">
+                        <h6>Upper House Members</h6>
+                      </div>
+                      
+                      <div className="council-members-grid">
+                        {upperHouse.length > 0 ? (
+                          upperHouse.map((office) => {
+                            const politician = getUpdatedPolitician(office.holder);
+                            
+                            return (
+                              <div key={office.officeId} className="council-member-card">
+                                <div className="member-header">
+                                  <span className="seat-number">
+                                    {formatOfficeTitleForDisplay(office)}
+                                  </span>
+                                </div>
+                                <div className="member-info">
+                                  <div className="member-name-row">
+                                    <p className="member-name"
+                                       onClick={() => handlePoliticianClick(politician)}>
+                                      {politician?.firstName} {politician?.lastName}
+                                    </p>
+                                    <button 
+                                      className="seat-history-button small"
+                                      onClick={() => openSeatHistoryModal(office)}
+                                      title="View seat history"
+                                    >
+                                      📅
+                                    </button>
+                                  </div>
+                                  <p className="member-party" style={{ color: politician?.partyColor || "#888" }}>
+                                    {politician?.partyName || "Independent"}
+                                  </p>
+                                </div>
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <p className="no-officials-message">No upper house members currently in office</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
-            {upperHouse.length > 0 && (
-              <div className="chamber-section">
-                <h5>
-                  {countryData.nationalSenateName || "Upper House"} (
-                  {upperHouse.length} Seats)
-                </h5>
-                <div className="officials-cards-grid">
-                  {upperHouse.map((office) => (
-                    <PoliticianCard
-                      key={office.officeId}
-                      politician={getUpdatedPolitician(office.holder)}
-                      office={office}
-                      onClick={openViewPoliticianModal}
-                      formatOfficeTitle={formatOfficeTitleForDisplay}
-                    />
-                  ))}
-                </div>
+
+            {/* Government Summary Stats */}
+            <div className="government-summary-stats">
+              <div className="summary-stat">
+                <span className="stat-label">Total Positions</span>
+                <span className="stat-value">
+                  {(headOfState ? 1 : 0) + lowerHouse.length + upperHouse.length}
+                </span>
               </div>
-            )}
+              <div className="summary-stat">
+                <span className="stat-label">Filled Positions</span>
+                <span className="stat-value">
+                  {(headOfState?.holder ? 1 : 0) + lowerHouse.filter(o => o.holder).length + upperHouse.filter(o => o.holder).length}
+                </span>
+              </div>
+              <div className="summary-stat">
+                <span className="stat-label">Lower House Majority</span>
+                <span className="stat-value">
+                  {lowerHouseComposition.sort((a, b) => b.popularity - a.popularity)[0]?.name || "None"}
+                </span>
+              </div>
+            </div>
           </section>
         );
       case "coalitions":
@@ -365,41 +524,6 @@ const NationalOverviewTab = ({ campaignData }) => {
 
   return (
     <div className="city-overview-tab ui-panel-body">
-      <h2 className="city-main-title">
-        {countryData.flag} {countryData.name} - National Overview
-      </h2>
-      <div className="sub-tab-navigation">
-        <button
-          onClick={() => setActiveSubTab("summary")}
-          className={activeSubTab === "summary" ? "active" : ""}
-        >
-          Summary
-        </button>
-        <button
-          onClick={() => setActiveSubTab("demographics")}
-          className={activeSubTab === "demographics" ? "active" : ""}
-        >
-          Demographics
-        </button>
-        <button
-          onClick={() => setActiveSubTab("government")}
-          className={activeSubTab === "government" ? "active" : ""}
-        >
-          Government
-        </button>
-        <button
-          onClick={() => setActiveSubTab("budget")}
-          className={activeSubTab === "budget" ? "active" : ""}
-        >
-          Budget
-        </button>
-        <button
-          onClick={() => setActiveSubTab("coalitions")}
-          className={activeSubTab === "coalitions" ? "active" : ""}
-        >
-          Coalitions
-        </button>
-      </div>
       <div className="sub-tab-content-area">{renderSubTabContent()}</div>
     </div>
   );

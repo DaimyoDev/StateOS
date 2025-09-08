@@ -36,7 +36,7 @@ function DashboardTab({ campaignData }) {
 
   if (!playerPolitician || !currentDate || !startingCity) {
     return (
-      <div className="tab-content-container ui-panel dashboard-tab">
+      <div className="tab-content-container dashboard-tab">
         <p>Loading dashboard data...</p>
       </div>
     );
@@ -54,7 +54,7 @@ function DashboardTab({ campaignData }) {
     .find((e) => createDateObj(e.electionDate) >= currentDateObj);
 
   return (
-    <div className="tab-content-container ui-panel dashboard-tab">
+    <div className="tab-content-container dashboard-tab">
       <div className="dashboard-header">
         <div className="dashboard-title-section">
           <h2 className="tab-title">Dashboard</h2>

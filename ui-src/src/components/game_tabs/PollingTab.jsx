@@ -173,7 +173,7 @@ function PollingTab({ campaignData }) {
   // Render detail view if a pollster is selected
   if (selectedPollster) {
     return (
-      <div className="tab-content-container polling-tab ui-panel">
+      <div className="tab-content-container polling-tab ">
         <button onClick={() => setSelectedPollsterId(null)} className="back-button menu-button">
           ← Back to All Pollsters
         </button>
@@ -205,7 +205,7 @@ function PollingTab({ campaignData }) {
 
   // Render the overview list of all pollsters
   return (
-    <div className="tab-content-container polling-tab ui-panel">
+    <div className="tab-content-container polling-tab ">
       <h2 className="tab-title">Polling Firms</h2>
       <p className="tab-description">
         Review independent polling firms and their recent election surveys. Analyze their reach, credibility, and potential biases.

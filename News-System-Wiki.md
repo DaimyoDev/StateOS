@@ -1,0 +1,508 @@
+# StateOS News System Wiki
+
+## Overview
+
+The StateOS News System is a comprehensive media simulation that generates dynamic news content based on game events, political biases, and player actions. It includes news outlets, journalists, article generation, and player interactions with media organizations.
+
+## Architecture
+
+### Core Components
+
+1. **News Slice** (`newsSlice.js`) - State management for news items
+2. **Organization Entities** (`organizationEntities.js`) - News outlet and journalist creation
+3. **Organization Actions** (`organizationActionSlice.js`) - Player interactions with media
+4. **News Generator** (`newsGenerator.js`) - Dynamic article content generation
+5. **News Outlet Names** (`newsOutletNames.js`) - Procedural name generation
+6. **Entity Detail Views** (`entityDetailViews.jsx`) - UI for viewing outlet details
+7. **Political Entities Tab** (`PoliticalEntitiesTab.jsx`) - Main interface for media interaction
+
+---
+
+## News Outlets
+
+### Data Structure
+
+News outlets are complex entities with the following properties:
+
+```javascript
+{
+  id: "news_[generateId]",
+  name: "The Springfield Herald",
+  type: "Newspaper" | "TV/Radio" | "Online",
+  level: "national" | "state" | "local",
+  
+  // Geographic reach system
+  reach: {
+    national: 0-100,  // National audience percentage
+    state: 0-100,     // State audience percentage  
+    local: 0-100      // Local audience percentage
+  },
+  
+  // Enhanced credibility system
+  credibility: {
+    base: 30-90,                    // Base credibility rating
+    primaryIdeology: "centrist",    // Main ideological alignment
+    ideologicalIntensity: 2-8       // How partisan (0=neutral, 10=very partisan)
+  },
+  
+  // Geographic influence areas
+  strongholdAreas: ["Rural Districts", "University Towns"],
+  
+  // Editorial biases
+  biases: {
+    partyBiases: {        // e.g., { 'party_123': 8, 'party_456': -5 }
+      [partyId]: -10 to +10
+    },
+    ideologyBiases: {     // e.g., { 'conservative': 7, 'socialist': -8 }
+      [ideology]: -10 to +10  
+    },
+    policyBiases: {       // e.g., { 'healthcare_spending': 'increase_significantly' }
+      [policyId]: stanceValue
+    }
+  },
+  
+  // Coalition affiliations
+  coalitionAffiliations: ["coalition_id_1", "coalition_id_2"],
+  
+  // Staff journalists
+  staff: [JournalistObject, ...]
+}
+```
+
+### Outlet Generation
+
+Outlets are generated using `generateNewsOutlets()` with these parameters:
+
+```javascript
+generateNewsOutlets({
+  level: "national" | "state" | "local",
+  parties: [partyObjects],
+  locationName: "United States",
+  countryId: "USA", 
+  regionId: "state_id",
+  availableCoalitions: ["coalition_ids"]
+})
+```
+
+**Outlet Count by Level:**
+- National: 6-10 outlets
+- State: 4-7 outlets  
+- Local: 3-6 outlets
+
+**Bias Distribution:**
+- 30% chance for neutral outlets
+- 70% chance for partisan outlets (aligned with specific parties)
+
+### Name Generation
+
+Outlet names are procedurally generated using components from `newsOutletNames.js`:
+
+**Templates:**
+- `${prefix} ${locationName} ${suffix}` → "The Springfield Herald"
+- `${locationName} ${adjective} ${suffix}` → "Springfield Progressive Times"
+- `${adjective} ${media}` → "Progressive Broadcasting"
+
+**Components:**
+- **Prefixes:** The, Daily, Evening, Morning, Digital, Online, City
+- **Suffixes:** Chronicle, Herald, Gazette, Times, Post, Tribune, etc.
+- **Ideological Adjectives:**
+  - Conservative: Patriot, Liberty, Freedom, Constitutional
+  - Liberal: Progressive, Forward, New, Modern, Guardian
+  - Default: News, Civic, Public, Community, Independent
+
+---
+
+## Journalists
+
+### Data Structure
+
+```javascript
+{
+  id: "journo_[generateId]",
+  name: "Generated Name",
+  age: 25-65,
+  attributes: {
+    integrity: 2-9,
+    writingSkill: 3-9,
+    investigation: 4-9,
+    onScreenPresence: 2-8
+  },
+  ideologyScores: {}, // Matches outlet ideology
+  employerId: "outlet_id"
+}
+```
+
+### Generation
+
+- **Staff per Outlet:** 2-4 journalists
+- **Name Generation:** Uses `generateDynamicName()` from game store
+- **Ideology Alignment:** Journalists inherit their outlet's ideological leanings
+
+---
+
+## News Articles
+
+### Article Structure
+
+```javascript
+{
+  id: "news_article_[generateId]",
+  headline: "Council Passes Landmark Healthcare Reform",
+  summary: "Brief article summary...",
+  
+  // Enhanced content structure
+  fullBody: {
+    paragraphs: ["Full article text paragraphs..."],
+    quotes: [
+      {
+        text: "Quote content",
+        source: "Speaker Name", 
+        sourceAffiliation: "Title/Organization"
+      }
+    ]
+  },
+  
+  tone: "positive" | "negative" | "neutral" | "sensationalist",
+  outletId: "outlet_id",
+  authorId: "journalist_id", 
+  date: { year, month, day },
+  type: "policy_vote" | "election_results" | "economic_update" | "scandal" | "random_event",
+  context: {} // Event-specific data
+}
+```
+
+### Article Generation
+
+Articles are generated by `generateNewsForEvent()` based on:
+
+1. **Event Type** - Different templates for different event categories
+2. **Outlet Bias** - Stance determined by outlet's political alignment  
+3. **Article Components** - Dynamic headlines, summaries, and content
+
+**Supported Event Types:**
+
+#### Policy Votes
+```javascript
+context: {
+  policyName: "Healthcare Reform",
+  didPass: true,
+  policyId: "healthcare_spending", 
+  yeaVotes: 7,
+  nayVotes: 3,
+  level: "city" | "state" | "national"
+}
+```
+
+**Bias Implementation:**
+- **Support Stance:** "Landmark Reform Passes Council"
+- **Oppose Stance:** "Controversial Bill Forced Through Council" 
+- **Neutral Stance:** "Council Enacts Policy After 7-3 Vote"
+
+#### Election Results
+```javascript
+context: {
+  officeName: "Mayor",
+  winnerName: "John Smith",
+  winnerPartyName: "Democratic Party", 
+  losers: ["Jane Doe", "Bob Wilson"]
+}
+```
+
+#### Economic Updates
+```javascript  
+context: {
+  stat: "Unemployment Rate",
+  oldValue: 5.2,
+  newValue: 4.8,
+  direction: "positive" | "negative"
+}
+```
+
+#### Random Events
+```javascript
+context: {
+  eventName: "New Hospital Construction",
+  eventCategory: "healthcare" | "economic" | "environmental" | "crime" | "education",
+  severity: "critical" | "major" | "moderate" | "minor",
+  jobsCreated: 500,
+  peopleAffected: 10000,
+  investment: "$50 million"
+}
+```
+
+### Content Generation Features
+
+**Dynamic Headlines:**
+- Adjusts language based on outlet bias
+- Uses emotional descriptors (landmark vs. controversial)
+- Incorporates voting margins and context
+
+**Rich Article Bodies:**
+- Multi-paragraph structure
+- Contextual citizen quotes based on stance
+- Expert commentary with relevant credentials
+- Follow-up information and implications
+
+**Quote System:**
+- Stance-based citizen reactions
+- Expert analysis from field professionals  
+- Official statements from relevant organizations
+- Community leader perspectives
+
+---
+
+## Player Interactions
+
+### Available Actions
+
+Players can interact with news outlets through `organizationActionSlice.js`:
+
+#### Grant Interview
+```javascript
+grantInterview(outletId)
+```
+- **Cost:** Time/energy
+- **Outcome:** Based on player's oratory skill
+- **Success Chance:** `(oratory/10) * 0.5 + 0.25`
+- **Results:** 
+  - Success: Positive coverage, reputation boost
+  - Failure: Negative coverage, reputation damage
+
+#### Submit Press Release  
+```javascript
+submitPressRelease(outletId)
+```
+- **Purpose:** Control narrative on specific issues
+- **Implementation:** Currently placeholder for future development
+
+#### Buy Advertising
+```javascript
+buyAdvertising(outletId) 
+```
+- **Purpose:** Purchase ad space for campaign messaging
+- **Implementation:** Currently placeholder for future development
+
+### Credibility System
+
+#### Contextual Credibility
+
+Outlets calculate credibility differently for each viewer:
+
+```javascript
+getContextualCredibility(viewerContext) {
+  const { ideology, partyAffiliation, coalitionMemberships } = viewerContext;
+  
+  let credibilityModifier = 0;
+  
+  // Ideological alignment bonus/penalty (±20 points max)
+  const ideologyAlignment = calculateIdeologyAlignment(viewer, outlet);
+  credibilityModifier += ideologyAlignment * 20 * intensityMultiplier;
+  
+  // Party bias effects (±30 points max)  
+  credibilityModifier += partyBias * 3;
+  
+  // Coalition alignment bonus (+10 per shared coalition)
+  credibilityModifier += sharedCoalitions.length * 10;
+  
+  return Math.max(0, Math.min(100, baseCredibility + credibilityModifier));
+}
+```
+
+#### Geographic Strongholds
+
+Outlets have influence areas based on:
+- **Coalition Demographics:** Areas where aligned coalitions are strong
+- **Ideological Geography:** Conservative/liberal regional tendencies
+- **Outlet Level:** National, state, or local focus areas
+
+**Examples:**
+- Conservative outlets: "Rural Districts", "Traditional Towns", "Industrial Areas"
+- Liberal outlets: "University Districts", "Urban Centers", "Cultural Quarters"  
+- Neutral outlets: "Mixed Communities", "Suburban Centers", "Commercial Districts"
+
+---
+
+## News State Management
+
+### News Slice (`newsSlice.js`)
+
+#### State Structure
+```javascript
+{
+  newsItems: [], // Array of all news articles
+  actions: {
+    addNewsEvent,
+    generateAndAddNewsForAllOutlets, 
+    addNewsArticle,
+    clearAllNews
+  }
+}
+```
+
+#### Key Actions
+
+**addNewsEvent(eventDetailsOrArray)**
+- Converts game events into news articles
+- Supports single events or arrays
+- Auto-generates dates if not provided
+- Maintains rolling history (max 200 items)
+
+**generateAndAddNewsForAllOutlets(event)**
+- Creates articles from all outlets for major events
+- Uses outlet biases to generate different coverage angles
+- Ideal for significant policy votes, elections, major announcements
+
+**addNewsArticle(articleDetailsOrArray)**
+- Adds pre-made article objects
+- Used for player-generated content (interviews, press releases)
+- Supports batch additions
+
+---
+
+## UI Components
+
+### Entity Detail Views
+
+The `NewsOutletDetail` component provides comprehensive outlet information:
+
+#### Sections
+
+1. **Header Information**
+   - Outlet name, type, and operational level
+   
+2. **Audience & Credibility**
+   - Primary and secondary reach percentages
+   - Base credibility vs. player's perceived credibility
+   - Ideological alignment and bias intensity
+   
+3. **Coalition Affiliations** 
+   - Shows which voter coalitions the outlet favors
+   
+4. **Geographic Strongholds**
+   - Areas of particular influence based on demographics
+   
+5. **Recent Articles**
+   - Clickable feed of outlet's recent publications
+   - Shows headlines, summaries, authors, and dates
+   
+6. **Key Journalists**
+   - Staff details including skills and attributes
+   
+7. **Actions**
+   - Grant Interview, Submit Press Release, Buy Advertising buttons
+
+### Political Entities Tab
+
+Main interface for media interaction located in `PoliticalEntitiesTab.jsx`:
+
+- **Overview Mode:** Shows all outlets with basic info
+- **Detail Mode:** Full outlet information and interaction options
+- **Entity Cards:** Click to view detailed information
+- **Back Navigation:** Return to overview from detail views
+
+---
+
+## Integration Points
+
+### Election System Integration
+
+News outlets automatically generate coverage for:
+- Election results and winner announcements
+- Campaign events and candidate activities
+- Policy votes and legislative sessions
+- Political scandals and controversies
+
+### Coalition System Integration  
+
+- Outlets align with specific voter coalitions
+- Geographic strongholds based on coalition demographics
+- Credibility calculations factor in coalition memberships
+- Coverage bias reflects coalition interests
+
+### Government System Integration
+
+- Articles reference proper legislative bodies (City Council, State Legislature, Congress)
+- Office titles formatted correctly for each level
+- Government officials quoted in relevant articles
+- Policy coverage matches governmental jurisdiction
+
+### Random Events Integration
+
+News outlets respond to random events with:
+- Contextual coverage based on event category  
+- Stance determination using outlet biases
+- Relevant quotes and expert commentary
+- Impact analysis for community effects
+
+---
+
+## Future Expansion Opportunities
+
+### Planned Features
+
+1. **Advertising System**
+   - Purchase ad space in specific outlets
+   - Targeted messaging based on outlet demographics
+   - Cost scaling based on outlet reach and credibility
+
+2. **Press Release System**
+   - Player-authored content submission
+   - Outlet editorial decisions on publication
+   - Bias-based editing and framing
+
+3. **Investigative Journalism**
+   - Journalists investigate player actions
+   - Scandal discovery and reporting mechanics
+   - Impact on player reputation and campaign
+
+4. **Media Events**
+   - Press conferences and media scrums
+   - Live interview challenges
+   - Breaking news response mechanics
+
+### Technical Improvements
+
+1. **Enhanced AI Content Generation**
+   - More sophisticated bias implementation
+   - Contextual quote generation
+   - Dynamic story development over time
+
+2. **Multimedia Content**
+   - TV/Radio specific content formats  
+   - Social media integration
+   - Podcast and video content
+
+3. **Reader Engagement Metrics**
+   - Article popularity tracking
+   - Comment system simulation
+   - Social media sharing mechanics
+
+---
+
+## Best Practices for Developers
+
+### Adding New Event Types
+
+1. Add event type to `generateArticleComponents()` in `newsGenerator.js`
+2. Define context structure for the event
+3. Create bias-specific headline and content templates  
+4. Add appropriate quotes and follow-up content
+5. Test with different outlet bias configurations
+
+### Creating New Outlet Types
+
+1. Add type to outlet generation in `organizationEntities.js`
+2. Define specific reach and credibility parameters
+3. Create type-specific bias tendencies
+4. Add UI elements in `NewsOutletDetail` component
+5. Update name generation templates if needed
+
+### Modifying Player Actions
+
+1. Add action function to `organizationActionSlice.js`
+2. Define costs, requirements, and outcomes
+3. Create success/failure logic with appropriate randomization
+4. Add UI buttons in `NewsOutletDetail` component
+5. Integrate with existing game systems (political capital, reputation, etc.)
+
+This wiki provides a comprehensive overview of the StateOS News System. The system is designed to create a realistic media landscape that responds dynamically to game events while maintaining consistent political biases and player interaction opportunities.

@@ -320,6 +320,136 @@ const sections = [
       </>
     )
   },
+  {
+    id: 'news-media-system',
+    title: 'News & Media System',
+    content: (
+      <>
+        <p>
+          The News & Media System simulates a comprehensive media landscape that generates dynamic news content 
+          based on game events, political biases, and player actions. It includes news outlets, journalists, 
+          article generation, and player interactions with media organizations.
+        </p>
+
+        <h3>News Outlets</h3>
+        <h4>Outlet Types & Structure</h4>
+        <ul>
+          <li><strong>Media Types</strong>: Newspaper, TV/Radio, and Online outlets</li>
+          <li><strong>Geographic Levels</strong>: National (6-10 outlets), State (4-7 outlets), Local (3-6 outlets)</li>
+          <li><strong>Reach System</strong>: Each outlet has national, state, and local audience percentages</li>
+          <li><strong>Credibility Ratings</strong>: Base credibility (30-90) with contextual modifiers based on viewer alignment</li>
+        </ul>
+
+        <h4>Political Bias & Alignment</h4>
+        <ul>
+          <li><strong>Ideological Stance</strong>: Primary ideology (centrist, conservative, liberal) with intensity ratings</li>
+          <li><strong>Party Biases</strong>: Specific favorability ratings (-10 to +10) toward political parties</li>
+          <li><strong>Policy Positions</strong>: Stance on specific policy areas affecting coverage tone</li>
+          <li><strong>Coalition Affiliations</strong>: Alignment with voter coalitions influencing target demographics</li>
+        </ul>
+
+        <h4>Geographic Influence</h4>
+        <p>Outlets maintain stronghold areas based on their ideological alignment:</p>
+        <ul>
+          <li><strong>Conservative Outlets</strong>: Rural Districts, Traditional Towns, Industrial Areas</li>
+          <li><strong>Liberal Outlets</strong>: University Districts, Urban Centers, Cultural Quarters</li>
+          <li><strong>Neutral Outlets</strong>: Mixed Communities, Suburban Centers, Commercial Districts</li>
+        </ul>
+
+        <h3>Journalists & Staffing</h3>
+        <ul>
+          <li><strong>Staff Size</strong>: Each outlet employs 2-4 journalists</li>
+          <li><strong>Journalist Attributes</strong>: Integrity, writing skill, investigation ability, and on-screen presence</li>
+          <li><strong>Ideological Alignment</strong>: Journalists inherit their outlet's political leanings</li>
+          <li><strong>Bylines & Attribution</strong>: Articles are attributed to specific journalists with backgrounds</li>
+        </ul>
+
+        <h3>Article Generation</h3>
+        <h4>Content Types</h4>
+        <ul>
+          <li><strong>Policy Votes</strong>: Coverage of legislative decisions with bias-specific framing</li>
+          <li><strong>Election Results</strong>: Winner announcements and analysis based on outlet preferences</li>
+          <li><strong>Economic Updates</strong>: Statistical changes presented through ideological lens</li>
+          <li><strong>Random Events</strong>: Community developments with contextual coverage angles</li>
+          <li><strong>Player Actions</strong>: Interview results and campaign activity coverage</li>
+        </ul>
+
+        <h4>Bias Implementation</h4>
+        <p>Outlets generate different coverage for the same events:</p>
+        <ul>
+          <li><strong>Supporting Stance</strong>: "Landmark Reform Passes Council" (positive framing)</li>
+          <li><strong>Opposing Stance</strong>: "Controversial Bill Forced Through Council" (negative framing)</li>
+          <li><strong>Neutral Stance</strong>: "Council Enacts Policy After 7-3 Vote" (factual reporting)</li>
+        </ul>
+
+        <h4>Article Structure</h4>
+        <ul>
+          <li><strong>Dynamic Headlines</strong>: Adjust language and emotional descriptors based on bias</li>
+          <li><strong>Rich Content</strong>: Multi-paragraph articles with contextual information</li>
+          <li><strong>Quote System</strong>: Stance-based citizen reactions, expert analysis, and official statements</li>
+          <li><strong>Attribution</strong>: Articles linked to specific journalists and publication dates</li>
+        </ul>
+
+        <h3>Contextual Credibility System</h3>
+        <p>Outlet credibility varies for different viewers based on alignment factors:</p>
+        <ul>
+          <li><strong>Ideological Alignment</strong>: ±20 points based on viewer-outlet ideological similarity</li>
+          <li><strong>Party Bias Effects</strong>: ±30 points based on party favorability alignment</li>
+          <li><strong>Coalition Bonuses</strong>: +10 points per shared coalition affiliation</li>
+          <li><strong>Geographic Factors</strong>: Stronghold area influence on local credibility</li>
+        </ul>
+
+        <h3>Player Interactions</h3>
+        <h4>Available Media Actions</h4>
+        <ul>
+          <li><strong>Grant Interview</strong>: Success based on oratory skill, affects public coverage</li>
+          <li><strong>Submit Press Release</strong>: Control narrative on specific issues (planned feature)</li>
+          <li><strong>Buy Advertising</strong>: Purchase ad space for campaign messaging (planned feature)</li>
+          <li><strong>View Outlet Details</strong>: Access comprehensive outlet information and recent articles</li>
+        </ul>
+
+        <h4>Interview System</h4>
+        <ul>
+          <li><strong>Success Rate</strong>: (Player Oratory Skill / 10) × 0.5 + 0.25</li>
+          <li><strong>Positive Outcome</strong>: Favorable coverage and reputation boost</li>
+          <li><strong>Negative Outcome</strong>: Critical coverage and reputation damage</li>
+          <li><strong>Outlet Bias</strong>: Interview results influenced by outlet's political alignment</li>
+        </ul>
+
+        <h3>News Feed & Distribution</h3>
+        <ul>
+          <li><strong>Rolling History</strong>: System maintains up to 200 recent news items</li>
+          <li><strong>Event Coverage</strong>: Major events generate articles from all relevant outlets</li>
+          <li><strong>Publication Timing</strong>: Articles published with realistic date progression</li>
+          <li><strong>Archive Management</strong>: Older articles automatically removed to maintain performance</li>
+        </ul>
+
+        <h3>Integration with Game Systems</h3>
+        <h4>Election Coverage</h4>
+        <ul>
+          <li><strong>Campaign Tracking</strong>: Coverage of player and AI candidate activities</li>
+          <li><strong>Election Night</strong>: Real-time results reporting with outlet-specific analysis</li>
+          <li><strong>Coalition Impact</strong>: Coverage influences voter coalition opinions and turnout</li>
+        </ul>
+
+        <h4>Government Integration</h4>
+        <ul>
+          <li><strong>Policy Coverage</strong>: Legislative votes generate appropriate government-level coverage</li>
+          <li><strong>Official Quotes</strong>: Government officials referenced in relevant articles</li>
+          <li><strong>Jurisdictional Accuracy</strong>: Coverage matches proper governmental jurisdiction levels</li>
+        </ul>
+
+        <h3>Strategic Media Considerations</h3>
+        <ul>
+          <li><strong>Relationship Building</strong>: Maintain positive relationships with key outlets</li>
+          <li><strong>Bias Navigation</strong>: Understand outlet positions to predict coverage angles</li>
+          <li><strong>Credibility Management</strong>: Work with outlets that your target demographics trust</li>
+          <li><strong>Message Control</strong>: Use interviews strategically to shape public narrative</li>
+          <li><strong>Coalition Targeting</strong>: Engage outlets affiliated with your voter coalition base</li>
+        </ul>
+      </>
+    )
+  },
 ];
 
 const WikiScene = () => {

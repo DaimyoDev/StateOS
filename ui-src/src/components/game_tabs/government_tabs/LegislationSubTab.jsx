@@ -5,11 +5,14 @@ import "./LegislationSubTab.css";
 import { areDatesEqual } from "../../../utils/core";
 import PassedBillsArchive from "../PassedBillsArchive";
 import FailedBillsArchive from "../FailedBillsArchive";
+import SubtabDropdown from "../../ui/SubtabDropdown";
 
 const EMPTY_ARRAY = [];
 
 const LegislationSubTab = ({ campaignData }) => {
   const [currentLevel, setCurrentLevel] = useState('city');
+  const [activeMainSubtab, setActiveMainSubtab] = useState('legislation');
+  const [activeTab, setActiveTab] = useState('proposed');
   const proposedBills = useGameStore(
     (state) => state[currentLevel]?.proposedBills || EMPTY_ARRAY
   );
@@ -119,40 +122,44 @@ const LegislationSubTab = ({ campaignData }) => {
     });
   }, [activeLegislation]);
 
-  const [activeTab, setActiveTab] = React.useState('proposed');
+  const mainSubtabs = [
+    { id: "legislation", label: "Legislation" }
+  ];
+
+  const levelTabs = [
+    { id: "city", label: "City" },
+    { id: "state", label: "State" },
+    { id: "national", label: "National" }
+  ];
+
+  const legislationSubtabs = [
+    { id: "proposed", label: "Proposed & Voting" },
+    { id: "active", label: "Active Legislation" },
+    { id: "archive", label: "Passed Bills" },
+    { id: "failed", label: "Failed Bills" }
+  ];
 
   return (
     <div className="legislation-sub-tab">
-      <div className="level-selector-container">
-        <button onClick={() => setCurrentLevel('city')} className={`level-button ${currentLevel === 'city' ? 'active' : ''}`}>City</button>
-        <button onClick={() => setCurrentLevel('state')} className={`level-button ${currentLevel === 'state' ? 'active' : ''}`}>State</button>
-        <button onClick={() => setCurrentLevel('national')} className={`level-button ${currentLevel === 'national' ? 'active' : ''}`}>National</button>
-      </div>
-      <div className="sub-tab-navigation">
-        <button
-          className={`sub-tab-button ${activeTab === 'proposed' ? 'active' : ''}`}
-          onClick={() => setActiveTab('proposed')}
-        >
-          Proposed & Voting
-        </button>
-        <button
-          className={`sub-tab-button ${activeTab === 'active' ? 'active' : ''}`}
-          onClick={() => setActiveTab('active')}
-        >
-          Active Legislation
-        </button>
-        <button
-          className={`sub-tab-button ${activeTab === 'archive' ? 'active' : ''}`}
-          onClick={() => setActiveTab('archive')}
-        >
-          Passed Bills
-        </button>
-        <button
-          className={`sub-tab-button ${activeTab === 'failed' ? 'active' : ''}`}
-          onClick={() => setActiveTab('failed')}
-        >
-          Failed Bills
-        </button>
+      <div className="dropdown-container">
+        <SubtabDropdown 
+          tabs={mainSubtabs}
+          activeTab={activeMainSubtab}
+          onTabChange={setActiveMainSubtab}
+          label="Select Main View"
+        />
+        <SubtabDropdown 
+          tabs={levelTabs}
+          activeTab={currentLevel}
+          onTabChange={setCurrentLevel}
+          label="Select Government Level"
+        />
+        <SubtabDropdown 
+          tabs={legislationSubtabs}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          label="Select Legislation View"
+        />
       </div>
 
       {activeTab === 'proposed' && (

@@ -4,6 +4,7 @@ import useGameStore from "../store";
 import "./CampaignGameScreen.css";
 import Modal from "../components/modals/Modal";
 import ViewPoliticianModal from "../components/modals/ViewPoliticianModal";
+import ViewSeatHistoryModal from "../components/modals/ViewSeatHistoryModal";
 import PolicyVoteDetailsModal from "../components/modals/PolicyVoteDetailsModal";
 import VoteAlert from "../components/ui/VoteAlert";
 import LiveVoteSession from "./LiveVoteSession";
@@ -39,6 +40,21 @@ const TABS = [
 
 function CampaignGameScreen() {
   const [isNotificationPanelOpen, setIsNotificationPanelOpen] = useState(false);
+  const [isTabDropdownOpen, setIsTabDropdownOpen] = useState(false);
+  
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!event.target.closest('.tab-dropdown-container')) {
+        setIsTabDropdownOpen(false);
+      }
+    };
+
+    if (isTabDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [isTabDropdownOpen]);
   // --- Individual Selections from Zustand Store ---
   const activeMainGameTab = useGameStore((state) => state.activeMainGameTab);
   const activeCampaign = useGameStore((state) => state.activeCampaign);
@@ -76,6 +92,16 @@ function CampaignGameScreen() {
   const viewingPolitician = useGameStore((state) => state.viewingPolitician); // Subscribes to changes in viewingPolitician object reference
   const isViewPoliticianModalOpen = useGameStore(
     (state) => state.isViewPoliticianModalOpen
+  );
+
+  const isSeatHistoryModalOpen = useGameStore(
+    (state) => state.isSeatHistoryModalOpen
+  );
+  const viewingSeatHistory = useGameStore(
+    (state) => state.viewingSeatHistory
+  );
+  const closeSeatHistoryModal = useGameStore(
+    (state) => state.actions.closeSeatHistoryModal
   );
 
   const isVotingSessionActive = useGameStore(
@@ -214,40 +240,78 @@ function CampaignGameScreen() {
         onClose={() => setIsNotificationPanelOpen(false)}
       />
 
-      {/* Top-right global actions (notification bell) */}
-      <div className="top-right-actions">
-        <NotificationIcon onClick={() => setIsNotificationPanelOpen(true)} />
-      </div>
-
       <div className="campaign-game-screen">
-        <aside className="game-sidebar">
-          <div className="player-info-summary">
-            <h3>{activeCampaign.startingCity?.name || "Your City"}</h3>
-            <p>{playerFirstName}</p>
-            <p>
-              Date: {currentDate?.month}/{currentDate?.day}/{currentDate?.year}
-            </p>
-            <p>
-              Time Remaining: {playerData?.campaign?.workingHours ?? "..."} /{" "}
-              {playerData?.campaign?.maxWorkingHours ?? "..."} hrs
-            </p>
-          </div>
-          <nav className="tab-navigation">
-            {TABS.map((tab) => (
-              <button
-                key={tab.id}
-                className={`tab-button ${
-                  activeMainGameTab === tab.id ? "active" : ""
-                }`}
-                onClick={() => setActiveMainGameTab(tab.id)}
+        {/* Top bar with tab dropdown and player info */}
+        <div className="game-top-bar">
+          <div className="top-bar-left">
+            {/* Tab dropdown */}
+            <div className="tab-dropdown-container">
+              <button 
+                className="tab-dropdown-button"
+                onClick={() => setIsTabDropdownOpen(!isTabDropdownOpen)}
               >
-                {tab.label}
+                {TABS.find(tab => tab.id === activeMainGameTab)?.label || "Dashboard"}
+                <span className="dropdown-arrow">▼</span>
               </button>
-            ))}
-          </nav>
-          {/* Notification icon moved to top-right global actions */}
-          <div style={{ flexGrow: 1 }}></div>
-          <div className="next-day-action">
+              {isTabDropdownOpen && (
+                <div className="tab-dropdown-menu">
+                  {TABS.map((tab) => (
+                    <button
+                      key={tab.id}
+                      className={`tab-dropdown-item ${
+                        activeMainGameTab === tab.id ? "active" : ""
+                      }`}
+                      onClick={() => {
+                        setActiveMainGameTab(tab.id);
+                        setIsTabDropdownOpen(false);
+                      }}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          
+          <div className="top-bar-center">
+            <div className="player-info-horizontal">
+              <span className="info-item">
+                <strong>{activeCampaign.startingCity?.name || "Your City"}</strong>
+              </span>
+              <span className="info-separator">|</span>
+              <span className="info-item">{playerFirstName}</span>
+              <span className="info-separator">|</span>
+              <span className="info-item">
+                {currentDate?.month}/{currentDate?.day}/{currentDate?.year}
+              </span>
+              <span className="info-separator">|</span>
+              <span className="info-item">
+                Hours: {playerData?.campaign?.workingHours ?? "..."}/{playerData?.campaign?.maxWorkingHours ?? "..."}
+              </span>
+            </div>
+          </div>
+          
+          <div className="top-bar-right">
+            <NotificationIcon onClick={() => setIsNotificationPanelOpen(true)} />
+          </div>
+        </div>
+
+        {/* Main content area - now full screen */}
+        <main className="game-content-area">{renderActiveTabContent()}</main>
+        
+        {/* Bottom bar with advance time buttons and main menu */}
+        <div className="game-bottom-bar">
+          <div className="bottom-bar-left">
+            <button
+              className="menu-button"
+              onClick={() => navigateTo("MainMenu")}
+            >
+              Main Menu
+            </button>
+          </div>
+          
+          <div className="bottom-bar-right">
             <button
               className="action-button next-day-button"
               onClick={handleNextDay}
@@ -282,17 +346,7 @@ function CampaignGameScreen() {
               Next Year
             </button>
           </div>
-          <div className="sidebar-footer-actions">
-            <button
-              className="menu-button"
-              onClick={() => navigateTo("MainMenu")}
-            >
-              Main Menu
-            </button>
-          </div>
-        </aside>
-
-        <main className="game-content-area">{renderActiveTabContent()}</main>
+        </div>
 
         {/* Modals and Alerts */}
         <Modal
@@ -340,6 +394,13 @@ function CampaignGameScreen() {
           isOpen={isViewPoliticianModalOpen}
           onClose={closeViewPoliticianModal}
           politician={viewingPolitician}
+        />
+        
+        <ViewSeatHistoryModal
+          isOpen={isSeatHistoryModalOpen}
+          onClose={closeSeatHistoryModal}
+          office={viewingSeatHistory}
+          campaignData={activeCampaign}
         />
         <VoteAlert />
         {isVotingSessionActive && <LiveVoteSession />}

@@ -38,8 +38,79 @@
 .creator-tabs {
   display: flex;
   margin-bottom: 15px; /* Reduced margin */
-  border-bottom: 2px solid var(--border-color);
   flex-shrink: 0;
+}
+
+/* --- Subtab Dropdown Styles --- */
+.subtab-dropdown-container {
+  position: relative;
+}
+
+.subtab-dropdown-button {
+  background-color: var(--button-bg);
+  color: var(--button-text);
+  border: 1px solid var(--border-color);
+  padding: 10px 20px;
+  border-radius: var(--element-radius);
+  cursor: pointer;
+  font-family: var(--font-main);
+  font-size: 14px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 220px;
+  justify-content: space-between;
+  transition: all var(--transition-speed);
+}
+
+.subtab-dropdown-button:hover {
+  background-color: var(--button-hover-bg);
+  border-color: var(--accent-border-color);
+}
+
+.subtab-dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  background-color: var(--dropdown-bg, var(--ui-panel-bg));
+  border: 1px solid var(--border-color);
+  border-radius: var(--element-radius);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  min-width: 220px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.subtab-dropdown-item {
+  display: block;
+  width: 100%;
+  padding: 10px 16px;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  font-family: var(--font-main);
+  font-size: 14px;
+  color: var(--primary-text);
+  transition: background-color var(--transition-speed);
+}
+
+.subtab-dropdown-item:hover {
+  background-color: var(--highlight-bg);
+}
+
+.subtab-dropdown-item.active {
+  background-color: rgba(var(--rgb-accent-color), 0.15);
+  color: var(--accent-color);
+  font-weight: 600;
+}
+
+.dropdown-arrow {
+  font-size: 10px;
+  opacity: 0.7;
 }
 
 .creator-tabs .tab-button {

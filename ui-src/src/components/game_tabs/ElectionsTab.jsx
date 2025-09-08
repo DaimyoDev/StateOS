@@ -1104,14 +1104,14 @@ function ElectionsTab({ campaignData }) {
 
   if (!campaignData) {
     return (
-      <div className="tab-content-container elections-tab ui-panel">
+      <div className="tab-content-container elections-tab">
         <p>Loading campaign data...</p>
       </div>
     );
   }
 
   return (
-    <div className="tab-content-container elections-tab ui-panel">
+    <div className="tab-content-container elections-tab">
       <h2 className="tab-title">Elections Dashboard</h2>
       <div className="elections-layout">
         <div className="upcoming-elections-panel">

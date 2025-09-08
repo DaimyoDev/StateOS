@@ -1,9 +1,17 @@
+.elections-tab {
+  padding: 20px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
 .elections-layout {
   display: flex;
   flex-direction: row;
   gap: 20px;
   margin-top: 15px;
-  height: calc(100% - 70px);
+  flex: 1;
+  overflow: hidden;
 }
 
 .elections-list-container {

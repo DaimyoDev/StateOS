@@ -3,6 +3,7 @@ import React, { useMemo, useState, useEffect } from "react";
 import useGameStore from "../../store";
 import "./TabStyles.css";
 import "./CareerActionsTab.css";
+import SubtabDropdown from "../ui/SubtabDropdown";
 import { getTimeUntil, createDateObj } from "../../utils/generalUtils";
 import BillAuthoringModal from "../modals/BillAuthoringModal";
 import ResumeViewerModal from "../modals/ResumeViewerModal";
@@ -32,6 +33,104 @@ const formatTimeUntil = (currentDateObj, futureDateObj, outcomeStatus) => {
 
 // --- Sub-Tab Components ---
 
+const OverviewSubTab = ({ campaignData, actions }) => {
+  const playerPolitician = campaignData?.politician;
+  const partyInfo = campaignData?.partyInfo;
+  const governmentOffices = campaignData?.governmentOffices;
+  const generatedPartiesSnapshot = campaignData?.generatedPartiesSnapshot || [];
+  const customPartiesSnapshot = campaignData?.customPartiesSnapshot || [];
+  
+  const partyDisplayName = React.useMemo(() => {
+    if (!partyInfo || !partyInfo.type) return "N/A (No Affiliation)";
+    if (partyInfo.type === "independent") return "Independent";
+    if (partyInfo.type === "join_generated") {
+      const party = generatedPartiesSnapshot.find((p) => p.id === partyInfo.id);
+      return party ? party.name : "Affiliated (Generated Party Error)";
+    }
+    if (partyInfo.type === "use_custom") {
+      const party = customPartiesSnapshot.find((p) => p.id === partyInfo.id);
+      return party ? party.name : "Affiliated (Custom Party Error)";
+    }
+    return "N/A";
+  }, [partyInfo, generatedPartiesSnapshot, customPartiesSnapshot]);
+
+  const canPerformMajorAction = !playerPolitician?.campaignActionToday;
+
+  return (
+    <div className="sub-tab-content">
+      <section className="info-card current-status-card">
+        <h3>📊 Current Status Overview</h3>
+        {playerPolitician && (
+          <>
+            <p>
+              <strong>Politician:</strong> {playerPolitician.firstName}{" "}
+              {playerPolitician.lastName}
+            </p>
+            <p>
+              <strong>Current Role:</strong>{" "}
+              {playerPolitician.currentOffice || "Aspiring Politician"}
+            </p>
+            <p>
+              <strong>Ideology:</strong> {playerPolitician.calculatedIdeology}
+            </p>
+            <p>
+              <strong>Party Affiliation:</strong> {partyDisplayName}
+            </p>
+            <p>
+              <strong>Overall Approval:</strong>{" "}
+              {playerPolitician.approvalRating != null
+                ? `${playerPolitician.approvalRating}%`
+                : "N/A"}
+            </p>
+            <p>
+              <strong>Personal Treasury:</strong> $
+              {playerPolitician.treasury != null
+                ? playerPolitician.treasury.toLocaleString()
+                : "N/A"}
+            </p>
+            <p>
+              <strong>Campaign Funds:</strong> $
+              {playerPolitician.campaignFunds != null
+                ? playerPolitician.campaignFunds.toLocaleString()
+                : "N/A"}
+            </p>
+            {playerPolitician.currentOffice &&
+              governmentOffices?.find(
+                (off) =>
+                  off.officeName === playerPolitician.currentOffice &&
+                  off.holder?.id === playerPolitician.id
+              )?.termEnds && (
+                <p>
+                  <strong>Term Ends:</strong>{" "}
+                  {(() => {
+                    const office = governmentOffices.find(
+                      (off) =>
+                        off.officeName === playerPolitician.currentOffice &&
+                        off.holder?.id === playerPolitician.id
+                    );
+                    return office
+                      ? `${office.termEnds.month}/${office.termEnds.day}/${office.termEnds.year}`
+                      : "N/A";
+                  })()}
+                </p>
+              )}
+            <p
+              style={{
+                color: canPerformMajorAction
+                  ? "var(--success-text, green)"
+                  : "var(--warning-text, orange)",
+              }}
+            >
+              Major Action Available Today:{" "}
+              {canPerformMajorAction ? "Yes" : "No"}
+            </p>
+          </>
+        )}
+      </section>
+    </div>
+  );
+};
+
 const ElectionsSubTab = ({
   availableElectionsToRunIn,
   handleDeclareCandidacy,
@@ -47,7 +146,7 @@ const ElectionsSubTab = ({
   return (
     <div className="sub-tab-content">
       <section className="info-card available-offices-card">
-        <h3>Run for Office</h3>
+        <h3>🗳️ Run for Office</h3>
         {availableElectionsToRunIn.length > 0 ? (
           <ul className="office-list">
             {availableElectionsToRunIn.map((election) => {
@@ -98,7 +197,7 @@ const ElectionsSubTab = ({
       </section>
       {playerIsCurrentlyCandidate && (
         <section className="info-card current-campaign-info">
-          <h4>Your Current Campaign</h4>
+          <h4>📊 Your Current Campaign</h4>
           {activePlayerElection ? (
             <p>You are running for: {activePlayerElection.officeName}</p>
           ) : (
@@ -246,7 +345,7 @@ const JobsSubTab = ({ campaignData, actions }) => {
     <div className="sub-tab-content">
       {currentJob && (
         <section className="info-card current-job-card">
-          <h3>Current Employment</h3>
+          <h3>💼 Current Employment</h3>
           <div className="job-details">
             <p><strong>Position:</strong> {currentJob.title}</p>
             <p><strong>Category:</strong> {currentJob.category}</p>
@@ -264,7 +363,7 @@ const JobsSubTab = ({ campaignData, actions }) => {
       )}
       
       <section className="info-card available-jobs-card">
-        <h3>Available Positions</h3>
+        <h3>🔍 Available Positions</h3>
         {!currentJob ? (
           <p>Choose a career path to generate income and build your political profile:</p>
         ) : (
@@ -275,8 +374,24 @@ const JobsSubTab = ({ campaignData, actions }) => {
           {availableJobs.map((job) => (
             <li key={job.id} className="job-list-item">
               <div className="job-info">
-                <span className="job-title">{job.title}</span>
-                <span className="job-category">({job.category})</span>
+                <div className="job-header">
+                  <div className="job-title-wrapper">
+                    <span className="job-title">{job.title}</span>
+                    <span className="job-category">{job.category}</span>
+                  </div>
+                  <button
+                    className="action-button small-button"
+                    onClick={() => handleApplyForJob(job.id)}
+                    disabled={currentJob?.id === job.id}
+                    title={
+                      currentJob?.id === job.id 
+                        ? "You already have this job" 
+                        : `Apply for ${job.title}`
+                    }
+                  >
+                    {currentJob?.id === job.id ? "Current" : "Apply"}
+                  </button>
+                </div>
                 <div className="job-details">
                   <p><strong>Salary:</strong> ${job.salary.toLocaleString()}/month</p>
                   <p><strong>Time:</strong> {job.timeCommitment} hours/day</p>
@@ -291,18 +406,6 @@ const JobsSubTab = ({ campaignData, actions }) => {
                 </div>
                 <p className="job-description">{job.description}</p>
               </div>
-              <button
-                className="action-button small-button"
-                onClick={() => handleApplyForJob(job.id)}
-                disabled={currentJob?.id === job.id}
-                title={
-                  currentJob?.id === job.id 
-                    ? "You already have this job" 
-                    : `Apply for ${job.title}`
-                }
-              >
-                {currentJob?.id === job.id ? "Current" : "Apply"}
-              </button>
             </li>
           ))}
         </ul>
@@ -331,7 +434,7 @@ const OfficeSubTab = ({
     return (
       <div className="sub-tab-content">
         <section className="info-card">
-          <h3>My Office</h3>
+          <h3>🏛️ My Office</h3>
           <p>
             You do not currently hold a public office. Consider running in an
             election!
@@ -350,7 +453,7 @@ const OfficeSubTab = ({
   return (
     <div className="sub-tab-content">
       <section className="info-card current-office-details">
-        <h3>Details: {playerCurrentOfficeName}</h3>
+        <h3>📋 Details: {playerCurrentOfficeName}</h3>
         {officeDetailsInCampaign?.termEnds && (
           <p>
             <strong>Term Ends:</strong>{" "}
@@ -366,7 +469,7 @@ const OfficeSubTab = ({
       </section>
 
       <section className="info-card current-role-actions">
-        <h3>Actions as {playerCurrentOfficeName}</h3>
+        <h3>⚡ Actions as {playerCurrentOfficeName}</h3>
         <div className="action-group">
           <label htmlFor="issueSelect">Address Key City Issue:</label>
           <select
@@ -485,7 +588,7 @@ const ActionsSubTab = ({
   return (
     <div className="sub-tab-content">
       <section className="info-card personal-actions">
-        <h3>Personal & Political Development</h3>
+        <h3>🎯 Personal & Political Development</h3>
         <p>
           <strong>Personal Treasury:</strong> $
           {treasury != null ? treasury.toLocaleString() : "N/A"}
@@ -559,7 +662,7 @@ const ActionsSubTab = ({
 
 const EMPTY_ARRAY = [];
 
-const StaffSubTab = () => {
+const StaffSubTab = ({ staffSubtab }) => {
   // State to control modal visibility
   const [viewingResumeId, setViewingResumeId] = useState(null);
   const [negotiatingId, setNegotiatingId] = useState(null);
@@ -743,110 +846,129 @@ const StaffSubTab = () => {
         />
       )}
 
-      <div className="sub-tab-content">
-        <section className="info-card hired-staff-card">
-          <h3>My Staff</h3>
-          {hiredStaff.length > 0 ? (
-            <ul className="staff-list">
-              {hiredStaff.map((staff) => (
-                <li key={staff.id} className="staff-list-item">
-                  <div className="staff-info">
-                    <span className="staff-name">
-                      {staff.name}{" "}
-                      <span className="staff-role">({staff.role})</span>
-                    </span>
-                    <span className="staff-details">
-                      STR: {staff.trueAttributes.strategy} | COM:{" "}
-                      {staff.trueAttributes.communication} | FUN:{" "}
-                      {staff.trueAttributes.fundraising} | LOY:{" "}
-                      {staff.trueAttributes.loyalty}
-                    </span>
-                    <span className="staff-salary">
-                      Salary: ${staff.salary.toLocaleString()}/month
-                    </span>
-                  </div>
-                  <button
-                    className="button-delete small-button"
-                    onClick={() => fireStaff(staff.id)}
-                  >
-                    Fire
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p>You have not hired any staff.</p>
-          )}
-        </section>
-
-        <section className="info-card scouting-pool-card">
-          <h3>Scouting Pool</h3>
-          {!hasHRDirector && (
-            <p className="hr-warning">
-              Hire an HR Director to unlock final vetting and discover hidden
-              gems or busts.
-            </p>
-          )}
-          {talentPool.length > 0 ? (
-            <ul className="staff-list">
-              {talentPool.map((staff) => (
-                <li key={staff.id} className="staff-list-item">
-                  <div className="staff-info">
-                    <span className="staff-name">
-                      {staff.name}{" "}
-                      <span className="staff-role">({staff.role})</span>
-                    </span>
-                    {Object.keys(staff.revealedAttributes).length > 0 ? (
+      <div className="sub-tab-content">        
+        {staffSubtab === "MyStaff" && (
+          <section className="info-card hired-staff-card">
+            <h3>👥 My Staff</h3>
+            {hiredStaff.length > 0 ? (
+              <ul className="staff-list">
+                {hiredStaff.map((staff) => (
+                  <li key={staff.id} className="staff-list-item">
+                    <div className="staff-info">
+                      <span className="staff-name">
+                        {staff.name}{" "}
+                        <span className="staff-role">({staff.role})</span>
+                      </span>
                       <span className="staff-details">
-                        Known Skills:
-                        {Object.entries(staff.revealedAttributes)
-                          .map(
-                            ([key, value]) =>
-                              ` ${key.substring(0, 3).toUpperCase()}: ${value}`
-                          )
-                          .join(" | ")}
+                        STR: {staff.trueAttributes.strategy} | COM:{" "}
+                        {staff.trueAttributes.communication} | FUN:{" "}
+                        {staff.trueAttributes.fundraising} | LOY:{" "}
+                        {staff.trueAttributes.loyalty}
                       </span>
-                    ) : (
-                      <span className="staff-details-hidden">
-                        {staff.scoutingLevel === "unscouted"
-                          ? "Unknown Candidate. Scout to reveal info."
-                          : "Skills unconfirmed. Further vetting required."}
+                      <span className="staff-salary">
+                        Salary: ${staff.salary.toLocaleString()}/month
                       </span>
-                    )}
-                    <span className="staff-details biases">
-                      Focus: {staff.biases.strategicFocus.replace("_", " ")} |
-                      Lean: {staff.biases.ideologicalLean}
-                    </span>
-                    {staff.revealedPriorities &&
-                      staff.revealedPriorities.length > 0 && (
-                        <div className="staff-priorities">
-                          <span>
-                            <strong>Priorities:</strong>{" "}
-                            {staff.revealedPriorities
-                              .map((p) => p.replace(/_/g, " "))
-                              .join(", ")}
-                          </span>
-                        </div>
+                    </div>
+                    <button
+                      className="button-delete small-button"
+                      onClick={() => fireStaff(staff.id)}
+                    >
+                      Fire
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p>You have not hired any staff.</p>
+            )}
+          </section>
+        )}
+
+        {staffSubtab === "ScoutingPool" && (
+          <section className="info-card scouting-pool-card">
+            <h3>🔎 Scouting Pool</h3>
+            {!hasHRDirector && (
+              <p className="hr-warning">
+                Hire an HR Director to unlock final vetting and discover hidden
+                gems or busts.
+              </p>
+            )}
+            {talentPool.length > 0 ? (
+              <ul className="staff-list">
+                {talentPool.map((staff) => (
+                  <li key={staff.id} className="staff-list-item">
+                    <div className="staff-info">
+                      <span className="staff-name">
+                        {staff.name}{" "}
+                        <span className="staff-role">({staff.role})</span>
+                      </span>
+                      {Object.keys(staff.revealedAttributes).length > 0 ? (
+                        <span className="staff-details">
+                          Known Skills:
+                          {Object.entries(staff.revealedAttributes)
+                            .map(
+                              ([key, value]) =>
+                                ` ${key.substring(0, 3).toUpperCase()}: ${value}`
+                            )
+                            .join(" | ")}
+                        </span>
+                      ) : (
+                        <span className="staff-details-hidden">
+                          {staff.scoutingLevel === "unscouted"
+                            ? "Unknown Candidate. Scout to reveal info."
+                            : "Skills unconfirmed. Further vetting required."}
+                        </span>
                       )}
-                  </div>
-                  <div className="staff-actions">
-                    {getScoutingActions(staff)}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p>No candidates currently available for scouting.</p>
-          )}
-        </section>
+                      <span className="staff-details biases">
+                        Focus: {staff.biases.strategicFocus.replace("_", " ")} |
+                        Lean: {staff.biases.ideologicalLean}
+                      </span>
+                      {staff.revealedPriorities &&
+                        staff.revealedPriorities.length > 0 && (
+                          <div className="staff-priorities">
+                            <span>
+                              <strong>Priorities:</strong>{" "}
+                              {staff.revealedPriorities
+                                .map((p) => p.replace(/_/g, " "))
+                                .join(", ")}
+                            </span>
+                          </div>
+                        )}
+                    </div>
+                    <div className="staff-actions">
+                      {getScoutingActions(staff)}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p>No candidates currently available for scouting.</p>
+            )}
+          </section>
+        )}
       </div>
     </>
   );
 };
 
 function CareerActionsTab({ campaignData }) {
-  const [activeSubTab, setActiveSubTab] = useState("Elections");
+  const [activeSubTab, setActiveSubTab] = useState("Overview");
+  const [staffSubTab, setStaffSubTab] = useState("MyStaff");
   const [selectedIssueToAddress, setSelectedIssueToAddress] = useState("");
+  
+  const subtabs = [
+    { id: "Overview", label: "Overview" },
+    { id: "Elections", label: "Elections" },
+    { id: "Jobs", label: "Jobs" },
+    { id: "Office", label: "My Office" },
+    { id: "Staff", label: "Staff & Scouting" },
+    { id: "Actions", label: "Actions" },
+  ];
+
+  const staffSubtabs = [
+    { id: "MyStaff", label: "My Staff" },
+    { id: "ScoutingPool", label: "Scouting Pool" }
+  ];
 
   const store = useGameStore();
   const storeActions = store.actions;
@@ -883,20 +1005,6 @@ function CareerActionsTab({ campaignData }) {
       setSelectedIssueToAddress("");
     }
   }, [startingCity?.stats?.mainIssues, selectedIssueToAddress]);
-
-  const partyDisplayName = useMemo(() => {
-    if (!partyInfo || !partyInfo.type) return "N/A (No Affiliation)";
-    if (partyInfo.type === "independent") return "Independent";
-    if (partyInfo.type === "join_generated") {
-      const party = generatedPartiesSnapshot.find((p) => p.id === partyInfo.id);
-      return party ? party.name : "Affiliated (Generated Party Error)";
-    }
-    if (partyInfo.type === "use_custom") {
-      const party = customPartiesSnapshot.find((p) => p.id === partyInfo.id);
-      return party ? party.name : "Affiliated (Custom Party Error)";
-    }
-    return "N/A";
-  }, [partyInfo, generatedPartiesSnapshot, customPartiesSnapshot]);
 
   const availableElectionsToRunIn = useMemo(() => {
     if (
@@ -1028,7 +1136,7 @@ function CareerActionsTab({ campaignData }) {
 
   if (!campaignData || !playerPolitician) {
     return (
-      <div className="tab-content-container ui-panel">
+      <div className="tab-content-container ">
         <h2 className="tab-title">Career & Actions</h2>
         <p>No campaign data or politician data available.</p>
       </div>
@@ -1048,6 +1156,8 @@ function CareerActionsTab({ campaignData }) {
     };
 
     switch (activeSubTab) {
+      case "Overview":
+        return <OverviewSubTab {...subTabProps} />;
       case "Elections":
         return (
           <ElectionsSubTab
@@ -1070,7 +1180,7 @@ function CareerActionsTab({ campaignData }) {
           />
         );
       case "Staff":
-        return <StaffSubTab />;
+        return <StaffSubTab staffSubtab={staffSubTab} />;
       case "Actions":
         return (
           <ActionsSubTab
@@ -1086,110 +1196,26 @@ function CareerActionsTab({ campaignData }) {
 
   return (
     <>
-      <div className="tab-content-container career-actions-tab ui-panel">
+      <div className="tab-content-container career-actions-tab">
         <h2 className="tab-title">Career & Political Actions</h2>
-        <section className="info-card current-status-card">
-          <h3>Current Status Overview</h3>
-          {playerPolitician && (
-            <>
-              <p>
-                <strong>Politician:</strong> {playerPolitician.firstName}{" "}
-                {playerPolitician.lastName}
-              </p>
-              <p>
-                <strong>Current Role:</strong>{" "}
-                {playerPolitician.currentOffice || "Aspiring Politician"}
-              </p>
-              <p>
-                <strong>Ideology:</strong> {playerPolitician.calculatedIdeology}
-              </p>
-              <p>
-                <strong>Party Affiliation:</strong> {partyDisplayName}
-              </p>
-              <p>
-                <strong>Overall Approval:</strong>{" "}
-                {playerPolitician.approvalRating != null
-                  ? `${playerPolitician.approvalRating}%`
-                  : "N/A"}
-              </p>
-              <p>
-                <strong>Personal Treasury:</strong> $
-                {playerPolitician.treasury != null
-                  ? playerPolitician.treasury.toLocaleString()
-                  : "N/A"}
-              </p>
-              <p>
-                <strong>Campaign Funds:</strong> $
-                {playerPolitician.campaignFunds != null
-                  ? playerPolitician.campaignFunds.toLocaleString()
-                  : "N/A"}
-              </p>
-              {playerPolitician.currentOffice &&
-                governmentOffices?.find(
-                  (off) =>
-                    off.officeName === playerPolitician.currentOffice &&
-                    off.holder?.id === playerPolitician.id
-                )?.termEnds && (
-                  <p>
-                    <strong>Term Ends:</strong>{" "}
-                    {(() => {
-                      const office = governmentOffices.find(
-                        (off) =>
-                          off.officeName === playerPolitician.currentOffice &&
-                          off.holder?.id === playerPolitician.id
-                      );
-                      return office
-                        ? `${office.termEnds.month}/${office.termEnds.day}/${office.termEnds.year}`
-                        : "N/A";
-                    })()}
-                  </p>
-                )}
-              <p
-                style={{
-                  color: canPerformMajorAction
-                    ? "var(--success-text, green)"
-                    : "var(--warning-text, orange)",
-                }}
-              >
-                Major Action Available Today:{" "}
-                {canPerformMajorAction ? "Yes" : "No"}
-              </p>
-            </>
+        
+        <div className="dropdown-container">
+          <SubtabDropdown 
+            tabs={subtabs}
+            activeTab={activeSubTab}
+            onTabChange={setActiveSubTab}
+            label="Select Career View"
+          />
+          {activeSubTab === "Staff" && (
+            <SubtabDropdown
+              tabs={staffSubtabs}
+              activeTab={staffSubTab}
+              onTabChange={setStaffSubTab}
+              label="Select View"
+            />
           )}
-        </section>
-
-        <div className="sub-tab-navigation ca-sub-nav">
-          <button
-            onClick={() => setActiveSubTab("Elections")}
-            className={activeSubTab === "Elections" ? "active" : ""}
-          >
-            Elections
-          </button>
-          <button
-            onClick={() => setActiveSubTab("Jobs")}
-            className={activeSubTab === "Jobs" ? "active" : ""}
-          >
-            Jobs
-          </button>
-          <button
-            onClick={() => setActiveSubTab("Office")}
-            className={activeSubTab === "Office" ? "active" : ""}
-          >
-            My Office
-          </button>
-          <button
-            onClick={() => setActiveSubTab("Staff")}
-            className={activeSubTab === "Staff" ? "active" : ""}
-          >
-            Staff & Scouting
-          </button>
-          <button
-            onClick={() => setActiveSubTab("Actions")}
-            className={activeSubTab === "Actions" ? "active" : ""}
-          >
-            Actions
-          </button>
         </div>
+        
         <div className="sub-tab-content-area">{renderSubTabContent()}</div>
       </div>
 

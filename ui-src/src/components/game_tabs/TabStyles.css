@@ -1,7 +1,12 @@
 /* ui-src/src/components/game_tabs/TabStyles.css */
 .tab-content-container {
-  /* Basic container for content within each tab */
+  /* Full space container for tab content */
+  width: 100%;
+  height: 100%;
   animation: fadeInTabContent 0.3s ease-out;
+  padding: 0;
+  margin: 0;
+  background-color: transparent;
 }
 
 .tab-title {
@@ -21,5 +26,38 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+/* Tab-specific padding for tabs that need it */
+.government-tab-content {
+  padding: 20px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Dropdown Container - matching CareerActionsTab layout */
+.dropdown-container {
+  display: flex;
+  gap: 16px;
+  margin: 0 0 16px 0;
+}
+
+.dropdown-container .subtab-dropdown-container {
+  margin: 0; /* Remove individual margins since container handles spacing */
+  flex-shrink: 0; /* Prevent dropdowns from shrinking */
+}
+
+.polling-tab {
+  padding: 20px;
+  height: 100%;
+}
+
+/* Responsive design for dropdown container */
+@media (max-width: 768px) {
+  .dropdown-container {
+    flex-direction: column; /* Stack dropdowns vertically on mobile for better usability */
+    gap: 12px;
   }
 }

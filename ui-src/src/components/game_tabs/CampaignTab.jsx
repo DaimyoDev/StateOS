@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect, useCallback } from "react";
 import useGameStore from "../../store";
 import "./TabStyles.css";
 import "./CampaignTab.css";
+import SubtabDropdown from "../ui/SubtabDropdown";
 import {
   getDisplayedPolling,
   calculateAdultPopulation,
@@ -1165,6 +1166,15 @@ function CampaignTab({ campaignData }) {
   const storeActions = useGameStore((state) => state.actions);
   const { openViewPoliticianModal, syncPlayerElectionCandidateData } = storeActions;
 
+  const subtabs = [
+    { id: "Overview", label: "Overview" },
+    { id: "Staff", label: "Staff" },
+    { id: "Field Ops", label: "Field Ops" },
+    { id: "Comms & Ads", label: "Comms & Ads" },
+    { id: "Fundraising", label: "Fundraising" },
+    { id: "Polling", label: "Polling" },
+  ];
+
   const cityKeyIssues = useMemo(
     () => campaignData?.startingCity?.stats?.mainIssues || [],
     [campaignData?.startingCity?.stats?.mainIssues]
@@ -1216,7 +1226,7 @@ function CampaignTab({ campaignData }) {
 
   if (!campaignData || !politician.id) {
     return (
-      <div className="campaign-tab-content ui-panel">
+      <div className="campaign-tab-content ">
         {" "}
         {/* Ensure consistent root class */}
         <h2 className="tab-title">My Campaign</h2>
@@ -1267,7 +1277,7 @@ function CampaignTab({ campaignData }) {
   };
 
   return (
-    <div className="campaign-tab-content ui-panel">
+    <div className="campaign-tab-content ">
       <h2 className="tab-title">Campaign Management</h2>
 
       {/* This card might always be visible to show general daily effort capacity */}
@@ -1300,44 +1310,12 @@ function CampaignTab({ campaignData }) {
       {/* Conditional rendering for the main campaign interface (sub-tabs and content) */}
       {politician.isInCampaign ? (
         <>
-          <div className="sub-tab-navigation campaign-sub-nav">
-            <button
-              onClick={() => setActiveSubTab("Overview")}
-              className={activeSubTab === "Overview" ? "active" : ""}
-            >
-              Overview
-            </button>
-            <button
-              onClick={() => setActiveSubTab("Staff")}
-              className={activeSubTab === "Staff" ? "active" : ""}
-            >
-              Staff
-            </button>
-            <button
-              onClick={() => setActiveSubTab("Field Ops")}
-              className={activeSubTab === "Field Ops" ? "active" : ""}
-            >
-              Field Ops
-            </button>
-            <button
-              onClick={() => setActiveSubTab("Comms & Ads")}
-              className={activeSubTab === "Comms & Ads" ? "active" : ""}
-            >
-              Comms & Ads
-            </button>
-            <button
-              onClick={() => setActiveSubTab("Fundraising")}
-              className={activeSubTab === "Fundraising" ? "active" : ""}
-            >
-              Fundraising
-            </button>
-            <button
-              onClick={() => setActiveSubTab("Polling")}
-              className={activeSubTab === "Polling" ? "active" : ""}
-            >
-              Polling
-            </button>
-          </div>
+          <SubtabDropdown 
+            tabs={subtabs}
+            activeTab={activeSubTab}
+            onTabChange={setActiveSubTab}
+            label="Select Campaign View"
+          />
 
           <div className="sub-tab-content-area">{renderSubTabContent()}</div>
         </>

@@ -1,4 +1,4 @@
-/* ui-src/src/components/game_tabs/government_tabs/GovernmentSubTabStyles.css */
+/* ui-src/src/components/game_tabs/government_tabs/CityOverviewTab.css */
 
 .city-overview-tab {
   /* Overall container for this specific tab content */
@@ -387,8 +387,424 @@
 .no-officials-message {
   grid-column: 1 / -1; /* Make message span across all columns */
   text-align: center;
-  color: var(--text-color-secondary);
+  color: var(--secondary-text);
   padding: 20px;
+  font-style: italic;
+}
+
+/* New Government Section Redesign Styles */
+.government-branch-section {
+  background: var(--secondary-bg);
+  border-radius: var(--element-radius);
+  padding: 20px;
+  margin-bottom: 24px;
+  border: 1px solid var(--border-color);
+}
+
+.branch-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--border-color);
+}
+
+.branch-header h5 {
+  margin: 0;
+  color: var(--accent-color);
+  font-size: 1.3em;
+  font-family: var(--font-heading);
+}
+
+.branch-subtitle {
+  color: var(--secondary-text);
+  font-size: 0.9em;
+  font-style: italic;
+}
+
+/* Executive Branch Styles */
+.executive-officials-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.featured-official {
+  background: linear-gradient(135deg, var(--ui-panel-bg), var(--secondary-bg));
+  border: 2px solid var(--accent-color);
+  border-radius: var(--element-radius);
+  padding: 20px;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.featured-official:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+}
+
+.mayor-card {
+  grid-column: span 1;
+}
+
+.vice-mayor-card {
+  grid-column: span 1;
+}
+
+.official-role-badge {
+  position: absolute;
+  top: -12px;
+  left: 20px;
+  background: var(--accent-color);
+  color: var(--accent-text);
+  padding: 4px 16px;
+  border-radius: 12px;
+  font-size: 0.85em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.official-info {
+  margin-top: 8px;
+}
+
+.official-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.official-name {
+  margin: 8px 0 4px;
+  color: var(--primary-text);
+  font-size: 1.2em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.2s;
+  flex: 1;
+}
+
+.official-name:hover {
+  color: var(--accent-color);
+}
+
+.official-party {
+  color: var(--secondary-text);
+  font-size: 0.95em;
+  margin: 4px 0 12px;
+}
+
+.official-stats {
+  display: flex;
+  gap: 20px;
+  margin-top: 12px;
+}
+
+.stat-mini {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stat-mini .stat-label {
+  font-size: 0.75em;
+  color: var(--secondary-text);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-mini .stat-value {
+  font-size: 1.1em;
+  color: var(--primary-text);
+  font-weight: 600;
+}
+
+/* Legislative Branch Styles */
+.council-overview {
+  margin-bottom: 24px;
+}
+
+.council-composition-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+  padding: 20px;
+  background: var(--ui-panel-bg);
+  border-radius: var(--element-radius);
+  border: 1px solid var(--border-color);
+  min-height: 320px;
+}
+
+@media (max-width: 768px) {
+  .council-composition-stats {
+    grid-template-columns: 1fr;
+    gap: 20px;
+    min-height: auto;
+  }
+  
+  .composition-chart {
+    min-height: 250px;
+  }
+}
+
+.composition-chart {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 300px;
+}
+
+.composition-legend {
+  padding: 10px;
+  overflow-x: auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.composition-legend h6 {
+  margin: 0 0 12px 0;
+  color: var(--primary-text);
+  font-size: 0.95em;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  padding: 4px 0;
+}
+
+.party-color-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.legend-item .party-name {
+  flex: 1;
+  font-size: 0.9em;
+  color: var(--primary-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 200px;
+}
+
+.legend-item .party-count {
+  font-size: 0.85em;
+  color: var(--secondary-text);
+  font-weight: 600;
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
+/* Council Members Section */
+.council-members-section {
+  margin-top: 20px;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.section-header h6 {
+  margin: 0;
+  color: var(--primary-text);
+  font-size: 1.1em;
+}
+
+.view-toggle {
+  display: flex;
+  gap: 4px;
+  background: var(--ui-panel-bg);
+  border-radius: var(--element-radius);
+  padding: 2px;
+}
+
+.view-toggle button {
+  padding: 6px 12px;
+  font-size: 0.85em;
+  background: transparent;
+  border: none;
+  color: var(--secondary-text);
+  cursor: pointer;
+  border-radius: calc(var(--element-radius) - 2px);
+  transition: all 0.2s;
+}
+
+.view-toggle button.active {
+  background: var(--accent-color);
+  color: var(--accent-text);
+}
+
+.view-toggle button:hover:not(.active) {
+  background: var(--highlight-bg);
+}
+
+.council-members-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.council-members-grid.grouped-by-party {
+  gap: 8px 12px;
+}
+
+.party-group-header {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 0 8px 0;
+  margin-top: 16px;
+  border-bottom: 2px solid var(--border-color);
+}
+
+.party-group-header:first-child {
+  margin-top: 0;
+}
+
+.party-group-name {
+  font-size: 1.05em;
+  font-weight: 600;
+  font-family: var(--font-heading);
+}
+
+.party-group-count {
+  font-size: 0.85em;
+  color: var(--secondary-text);
+  font-style: italic;
+}
+
+.council-member-card {
+  background: var(--ui-panel-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--element-radius);
+  padding: 12px;
+  transition: all 0.2s;
+}
+
+.council-member-card:hover {
+  border-color: var(--accent-color);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.member-header {
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.seat-number {
+  font-size: 0.8em;
+  color: var(--secondary-text);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.member-info {
+  text-align: center;
+}
+
+.member-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.member-name {
+  margin: 4px 0;
+  font-size: 0.95em;
+  color: var(--primary-text);
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.2s;
+  flex: 1;
+}
+
+.member-name:hover {
+  color: var(--accent-color);
+}
+
+.member-party {
+  font-size: 0.85em;
+  margin: 2px 0;
+}
+
+/* Seat History Button Styles */
+.seat-history-button {
+  background: var(--secondary-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 6px 8px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--secondary-text);
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+}
+
+.seat-history-button:hover {
+  background: var(--highlight-bg);
+  color: var(--accent-color);
+  border-color: var(--accent-color);
+}
+
+.seat-history-button.small {
+  padding: 4px 6px;
+  font-size: 12px;
+  min-width: 24px;
+  height: 24px;
+}
+
+/* Government Summary Stats */
+.government-summary-stats {
+  display: flex;
+  justify-content: space-around;
+  padding: 16px;
+  background: var(--highlight-bg);
+  border-radius: var(--element-radius);
+  margin-top: 24px;
+}
+
+.summary-stat {
+  text-align: center;
+}
+
+.summary-stat .stat-label {
+  display: block;
+  font-size: 0.8em;
+  color: var(--secondary-text);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.summary-stat .stat-value {
+  display: block;
+  font-size: 1.3em;
+  color: var(--accent-color);
+  font-weight: 700;
 }
 
 /* Coalition Data Styling */
@@ -467,5 +883,36 @@
   color: var(--secondary-text);
   font-size: 0.9em;
   margin-bottom: 15px;
+  font-style: italic;
+}
+
+/* Legislature Chamber Styles for State Overview */
+.legislature-chamber-section {
+  margin-bottom: 32px;
+  padding: 20px;
+  background: var(--ui-panel-bg);
+  border-radius: var(--element-radius);
+  border: 1px solid var(--border-color);
+}
+
+.chamber-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.chamber-header h6 {
+  margin: 0;
+  color: var(--primary-text);
+  font-size: 1.15em;
+  font-weight: 600;
+}
+
+.chamber-subtitle {
+  color: var(--secondary-text);
+  font-size: 0.9em;
   font-style: italic;
 }

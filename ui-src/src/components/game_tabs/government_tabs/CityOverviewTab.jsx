@@ -66,12 +66,21 @@ const formatLawValue = (key, value) => {
   return String(value);
 };
 
-const CityOverviewTab = () => {
-  const [activeSubTab, setActiveSubTab] = useState("summary");
+const CityOverviewTab = ({ campaignData, activeSubTab = "summary" }) => {
   const [governmentFilter, setGovernmentFilter] = useState("all");
 
+  const SUBTABS = [
+    { id: "summary", label: "Summary" },
+    { id: "demographics", label: "Demographics" },
+    { id: "services", label: "Services" },
+    { id: "budget", label: "Budget & Taxes" },
+    { id: "government", label: "Government" },
+    { id: "laws", label: "City Laws" },
+    { id: "coalitions", label: "Coalitions" }
+  ];
+
   const activeCampaign = useGameStore((state) => state.activeCampaign);
-  const { openViewPoliticianModal, getCoalitionsForCity } = useGameStore((state) => state.actions);
+  const { openViewPoliticianModal, getCoalitionsForCity, openSeatHistoryModal } = useGameStore((state) => state.actions);
   const governmentOffices = useGameStore((state) => state.activeCampaign?.governmentOffices);
   const currentTheme = useGameStore(
     (state) => state.availableThemes[state.activeThemeName]
@@ -207,6 +216,8 @@ const CityOverviewTab = () => {
             officeName: member.role || `${office.officeName} Member`,
             holder: member,
             _conceptualSeatNumber: index + 1,
+            // Use individual member's seat history if available, otherwise fall back to office history
+            seatHistory: member.seatHistory || office.seatHistory,
           });
         });
       } else if (office.holder && office.numberOfSeatsToFill === 1) {
@@ -509,18 +520,32 @@ const CityOverviewTab = () => {
     return officials;
   }, [mayorOffice, viceMayorOffice, councilOffices, governmentOffices]);
 
-  const filteredOfficials = useMemo(() => {
+  const filteredCouncilMembers = useMemo(() => {
     if (governmentFilter === "all") {
-      return allCityOfficials;
-    } else if (governmentFilter === "mayor") {
-      return allCityOfficials.filter(
-        (o) => o.type === "mayor" || o.type === "vice_mayor"
-      );
-    } else if (governmentFilter === "council") {
-      return allCityOfficials.filter((o) => o.type === "council");
+      return councilOffices;
+    } else if (governmentFilter === "party") {
+      // Group by party and sort
+      const grouped = [...councilOffices].sort((a, b) => {
+        const partyA = getUpdatedPolitician(a.holder)?.partyName || "ZZZ_Independent";
+        const partyB = getUpdatedPolitician(b.holder)?.partyName || "ZZZ_Independent";
+        
+        // Sort by party name first
+        if (partyA !== partyB) {
+          return partyA.localeCompare(partyB);
+        }
+        
+        // Then by seat number within the same party
+        const seatA = a._conceptualSeatNumber || 999;
+        const seatB = b._conceptualSeatNumber || 999;
+        return seatA - seatB;
+      });
+      return grouped;
+    } else if (governmentFilter === "district") {
+      // For future district implementation
+      return councilOffices;
     }
-    return [];
-  }, [allCityOfficials, governmentFilter]);
+    return councilOffices;
+  }, [councilOffices, governmentFilter, getUpdatedPolitician]);
 
   const renderSubTabContent = () => {
     switch (activeSubTab) {
@@ -873,63 +898,221 @@ const CityOverviewTab = () => {
       case "government":
         return (
           <section className="city-officials-section city-section">
-            <h4>City Government Officials</h4>
-            <div className="government-filter-buttons">
-              <button
-                onClick={() => setGovernmentFilter("all")}
-                className={governmentFilter === "all" ? "active" : ""}
-              >
-                All Officials
-              </button>
-              <button
-                onClick={() => setGovernmentFilter("mayor")}
-                className={governmentFilter === "mayor" ? "active" : ""}
-              >
-                Mayoral Offices
-              </button>
-              <button
-                onClick={() => setGovernmentFilter("council")}
-                className={governmentFilter === "council" ? "active" : ""}
-              >
-                City Council
-              </button>
+            <h4>City Government Structure</h4>
+            
+            {/* Executive Branch Section */}
+            <div className="government-branch-section executive-branch">
+              <div className="branch-header">
+                <h5>Executive Branch</h5>
+                <span className="branch-subtitle">City Leadership</span>
+              </div>
+              <div className="executive-officials-grid">
+                {mayorOffice && mayorOffice.holder && (
+                  <div className="mayor-card featured-official">
+                    <div className="official-role-badge">Mayor</div>
+                    <div className="official-info">
+                      <div className="official-name-row">
+                        <h6 className="official-name" 
+                            onClick={() => handlePoliticianClick(getUpdatedPolitician(mayorOffice.holder))}>
+                          {getUpdatedPolitician(mayorOffice.holder)?.firstName} {getUpdatedPolitician(mayorOffice.holder)?.lastName}
+                        </h6>
+                        <button 
+                          className="seat-history-button"
+                          onClick={() => openSeatHistoryModal(mayorOffice)}
+                          title="View seat history"
+                        >
+                          📅
+                        </button>
+                      </div>
+                      <p className="official-party">
+                        {getUpdatedPolitician(mayorOffice.holder)?.partyName || "Independent"}
+                      </p>
+                      <div className="official-stats">
+                        <div className="stat-mini">
+                          <span className="stat-label">Approval</span>
+                          <span className="stat-value">
+                            {getUpdatedPolitician(mayorOffice.holder)?.approvalRating || "N/A"}%
+                          </span>
+                        </div>
+                        <div className="stat-mini">
+                          <span className="stat-label">Term</span>
+                          <span className="stat-value">
+                            {mayorOffice.termLength || "N/A"} years
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {viceMayorOffice && viceMayorOffice.holder && (
+                  <div className="vice-mayor-card featured-official">
+                    <div className="official-role-badge">Vice Mayor</div>
+                    <div className="official-info">
+                      <div className="official-name-row">
+                        <h6 className="official-name"
+                            onClick={() => handlePoliticianClick(getUpdatedPolitician(viceMayorOffice.holder))}>
+                          {getUpdatedPolitician(viceMayorOffice.holder)?.firstName} {getUpdatedPolitician(viceMayorOffice.holder)?.lastName}
+                        </h6>
+                        <button 
+                          className="seat-history-button"
+                          onClick={() => openSeatHistoryModal(viceMayorOffice)}
+                          title="View seat history"
+                        >
+                          📅
+                        </button>
+                      </div>
+                      <p className="official-party">
+                        {getUpdatedPolitician(viceMayorOffice.holder)?.partyName || "Independent"}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                {!mayorOffice?.holder && !viceMayorOffice?.holder && (
+                  <p className="no-officials-message">No executive officials currently in office</p>
+                )}
+              </div>
             </div>
 
-            <div className="officials-cards-grid">
-              {filteredOfficials.length > 0 ? (
-                filteredOfficials.map((office) => (
-                  <PoliticianCard
-                    key={office.officeId}
-                    office={office}
-                    politician={getUpdatedPolitician(office.holder)}
-                    currentLocationName={cityName} // Pass cityName here
-                    formatOfficeTitle={formatOfficeTitleForDisplay}
-                    onClick={handlePoliticianClick}
-                  />
-                ))
-              ) : (
-                <p className="no-officials-message">
-                  No officials to display for this filter.
-                </p>
-              )}
-            </div>
-
-            {governmentFilter !== "mayor" && (
-              <>
-                {councilPartyComposition.length > 0 && (
-                  <div className="council-pie-chart-container">
-                    <h5>Council Party Breakdown</h5>
-                    <div className="pie-chart-wrapper-council">
+            {/* Legislative Branch Section */}
+            <div className="government-branch-section legislative-branch">
+              <div className="branch-header">
+                <h5>Legislative Branch</h5>
+                <span className="branch-subtitle">City Council • {councilOffices.length} Members</span>
+              </div>
+              
+              {/* Council Composition Overview */}
+              {councilPartyComposition.length > 0 && (
+                <div className="council-overview">
+                  <div className="council-composition-stats">
+                    <div className="composition-chart">
                       <CouncilCompositionPieChart
                         councilCompositionData={councilPartyComposition}
                         themeColors={currentTheme?.colors}
                         themeFonts={currentTheme?.fonts}
                       />
                     </div>
+                    <div className="composition-legend">
+                      <h6>Party Distribution</h6>
+                      {councilPartyComposition.map((party) => (
+                        <div key={party.id} className="legend-item">
+                          <span className="party-color-dot" style={{ backgroundColor: party.color }}></span>
+                          <span className="party-name">{party.name}</span>
+                          <span className="party-count">{party.popularity} seats</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                )}
-              </>
-            )}
+                </div>
+              )}
+
+              {/* Council Members Grid */}
+              <div className="council-members-section">
+                <div className="section-header">
+                  <h6>Council Members</h6>
+                  <div className="view-toggle">
+                    <button 
+                      className={governmentFilter === "all" ? "active" : ""}
+                      onClick={() => setGovernmentFilter("all")}
+                    >
+                      All
+                    </button>
+                    <button 
+                      className={governmentFilter === "district" ? "active" : ""}
+                      onClick={() => setGovernmentFilter("district")}
+                    >
+                      By District
+                    </button>
+                    <button 
+                      className={governmentFilter === "party" ? "active" : ""}
+                      onClick={() => setGovernmentFilter("party")}
+                    >
+                      By Party
+                    </button>
+                  </div>
+                </div>
+                
+                <div className={`council-members-grid ${governmentFilter === "party" ? "grouped-by-party" : ""}`}>
+                  {filteredCouncilMembers.length > 0 ? (
+                    filteredCouncilMembers.map((office, index) => {
+                      const politician = getUpdatedPolitician(office.holder);
+                      const currentParty = politician?.partyName || "Independent";
+                      const prevPolitician = index > 0 ? getUpdatedPolitician(filteredCouncilMembers[index - 1].holder) : null;
+                      const prevParty = prevPolitician?.partyName || "Independent";
+                      const isNewPartyGroup = governmentFilter === "party" && index === 0 || (governmentFilter === "party" && currentParty !== prevParty);
+                      
+                      return (
+                        <React.Fragment key={office.officeId}>
+                          {isNewPartyGroup && governmentFilter === "party" && (
+                            <div className="party-group-header" style={{ gridColumn: "1 / -1" }}>
+                              <span className="party-group-name" style={{ color: politician?.partyColor || "#888" }}>
+                                {currentParty}
+                              </span>
+                              <span className="party-group-count">
+                                ({filteredCouncilMembers.filter(o => {
+                                  const p = getUpdatedPolitician(o.holder);
+                                  return (p?.partyName || "Independent") === currentParty;
+                                }).length} members)
+                              </span>
+                            </div>
+                          )}
+                          <div className="council-member-card">
+                            <div className="member-header">
+                              <span className="seat-number">
+                                {formatOfficeTitleForDisplay(office, cityName)}
+                              </span>
+                            </div>
+                            <div className="member-info">
+                              <div className="member-name-row">
+                                <p className="member-name"
+                                   onClick={() => handlePoliticianClick(politician)}>
+                                  {politician?.firstName} {politician?.lastName}
+                                </p>
+                                <button 
+                                  className="seat-history-button small"
+                                  onClick={() => openSeatHistoryModal(office)}
+                                  title="View seat history"
+                                >
+                                  📅
+                                </button>
+                              </div>
+                              {governmentFilter !== "party" && (
+                                <p className="member-party" style={{ color: politician?.partyColor || "#888" }}>
+                                  {politician?.partyName || "Independent"}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </React.Fragment>
+                      );
+                    })
+                  ) : (
+                    <p className="no-officials-message">No council members currently in office</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Government Summary Stats */}
+            <div className="government-summary-stats">
+              <div className="summary-stat">
+                <span className="stat-label">Total Positions</span>
+                <span className="stat-value">
+                  {(mayorOffice ? 1 : 0) + (viceMayorOffice ? 1 : 0) + councilOffices.length}
+                </span>
+              </div>
+              <div className="summary-stat">
+                <span className="stat-label">Filled Positions</span>
+                <span className="stat-value">
+                  {(mayorOffice?.holder ? 1 : 0) + (viceMayorOffice?.holder ? 1 : 0) + councilOffices.filter(o => o.holder).length}
+                </span>
+              </div>
+              <div className="summary-stat">
+                <span className="stat-label">Majority Party</span>
+                <span className="stat-value">
+                  {councilPartyComposition.sort((a, b) => b.popularity - a.popularity)[0]?.name || "None"}
+                </span>
+              </div>
+            </div>
           </section>
         );
       case "laws":
@@ -1024,57 +1207,10 @@ const CityOverviewTab = () => {
   };
 
   return (
-    <div className="city-overview-tab">
-      <h2 className="city-main-title">
-        {cityName || "City"} - City Management
-      </h2>
-
-      <div className="sub-tab-navigation">
-        <button
-          onClick={() => setActiveSubTab("summary")}
-          className={activeSubTab === "summary" ? "active" : ""}
-        >
-          Summary
-        </button>
-        <button
-          onClick={() => setActiveSubTab("demographics")}
-          className={activeSubTab === "demographics" ? "active" : ""}
-        >
-          Demographics
-        </button>
-        <button
-          onClick={() => setActiveSubTab("services")}
-          className={activeSubTab === "services" ? "active" : ""}
-        >
-          Services
-        </button>
-        <button
-          onClick={() => setActiveSubTab("budget")}
-          className={activeSubTab === "budget" ? "active" : ""}
-        >
-          Budget & Taxes
-        </button>
-        <button
-          onClick={() => setActiveSubTab("government")}
-          className={activeSubTab === "government" ? "active" : ""}
-        >
-          Government
-        </button>
-        <button
-          onClick={() => setActiveSubTab("laws")}
-          className={activeSubTab === "laws" ? "active" : ""}
-        >
-          City Laws
-        </button>
-        <button
-          onClick={() => setActiveSubTab("coalitions")}
-          className={activeSubTab === "coalitions" ? "active" : ""}
-        >
-          Coalitions
-        </button>
+    <div className="tab-content-container">
+      <div className="government-tab-content">
+        <div className="sub-tab-content-area">{renderSubTabContent()}</div>
       </div>
-
-      <div className="sub-tab-content-area">{renderSubTabContent()}</div>
     </div>
   );
 };

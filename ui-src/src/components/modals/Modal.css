@@ -55,9 +55,9 @@
 
 .modal-actions {
   display: flex;
-  /* Changed from flex-end to space-between */
   justify-content: space-between;
-  gap: 15px; /* Space between action buttons if they were closer */
+  align-items: center; /* Ensure vertical alignment */
+  gap: 15px; /* Space between action buttons */
   margin-top: 10px;
   border-top: 1px solid var(--border-color);
   padding-top: 20px;
@@ -67,6 +67,5 @@
   /* For general styling of buttons within modals */
   min-width: 100px; /* Give modal buttons a decent default size */
   padding: 10px 20px;
-  max-height: min-content;
-  margin: 10px;
+  margin: 0; /* Remove margin to prevent stacking with button's own margin */
 }

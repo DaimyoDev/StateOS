@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import useGameStore from "../store";
 
 import "./ElectionSimulatorScreen.css";
+import "./CampaignGameScreen.css"; // Import for SubtabDropdown styles
 
 // Component imports
 import HierarchicalCoalitionsList from "../components/coalitions/HierarchicalCoalitionsList.jsx";
@@ -35,6 +36,7 @@ import { generateCandidatesForRace } from "../elections/candidateManager.js";
 
 // Reusable UI components
 import Modal from "../components/modals/Modal";
+import SubtabDropdown from "../components/ui/SubtabDropdown";
 import { generateFullCityData } from "../entities/politicalEntities";
 
 const getInitialSetupState = () => ({
@@ -57,6 +59,14 @@ const getInitialSetupState = () => ({
 
 const ElectionSimulatorScreen = () => {
   const actions = useGameStore((state) => state.actions);
+  
+  // Setup tab configuration
+  const SETUP_SUBTABS = [
+    { id: "general", label: "General Setup" },
+    { id: "parties", label: "Parties" },
+    { id: "candidates", label: "Candidates" },
+    { id: "coalitions", label: "Coalitions" }
+  ];
   const savedElectionSetups = useGameStore(
     (state) => state.savedElectionSetups || []
   );
@@ -1181,38 +1191,12 @@ const ElectionSimulatorScreen = () => {
       <div className="simulator-layout">
         <div className="simulation-setup-panel">
           <div className="setup-tabs-header">
-            <button
-              className={`tab-button ${
-                activeSetupTab === "general" ? "active" : ""
-              }`}
-              onClick={() => setActiveSetupTab("general")}
-            >
-              General
-            </button>
-            <button
-              className={`tab-button ${
-                activeSetupTab === "parties" ? "active" : ""
-              }`}
-              onClick={() => setActiveSetupTab("parties")}
-            >
-              Parties
-            </button>
-            <button
-              className={`tab-button ${
-                activeSetupTab === "candidates" ? "active" : ""
-              }`}
-              onClick={() => setActiveSetupTab("candidates")}
-            >
-              Candidates
-            </button>
-            <button
-              className={`tab-button ${
-                activeSetupTab === "coalitions" ? "active" : ""
-              }`}
-              onClick={() => setActiveSetupTab("coalitions")}
-            >
-              Coalitions
-            </button>
+            <SubtabDropdown 
+              tabs={SETUP_SUBTABS}
+              activeTab={activeSetupTab}
+              onTabChange={setActiveSetupTab}
+              label="Select Setup Tab"
+            />
           </div>
 
           <div className="setup-tabs-content">

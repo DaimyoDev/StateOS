@@ -156,6 +156,7 @@ button:focus-visible,
   border-radius: var(--element-radius);
   box-shadow: var(--button-shadow);
   transition: background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  text-transform: none; /* Explicitly prevent uppercase transformation */
 }
 
 .menu-button:hover {
@@ -191,33 +192,19 @@ button:focus-visible,
   overflow: hidden;
   letter-spacing: 0.025em;
   min-height: 44px;
+  text-transform: none; /* Explicitly prevent uppercase transformation */
 }
 
 .action-button:hover,
 .action-button:focus {
   background-color: var(--button-action-hover-bg);
   border-color: var(--button-action-hover-bg);
-  transform: translateY(-2px);
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
 }
 
-.action-button::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: rgba(255, 255, 255, 0.1);
-  transition: left 0.5s;
-}
-
-.action-button:hover::before {
-  left: 100%;
-}
+/* Removed slide animation effect */
 
 .action-button:active {
-  transform: translateY(1px) scale(0.98);
   background-color: var(--button-action-bg);
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.35);
 }
@@ -237,7 +224,6 @@ button:focus-visible,
   opacity: 0.7; /* Optional: further reduce visual prominence */
   cursor: not-allowed;
   box-shadow: none; /* Remove shadow for disabled state */
-  transform: none; /* Remove any hover/active transforms */
 }
 .action-button:disabled:hover,
 .action-button[disabled]:hover {
@@ -245,7 +231,6 @@ button:focus-visible,
   background-color: var(--disabled-bg, #555555);
   border-color: var(--disabled-bg, #555555);
   opacity: 0.7;
-  transform: none;
   box-shadow: none;
 }
 
@@ -302,7 +287,6 @@ button:focus-visible,
   ); /* Keep border matching hover background */
   /* You might want text color to change on hover if the hover bg is very different */
   /* color: var(--button-delete-hover-text, var(--button-delete-text)); */
-  transform: translateY(-1px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25); /* Generic hover shadow, or theme this */
 }
 
@@ -312,7 +296,6 @@ button:focus-visible,
 }
 
 .button-delete:active {
-  transform: translateY(1px) scale(0.98);
   /* You might want a specific --button-delete-active-bg or just use the hover one */
   background-color: var(--button-delete-hover-bg);
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.35);
@@ -322,8 +305,8 @@ button:focus-visible,
 html {
   /* Firefox */
   scrollbar-width: thin;
-  scrollbar-color: var(--scrollbar-thumb, var(--border-color, #ccc))
-    var(--scrollbar-track, var(--secondary-bg, #f5f5f5));
+  scrollbar-color: var(--border-color, #ccc)
+    var(--secondary-bg, #f5f5f5);
 }
 
 /* Chrome, Edge, Safari */
@@ -333,19 +316,19 @@ html {
 }
 
 *::-webkit-scrollbar-track {
-  background: var(--scrollbar-track, var(--secondary-bg, #f5f5f5));
+  background: var(--secondary-bg, #f5f5f5);
   border-radius: 8px;
 }
 
 *::-webkit-scrollbar-thumb {
-  background-color: var(--scrollbar-thumb, var(--border-color, #ccc));
+  background-color: var(--border-color, #ccc);
   border-radius: 8px;
   border: 2px solid transparent; /* Creates padding effect */
   background-clip: padding-box;
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background-color: var(--scrollbar-thumb-hover, var(--accent-color, #999));
+  background-color: var(--accent-color, #999);
 }
 
 /* Global Range Slider Styling */

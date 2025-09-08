@@ -114,6 +114,94 @@ const cleanWinnerName = (name) => {
 };
 
 /**
+ * Helper function to find existing office in hierarchical structure
+ * @param {Object} hierarchicalStructure - The government offices structure  
+ * @param {Object} election - The election to find office for
+ * @returns {Object|null} Existing office or null
+ */
+const findExistingOffice = (hierarchicalStructure, election) => {
+  const level = election.level;
+  const entityData = election.entityDataSnapshot;
+  
+  if (!hierarchicalStructure) return null;
+  
+  if (level && level.startsWith("national_")) {
+    const offices = [
+      ...(hierarchicalStructure.national?.executive || []),
+      ...(hierarchicalStructure.national?.legislative?.lowerHouse || []),
+      ...(hierarchicalStructure.national?.legislative?.upperHouse || []),
+      ...(hierarchicalStructure.national?.judicial || [])
+    ];
+    return offices.find(o => o.instanceIdBase === election.instanceIdBase);
+  } else if (level && (level.startsWith("state_") || level.startsWith("local_state"))) {
+    const stateId = entityData.stateId || entityData.parentId || entityData.id;
+    const stateOffices = hierarchicalStructure.states?.[stateId];
+    if (!stateOffices) return null;
+    
+    const offices = [
+      ...(stateOffices.executive || []),
+      ...(stateOffices.legislative?.lowerHouse || []),
+      ...(stateOffices.legislative?.upperHouse || []),
+      ...(stateOffices.judicial || [])
+    ];
+    return offices.find(o => o.instanceIdBase === election.instanceIdBase);
+  } else if (level && (level.startsWith("local_city") || level.includes("municipal"))) {
+    const cityId = entityData.id || entityData.cityId || entityData.parentCityId;
+    const cityOffices = hierarchicalStructure.cities?.[cityId];
+    if (!cityOffices) return null;
+    
+    const offices = [
+      ...(cityOffices.executive || []),
+      ...(cityOffices.legislative || []),
+      ...(cityOffices.judicial || [])
+    ];
+    return offices.find(o => o.instanceIdBase === election.instanceIdBase);
+  }
+  
+  return null;
+};
+
+/**
+ * Helper function to add seat history entry
+ * @param {Array} existingHistory - Current seat history array
+ * @param {Object} previousHolder - Previous office holder
+ * @param {Object} newHolder - New office holder  
+ * @param {Object} election - The election that caused the change
+ * @returns {Array} Updated seat history
+ */
+const addSeatHistoryEntry = (existingHistory, previousHolder, newHolder, election) => {
+  const history = existingHistory || [];
+  const currentDate = election.electionDate;
+  
+  // End the previous holder's term if there was one
+  if (previousHolder && history.length > 0) {
+    const lastEntry = history[history.length - 1];
+    if (!lastEntry.endDate) {
+      lastEntry.endDate = currentDate;
+      lastEntry.reason = "term_expired"; // or "defeated" if they ran and lost
+    }
+  }
+  
+  // Add new holder's entry
+  if (newHolder) {
+    history.push({
+      startDate: currentDate,
+      endDate: null, // Current holder
+      holder: {
+        id: newHolder.id,
+        name: newHolder.name,
+        partyName: newHolder.partyName,
+        partyColor: newHolder.partyColor
+      },
+      electionId: election.id,
+      reason: "elected"
+    });
+  }
+  
+  return history;
+};
+
+/**
  * Helper function to update government office in hierarchical structure
  * @param {Object} hierarchicalStructure - The current government offices structure
  * @param {Object} election - The election that concluded
@@ -289,21 +377,12 @@ const updateGovernmentOfficeInHierarchy = (
     if (level.includes("mayor") || level.includes("executive") || newOfficeData.officeNameTemplateId === "mayor") {
       console.log('[updateGovernmentOfficeInHierarchy] Handling mayor/executive office for level:', level);
       
-      // Try to find existing office by instanceIdBase first
+      // Find existing office by instanceIdBase (each office is unique)
       let existingIndex = updated.cities[cityId].executive.findIndex(
         (o) => o.instanceIdBase === election.instanceIdBase
       );
       
-      // If not found and this is a mayor office, try to find by office template (for legacy offices)
-      if (existingIndex === -1 && (level.includes("mayor") || newOfficeData.officeNameTemplateId === "mayor")) {
-        console.log('[updateGovernmentOfficeInHierarchy] Searching for existing mayor office by template. Current executive offices:', updated.cities[cityId].executive.map(o => ({ officeNameTemplateId: o.officeNameTemplateId, officeName: o.officeName, instanceIdBase: o.instanceIdBase })));
-        existingIndex = updated.cities[cityId].executive.findIndex(
-          (o) => o.officeNameTemplateId === "mayor" || o.officeName?.includes("Mayor")
-        );
-        console.log('[updateGovernmentOfficeInHierarchy] Found existing mayor office by template at index:', existingIndex);
-      }
-      
-      console.log('[updateGovernmentOfficeInHierarchy] Existing index:', existingIndex, 'instanceIdBase:', election.instanceIdBase);
+      console.log('[updateGovernmentOfficeInHierarchy] Looking for executive office with instanceIdBase:', election.instanceIdBase, 'found at index:', existingIndex);
 
       if (existingIndex >= 0) {
         console.log('[updateGovernmentOfficeInHierarchy] Updating existing mayor office at index:', existingIndex);
@@ -317,19 +396,19 @@ const updateGovernmentOfficeInHierarchy = (
       }
       console.log('[updateGovernmentOfficeInHierarchy] City executive offices after update:', updated.cities[cityId].executive);
     } else if (level.includes("council") || level.includes("legislative")) {
-      // Try to find existing office by instanceIdBase first
+      // Find existing office by instanceIdBase (each seat is unique)
       let existingIndex = updated.cities[cityId].legislative.findIndex(
         (o) => o.instanceIdBase === election.instanceIdBase
       );
       
-      // If not found and this is a city council office, try to find by office template (for legacy offices)
-      if (existingIndex === -1 && (level.includes("council") || newOfficeData.officeNameTemplateId === "city_council")) {
-        console.log('[updateGovernmentOfficeInHierarchy] Searching for existing council office by template. Current legislative offices:', updated.cities[cityId].legislative.map(o => ({ officeNameTemplateId: o.officeNameTemplateId, officeName: o.officeName, instanceIdBase: o.instanceIdBase })));
+      // If exact instanceIdBase match not found, try template-based matching
+      if (existingIndex === -1) {
         existingIndex = updated.cities[cityId].legislative.findIndex(
-          (o) => o.officeNameTemplateId === "city_council" || o.officeName?.includes("City Council")
+          (o) => o.officeNameTemplateId === election.officeNameTemplateId
         );
-        console.log('[updateGovernmentOfficeInHierarchy] Found existing council office by template at index:', existingIndex);
       }
+      
+      console.log('[updateGovernmentOfficeInHierarchy] Looking for council office with instanceIdBase:', election.instanceIdBase, 'found at index:', existingIndex);
 
       if (existingIndex >= 0) {
         updated.cities[cityId].legislative[existingIndex] = {
@@ -349,12 +428,14 @@ const updateGovernmentOfficeInHierarchy = (
           (o) => o.instanceIdBase === election.instanceIdBase
         );
         
-        // Try to find by template if not found by instanceIdBase
+        // If exact instanceIdBase match not found, try template-based matching
         if (existingIndex === -1) {
           existingIndex = updated.cities[cityId].legislative.findIndex(
-            (o) => o.officeNameTemplateId === "city_council" || o.officeName?.includes("City Council")
+            (o) => o.officeNameTemplateId === election.officeNameTemplateId
           );
         }
+        
+        console.log('[updateGovernmentOfficeInHierarchy] Looking for city council office with instanceIdBase:', election.instanceIdBase, 'found at index:', existingIndex);
         
         if (existingIndex >= 0) {
           updated.cities[cityId].legislative[existingIndex] = {
@@ -721,16 +802,34 @@ export const createElectionSlice = (set, get) => ({
           }
 
           if (outcome.winnerAssignment.type === "MEMBERS_ARRAY") {
+            // Find existing office to get current members for history tracking
+            const existingOffice = findExistingOffice(updatedGovernmentOffices, updatedElection);
+            const existingMembers = existingOffice?.members || [];
+            
             // Store minimal member data with politician ID references
-            const newMembers = winners.map((winner, i) => ({
-              id: winner.id, // Politician ID for SoA lookup
-              name: cleanWinnerName(winner.name),
-              partyId: winner.partyId,
-              partyName: winner.partyName,
-              partyColor: winner.partyColor,
-              role: `Member, ${updatedElection.officeName} (Seat ${i + 1})`,
-            }));
-
+            const newMembers = winners.map((winner, i) => {
+              // Get the specific previous holder for this seat position
+              const previousHolder = existingMembers[i];
+              
+              // Create individual seat history for this specific seat
+              const seatHistory = addSeatHistoryEntry(
+                [], // Start fresh for each seat since we're transitioning from multi-member to individual tracking
+                previousHolder, // Specific previous holder for this seat position
+                winner, // New holder for this seat
+                updatedElection
+              );
+              
+              return {
+                id: winner.id, // Politician ID for SoA lookup
+                name: cleanWinnerName(winner.name),
+                partyId: winner.partyId,
+                partyName: winner.partyName,
+                partyColor: winner.partyColor,
+                role: `Member, ${updatedElection.officeName} (Seat ${i + 1})`,
+                seatHistory, // Individual seat history for this member
+              };
+            });
+            
             // Create the new office data for multi-member offices
             const newOfficeData = {
               officeId: `gov_${updatedElection.instanceIdBase}`,
@@ -743,6 +842,13 @@ export const createElectionSlice = (set, get) => ({
               termEnds,
               officeNameTemplateId: updatedElection.officeNameTemplateId,
               instanceIdBase: updatedElection.instanceIdBase,
+              // Keep the office-level seat history for backward compatibility, but individual members now have their own
+              seatHistory: addSeatHistoryEntry(
+                existingOffice?.seatHistory,
+                existingOffice?.members?.[0], // Previous holder (simplified for multi-member)
+                winners[0], // New holder (simplified for multi-member)
+                updatedElection
+              )
             };
 
             // Update the hierarchical structure
@@ -765,6 +871,9 @@ export const createElectionSlice = (set, get) => ({
               role: updatedElection.officeName,
             };
 
+            // Find existing office to get current holder for history tracking
+            const existingOffice = findExistingOffice(updatedGovernmentOffices, updatedElection);
+            
             // Create the new office data for single-holder offices
             const newOfficeData = {
               officeId: `gov_${updatedElection.instanceIdBase}`,
@@ -777,6 +886,12 @@ export const createElectionSlice = (set, get) => ({
               termEnds,
               officeNameTemplateId: updatedElection.officeNameTemplateId,
               instanceIdBase: updatedElection.instanceIdBase,
+              seatHistory: addSeatHistoryEntry(
+                existingOffice?.seatHistory,
+                existingOffice?.holder, // Previous holder
+                winner, // New holder
+                updatedElection
+              )
             };
 
             // Update the hierarchical structure

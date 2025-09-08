@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useCallback, useEffect } from "react";
 import useGameStore from "../store";
 import "./PoliticianCreator.css";
+import SubtabDropdown from "../components/ui/SubtabDropdown";
 import {
   POLICY_QUESTIONS,
   ATTRIBUTES_LIST,
@@ -311,39 +312,17 @@ function PoliticianCreator() {
         </h1>
 
         <div className="creator-tabs">
-          {/* ... Tab buttons ... */}
-          <button
-            type="button"
-            onClick={() => setActiveTab("identity")}
-            className={`tab-button ${activeTab === "identity" ? "active" : ""}`}
-          >
-            Identity
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("resources")}
-            className={`tab-button ${
-              activeTab === "resources" ? "active" : ""
-            }`}
-          >
-            Starting Resources
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("policies")}
-            className={`tab-button ${activeTab === "policies" ? "active" : ""}`}
-          >
-            Policy Stances
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("background")}
-            className={`tab-button ${
-              activeTab === "background" ? "active" : ""
-            }`}
-          >
-            Attributes & Background
-          </button>
+          <SubtabDropdown
+            tabs={[
+              { id: "identity", label: "Identity" },
+              { id: "resources", label: "Starting Resources" },
+              { id: "policies", label: "Policy Stances" },
+              { id: "background", label: "Attributes & Background" }
+            ]}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            label="Select Section"
+          />
         </div>
 
         <div className="tab-content">

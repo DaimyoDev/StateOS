@@ -1,470 +1,569 @@
-/* ui-src/src/components/game_tabs/CareerActionsTab.css */
+/* ui-src/src/components/game_tabs/CareerActionsTab.css - Modern UI Overhaul */
+
+/* Main Container */
 .career-actions-tab {
-  /* Uses .tab-content-container and .tab-title from TabStyles.css */
   display: flex;
   flex-direction: column;
-  gap: 25px; /* Space between sections */
+  gap: 24px;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
 }
 
-.current-status-card,
-.available-offices-card,
-.current-role-actions,
-.personal-actions {
-  /* Uses .info-card styles from LocalAreaTab.css or a global .info-card style */
-  /* If not, define similar styles here: */
-  background-color: var(--secondary-bg);
-  padding: 20px;
-  border-radius: var(--element-radius);
-  border: 1px solid var(--border-color);
-  box-shadow: var(--panel-shadow);
-}
-
-.current-status-card h3,
-.available-offices-card h3,
-.current-role-actions h3,
-.personal-actions h3 {
+/* Title Section */
+.tab-title {
   font-family: var(--font-heading);
-  color: var(--accent-color);
-  font-size: 1.4em; /* Make section titles a bit larger */
-  margin-top: 0;
-  margin-bottom: 15px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--border-color);
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--primary-text);
+  margin: 0;
+  padding: 0 24px;
+  letter-spacing: -0.5px;
+}
+
+/* Status Overview Card - Hero Section */
+.current-status-card {
+  background: linear-gradient(135deg, var(--accent-color) 0%, var(--secondary-bg) 100%);
+  border-radius: 16px;
+  padding: 24px;
+  margin: 0 24px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.current-status-card::before {
+  content: "";
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 70%);
+  animation: shimmer 3s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0%, 100% { transform: translate(50%, 50%) rotate(0deg); }
+  50% { transform: translate(50%, 50%) rotate(180deg); }
+}
+
+.current-status-card h3 {
+  font-family: var(--font-heading);
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: var(--accent-text, white);
+  margin: 0 0 16px 0;
+  border: none;
+  padding: 0;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .current-status-card p {
-  margin-bottom: 8px;
-  font-size: 1em;
-}
-
-.office-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.office-list-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 0;
-  border-bottom: 1px dashed var(--border-color);
-}
-.office-list-item:last-child {
-  border-bottom: none;
-}
-
-.office-info {
-  flex-grow: 1;
-}
-
-.office-details {
-  font-size: 0.85em;
-  color: var(--secondary-text);
-}
-
-.office-list-item .button-action.small-button {
-  /* From ManagePoliticiansScreen or define here */
-  padding: 6px 12px;
-  font-size: 0.9em;
-  min-width: auto; /* Allow it to be smaller */
-  flex-shrink: 0; /* Prevent button from shrinking if office name is long */
-  margin-left: 15px;
-}
-
-.current-role-actions p,
-.personal-actions p {
-  color: var(--secondary-text);
-  font-style: italic;
-}
-
-/* ui-src/src/components/game_tabs/CareerActionsTab.css */
-.career-actions-tab {
-  /* .ui-panel styling likely from TabStyles.css or app.css */
-  padding: 20px;
-}
-
-.career-actions-tab .tab-title {
-  margin-top: 0;
-  margin-bottom: 25px;
-}
-
-/* Re-use .info-card from TabStyles.css or LocalAreaTab.css if general enough */
-/* .info-card { ... } */
-
-.info-card h3 {
-  font-family: var(--font-heading);
-  color: var(--accent-color);
-  margin-top: 0;
-  margin-bottom: 15px;
-  font-size: 1.2em;
-  border-bottom: 1px solid var(--border-color);
-  padding-bottom: 8px;
-}
-
-.current-status-card p,
-.available-offices-card p, /* For the fallback message */
-.current-role-actions p,
-.personal-actions p {
   margin: 8px 0;
-  font-size: 0.95em;
-  line-height: 1.5;
-}
-
-.office-list {
-  list-style-type: none;
-  padding: 0;
-}
-
-.office-list-item {
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.95);
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 12px 5px;
-  border-bottom: 1px dashed var(--secondary-bg);
-}
-.office-list-item:last-child {
-  border-bottom: none;
+  gap: 8px;
+  position: relative;
+  z-index: 1;
 }
 
-.office-info {
-  flex-grow: 1;
+.current-status-card p strong {
+  font-weight: 600;
+  min-width: 140px;
+  opacity: 0.9;
 }
 
-.office-details {
-  font-size: 0.85em;
-  color: var(--secondary-text);
+/* Dropdown Container - holds both main and secondary dropdowns */
+.dropdown-container {
+  display: flex;
+  gap: 16px;
+  margin: 0 24px;
+  margin-bottom: 16px;
 }
 
-.action-button.small-button {
-  /* For Declare Candidacy button */
-  padding: 6px 12px;
-  font-size: 0.85em;
-  margin-left: 10px; /* Space from office info */
+.dropdown-container .subtab-dropdown-container {
+  margin: 0; /* Remove individual margins since container handles spacing */
+  flex-shrink: 0; /* Prevent dropdowns from shrinking */
 }
 
-.candidacy-declared-note, /* If you add notes within this tab */
-.deadline-passed-note-detail {
-  font-style: italic;
-  color: var(--secondary-text);
-  font-size: 0.9em;
-  margin-top: 5px;
+/* Sub-tab Content Area */
+.sub-tab-content-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 24px 24px 24px;
+  /* Firefox scrollbar styling - matching App.css */
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color, #ccc) var(--secondary-bg, #f5f5f5);
 }
 
-.current-role-actions .action-button-group,
-.personal-actions .action-button-group {
-  display: grid; /* Or flex with wrap */
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 10px;
-  margin-top: 10px;
+.sub-tab-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  animation: fadeInUp 0.3s ease-out;
 }
 
-.current-role-actions .action-button,
-.personal-actions .action-button {
-  width: 100%; /* Make buttons take full width of their grid cell */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
-/* ui-src/src/components/game_tabs/CareerActionsTab.css */
-.career-actions-tab {
-  /* .ui-panel styling likely from TabStyles.css or app.css */
+
+/* Info Cards - Modern Glass Morphism */
+.info-card {
+  background: var(--ui-panel-bg);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
   padding: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
 }
 
-.career-actions-tab .tab-title {
-  margin-top: 0;
-  margin-bottom: 25px;
-}
+/* Removed hover effect for info-card */
 
-/* Re-use .info-card from TabStyles.css or LocalAreaTab.css if general enough */
-/* .info-card { ... } */
-
-.info-card h3 {
+.info-card h3,
+.info-card h4 {
   font-family: var(--font-heading);
+  font-size: 1.25rem;
+  font-weight: 600;
   color: var(--accent-color);
-  margin-top: 0;
-  margin-bottom: 15px;
-  font-size: 1.2em;
-  border-bottom: 1px solid var(--border-color);
-  padding-bottom: 8px;
-}
-
-.current-status-card p,
-.available-offices-card p, /* For the fallback message */
-.current-role-actions p,
-.personal-actions p {
-  margin: 8px 0;
-  font-size: 0.95em;
-  line-height: 1.5;
-}
-
-.office-list {
-  list-style-type: none;
-  padding: 0;
-}
-
-.office-list-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 5px;
-  border-bottom: 1px dashed var(--secondary-bg);
-}
-.office-list-item:last-child {
-  border-bottom: none;
-}
-
-.office-info {
-  flex-grow: 1;
-}
-
-.office-name1 {
-  font-weight: bold;
-  display: block; /* Make it take its own line if needed */
-  margin-bottom: 3px;
-  color: var(--primary-text);
-}
-
-.office-details {
-  font-size: 0.85em;
-  color: var(--secondary-text);
-}
-
-.action-button.small-button {
-  /* For Declare Candidacy button */
-  padding: 6px 12px;
-  font-size: 0.85em;
-  margin-left: 10px; /* Space from office info */
-}
-
-.candidacy-declared-note, /* If you add notes within this tab */
-.deadline-passed-note-detail {
-  font-style: italic;
-  color: var(--secondary-text);
-  font-size: 0.9em;
-  margin-top: 5px;
-}
-
-.current-role-actions .action-button-group,
-.personal-actions .action-button-group {
-  display: grid; /* Or flex with wrap */
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 10px;
-  margin-top: 10px;
-}
-
-.current-role-actions .action-button,
-.personal-actions .action-button {
-  width: 100%; /* Make buttons take full width of their grid cell */
-}
-
-.current-role-actions .action-group {
+  margin: 0 0 16px 0;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--accent-color);
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 15px;
-  flex-wrap: wrap;
+  gap: 8px;
 }
 
-.current-role-actions .action-group label {
-  font-weight: 500;
-  color: var(--secondary-text);
-}
-
-.current-role-actions .action-group select {
-  padding: 8px 10px;
-  border-radius: var(--element-radius);
-  border: 1px solid var(--border-color);
-  background-color: var(--input-bg);
-  color: var(--input-text);
-  font-family: var(--font-main);
-  min-width: 150px;
-  flex-grow: 1; /* Allow select to grow */
-}
-
-.current-role-actions .action-group .action-button {
-  margin: 0; /* Remove default margin from .action-button if it's in a flex group like this */
-  flex-shrink: 0;
-}
-
+/* Office List - Modern List Design */
+.office-list,
+.jobs-list,
 .staff-list {
   list-style: none;
   padding: 0;
   margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
+.office-list-item,
+.job-list-item,
 .staff-list-item {
+  background: var(--secondary-bg);
+  border-radius: 8px;
+  padding: 16px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 5px;
-  border-bottom: 1px dashed var(--secondary-bg);
-}
-.staff-list-item:last-child {
-  border-bottom: none;
+  border: 1px solid var(--border-color);
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
 }
 
+.office-list-item:hover,
+.staff-list-item:hover {
+  background: var(--highlight-bg);
+  border-color: var(--accent-border-color);
+}
+
+.job-list-item:hover {
+  border-color: var(--accent-border-color);
+  /* Keep original background for better readability */
+}
+
+.office-list-item::before,
+.job-list-item::before,
+.staff-list-item::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 3px;
+  background: var(--accent-color);
+  transform: scaleY(0);
+  transition: transform 0.2s ease;
+}
+
+.office-list-item:hover::before,
+.job-list-item:hover::before,
+.staff-list-item:hover::before {
+  transform: scaleY(1);
+}
+
+.office-info,
+.job-info,
 .staff-info {
+  flex-grow: 1;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-  flex-grow: 1;
+  gap: 6px;
 }
 
+.office-name1,
+.job-title,
 .staff-name {
+  font-size: 1.1rem;
   font-weight: 600;
   color: var(--primary-text);
-}
-
-.staff-role {
-  font-weight: 400;
-  font-style: italic;
-  color: var(--secondary-text);
-}
-
-.staff-details {
-  font-size: 0.85em;
-  color: var(--accent-color);
-  font-weight: 500;
-}
-
-.staff-details-hidden {
-  font-size: 0.85em;
-  color: var(--secondary-text);
-  font-style: italic;
-}
-
-.staff-salary {
-  font-size: 0.85em;
-  color: var(--primary-text);
-}
-
-.staff-list-item .menu-button.small-button,
-.staff-list-item .action-button.small-button,
-.staff-list-item .button-delete.small-button {
-  padding: 6px 12px;
-  font-size: 0.85em;
-  margin-left: 10px;
-  flex-shrink: 0;
-}
-
-.hr-warning {
-  font-style: italic;
-  color: var(--secondary-text);
-  background-color: var(--secondary-bg);
-  padding: 10px;
-  border-radius: var(--element-radius);
-  margin-bottom: 15px;
-  text-align: center;
-}
-.staff-details.biases {
-  font-size: 0.8em;
-  text-transform: capitalize;
-}
-
-.staff-priorities {
-  font-size: 0.8em;
-  color: var(--secondary-text);
-  text-transform: capitalize;
-  width: 100%;
-  margin-top: 4px;
-}
-
-/* Jobs Section Styling */
-.current-job-card,
-.available-jobs-card {
-  background-color: var(--secondary-bg);
-  padding: 20px;
-  border-radius: var(--element-radius);
-  border: 1px solid var(--border-color);
-  box-shadow: var(--panel-shadow);
-  margin-bottom: 20px;
-}
-
-.jobs-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.job-list-item {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  padding: 15px 0;
-  border-bottom: 1px dashed var(--border-color);
-  gap: 15px;
+  align-items: center;
+  gap: 8px;
 }
 
-.job-list-item:last-child {
-  border-bottom: none;
+.office-details,
+.job-category,
+.staff-role {
+  font-size: 0.85rem;
+  color: var(--secondary-text);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.office-details::before {
+  content: "📍";
+  font-size: 0.9rem;
+}
+
+/* Jobs Section Specific */
+.job-list-item {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
 }
 
 .job-info {
-  flex-grow: 1;
+  width: 100%;
+}
+
+.job-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.job-title-wrapper {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.job-category {
+  background: var(--accent-color);
+  color: var(--accent-text);
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  font-style: normal;
+}
+
+.job-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: var(--primary-bg);
+  border-radius: 6px;
+  margin: 8px 0;
+}
+
+.job-details p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--primary-text);
+  display: inline;
+}
+
+.job-details strong {
+  color: var(--accent-color);
+  font-weight: 600;
+}
+
+.job-description {
+  font-size: 0.9rem;
+  color: var(--secondary-text);
+  line-height: 1.5;
+  padding: 12px;
+  background: rgba(var(--rgb-accent-color), 0.05);
+  border-left: 3px solid var(--accent-color);
+  border-radius: 4px;
+  margin-top: 8px;
+}
+
+/* Current Job Card */
+.current-job-card {
+  background: linear-gradient(135deg, var(--ui-panel-bg) 0%, var(--secondary-bg) 100%);
+  border: 2px solid var(--accent-border-color);
+}
+
+.current-job-card .job-details {
+  background: var(--ui-panel-bg);
+  border: 1px solid var(--accent-border-color);
+  padding: 16px;
+  border-radius: 8px;
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.job-title {
-  font-weight: bold;
-  color: var(--primary-text);
-  font-size: 1.1em;
-  display: inline-block;
+/* Staff Section */
+.staff-list-item {
+  padding: 12px 16px;
 }
 
-.job-category {
-  font-style: italic;
+.staff-info {
+  gap: 4px;
+}
+
+.staff-details {
+  display: flex;
+  gap: 16px;
+  font-size: 0.85rem;
   color: var(--accent-color);
-  margin-left: 8px;
-  font-size: 0.9em;
+  font-weight: 500;
+  font-family: 'Roboto Mono', monospace;
 }
 
-.job-details {
-  margin: 8px 0;
-}
-
-.job-details p {
-  margin: 4px 0;
-  font-size: 0.9em;
+.staff-details-hidden {
+  font-size: 0.85rem;
   color: var(--secondary-text);
-}
-
-.job-description {
-  font-size: 0.85em;
-  color: var(--secondary-text);
-  line-height: 1.4;
-  margin-top: 8px;
   font-style: italic;
+  opacity: 0.8;
 }
 
-.job-list-item .action-button.small-button {
-  padding: 8px 16px;
-  font-size: 0.9em;
-  min-width: 80px;
-  flex-shrink: 0;
-  align-self: flex-start;
+.staff-salary {
+  font-size: 0.9rem;
+  color: var(--success-text);
+  font-weight: 500;
 }
 
-.job-list-item .action-button.small-button:disabled {
-  background-color: var(--success-bg, #4caf50);
-  color: var(--success-text, white);
-  cursor: default;
+.staff-priorities {
+  padding: 8px;
+  background: var(--secondary-bg);
+  border-radius: 4px;
+  margin-top: 8px;
 }
 
-.current-job-card .job-details {
-  background-color: var(--tertiary-bg, var(--primary-bg));
-  padding: 15px;
-  border-radius: var(--element-radius);
-  margin: 10px 0;
-  border: 1px solid var(--border-color);
+.staff-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
-.current-job-card .job-details p {
-  margin: 6px 0;
+.staff-details.biases {
+  background: var(--secondary-bg);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  text-transform: capitalize;
+}
+
+/* HR Warning */
+.hr-warning {
+  background: linear-gradient(135deg, rgba(var(--rgb-accent-color), 0.1) 0%, var(--secondary-bg) 100%);
   color: var(--primary-text);
+  padding: 16px;
+  border-radius: 8px;
+  border-left: 4px solid var(--accent-color);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
-.current-job-card .button-delete {
-  margin-top: 10px;
+.hr-warning::before {
+  content: "⚠️";
+  font-size: 1.2rem;
+}
+
+/* Action Groups */
+.action-button-group {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.action-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: var(--secondary-bg);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  margin-bottom: 16px;
+}
+
+.action-group label {
+  font-weight: 600;
+  color: var(--primary-text);
+  white-space: nowrap;
+}
+
+.action-group select {
+  flex: 1;
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 2px solid var(--border-color);
+  background: var(--input-bg);
+  color: var(--input-text);
+  font-family: var(--font-main);
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.action-group select:hover {
+  border-color: var(--accent-border-color);
+}
+
+.action-group select:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px rgba(var(--rgb-accent-color), 0.1);
+}
+
+.action-sub-group {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+/* Button Enhancements */
+.action-button,
+.menu-button,
+.button-delete {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  font-weight: 500;
+  font-size: 0.85rem;
+  letter-spacing: 0.5px;
+}
+
+/* Removed ripple animation effect */
+
+.small-button {
+  padding: 8px 16px;
+  font-size: 0.8rem;
+  min-width: auto;
+}
+
+.success-button {
+  background: var(--success-bg, #4caf50);
+  color: white;
+}
+
+.success-button:hover {
+  background: var(--success-hover, #45a049);
+}
+
+/* Current Campaign Info */
+.current-campaign-info {
+  background: linear-gradient(135deg, rgba(var(--rgb-accent-color), 0.1) 0%, var(--secondary-bg) 100%);
+  border-left: 4px solid var(--accent-color);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .career-actions-tab {
+    padding: 0;
+  }
+  
+  .tab-title {
+    font-size: 1.5rem;
+    padding: 0 16px;
+  }
+  
+  .current-status-card {
+    margin: 0 16px;
+    padding: 16px;
+  }
+  
+  .dropdown-container {
+    margin: 0 16px;
+    flex-direction: column; /* Stack dropdowns vertically on mobile for better usability */
+    gap: 12px;
+  }
+  
+  .sub-tab-content-area {
+    padding: 0 16px 16px 16px;
+  }
+  
+  .action-button-group {
+    grid-template-columns: 1fr;
+  }
+  
+  .staff-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+  
+  .staff-actions button {
+    flex: 1;
+  }
+}
+
+/* Animations */
+/* Removed slideIn animation from info-card for cleaner experience */
+
+/* Scrollbar Styling - Matching App.css global styles */
+.sub-tab-content-area::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.sub-tab-content-area::-webkit-scrollbar-track {
+  background: var(--secondary-bg, #f5f5f5);
+  border-radius: 8px;
+}
+
+.sub-tab-content-area::-webkit-scrollbar-thumb {
+  background-color: var(--border-color, #ccc);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.sub-tab-content-area::-webkit-scrollbar-thumb:hover {
+  background-color: var(--accent-color, #999);
+}
+
+/* Loading States */
+.info-card.loading {
+  position: relative;
+  overflow: hidden;
+}
+
+.info-card.loading::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+  animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+  to {
+    left: 100%;
+  }
 }

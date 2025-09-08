@@ -1,6 +1,7 @@
 // ui-src/src/components/game_tabs/GovernmentTab.jsx
 import React, { useState } from "react";
 import "./TabStyles.css"; // Or your common tab styles
+import SubtabDropdown from "../ui/SubtabDropdown";
 import CityOverviewTab from "./government_tabs/CityOverviewTab"; // NEW component
 import LegislationSubTab from "./government_tabs/LegislationSubTab";
 import StateOverviewTab from "./government_tabs/StateOverviewTab";
@@ -9,60 +10,82 @@ import NationalOverviewTab from "./government_tabs/NationalOverviewTab";
 
 const GovernmentTab = ({ campaignData }) => {
   const [activeGovSubTab, setActiveGovSubTab] = useState("city"); // Default to city
+  const [activeSubSection, setActiveSubSection] = useState("summary");
+
+  const mainSubtabs = [
+    { id: "city", label: "City / Local" },
+    { id: "legislation", label: "Legislation" },
+    { id: "state", label: "State / Prefecture" },
+    { id: "federal", label: "Federal / National" },
+  ];
+
+  const sectionSubtabs = [
+    { id: "summary", label: "Summary" },
+    { id: "demographics", label: "Demographics" },
+    { id: "services", label: "Services" },
+    { id: "budget", label: "Budget & Taxes" },
+    { id: "government", label: "Government" },
+    { id: "laws", label: "Laws" },
+    { id: "coalitions", label: "Coalitions" }
+  ];
 
   const renderSubTabContent = () => {
     switch (activeGovSubTab) {
       case "city":
-        return <CityOverviewTab campaignData={campaignData} />;
+        return <CityOverviewTab campaignData={campaignData} activeSubTab={activeSubSection} />;
       case "legislation":
         return <LegislationSubTab campaignData={campaignData} />;
       case "state":
-        return <StateOverviewTab campaignData={campaignData} />;
+        return <StateOverviewTab campaignData={campaignData} activeSubTab={activeSubSection} />;
       case "federal":
-        return <NationalOverviewTab campaignData={campaignData} />;
+        return <NationalOverviewTab campaignData={campaignData} activeSubTab={activeSubSection} />;
       default:
-        return (
-          <CityOverviewTab startingCityData={campaignData?.startingCity} />
-        );
+        return <CityOverviewTab campaignData={campaignData} activeSubTab={activeSubSection} />;
     }
   };
 
+  // Function to get current display name based on active tab
+  const getCurrentDisplayName = () => {
+    switch (activeGovSubTab) {
+      case "city":
+        return campaignData?.startingCity?.name || "City";
+      case "state":
+        const activeState = campaignData?.regions?.find(r => r.id === campaignData?.regionId) ||
+                           campaignData?.availableCountries
+                             ?.find(c => c.id === campaignData?.countryId)
+                             ?.regions?.find(r => r.id === campaignData?.regionId);
+        return activeState?.name || "State";
+      case "federal":
+        const activeCountry = campaignData?.country || 
+                             campaignData?.availableCountries?.find(c => c.id === campaignData?.countryId);
+        return activeCountry?.name || "Country";
+      case "legislation":
+        return "Legislation";
+      default:
+        return "";
+    }
+  };
+
+  const displayName = getCurrentDisplayName();
+
   return (
     <div className="government-tab-content ui-panel">
-      <h2 className="tab-title">Government Overview</h2>
-      <div className="sub-tab-navigation">
-        <button
-          onClick={() => setActiveGovSubTab("city")}
-          className={`sub-tab-button ${
-            activeGovSubTab === "city" ? "active" : ""
-          }`}
-        >
-          City / Local
-        </button>
-        <button // <<<< NEW SUB-TAB BUTTON
-          onClick={() => setActiveGovSubTab("legislation")}
-          className={`sub-tab-button ${
-            activeGovSubTab === "legislation" ? "active" : ""
-          }`}
-        >
-          Legislation
-        </button>
-        <button
-          onClick={() => setActiveGovSubTab("state")}
-          className={`sub-tab-button ${
-            activeGovSubTab === "state" ? "active" : ""
-          }`}
-        >
-          State / Prefecture
-        </button>
-        <button
-          onClick={() => setActiveGovSubTab("federal")}
-          className={`sub-tab-button ${
-            activeGovSubTab === "federal" ? "active" : ""
-          }`}
-        >
-          Federal / National
-        </button>
+      <h2 className="tab-title">Government Overview: {displayName}</h2>
+      <div className="dropdown-container">
+        <SubtabDropdown 
+          tabs={mainSubtabs}
+          activeTab={activeGovSubTab}
+          onTabChange={setActiveGovSubTab}
+          label="Select Government View"
+        />
+        {activeGovSubTab !== "legislation" && (
+          <SubtabDropdown 
+            tabs={sectionSubtabs}
+            activeTab={activeSubSection}
+            onTabChange={setActiveSubSection}
+            label="Select Section"
+          />
+        )}
       </div>
       <div className="sub-tab-content-area">{renderSubTabContent()}</div>
     </div>
