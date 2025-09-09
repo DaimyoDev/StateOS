@@ -24,6 +24,7 @@ import { createDataSlice } from "./stores/dataSlice.js";
 import { createPollingSlice } from "./stores/pollingSlice.js";
 import { createNotificationSlice } from "./stores/notificationSlice.js";
 import { createCityManagementSlice } from "./stores/cityManagementSlice.js";
+import { createEducationSlice } from "./stores/educationSlice.js";
 import { flattenGovernmentOffices } from "./entities/politicalEntities.js";
 
 // --- Helper Functions (to be moved to relevant slices or utils later) ---
@@ -61,6 +62,7 @@ export const useGameStore = create(
       const pollingSliceData = createPollingSlice(set, get);
       const notificationSlice = createNotificationSlice(set, get);
       const cityManagementSlice = createCityManagementSlice(set, get);
+      const educationSlice = createEducationSlice(set, get);
 
       return {
         savedPoliticians: dataSliceData.savedPoliticians,
@@ -102,6 +104,15 @@ export const useGameStore = create(
         currentCityId: cityManagementSlice.currentCityId,
         cityManagement: cityManagementSlice,
 
+        // Education System
+        schoolDistricts: educationSlice.schoolDistricts,
+        studentCoalitions: educationSlice.studentCoalitions,
+        activePolicies: educationSlice.activePolicies,
+        historicalOutcomes: educationSlice.historicalOutcomes,
+        nationalStats: educationSlice.nationalStats,
+        policyEffectiveness: educationSlice.policyEffectiveness,
+        economicImpact: educationSlice.economicImpact,
+
         currentCampaignSetup: getInitialCampaignSetupState(),
         hasAcknowledgedDisclaimer: false,
 
@@ -123,6 +134,7 @@ export const useGameStore = create(
           ...pollingSliceData.actions,
           ...notificationSlice.actions,
           ...cityManagementSlice.actions,
+          ...educationSlice.educationActions,
 
           acknowledgeDisclaimer: () => set({ hasAcknowledgedDisclaimer: true }),
 

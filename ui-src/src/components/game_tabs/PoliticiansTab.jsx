@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useCallback } from "react";
 import useGameStore from "../../store";
 import "./PoliticiansTab.css";
 
@@ -12,9 +12,13 @@ const RelationshipCard = React.memo(
     relationship,
     intel,
     isFavorite,
+    hasEndorsed,
+    canRequestEndorsement,
+    playerPartyId,
     onGatherIntel,
     onPraise,
     onToggleFavorite,
+    onRequestEndorsement,
   }) => {
     const getRelationshipText = (score) => {
       if (score <= -8) return "Arch Rival";
@@ -35,16 +39,29 @@ const RelationshipCard = React.memo(
     // Check if attributes have been revealed
     const attributesRevealed = !!intel?.attributes;
 
+    // Check endorsement eligibility
+    const sameParty = politician.partyId === playerPartyId;
+    const highRelationship = relationship >= 4;
+    const eligibleForEndorsement = sameParty && highRelationship && canRequestEndorsement && !hasEndorsed;
+
     return (
       <div className="politician-card">
         <div className="politician-card-header">
           <div className="politician-info">
-            <span className="politician-name">{politician.name}</span>
+            <span className="politician-name">
+              {politician.name}
+              {hasEndorsed && (
+                <span className="endorsement-badge" title="Has endorsed you">
+                  ✓ Endorsed
+                </span>
+              )}
+            </span>
             <span
               className="politician-party"
               style={{ color: politician.partyColor }}
             >
               {politician.partyName}
+              {sameParty && <span className="same-party-indicator"> (Your Party)</span>}
             </span>
             <span className="politician-age">Age: {politician.age}</span>
           </div>
@@ -104,6 +121,25 @@ const RelationshipCard = React.memo(
               Gather Intel
             </button>
           )}
+          {eligibleForEndorsement && (
+            <button
+              className="action-button"
+              onClick={onRequestEndorsement}
+              title={`Request endorsement from ${politician.name} (same party, high relationship)`}
+            >
+              Request Endorsement
+            </button>
+          )}
+          {!sameParty && highRelationship && (
+            <span className="endorsement-unavailable">
+              Cannot endorse (different party)
+            </span>
+          )}
+          {sameParty && !highRelationship && (
+            <span className="endorsement-unavailable">
+              Need Ally status for endorsement
+            </span>
+          )}
         </div>
       </div>
     );
@@ -116,12 +152,19 @@ const RelationshipCard = React.memo(
 
 const EMPTY_ARRAY = [];
 
+// Pagination constants
+const POLITICIANS_PER_PAGE = 20;
+const INITIAL_LOAD_COUNT = 10;
+
 function PoliticiansTab() {
   const relationships = useGameStore((state) => state.politicianRelationships);
   const politicianIntel = useGameStore((state) => state.politicianIntel);
   const favoritePoliticians = useGameStore(
     (state) => state.favoritePoliticians || EMPTY_ARRAY
   );
+  const endorsements = useGameStore((state) => state.endorsements);
+  const playerInfo = useGameStore((state) => state.playerInfo);
+  const activeElection = useGameStore((state) => state.activeElection);
   const actions = useGameStore((state) => state.actions);
   const { getAllGovernmentOffices } = actions;
   const activeCampaign = useGameStore((state) => state.activeCampaign);
@@ -131,6 +174,9 @@ function PoliticiansTab() {
   const [relationshipFilter, setRelationshipFilter] = useState("all");
   const [levelFilter, setLevelFilter] = useState("all");
   const [stateFilter, setStateFilter] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   // CHANGED: Collect politicians from all levels using the hierarchical structure
   const aiPoliticians = useMemo(() => {
@@ -218,6 +264,17 @@ function PoliticiansTab() {
   const filteredPoliticians = useMemo(() => {
     let politicians = aiPoliticians;
 
+    // Filter by search term first (most restrictive)
+    if (searchTerm.trim()) {
+      const searchLower = searchTerm.toLowerCase();
+      politicians = politicians.filter((pol) =>
+        pol.name.toLowerCase().includes(searchLower) ||
+        pol.currentOffice?.toLowerCase().includes(searchLower) ||
+        pol.partyName?.toLowerCase().includes(searchLower) ||
+        pol.regionName?.toLowerCase().includes(searchLower)
+      );
+    }
+
     // Filter by tab (all vs favorites)
     if (activeTab === "favorites") {
       politicians = politicians.filter((pol) =>
@@ -265,6 +322,7 @@ function PoliticiansTab() {
     return politicians;
   }, [
     aiPoliticians,
+    searchTerm,
     activeTab,
     relationshipFilter,
     levelFilter,
@@ -272,6 +330,50 @@ function PoliticiansTab() {
     favoritePoliticians,
     relationships,
   ]);
+
+  // Paginated politicians for display
+  const paginatedPoliticians = useMemo(() => {
+    const startIndex = (currentPage - 1) * POLITICIANS_PER_PAGE;
+    const endIndex = startIndex + POLITICIANS_PER_PAGE;
+    return filteredPoliticians.slice(startIndex, endIndex);
+  }, [filteredPoliticians, currentPage]);
+
+  // Calculate pagination info
+  const totalPages = Math.ceil(filteredPoliticians.length / POLITICIANS_PER_PAGE);
+  const totalCount = filteredPoliticians.length;
+
+  // Reset to page 1 when filters change
+  const handleFilterChange = useCallback((filterType, value) => {
+    setCurrentPage(1);
+    switch (filterType) {
+      case 'tab':
+        setActiveTab(value);
+        break;
+      case 'relationship':
+        setRelationshipFilter(value);
+        break;
+      case 'level':
+        setLevelFilter(value);
+        break;
+      case 'state':
+        setStateFilter(value);
+        break;
+      case 'search':
+        setSearchTerm(value);
+        break;
+    }
+  }, []);
+
+  // Load more politicians (for infinite scroll alternative)
+  const loadMorePoliticians = useCallback(() => {
+    if (currentPage < totalPages && !isLoading) {
+      setIsLoading(true);
+      setTimeout(() => {
+        setCurrentPage(prev => prev + 1);
+        setIsLoading(false);
+      }, 100); // Small delay to show loading state
+    }
+  }, [currentPage, totalPages, isLoading]);
 
   return (
     <div className="politicians-tab-container">
@@ -281,17 +383,36 @@ function PoliticiansTab() {
         relationships and gather intelligence on your allies and rivals.
       </p>
 
+      {/* Search Bar */}
+      <div className="search-section">
+        <input
+          type="text"
+          placeholder="Search politicians by name, office, party, or region..."
+          value={searchTerm}
+          onChange={(e) => handleFilterChange('search', e.target.value)}
+          className="politician-search"
+        />
+        <div className="search-results-info">
+          {totalCount > 0 && (
+            <span className="results-count">
+              Showing {paginatedPoliticians.length} of {totalCount} politicians
+              {totalPages > 1 && ` (Page ${currentPage} of ${totalPages})`}
+            </span>
+          )}
+        </div>
+      </div>
+
       {/* Tab Navigation */}
       <div className="politician-tabs">
         <button
           className={activeTab === "all" ? "active" : ""}
-          onClick={() => setActiveTab("all")}
+          onClick={() => handleFilterChange('tab', "all")}
         >
           All Politicians
         </button>
         <button
           className={activeTab === "favorites" ? "active" : ""}
-          onClick={() => setActiveTab("favorites")}
+          onClick={() => handleFilterChange('tab', "favorites")}
         >
           Favorites ({favoritePoliticians.length})
         </button>
@@ -303,7 +424,7 @@ function PoliticiansTab() {
           <label>Relationship:</label>
           <select
             value={relationshipFilter}
-            onChange={(e) => setRelationshipFilter(e.target.value)}
+            onChange={(e) => handleFilterChange('relationship', e.target.value)}
           >
             <option value="all">All</option>
             <option value="allies">Allies (4+)</option>
@@ -316,7 +437,7 @@ function PoliticiansTab() {
           <label>Government Level:</label>
           <select
             value={levelFilter}
-            onChange={(e) => setLevelFilter(e.target.value)}
+            onChange={(e) => handleFilterChange('level', e.target.value)}
           >
             <option value="all">All Levels</option>
             <option value="federal">Federal</option>
@@ -330,7 +451,7 @@ function PoliticiansTab() {
           <label>State/Region:</label>
           <select
             value={stateFilter}
-            onChange={(e) => setStateFilter(e.target.value)}
+            onChange={(e) => handleFilterChange('state', e.target.value)}
           >
             <option value="all">All States</option>
             <option value="national">National (No State)</option>
@@ -344,27 +465,100 @@ function PoliticiansTab() {
       </div>
 
       <div className="politician-list">
-        {filteredPoliticians.length > 0 ? (
-          filteredPoliticians.map((pol) => (
-            <RelationshipCard
-              key={pol.id}
-              politician={pol}
-              relationship={relationships[pol.id]?.relationship ?? 0}
-              intel={politicianIntel[pol.id]}
-              isFavorite={favoritePoliticians.includes(pol.id)}
-              onGatherIntel={() => actions.gatherIntelOnPolitician(pol.id)}
-              onPraise={() => actions.praisePolitician(pol.id)}
-              onToggleFavorite={() => actions.toggleFavoritePolitician(pol.id)}
-            />
-          ))
+        {paginatedPoliticians.length > 0 ? (
+          paginatedPoliticians.map((pol) => {
+            const hasEndorsed = activeElection && endorsements?.[activeElection.id]?.[pol.id]?.candidateId === playerInfo?.id;
+            const canRequestEndorsement = activeElection && !endorsements?.[activeElection.id]?.[pol.id];
+            
+            return (
+              <RelationshipCard
+                key={pol.id}
+                politician={pol}
+                relationship={relationships[pol.id]?.relationship ?? 0}
+                intel={politicianIntel[pol.id]}
+                isFavorite={favoritePoliticians.includes(pol.id)}
+                hasEndorsed={hasEndorsed}
+                canRequestEndorsement={canRequestEndorsement}
+                playerPartyId={playerInfo?.partyId}
+                onGatherIntel={() => actions.gatherIntelOnPolitician(pol.id)}
+                onPraise={() => actions.praisePolitician(pol.id)}
+                onToggleFavorite={() => actions.toggleFavoritePolitician(pol.id)}
+                onRequestEndorsement={() => actions.requestEndorsement(pol.id, activeElection?.id)}
+              />
+            );
+          })
         ) : (
-          <p>
-            {activeTab === "favorites"
-              ? "No favorite politicians yet. Click the star icon on politician cards to add them to your favorites."
-              : "No politicians found matching your filters."}
-          </p>
+          <div className="no-results">
+            <p>
+              {searchTerm.trim() ? 
+                `No politicians found matching "${searchTerm}"` :
+                activeTab === "favorites"
+                  ? "No favorite politicians yet. Click the star icon on politician cards to add them to your favorites."
+                  : "No politicians found matching your filters."}
+            </p>
+            {searchTerm.trim() && (
+              <button 
+                className="menu-button"
+                onClick={() => handleFilterChange('search', '')}
+              >
+                Clear Search
+              </button>
+            )}
+          </div>
         )}
       </div>
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="pagination-controls">
+          <button
+            className="menu-button"
+            onClick={() => setCurrentPage(1)}
+            disabled={currentPage === 1}
+          >
+            First
+          </button>
+          <button
+            className="menu-button"
+            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+            disabled={currentPage === 1}
+          >
+            Previous
+          </button>
+          
+          <div className="page-info">
+            <span>Page {currentPage} of {totalPages}</span>
+          </div>
+          
+          <button
+            className="menu-button"
+            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+            disabled={currentPage === totalPages}
+          >
+            Next
+          </button>
+          <button
+            className="menu-button"
+            onClick={() => setCurrentPage(totalPages)}
+            disabled={currentPage === totalPages}
+          >
+            Last
+          </button>
+        </div>
+      )}
+
+      {/* Load More Button (Alternative to pagination) */}
+      {currentPage < totalPages && (
+        <div className="load-more-section">
+          <button
+            className="action-button"
+            onClick={loadMorePoliticians}
+            disabled={isLoading}
+          >
+            {isLoading ? "Loading..." : `Load More Politicians (${totalCount - paginatedPoliticians.length} remaining)`}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

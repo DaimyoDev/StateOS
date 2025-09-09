@@ -1,0 +1,382 @@
+/* src/components/game_tabs/EducationTab.css */
+
+.education-tab-container {
+  padding: 20px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.tab-title {
+  font-family: var(--font-heading);
+  color: var(--accent-color);
+  margin-bottom: 5px;
+  text-align: left;
+}
+
+.tab-description {
+  font-size: 0.9em;
+  color: var(--secondary-text);
+  margin-top: 0;
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+.loading-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  text-align: center;
+}
+
+.loading-message p {
+  margin-bottom: 20px;
+  color: var(--secondary-text);
+  font-size: 1.1em;
+}
+
+/* Tab Navigation */
+.education-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.education-tabs button {
+  padding: 10px 20px;
+  background: var(--secondary-bg);
+  border: 1px solid var(--border-color);
+  color: var(--secondary-text);
+  cursor: pointer;
+  border-radius: var(--element-radius) var(--element-radius) 0 0;
+  transition: all 0.2s ease;
+}
+
+.education-tabs button:hover {
+  background: var(--button-hover-bg);
+  color: var(--primary-text);
+}
+
+.education-tabs button.active {
+  background: var(--accent-color);
+  color: var(--button-text);
+  border-bottom-color: var(--accent-color);
+}
+
+/* Tab Content */
+.tab-content {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.info-card {
+  background: var(--secondary-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--element-radius);
+  padding: 20px;
+  box-shadow: var(--panel-shadow);
+}
+
+.info-card h3 {
+  color: var(--accent-color);
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 1.2em;
+}
+
+.info-card h4 {
+  color: var(--primary-text);
+  margin-top: 0;
+  margin-bottom: 10px;
+  font-size: 1em;
+}
+
+/* National Stats Grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  padding: 15px;
+  background: var(--primary-bg);
+  border-radius: var(--element-radius);
+  border-left: 3px solid var(--accent-color);
+}
+
+.stat-label {
+  font-size: 0.85em;
+  color: var(--secondary-text);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 5px;
+}
+
+.stat-value {
+  font-size: 1.4em;
+  font-weight: 600;
+  color: var(--primary-text);
+}
+
+.stat-value.danger {
+  color: var(--error-text, #dc3545);
+}
+
+.stat-value.positive {
+  color: var(--success-text, #28a745);
+}
+
+.stat-value.negative {
+  color: var(--error-text, #dc3545);
+}
+
+/* Economic Impact */
+.impact-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 15px;
+}
+
+.impact-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 15px;
+  background: var(--primary-bg);
+  border-radius: var(--element-radius);
+  border: 1px solid var(--border-color);
+}
+
+.impact-label {
+  font-size: 0.95em;
+  color: var(--secondary-text);
+  font-weight: 500;
+}
+
+.impact-value {
+  font-size: 1.1em;
+  font-weight: 600;
+  color: var(--primary-text);
+}
+
+.impact-value.positive {
+  color: var(--success-text, #28a745);
+}
+
+.impact-value.negative {
+  color: var(--error-text, #dc3545);
+}
+
+/* District Selector */
+.district-dropdown {
+  width: 100%;
+  padding: 10px;
+  background: var(--primary-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--element-radius);
+  color: var(--primary-text);
+  font-size: 1em;
+}
+
+.district-dropdown:focus {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
+}
+
+/* District Info */
+.district-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.district-stats p {
+  margin: 8px 0;
+  padding: 10px;
+  background: var(--primary-bg);
+  border-radius: var(--element-radius);
+  border-left: 3px solid var(--accent-color);
+}
+
+/* Student Coalitions */
+.coalitions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+  margin-top: 15px;
+}
+
+.coalition-card {
+  background: var(--primary-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--element-radius);
+  padding: 15px;
+  transition: all 0.2s ease;
+}
+
+.coalition-card:hover {
+  background: var(--button-hover-bg);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.coalition-name {
+  color: var(--accent-color);
+  margin: 0 0 12px 0;
+  font-size: 1.1em;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 8px;
+}
+
+.coalition-details {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.coalition-details p {
+  margin: 0;
+  font-size: 0.9em;
+  display: flex;
+  justify-content: space-between;
+}
+
+.detail-label {
+  color: var(--secondary-text);
+  font-weight: 500;
+}
+
+/* Policy Tools */
+.policies-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.policy-card {
+  background: var(--primary-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--element-radius);
+  padding: 20px;
+  transition: all 0.2s ease;
+}
+
+.policy-card:hover {
+  border-color: var(--accent-color);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.policy-card h4 {
+  color: var(--accent-color);
+  margin: 0 0 10px 0;
+  font-size: 1.1em;
+}
+
+.policy-card p {
+  margin: 8px 0;
+  font-size: 0.9em;
+  color: var(--secondary-text);
+  line-height: 1.4;
+}
+
+.policy-card p strong {
+  color: var(--primary-text);
+}
+
+.policy-card .action-button {
+  margin-top: 15px;
+  width: 100%;
+  padding: 10px;
+  font-size: 0.9em;
+}
+
+/* Policy Effectiveness */
+.effectiveness-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-top: 15px;
+}
+
+.effectiveness-item {
+  background: var(--primary-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--element-radius);
+  padding: 15px;
+  border-left: 4px solid var(--accent-color);
+}
+
+.effectiveness-item h4 {
+  margin: 0 0 12px 0;
+  color: var(--accent-color);
+}
+
+.effectiveness-item p {
+  margin: 6px 0;
+  font-size: 0.9em;
+  display: flex;
+  justify-content: space-between;
+}
+
+.effectiveness-item strong {
+  color: var(--primary-text);
+  min-width: 180px;
+}
+
+/* Future Projections */
+.future-projections ul {
+  margin: 15px 0;
+  padding-left: 20px;
+}
+
+.future-projections li {
+  margin: 10px 0;
+  color: var(--secondary-text);
+  line-height: 1.5;
+}
+
+.future-projections li strong {
+  color: var(--primary-text);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .stats-grid,
+  .impact-grid,
+  .coalitions-grid,
+  .policies-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .coalition-details {
+    grid-template-columns: 1fr;
+  }
+  
+  .district-stats {
+    grid-template-columns: 1fr;
+  }
+  
+  .education-tabs {
+    flex-wrap: wrap;
+  }
+  
+  .effectiveness-item p {
+    flex-direction: column;
+    gap: 2px;
+  }
+  
+  .effectiveness-item strong {
+    min-width: auto;
+  }
+}

@@ -164,6 +164,7 @@ button:focus-visible,
   display: inline-block;
   min-height: 44px; /* Consistent button height */
   box-sizing: border-box;
+  margin: 8px 4px; /* Added margin for better spacing */
 }
 
 .menu-button:hover {

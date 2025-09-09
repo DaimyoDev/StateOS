@@ -1,5 +1,118 @@
 /* ui-src/src/components/game_tabs/CampaignTab.css */
 
+/* Endorsements Section Styles */
+.endorsements-section {
+  margin-top: 20px;
+}
+
+.endorsements-section h4 {
+  color: var(--accent-color);
+  margin-bottom: 15px;
+  font-size: 1.1em;
+}
+
+.no-endorsements-message {
+  color: var(--secondary-text);
+  font-style: italic;
+  padding: 15px;
+  background: var(--primary-bg);
+  border-radius: var(--element-radius);
+  text-align: center;
+}
+
+.endorsements-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.endorsement-tier {
+  background: var(--primary-bg);
+  border-radius: var(--element-radius);
+  padding: 12px;
+  border-left: 3px solid var(--accent-color);
+}
+
+.endorsement-tier-title {
+  font-size: 0.95em;
+  color: var(--accent-color);
+  margin: 0 0 10px 0;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.endorsement-items {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.endorsement-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--secondary-bg);
+  border-radius: var(--element-radius);
+  transition: all 0.2s ease;
+}
+
+.endorsement-item:hover {
+  background: var(--button-hover-bg);
+  transform: translateX(5px);
+}
+
+.endorsement-item.federal {
+  border-left: 3px solid var(--success-text, #28a745);
+}
+
+.endorsement-item.state {
+  border-left: 3px solid var(--info-text, #17a2b8);
+}
+
+.endorsement-item.local {
+  border-left: 3px solid var(--secondary-text, #6c757d);
+}
+
+.endorser-name {
+  font-weight: 600;
+  color: var(--primary-text);
+}
+
+.endorser-office {
+  font-size: 0.85em;
+  color: var(--secondary-text);
+  font-style: italic;
+}
+
+.endorsement-summary {
+  margin-top: 15px;
+  padding: 12px;
+  background: var(--highlight-bg, rgba(255, 255, 255, 0.05));
+  border-radius: var(--element-radius);
+  border: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+}
+
+.endorsement-count,
+.endorsement-impact {
+  margin: 0;
+  font-size: 0.95em;
+  color: var(--secondary-text);
+}
+
+.endorsement-count strong,
+.endorsement-impact strong {
+  color: var(--accent-color);
+  font-size: 1.2em;
+}
+
 /* Main container for the entire Campaign Management Tab */
 .campaign-tab-content {
   padding: 20px; /* Retained from your original */

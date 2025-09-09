@@ -91,6 +91,8 @@ const CampaignOverviewSubTab = ({
   partiesMap,
 }) => {
   const recentPollsByElection = useGameStore((state) => state.recentPollsByElection || new Map());
+  const endorsements = useGameStore((state) => state.endorsements || {});
+  const playerInfo = useGameStore((state) => state.playerInfo);
   const startingCity = campaignData.startingCity || {};
   const playerActiveElection = campaignData.elections?.find(
     (election) =>
@@ -207,6 +209,83 @@ const CampaignOverviewSubTab = ({
             recentPolls={recentPollsByElection.get(playerActiveElection.id)}
             partiesMap={partiesMap}
           />
+
+          {/* Endorsements Section */}
+          <section className="info-card endorsements-section">
+            <h4>Campaign Endorsements</h4>
+            {(() => {
+              const electionEndorsements = endorsements[playerActiveElection.id] || {};
+              const playerEndorsements = Object.entries(electionEndorsements)
+                .filter(([_, endorsement]) => endorsement.candidateId === playerInfo?.id)
+                .map(([politicianId, endorsement]) => endorsement);
+
+              if (playerEndorsements.length === 0) {
+                return (
+                  <p className="no-endorsements-message">
+                    No endorsements yet. Build relationships with politicians from your party 
+                    to secure their support. You need at least Ally status (4+) to request endorsements.
+                  </p>
+                );
+              }
+
+              // Group endorsements by weight/level
+              const federalEndorsements = playerEndorsements.filter(e => e.weight === 5);
+              const stateEndorsements = playerEndorsements.filter(e => e.weight === 3);
+              const localEndorsements = playerEndorsements.filter(e => e.weight <= 2);
+
+              return (
+                <div className="endorsements-list">
+                  {federalEndorsements.length > 0 && (
+                    <div className="endorsement-tier">
+                      <h5 className="endorsement-tier-title">Federal Endorsements</h5>
+                      <ul className="endorsement-items">
+                        {federalEndorsements.map((endorsement, idx) => (
+                          <li key={idx} className="endorsement-item federal">
+                            <span className="endorser-name">{endorsement.politicianName}</span>
+                            <span className="endorser-office">{endorsement.politicianOffice}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {stateEndorsements.length > 0 && (
+                    <div className="endorsement-tier">
+                      <h5 className="endorsement-tier-title">State Endorsements</h5>
+                      <ul className="endorsement-items">
+                        {stateEndorsements.map((endorsement, idx) => (
+                          <li key={idx} className="endorsement-item state">
+                            <span className="endorser-name">{endorsement.politicianName}</span>
+                            <span className="endorser-office">{endorsement.politicianOffice}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {localEndorsements.length > 0 && (
+                    <div className="endorsement-tier">
+                      <h5 className="endorsement-tier-title">Local Endorsements</h5>
+                      <ul className="endorsement-items">
+                        {localEndorsements.map((endorsement, idx) => (
+                          <li key={idx} className="endorsement-item local">
+                            <span className="endorser-name">{endorsement.politicianName}</span>
+                            <span className="endorser-office">{endorsement.politicianOffice}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  <div className="endorsement-summary">
+                    <p className="endorsement-count">
+                      Total Endorsements: <strong>{playerEndorsements.length}</strong>
+                    </p>
+                    <p className="endorsement-impact">
+                      Endorsement Impact: <strong>+{playerEndorsements.reduce((sum, e) => sum + e.weight, 0)}%</strong> polling boost
+                    </p>
+                  </div>
+                </div>
+              );
+            })()}
+          </section>
 
         </>
       )}

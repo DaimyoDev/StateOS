@@ -66,7 +66,7 @@ export class PollingOptimizer {
   /**
    * Fast polling normalization with caching and optimized calculations
    */
-  normalizePollingFast(candidates, totalPopulationContext = 0, isSimulationMode = false, cacheKey = null) {
+  normalizePollingFast(candidates, totalPopulationContext = 0, isSimulationMode = false, cacheKey = null, endorsements = null) {
     // Clean cache periodically to prevent memory leaks
     const now = Date.now();
     if (now - this.lastCacheClean > 300000) { // Clean every 5 minutes
@@ -89,7 +89,7 @@ export class PollingOptimizer {
       return new Map();
     }
 
-    const result = this._processPollingBatch(candidatesList, totalPopulationContext, isSimulationMode);
+    const result = this._processPollingBatch(candidatesList, totalPopulationContext, isSimulationMode, endorsements);
     
     // Cache result if key provided
     if (cacheKey) {
@@ -105,7 +105,7 @@ export class PollingOptimizer {
   /**
    * Process polling in optimized batches using aggressive SoA approach
    */
-  _processPollingBatch(candidatesList, totalPopulationContext, isSimulationMode) {
+  _processPollingBatch(candidatesList, totalPopulationContext, isSimulationMode, endorsements = null) {
     const numCandidates = candidatesList.length;
     
     // Early exit for small datasets
@@ -142,7 +142,14 @@ export class PollingOptimizer {
       for (let i = 0; i < numCandidates; i++) {
         const candidate = candidatesList[i];
         ids[i] = candidate.id;
-        const score = Number(candidate.baseScore) >= 0 ? Number(candidate.baseScore) : 1;
+        let score = Number(candidate.baseScore) >= 0 ? Number(candidate.baseScore) : 1;
+        
+        // Apply endorsement bonus if available
+        if (endorsements && candidate.endorsementBonus) {
+          // Endorsement bonus is calculated as a percentage increase
+          score = score * (1 + candidate.endorsementBonus / 100);
+        }
+        
         baseScores[i] = score;
         
         const nameRec = candidate.nameRecognition || 0;
@@ -225,7 +232,7 @@ export class PollingOptimizer {
   /**
    * Ultra-fast batch update polling with intelligent skipping
    */
-  batchUpdateElectionPolling(elections, adultPopulation) {
+  batchUpdateElectionPolling(elections, adultPopulation, endorsementsData = null) {
     const results = new Map();
     const electionsArray = Array.isArray(elections) ? elections : Array.from(elections);
     const now = Date.now();
@@ -277,11 +284,28 @@ export class PollingOptimizer {
         cacheKey = `e_${election.id}_${candidates.length}_${adultPopulation}_${scoreSum}`;
       }
       
+      // Add endorsement bonuses to candidates if endorsements data is provided
+      let candidatesWithEndorsements = candidates;
+      if (endorsementsData && endorsementsData[election.id]) {
+        const electionEndorsements = endorsementsData[election.id];
+        candidatesWithEndorsements = candidates.map(candidate => {
+          // Calculate total endorsement weight for this candidate
+          let endorsementBonus = 0;
+          Object.values(electionEndorsements).forEach(endorsement => {
+            if (endorsement.candidateId === candidate.id) {
+              endorsementBonus += endorsement.weight || 0;
+            }
+          });
+          return { ...candidate, endorsementBonus };
+        });
+      }
+      
       const normalizedCandidates = this.normalizePollingFast(
-        candidates,
+        candidatesWithEndorsements,
         safeAdultPop,
         false,
-        cacheKey
+        cacheKey,
+        endorsementsData
       );
       
       results.set(election.id, normalizedCandidates);

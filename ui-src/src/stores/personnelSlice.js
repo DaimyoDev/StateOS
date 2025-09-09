@@ -98,6 +98,7 @@ export const createStaffObject = (params = {}) => {
 // --- Initial State ---
 const getInitialPersonnelState = () => ({
   politicianRelationships: {},
+  endorsements: {}, // { [electionId]: { [politicianId]: { candidateId, timestamp, weight } } }
   talentPool: [],
   hiredStaff: [],
   politicianIntel: {},
@@ -531,6 +532,103 @@ export const createPersonnelSlice = (set, get) => ({
             ...state.activeCampaign,
             politician: newPlayerState,
           },
+        };
+      });
+    },
+
+    /**
+     * Request endorsement from a politician
+     * @param {string} politicianId - The ID of the politician to request endorsement from
+     * @param {string} electionId - The ID of the election for which the endorsement is requested
+     */
+    requestEndorsement: (politicianId, electionId) => {
+      set((state) => {
+        if (!electionId) {
+          get().actions.addToast({
+            message: "No active election to request endorsement for.",
+            type: "error",
+          });
+          return state;
+        }
+
+        // Get the politician details
+        const { activeCampaign } = get();
+        const cityId = activeCampaign?.startingCity?.id;
+        const stateId = activeCampaign?.regionId;
+        const contextualOffices = get().actions.getGovernmentOfficesForContext('city', cityId, stateId);
+        const targetPolitician = contextualOffices
+          .flatMap((o) => o.members || (o.holder ? [o.holder] : []))
+          .find((p) => p && p.id === politicianId);
+
+        if (!targetPolitician) return state;
+
+        const playerInfo = state.playerInfo;
+        const relationship = state.politicianRelationships[politicianId]?.relationship || 0;
+
+        // Check if same party
+        if (targetPolitician.partyId !== playerInfo?.partyId) {
+          get().actions.addToast({
+            message: `${targetPolitician.name} cannot endorse candidates from another party.`,
+            type: "error",
+          });
+          return state;
+        }
+
+        // Check relationship threshold
+        if (relationship < 4) {
+          get().actions.addToast({
+            message: `You need at least Ally status (4+) with ${targetPolitician.name} to request an endorsement.`,
+            type: "error",
+          });
+          return state;
+        }
+
+        // Check if already endorsed someone
+        const electionEndorsements = state.endorsements[electionId] || {};
+        if (electionEndorsements[politicianId]) {
+          get().actions.addToast({
+            message: `${targetPolitician.name} has already endorsed a candidate for this election.`,
+            type: "error",
+          });
+          return state;
+        }
+
+        // Calculate endorsement weight based on office level
+        let weight = 1;
+        const office = contextualOffices.find(o => 
+          o.holder?.id === politicianId || 
+          o.members?.some(m => m.id === politicianId)
+        );
+        
+        if (office?.level) {
+          if (office.level.startsWith("national_")) weight = 5;
+          else if (office.level.includes("state")) weight = 3;
+          else if (office.level.includes("county")) weight = 2;
+          else weight = 1;
+        }
+
+        // Grant endorsement
+        const newEndorsements = {
+          ...state.endorsements,
+          [electionId]: {
+            ...electionEndorsements,
+            [politicianId]: {
+              candidateId: playerInfo?.id,
+              timestamp: new Date().toISOString(),
+              weight: weight,
+              politicianName: targetPolitician.name,
+              politicianOffice: office?.officeName || office?.name || "Political Figure",
+            }
+          }
+        };
+
+        get().actions.addToast({
+          message: `${targetPolitician.name} has endorsed your campaign! This will boost your polling and fundraising efforts.`,
+          type: "success",
+        });
+
+        return {
+          endorsements: newEndorsements,
         };
       });
     },

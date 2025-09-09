@@ -821,8 +821,9 @@ export const createCampaignSlice = (set, get) => ({
           affectedElections.push({ ...election, candidates: updatedCandidates });
         }
         
-        // Batch process polling updates
-        const pollingResults = pollingOptimizer.batchUpdateElectionPolling(affectedElections, adultPop);
+        // Batch process polling updates with endorsements
+        const endorsements = get().endorsements || {};
+        const pollingResults = pollingOptimizer.batchUpdateElectionPolling(affectedElections, adultPop, endorsements);
         
         // Direct mutation approach - use O(1) lookup instead of O(n) findIndex
         for (const [electionId, updatedCandidates] of pollingResults) {
