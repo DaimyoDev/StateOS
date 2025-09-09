@@ -34,6 +34,7 @@ import { chileanRegions } from "./states/chileStates";
 import { colombianDepartments } from "./states/colombianStates";
 import { czechRegions } from "./states/czechStates";
 import { danishRegions } from "./states/danishStates";
+import { getDonationLawById } from "./politicalDonationLaws";
 
 export const DEFAULT_COUNTRY_POPULATION_RANGES = {
   JPN: { min: 100000000, max: 130000000 },
@@ -111,6 +112,7 @@ const baseCountriesData = [
       county: DEPARTMENT_LEVELS.COUNTY,
       city: DEPARTMENT_LEVELS.CITY
     },
+    donationLawId: "MODERATE_LIMITS",
   },
   {
     id: "USA",
@@ -141,6 +143,7 @@ const baseCountriesData = [
       county: DEPARTMENT_LEVELS.COUNTY,
       city: DEPARTMENT_LEVELS.CITY
     },
+    donationLawId: "CORPORATE_FRIENDLY",
   },
   {
     id: "GER",
@@ -157,6 +160,7 @@ const baseCountriesData = [
       county: DEPARTMENT_LEVELS.COUNTY,
       city: DEPARTMENT_LEVELS.CITY
     },
+    donationLawId: "STRICT_LIMITS",
   },
   {
     id: "PHL",
@@ -182,6 +186,7 @@ const baseCountriesData = [
       county: DEPARTMENT_LEVELS.COUNTY,
       city: DEPARTMENT_LEVELS.CITY
     },
+    donationLawId: "MODERATE_LIMITS",
   },
   {
     id: "KOR",
@@ -210,6 +215,7 @@ const baseCountriesData = [
       county: DEPARTMENT_LEVELS.COUNTY,
       city: DEPARTMENT_LEVELS.CITY
     },
+    donationLawId: "MODERATE_LIMITS",
   },
   {
     id: "CAN",
@@ -230,6 +236,7 @@ const baseCountriesData = [
       county: DEPARTMENT_LEVELS.COUNTY,
       city: DEPARTMENT_LEVELS.CITY
     },
+    donationLawId: "STRICT_LIMITS",
   },
   {
     id: "AUS",
@@ -249,6 +256,7 @@ const baseCountriesData = [
       county: DEPARTMENT_LEVELS.COUNTY,
       city: DEPARTMENT_LEVELS.CITY
     },
+    donationLawId: "STRICT_LIMITS",
   },
   {
     id: "FRA",
@@ -264,6 +272,7 @@ const baseCountriesData = [
       county: DEPARTMENT_LEVELS.COUNTY,
       city: DEPARTMENT_LEVELS.CITY
     },
+    donationLawId: "SMALL_DONOR_FOCUS",
   },
   {
     id: "GBR",
@@ -279,6 +288,7 @@ const baseCountriesData = [
       county: DEPARTMENT_LEVELS.COUNTY,
       city: DEPARTMENT_LEVELS.CITY
     },
+    donationLawId: "MODERATE_LIMITS",
   },
   {
     id: "ITA",
@@ -294,6 +304,7 @@ const baseCountriesData = [
       county: DEPARTMENT_LEVELS.COUNTY,
       city: DEPARTMENT_LEVELS.CITY
     },
+    donationLawId: "MODERATE_LIMITS",
   },
   {
     id: "ESP",
@@ -309,6 +320,7 @@ const baseCountriesData = [
       county: DEPARTMENT_LEVELS.COUNTY,
       city: DEPARTMENT_LEVELS.CITY
     },
+    donationLawId: "SMALL_DONOR_FOCUS",
   },
   {
     id: "POL",
@@ -324,6 +336,7 @@ const baseCountriesData = [
       county: DEPARTMENT_LEVELS.COUNTY,
       city: DEPARTMENT_LEVELS.CITY
     },
+    donationLawId: "MODERATE_LIMITS",
   },
   {
     id: "SWE",
@@ -339,6 +352,7 @@ const baseCountriesData = [
       county: DEPARTMENT_LEVELS.COUNTY,
       city: DEPARTMENT_LEVELS.CITY
     },
+    donationLawId: "VERY_STRICT",
   },
   {
     id: "BRA",
@@ -354,6 +368,7 @@ const baseCountriesData = [
       county: DEPARTMENT_LEVELS.COUNTY,
       city: DEPARTMENT_LEVELS.CITY
     },
+    donationLawId: "MODERATE_LIMITS",
   },
   {
     id: "ARG",
@@ -363,6 +378,7 @@ const baseCountriesData = [
     politicalSystem: "Presidential Republic",
     regions: argentinianStates.map((p) => ({ ...p })),
     nationalLowerHouseDistricts: [],
+    donationLawId: "MODERATE_LIMITS",
   },
   {
     id: "IND",
@@ -372,6 +388,7 @@ const baseCountriesData = [
     politicalSystem: "Parliamentary Republic",
     regions: [],
     nationalLowerHouseDistricts: [],
+    donationLawId: "MODERATE_LIMITS",
   },
   {
     id: "MEX",
@@ -387,6 +404,7 @@ const baseCountriesData = [
       county: DEPARTMENT_LEVELS.COUNTY,
       city: DEPARTMENT_LEVELS.CITY
     },
+    donationLawId: "MODERATE_LIMITS",
   },
   {
     id: "IDN",
@@ -402,6 +420,7 @@ const baseCountriesData = [
       county: DEPARTMENT_LEVELS.COUNTY,
       city: DEPARTMENT_LEVELS.CITY
     },
+    donationLawId: "MODERATE_LIMITS",
   },
   {
     id: "NLD",
@@ -422,6 +441,7 @@ const baseCountriesData = [
       county: DEPARTMENT_LEVELS.COUNTY,
       city: DEPARTMENT_LEVELS.CITY
     },
+    donationLawId: "STRICT_LIMITS",
   },
   {
     id: "CHE",
@@ -437,6 +457,7 @@ const baseCountriesData = [
       county: DEPARTMENT_LEVELS.COUNTY,
       city: DEPARTMENT_LEVELS.CITY
     },
+    donationLawId: "VERY_STRICT",
   },
   {
     id: "AUT",
@@ -452,6 +473,7 @@ const baseCountriesData = [
       county: DEPARTMENT_LEVELS.COUNTY,
       city: DEPARTMENT_LEVELS.CITY
     },
+    donationLawId: "STRICT_LIMITS",
   },
   {
     id: "BEL",
@@ -472,6 +494,7 @@ const baseCountriesData = [
       county: DEPARTMENT_LEVELS.COUNTY,
       city: DEPARTMENT_LEVELS.CITY
     },
+    donationLawId: "STRICT_LIMITS",
   },
   {
     id: "DNK",
@@ -502,6 +525,7 @@ const baseCountriesData = [
       county: DEPARTMENT_LEVELS.COUNTY,
       city: DEPARTMENT_LEVELS.CITY
     },
+    donationLawId: "VERY_STRICT",
   },
   {
     id: "NOR",
@@ -517,6 +541,7 @@ const baseCountriesData = [
       county: DEPARTMENT_LEVELS.COUNTY,
       city: DEPARTMENT_LEVELS.CITY
     },
+    donationLawId: "VERY_STRICT",
   },
   {
     id: "IRL",
@@ -881,6 +906,7 @@ const baseCountriesData = [
       county: DEPARTMENT_LEVELS.COUNTY,
       city: DEPARTMENT_LEVELS.CITY
     },
+    donationLawId: "VERY_STRICT",
   },
 ];
 

@@ -916,3 +916,365 @@
   font-size: 0.9em;
   font-style: italic;
 }
+
+/* ===== MODERN DEPARTMENTS SECTION STYLES ===== */
+
+.departments-modern-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Executive Summary Card */
+.exec-summary-card {
+  background: var(--ui-panel-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--element-radius);
+  padding: 20px;
+  margin-bottom: 16px;
+  box-shadow: var(--panel-shadow);
+}
+
+.summary-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.summary-title-group h3 {
+  margin: 0 0 4px 0;
+  color: var(--primary-text);
+  font-size: 1.4em;
+  font-weight: 600;
+  font-family: var(--font-heading);
+}
+
+.summary-subtitle {
+  color: var(--secondary-text);
+  font-size: 0.9em;
+  margin: 0;
+}
+
+.summary-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  min-width: 280px;
+}
+
+@media (max-width: 768px) {
+  .summary-header {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  
+  .summary-metrics {
+    grid-template-columns: repeat(2, 1fr);
+    min-width: unset;
+    width: 100%;
+  }
+}
+
+.summary-metric {
+  text-align: center;
+  padding: 12px 8px;
+  background: var(--secondary-bg);
+  border-radius: var(--element-radius);
+  border: 1px solid var(--border-color);
+}
+
+.metric-number {
+  display: block;
+  font-size: 1.5em;
+  font-weight: 700;
+  color: var(--accent-color);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.metric-label {
+  display: block;
+  font-size: 0.75em;
+  color: var(--secondary-text);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 500;
+}
+
+/* Departments Grid Container */
+.departments-grid-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+  gap: 20px;
+}
+
+@media (max-width: 480px) {
+  .departments-grid-container {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Department Cards */
+.dept-card {
+  background: var(--ui-panel-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--element-radius);
+  padding: 16px;
+  transition: all var(--transition-speed);
+  box-shadow: var(--panel-shadow);
+}
+
+.dept-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-color: var(--accent-color);
+}
+
+/* Card Header */
+.dept-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+  gap: 16px;
+}
+
+.dept-info h4.dept-title {
+  margin: 0 0 8px 0;
+  color: var(--primary-text);
+  font-size: 1.2em;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.dept-status-badge {
+  padding: 4px 8px;
+  border-radius: var(--element-radius);
+  font-size: 0.7em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.dept-status-badge.active {
+  background: var(--success-text);
+  color: white;
+}
+
+.dept-status-badge.vacant {
+  background: var(--error-text);
+  color: white;
+}
+
+.dept-metrics-compact {
+  display: flex;
+  gap: 16px;
+}
+
+.compact-metric {
+  text-align: right;
+}
+
+.compact-metric .value {
+  display: block;
+  font-size: 1.1em;
+  font-weight: 700;
+  color: var(--accent-color);
+  line-height: 1;
+}
+
+.compact-metric .label {
+  display: block;
+  font-size: 0.75em;
+  color: var(--secondary-text);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-top: 2px;
+}
+
+/* Leadership Section */
+.dept-leadership {
+  padding: 12px;
+  background: var(--secondary-bg);
+  border-radius: var(--element-radius);
+  border: 1px solid var(--border-color);
+  margin-bottom: 12px;
+}
+
+.leader-profile {
+  margin-bottom: 10px;
+}
+
+.leader-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.leader-name {
+  margin: 0 0 2px 0;
+  font-size: 1.05em;
+  font-weight: 600;
+  color: var(--primary-text);
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.leader-name:hover {
+  color: var(--accent-color);
+}
+
+.leader-title {
+  margin: 0 0 4px 0;
+  font-size: 0.85em;
+  color: var(--secondary-text);
+  font-style: italic;
+}
+
+.leader-party {
+  font-size: 0.8em;
+  font-weight: 500;
+}
+
+.performance-indicators {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.performance-item {
+  text-align: center;
+  padding: 6px 8px;
+  background: var(--ui-panel-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--element-radius);
+  min-width: 50px;
+}
+
+.performance-item .perf-value {
+  display: block;
+  font-size: 0.9em;
+  font-weight: 600;
+  color: var(--primary-text);
+  line-height: 1;
+}
+
+.performance-item .perf-label {
+  display: block;
+  font-size: 0.65em;
+  color: var(--secondary-text);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-top: 2px;
+}
+
+/* Vacancy Section */
+.dept-vacancy {
+  padding: 16px;
+  background: var(--secondary-bg);
+  border: 1px dashed var(--error-text);
+  border-radius: var(--element-radius);
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+
+.vacancy-content .vacancy-title {
+  margin: 0 0 4px 0;
+  font-size: 0.9em;
+  font-weight: 600;
+  color: var(--error-text);
+}
+
+.vacancy-description {
+  margin: 0 0 10px 0;
+  font-size: 0.8em;
+  color: var(--secondary-text);
+}
+
+.vacancy-action {
+  background: var(--button-action-bg);
+  color: var(--button-action-text);
+  border: none;
+  padding: 6px 12px;
+  border-radius: var(--element-radius);
+  font-size: 0.75em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-speed);
+}
+
+.vacancy-action:hover {
+  background: var(--button-action-hover-bg);
+}
+
+/* Department Functions */
+.dept-functions {
+  margin-top: 16px;
+}
+
+.dept-functions h5 {
+  margin: 0 0 8px 0;
+  font-size: 0.9em;
+  color: var(--secondary-text);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+.functions-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.function-tag {
+  background: var(--highlight-bg);
+  color: var(--primary-text);
+  padding: 3px 8px;
+  border-radius: var(--element-radius);
+  font-size: 0.7em;
+  font-weight: 500;
+  border: 1px solid var(--border-color);
+  transition: all var(--transition-speed);
+}
+
+.function-tag:hover {
+  background: var(--accent-color);
+  color: var(--accent-text);
+}
+
+.function-tag.more {
+  background: var(--secondary-text);
+  color: white;
+  font-style: italic;
+}
+
+/* Empty State */
+.no-departments-state {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 40px 20px;
+  background: var(--secondary-bg);
+  border: 1px dashed var(--border-color);
+  border-radius: var(--element-radius);
+}
+
+.empty-state-icon {
+  font-size: 2em;
+  margin-bottom: 12px;
+  opacity: 0.5;
+}
+
+.no-departments-state h4 {
+  margin: 0 0 6px 0;
+  color: var(--secondary-text);
+  font-size: 1.1em;
+}
+
+.no-departments-state p {
+  margin: 0;
+  color: var(--secondary-text);
+  font-size: 0.9em;
+}

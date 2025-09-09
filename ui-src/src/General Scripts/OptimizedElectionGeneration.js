@@ -1,10 +1,49 @@
 // src/General Scripts/OptimizedElectionGeneration.js
 
 import { IDEOLOGY_DEFINITIONS } from "../data/ideologiesData.js";
-import { getRandomElement, getRandomInt } from "../utils/core.js";
+import { getRandomElement, getRandomInt, generateId } from "../utils/core.js";
 import { calculateIdeologyDistance, calculateIdeologyFromStances, generateFullAIPolitician } from "../entities/personnel.js";
 import useGameStore from "../store.js";
 import {POLICY_QUESTIONS} from "../data/policyData.js";
+
+// Base campaign fund amounts by office level
+const BASE_CAMPAIGN_FUNDS = {
+  "national_president": 50000000,
+  "national_senate": 2000000,
+  "national_house": 800000,
+  "state_governor": 5000000,
+  "state_senate": 150000,
+  "state_house": 75000,
+  "local_mayor": 25000,
+  "local_council": 5000,
+  "local_city": 25000,
+  "local_city_or_municipality": 25000,
+  "local_city_or_municipality_council": 5000
+};
+
+// Party fundraising strength multipliers
+const PARTY_FUNDRAISING_STRENGTH = {
+  "democratic_party": 1.1,
+  "republican_party": 1.2,
+  "libertarian_party": 0.4,
+  "green_party": 0.3,
+  "independent": 0.6
+};
+
+/**
+ * Calculate realistic campaign funds based on office level and party
+ * This is the core realistic model - everything else is just UI fluff
+ */
+const calculateCampaignFunds = (politician, election) => {
+  const baseAmount = BASE_CAMPAIGN_FUNDS[election.level] || 10000;
+  const partyMultiplier = PARTY_FUNDRAISING_STRENGTH[politician.partyId] || 0.7;
+  
+  // Add variation (±30%) to prevent identical amounts
+  const randomVariation = 0.7 + (Math.random() * 0.6);
+  
+  return Math.floor(baseAmount * partyMultiplier * randomVariation);
+};
+
 /**
  * Optimized politician generation with caching and batch processing
  */
@@ -214,6 +253,7 @@ class OptimizedPoliticianGenerator {
    * Batch generate multiple politicians efficiently using generateFullAIPolitician
    */
   batchGeneratePoliticians(count, countryId, allPartiesInScope, options = {}) {
+    const { election } = options; // Extract election from options
     this.cleanCache();
     
     const usedIds = new Set();
@@ -277,8 +317,24 @@ class OptimizedPoliticianGenerator {
       // Add election-specific properties
       politician.baseScore = getRandomInt(15, 35);
       politician.nameRecognition = getRandomInt(5, 25);
-      politician.campaignFunds = getRandomInt(10000, 100000);
       politician.endorsements = [];
+      
+      // Calculate realistic campaign funds based on office level and party
+      if (election) {
+        politician.campaignFunds = calculateCampaignFunds(politician, election);
+      } else {
+        // Fallback for compatibility if no election context
+        politician.campaignFunds = getRandomInt(10000, 100000);
+      }
+      
+      // Simplified campaign finance structure - no donations generated here
+      politician.campaignFinances = {
+        totalFunds: politician.campaignFunds,
+        monthlyFundraisingTarget: Math.floor(politician.campaignFunds * 0.15), // 15% of total per month
+        totalDonationCount: null, // Will be calculated on-demand
+        lastDonationDate: null,   // Will be calculated on-demand
+        donations: null // Generated on-demand when viewed
+      };
       
       // Campaign data
       politician.isInCampaign = false;
@@ -446,6 +502,7 @@ export function generateOptimizedElectionParticipants({
   activeCampaign,
   electionPropertiesForScoring,
   entityPopulation,
+  election, // Add election parameter for campaign fund calculation
 }) {
   // Early validation
   if (!electionType || !partiesInScope || partiesInScope.length === 0) {
@@ -464,6 +521,7 @@ export function generateOptimizedElectionParticipants({
         activeCampaign,
         electionPropertiesForScoring,
         entityPopulation,
+        election,
       });
 
     case "ElectoralCollege":
@@ -474,6 +532,7 @@ export function generateOptimizedElectionParticipants({
         activeCampaign,
         electionPropertiesForScoring,
         entityPopulation,
+        election,
       });
 
     case "PartyListPR":
@@ -484,6 +543,7 @@ export function generateOptimizedElectionParticipants({
         activeCampaign,
         electionPropertiesForScoring,
         electionType,
+        election,
       });
 
     case "MMP":
@@ -496,6 +556,7 @@ export function generateOptimizedElectionParticipants({
         electionPropertiesForScoring,
         electionType,
         entityPopulation,
+        election,
       });
 
     case "SNTV_MMD":
@@ -509,6 +570,7 @@ export function generateOptimizedElectionParticipants({
         activeCampaign,
         electionPropertiesForScoring,
         entityPopulation,
+        election,
       });
 
     default:
@@ -528,6 +590,7 @@ function handleOptimizedElectoralCollegeParticipants({
   activeCampaign,
   electionPropertiesForScoring,
   entityPopulation,
+  election,
 }) {
   let candidates = [];
   const runningIncumbents = [];
@@ -560,7 +623,8 @@ function handleOptimizedElectoralCollegeParticipants({
     const newChallengers = generatePoliticiansBatch(
       numberOfChallengersToGenerate,
       countryId,
-      partiesInScope
+      partiesInScope,
+      { election: election }
     );
 
     // Remove duplicates from same party (presidential nominees are unique per party)
@@ -611,6 +675,7 @@ function handleOptimizedFPTPParticipants({
   activeCampaign,
   electionPropertiesForScoring,
   entityPopulation,
+  election,
 }) {
   let candidates = [];
   const runningIncumbents = [];
@@ -643,7 +708,8 @@ function handleOptimizedFPTPParticipants({
     const newChallengers = generatePoliticiansBatch(
       numberOfChallengersToGenerate,
       countryId,
-      partiesInScope
+      partiesInScope,
+      { election: election }
     );
 
     // Apply duplicate removal system to prevent multiple candidates from same party
@@ -674,6 +740,7 @@ function handleOptimizedPartyListPRParticipants({
   activeCampaign,
   electionPropertiesForScoring,
   electionType,
+  election,
 }) {
   const partyListsOutput = {};
   
@@ -689,7 +756,7 @@ function handleOptimizedPartyListPRParticipants({
       listSize,
       countryId,
       partiesInScope,
-      { forcePartyId: party.id }
+      { election: election, forcePartyId: party.id }
     );
 
     // Format candidates for party list
@@ -720,6 +787,7 @@ function handleOptimizedMMPParticipants({
   electionPropertiesForScoring,
   electionType,
   entityPopulation,
+  election,
 }) {
   const mmpData = {
     partyLists: {},
@@ -742,7 +810,8 @@ function handleOptimizedMMPParticipants({
     const listCandidates = generatePoliticiansBatch(
       listSize,
       countryId,
-      [party] // Only this party for forced party generation
+      [party], // Only this party for forced party generation
+      { election: election, forcePartyId: party.id }
     );
 
     // Filter out any duplicate IDs and track used ones
@@ -770,7 +839,8 @@ function handleOptimizedMMPParticipants({
     const constituencyCandidates = generatePoliticiansBatch(
       constituencyCandidateCount,
       countryId,
-      [party] // Only this party for forced party generation
+      [party], // Only this party for forced party generation
+      { election: election, forcePartyId: party.id }
     );
 
     // Filter out any duplicate IDs and track used ones
@@ -828,6 +898,7 @@ function handleOptimizedMMDParticipants({
   activeCampaign,
   electionPropertiesForScoring,
   entityPopulation,
+  election,
 }) {
   let candidates = [];
   const runningIncumbents = [];
@@ -858,7 +929,7 @@ function handleOptimizedMMDParticipants({
       numberOfChallengersToGenerate,
       countryId,
       partiesInScope,
-      {}
+      { election: election }
     );
 
     // Handle party representation - allow multiple candidates per party in MMD

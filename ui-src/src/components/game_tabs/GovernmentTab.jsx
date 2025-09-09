@@ -96,7 +96,7 @@ const GovernmentTab = ({ campaignData }) => {
   const displayName = getCurrentDisplayName();
 
   return (
-    <div className="government-tab-content ui-panel">
+    <div className="tab-content-container government-tab-content">
       <h2 className="tab-title">Government Overview: {displayName}</h2>
       <div className="dropdown-container">
         <SubtabDropdown 

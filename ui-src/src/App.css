@@ -24,6 +24,7 @@ body {
   margin: 0;
   /* Use one of your chosen fonts as the base, with fallback */
   font-family: var(--font-main, "Inter", sans-serif);
+  font-size: 16px; /* Increased from default ~14px */
   -webkit-font-smoothing: antialiased; /* For smoother text rendering */
   -moz-osx-font-smoothing: grayscale;
   background-color: var(--primary-bg, #282c34);
@@ -152,11 +153,17 @@ button:focus-visible,
   color: var(--button-text);
   padding: var(--button-padding, 12px 24px);
   font-family: var(--font-main);
+  font-size: 16px; /* Consistent with other buttons */
+  font-weight: 500;
   cursor: pointer;
   border-radius: var(--element-radius);
   box-shadow: var(--button-shadow);
-  transition: background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  transition: all var(--transition-speed, 0.2s) ease-in-out;
   text-transform: none; /* Explicitly prevent uppercase transformation */
+  text-align: center;
+  display: inline-block;
+  min-height: 44px; /* Consistent button height */
+  box-sizing: border-box;
 }
 
 .menu-button:hover {
@@ -180,7 +187,7 @@ button:focus-visible,
   padding: var(--button-padding, 12px 24px);
   font-family: var(--font-main);
   font-weight: 600;
-  font-size: 14px;
+  font-size: 16px;
   text-align: center;
   cursor: pointer;
   border-radius: var(--element-radius, 6px);
@@ -260,7 +267,7 @@ button:focus-visible,
     10px 20px
   ); /* Use theme variable or a default */
   font-family: var(--font-main);
-  font-size: 16px; /* Or a theme variable for font-size-button */
+  font-size: 16px; /* Updated to match other buttons */
   text-align: center;
   cursor: pointer;
   border-radius: var(--element-radius);

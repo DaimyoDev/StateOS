@@ -6,6 +6,7 @@ import "./TabStyles.css";
 import "./ElectionsTab.css";
 import { isDateSameOrBefore, getTimeUntil } from "../../utils/generalUtils";
 import { getRandomInt } from "../../utils/core";
+import DetailedCandidateView from "./DetailedCandidateView";
 
 // --- Utility Functions (kept outside component) ---
 // Removed getDisplayedPolling function as polling values are no longer displayed in election tab
@@ -913,6 +914,7 @@ function ElectionsTab({ campaignData }) {
   const [selectedElectionId, setSelectedElectionId] = useState(null);
   const [regionFilter, setRegionFilter] = useState("all");
   const [locationFilter, setLocationFilter] = useState("all");
+  const [selectedCandidate, setSelectedCandidate] = useState(null);
 
   const recentPollsByElection = useGameStore(
     (state) => state.recentPollsByElection
@@ -1092,20 +1094,32 @@ function ElectionsTab({ campaignData }) {
   const handleCandidateClick = useCallback(
     (candidate) => {
       if (!candidate) return;
-      if (candidate.isPlayer || candidate.id === playerPoliticianData?.id) {
-        return;
-      }
-      if (openViewPoliticianModal) {
-        openViewPoliticianModal(candidate);
-      }
+      setSelectedCandidate(candidate);
     },
-    [playerPoliticianData?.id, openViewPoliticianModal]
+    []
   );
+
+  const handleBackToElection = useCallback(() => {
+    setSelectedCandidate(null);
+  }, []);
 
   if (!campaignData) {
     return (
       <div className="tab-content-container elections-tab">
         <p>Loading campaign data...</p>
+      </div>
+    );
+  }
+
+  // Show detailed candidate view if a candidate is selected
+  if (selectedCandidate) {
+    return (
+      <div className="tab-content-container elections-tab">
+        <DetailedCandidateView
+          candidate={selectedCandidate}
+          onBack={handleBackToElection}
+          electionInfo={selectedElection}
+        />
       </div>
     );
   }
