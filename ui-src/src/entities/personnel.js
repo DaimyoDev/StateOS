@@ -10,6 +10,10 @@ import {
   GENERIC_ADJECTIVES,
   GENERIC_NOUNS,
   ABSTRACT_NOUNS,
+  getCountryAdjective,
+  getCountryNoun,
+} from "../data/partyNameData.js";
+import {
   IDEOLOGY_DEFINITIONS,
   BASE_IDEOLOGIES,
 } from "../data/ideologiesData.js";
@@ -658,6 +662,8 @@ export const generateAICandidateNameForElection = (countryId, demographics) => {
  */
 export function generateNewPartyName(baseIdeologyName, countryName) {
   const roll = Math.random();
+  const countryAdjective = getCountryAdjective(countryName);
+  const countryNoun = getCountryNoun(countryName);
   const ideologySpecificWords =
     IDEOLOGY_KEYWORDS[baseIdeologyName] ||
     IDEOLOGY_KEYWORDS["Default"].concat(baseIdeologyName);
@@ -673,7 +679,7 @@ export function generateNewPartyName(baseIdeologyName, countryName) {
       getRandomElement(GENERIC_NOUNS),
     ],
     () => [
-      countryName,
+      countryAdjective,
       getRandomElement(ideologySpecificWords),
       getRandomElement(["Party", "Union", "Alliance"]),
     ],
@@ -682,7 +688,7 @@ export function generateNewPartyName(baseIdeologyName, countryName) {
       getRandomElement(ABSTRACT_NOUNS),
       getRandomElement(GENERIC_NOUNS),
     ],
-    () => [getRandomElement(ABSTRACT_NOUNS), "of", countryName],
+    () => [getRandomElement(ABSTRACT_NOUNS), "of", countryNoun],
     () => [
       "The",
       getRandomElement(ideologySpecificWords),

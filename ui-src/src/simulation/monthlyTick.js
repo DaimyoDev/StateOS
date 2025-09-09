@@ -9,7 +9,7 @@ import {
   RATING_LEVELS,
   MOOD_LEVELS,
 } from "../data/governmentData";
-import { calculateDetailedIncomeSources } from "../entities/politicalEntities.js";
+import { calculateDetailedIncomeSources } from "../entities/economics/budgetCalculations.js";
 import { calculateAllCityStats } from "../utils/statCalculationCore.js";
 import {
   runStateBudgetUpdate,

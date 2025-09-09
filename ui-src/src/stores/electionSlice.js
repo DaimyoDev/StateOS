@@ -274,10 +274,17 @@ const updateGovernmentOfficeInHierarchy = (
       }
     } else {
       // Default to executive for unknown national offices
-      const existingIndex = updated.national.executive.findIndex(
+      let existingIndex = updated.national.executive.findIndex(
         (o) =>
           o.instanceIdBase === election.instanceIdBase
       );
+      
+      // If exact instanceIdBase match not found, try template-based matching
+      if (existingIndex === -1) {
+        existingIndex = updated.national.executive.findIndex(
+          (o) => o.officeNameTemplateId === election.officeNameTemplateId
+        );
+      }
 
       if (existingIndex >= 0) {
         updated.national.executive[existingIndex] = {
@@ -345,10 +352,17 @@ const updateGovernmentOfficeInHierarchy = (
       }
     } else {
       // Default to executive for unknown state offices
-      const existingIndex = updated.states[stateId].executive.findIndex(
+      let existingIndex = updated.states[stateId].executive.findIndex(
         (o) =>
           o.instanceIdBase === election.instanceIdBase
       );
+      
+      // If exact instanceIdBase match not found, try template-based matching
+      if (existingIndex === -1) {
+        existingIndex = updated.states[stateId].executive.findIndex(
+          (o) => o.officeNameTemplateId === election.officeNameTemplateId
+        );
+      }
 
       if (existingIndex >= 0) {
         updated.states[stateId].executive[existingIndex] = {
@@ -381,6 +395,13 @@ const updateGovernmentOfficeInHierarchy = (
       let existingIndex = updated.cities[cityId].executive.findIndex(
         (o) => o.instanceIdBase === election.instanceIdBase
       );
+      
+      // If exact instanceIdBase match not found, try template-based matching for mayor
+      if (existingIndex === -1) {
+        existingIndex = updated.cities[cityId].executive.findIndex(
+          (o) => o.officeNameTemplateId === election.officeNameTemplateId
+        );
+      }
       
       console.log('[updateGovernmentOfficeInHierarchy] Looking for executive office with instanceIdBase:', election.instanceIdBase, 'found at index:', existingIndex);
 
@@ -447,10 +468,17 @@ const updateGovernmentOfficeInHierarchy = (
         }
       } else {
         // Default to executive for unknown single-holder city offices
-        const existingIndex = updated.cities[cityId].executive.findIndex(
+        let existingIndex = updated.cities[cityId].executive.findIndex(
           (o) =>
             o.instanceIdBase === election.instanceIdBase
         );
+        
+        // If exact instanceIdBase match not found, try template-based matching
+        if (existingIndex === -1) {
+          existingIndex = updated.cities[cityId].executive.findIndex(
+            (o) => o.officeNameTemplateId === election.officeNameTemplateId
+          );
+        }
 
         if (existingIndex >= 0) {
           updated.cities[cityId].executive[existingIndex] = {

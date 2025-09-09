@@ -85,7 +85,7 @@ const getLegislativeChamberMembers = (
   );
 };
 
-const StateOverviewTab = ({ campaignData, activeSubTab = "summary" }) => {
+const StateOverviewTab = ({ campaignData, activeSubTab = "summary", governmentSubTab = "offices" }) => {
   const [governmentFilter, setGovernmentFilter] = useState("all");
   
   // Subscribe to coalition system changes directly from the store
@@ -95,6 +95,7 @@ const StateOverviewTab = ({ campaignData, activeSubTab = "summary" }) => {
   
   // Subscribe directly to government offices to force re-render when they change
   const governmentOfficesRaw = useGameStore((state) => state.activeCampaign?.governmentOffices);
+  const governmentDepartments = useGameStore((state) => state.activeCampaign?.governmentDepartments);
   const currentTheme = useGameStore(
     (state) => state.availableThemes[state.activeThemeName]
   );
@@ -865,8 +866,10 @@ const StateOverviewTab = ({ campaignData, activeSubTab = "summary" }) => {
         return (
           <section className="city-officials-section city-section">
             <h4>{regionType} Government Structure</h4>
-            
-            {/* Executive Branch Section */}
+
+            {governmentSubTab === "offices" && (
+              <>
+                {/* Executive Branch Section */}
             <div className="government-branch-section executive-branch">
               <div className="branch-header">
                 <h5>Executive Branch</h5>
@@ -1180,35 +1183,68 @@ const StateOverviewTab = ({ campaignData, activeSubTab = "summary" }) => {
                 )}
               </div>
             )}
+              </>
+            )}
 
-            {/* Government Summary Stats */}
-            <div className="government-summary-stats">
-              <div className="summary-stat">
-                <span className="stat-label">Total Positions</span>
-                <span className="stat-value">
-                  {(governorOffice ? 1 : 0) + (lieutenantGovernorOffice ? 1 : 0) + lowerChamberOffices.length + upperChamberOffices.length}
-                </span>
+            {governmentSubTab === "departments" && (
+              <>
+                {/* Departments Section */}
+            <div className="government-branch-section departments-branch">
+              <div className="branch-header">
+                <h5>Government Departments</h5>
+                <span className="branch-subtitle">{regionType} Department Heads • {governmentDepartments?.state?.length || 0} Departments</span>
               </div>
-              <div className="summary-stat">
-                <span className="stat-label">Filled Positions</span>
-                <span className="stat-value">
-                  {(governorOffice?.holder ? 1 : 0) + (lieutenantGovernorOffice?.holder ? 1 : 0) + 
-                   lowerChamberOffices.filter(o => o.holder).length + upperChamberOffices.filter(o => o.holder).length}
-                </span>
-              </div>
-              <div className="summary-stat">
-                <span className="stat-label">Lower House Majority</span>
-                <span className="stat-value">
-                  {lowerChamberComposition.sort((a, b) => b.popularity - a.popularity)[0]?.name || "None"}
-                </span>
-              </div>
-              <div className="summary-stat">
-                <span className="stat-label">Upper House Majority</span>
-                <span className="stat-value">
-                  {upperChamberComposition.sort((a, b) => b.popularity - a.popularity)[0]?.name || "None"}
-                </span>
+              
+              <div className="departments-grid">
+                {governmentDepartments?.state?.length > 0 ? (
+                  governmentDepartments.state.map((department) => {
+                    const departmentHead = getUpdatedPolitician(department.head);
+                    return (
+                      <div key={department.id} className="department-card">
+                        <div className="department-header">
+                          <h6 className="department-name">{department.name}</h6>
+                          <span className="department-budget">
+                            ${(department.budget / 1000000).toFixed(1)}M budget
+                          </span>
+                        </div>
+                        <div className="department-info">
+                          {departmentHead ? (
+                            <>
+                              <div className="department-head-info">
+                                <span className="head-title">{departmentHead.currentOffice?.title || 'Director'}</span>
+                                <p className="head-name"
+                                   onClick={() => handlePoliticianClick(departmentHead)}>
+                                  {departmentHead.firstName} {departmentHead.lastName}
+                                </p>
+                                <p className="head-party" style={{ color: departmentHead.partyColor || "#888" }}>
+                                  {departmentHead.partyName || "Independent"}
+                                </p>
+                              </div>
+                              <div className="department-stats">
+                                <div className="stat-mini">
+                                  <span className="stat-label">Employees</span>
+                                  <span className="stat-value">{department.employees?.toLocaleString() || "N/A"}</span>
+                                </div>
+                                <div className="stat-mini">
+                                  <span className="stat-label">Est.</span>
+                                  <span className="stat-value">{department.createdYear || "N/A"}</span>
+                                </div>
+                              </div>
+                            </>
+                          ) : (
+                            <p className="no-head-message">No department head assigned</p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <p className="no-departments-message">No state departments available</p>
+                )}
               </div>
             </div>
+              </>
+            )}
           </section>
         );
       }

@@ -1,13 +1,14 @@
 import {
   generateFullStateData,
   generateFullSecondAdminRegionData,
-  generateNationalDemographics,
   generateInitialNationalStats,
 } from "../entities/politicalEntities";
+import { generateNationalDemographics } from "../entities/economics/economicProfiles";
 import { chamberTiers } from "./chamberTiers";
 import { getRandomInt, distributeValueProportionally } from "../utils/core";
 import { generateLegislativeDistrictsForCountry } from "../entities/districtGeneration";
 import { generateNationalParties } from "../entities/personnel";
+import { DEPARTMENT_LEVELS, REGIONAL_DEPARTMENT_VARIATIONS } from "./governmentDepartments";
 import { japanPrefectures } from "./states/japanPrefectures";
 import { usaStates } from "./states/usaStates";
 import { usaCounties } from "./states/adminRegions2/usaCounties";
@@ -104,6 +105,12 @@ const baseCountriesData = [
     lowerStateHrTiers:
       chamberTiers.JPN.NATIONIAL.JPN_HR_DISTRICTS_PER_PREFECTURE_TIERS,
     lowerStateHrName: "Assembly District",
+    departments: {
+      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.MONARCHY.NATIONAL],
+      state: DEPARTMENT_LEVELS.STATE,
+      county: DEPARTMENT_LEVELS.COUNTY,
+      city: DEPARTMENT_LEVELS.CITY
+    },
   },
   {
     id: "USA",
@@ -128,6 +135,12 @@ const baseCountriesData = [
     upperStateHrTiers:
       chamberTiers.USA.STATE.USA_STATE_UPPER_HOUSE_DISTRICT_TIERS,
     upperStateHrName: "State Senate District",
+    departments: {
+      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.FEDERAL.NATIONAL],
+      state: DEPARTMENT_LEVELS.STATE,
+      county: DEPARTMENT_LEVELS.COUNTY,
+      city: DEPARTMENT_LEVELS.CITY
+    },
   },
   {
     id: "GER",
@@ -137,6 +150,13 @@ const baseCountriesData = [
     politicalSystem: "Parliamentary Republic",
     regions: germanStates.map((r) => ({ ...r })),
     regionTerm: "State",
+    nationalLowerHouseDistricts: [],
+    departments: {
+      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.FEDERAL.NATIONAL],
+      state: DEPARTMENT_LEVELS.STATE,
+      county: DEPARTMENT_LEVELS.COUNTY,
+      city: DEPARTMENT_LEVELS.CITY
+    },
   },
   {
     id: "PHL",
@@ -156,6 +176,12 @@ const baseCountriesData = [
     nationalHrTiers:
       chamberTiers.PHL.NATIONAL.PHL_HR_DISTRICTS_PER_PROVINCE_TIERS,
     nationalHrName: "House Of Representatives",
+    departments: {
+      national: DEPARTMENT_LEVELS.NATIONAL,
+      state: DEPARTMENT_LEVELS.STATE,
+      county: DEPARTMENT_LEVELS.COUNTY,
+      city: DEPARTMENT_LEVELS.CITY
+    },
   },
   {
     id: "KOR",
@@ -178,6 +204,12 @@ const baseCountriesData = [
     lowerStateHrTiers:
       chamberTiers.KOR.STATE.KOR_PROVINCIAL_METROPOLITAN_ASSEMBLY_TIERS,
     lowerStateHrName: "Assembly District",
+    departments: {
+      national: DEPARTMENT_LEVELS.NATIONAL,
+      state: DEPARTMENT_LEVELS.STATE,
+      county: DEPARTMENT_LEVELS.COUNTY,
+      city: DEPARTMENT_LEVELS.CITY
+    },
   },
   {
     id: "CAN",
@@ -192,6 +224,12 @@ const baseCountriesData = [
     nationalHrName: "Parliament District",
     lowerStateHrTiers: chamberTiers.CAN.STATE.CAN_PROVINCIAL_ASSEMBLY_TIERS,
     lowerStateHrName: "Assembly District",
+    departments: {
+      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.MONARCHY.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.FEDERAL.NATIONAL],
+      state: DEPARTMENT_LEVELS.STATE,
+      county: DEPARTMENT_LEVELS.COUNTY,
+      city: DEPARTMENT_LEVELS.CITY
+    },
   },
   {
     id: "AUS",
@@ -205,6 +243,12 @@ const baseCountriesData = [
     nationalHrName: "Parliament District",
     lowerStateHrTiers: chamberTiers.AUS.STATE.AUS_PROVINCIAL_ASSEMBLY_TIERS,
     lowerStateHrName: "Assembly District",
+    departments: {
+      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.MONARCHY.NATIONAL],
+      state: DEPARTMENT_LEVELS.STATE,
+      county: DEPARTMENT_LEVELS.COUNTY,
+      city: DEPARTMENT_LEVELS.CITY
+    },
   },
   {
     id: "FRA",
@@ -214,6 +258,12 @@ const baseCountriesData = [
     politicalSystem: "Semi-Presidential Republic",
     regions: frenchRegions.map((p) => ({ ...p })),
     nationalLowerHouseDistricts: [],
+    departments: {
+      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL],
+      state: DEPARTMENT_LEVELS.STATE,
+      county: DEPARTMENT_LEVELS.COUNTY,
+      city: DEPARTMENT_LEVELS.CITY
+    },
   },
   {
     id: "GBR",
@@ -223,6 +273,12 @@ const baseCountriesData = [
     politicalSystem: "Parliamentary Monarchy (Constitutional)",
     regions: greatBritainAdminRegions.map((p) => ({ ...p })),
     nationalLowerHouseDistricts: [],
+    departments: {
+      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.MONARCHY.NATIONAL],
+      state: DEPARTMENT_LEVELS.STATE,
+      county: DEPARTMENT_LEVELS.COUNTY,
+      city: DEPARTMENT_LEVELS.CITY
+    },
   },
   {
     id: "ITA",
@@ -232,6 +288,12 @@ const baseCountriesData = [
     politicalSystem: "Parliamentary Republic",
     regions: italianRegions.map((p) => ({ ...p })),
     nationalLowerHouseDistricts: [],
+    departments: {
+      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.MONARCHY.NATIONAL],
+      state: DEPARTMENT_LEVELS.STATE,
+      county: DEPARTMENT_LEVELS.COUNTY,
+      city: DEPARTMENT_LEVELS.CITY
+    },
   },
   {
     id: "ESP",
@@ -241,6 +303,12 @@ const baseCountriesData = [
     politicalSystem: "Parliamentary Monarchy (Constitutional)",
     regions: spanishRegions.map((p) => ({ ...p })),
     nationalLowerHouseDistricts: [],
+    departments: {
+      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL],
+      state: DEPARTMENT_LEVELS.STATE,
+      county: DEPARTMENT_LEVELS.COUNTY,
+      city: DEPARTMENT_LEVELS.CITY
+    },
   },
   {
     id: "POL",
@@ -250,6 +318,12 @@ const baseCountriesData = [
     politicalSystem: "Parliamentary Republic",
     regions: polishVoivodeships.map((p) => ({ ...p })),
     nationalLowerHouseDistricts: [],
+    departments: {
+      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.MONARCHY.NATIONAL],
+      state: DEPARTMENT_LEVELS.STATE,
+      county: DEPARTMENT_LEVELS.COUNTY,
+      city: DEPARTMENT_LEVELS.CITY
+    },
   },
   {
     id: "SWE",
@@ -259,6 +333,12 @@ const baseCountriesData = [
     politicalSystem: "Parliamentary Monarchy (Constitutional)",
     regions: swedishCounties.map((p) => ({ ...p })),
     nationalLowerHouseDistricts: [],
+    departments: {
+      national: DEPARTMENT_LEVELS.NATIONAL,
+      state: DEPARTMENT_LEVELS.STATE,
+      county: DEPARTMENT_LEVELS.COUNTY,
+      city: DEPARTMENT_LEVELS.CITY
+    },
   },
   {
     id: "BRA",
@@ -268,6 +348,12 @@ const baseCountriesData = [
     politicalSystem: "Presidential Republic",
     regions: brazilianStates.map((p) => ({ ...p })),
     nationalLowerHouseDistricts: [],
+    departments: {
+      national: DEPARTMENT_LEVELS.NATIONAL,
+      state: DEPARTMENT_LEVELS.STATE,
+      county: DEPARTMENT_LEVELS.COUNTY,
+      city: DEPARTMENT_LEVELS.CITY
+    },
   },
   {
     id: "ARG",
@@ -294,6 +380,13 @@ const baseCountriesData = [
     dominantIdeologies: ["Social Democrat", "Conservative", "Liberal"],
     politicalSystem: "Presidential Republic",
     regions: [],
+    nationalLowerHouseDistricts: [],
+    departments: {
+      national: DEPARTMENT_LEVELS.NATIONAL,
+      state: DEPARTMENT_LEVELS.STATE,
+      county: DEPARTMENT_LEVELS.COUNTY,
+      city: DEPARTMENT_LEVELS.CITY
+    },
   },
   {
     id: "IDN",
@@ -302,6 +395,13 @@ const baseCountriesData = [
     dominantIdeologies: ["Nationalist", "Religious Conservative", "Populist"],
     politicalSystem: "Presidential Republic",
     regions: [],
+    nationalLowerHouseDistricts: [],
+    departments: {
+      national: DEPARTMENT_LEVELS.NATIONAL,
+      state: DEPARTMENT_LEVELS.STATE,
+      county: DEPARTMENT_LEVELS.COUNTY,
+      city: DEPARTMENT_LEVELS.CITY
+    },
   },
   {
     id: "NLD",
@@ -315,6 +415,13 @@ const baseCountriesData = [
     ],
     politicalSystem: "Parliamentary Monarchy (Constitutional)",
     regions: [],
+    nationalLowerHouseDistricts: [],
+    departments: {
+      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.MONARCHY.NATIONAL],
+      state: DEPARTMENT_LEVELS.STATE,
+      county: DEPARTMENT_LEVELS.COUNTY,
+      city: DEPARTMENT_LEVELS.CITY
+    },
   },
   {
     id: "CHE",
@@ -323,6 +430,13 @@ const baseCountriesData = [
     dominantIdeologies: ["Conservative", "Liberal", "Social Democrat", "Green"],
     politicalSystem: "Directorial Federal Republic",
     regions: [],
+    nationalLowerHouseDistricts: [],
+    departments: {
+      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.FEDERAL.NATIONAL],
+      state: DEPARTMENT_LEVELS.STATE,
+      county: DEPARTMENT_LEVELS.COUNTY,
+      city: DEPARTMENT_LEVELS.CITY
+    },
   },
   {
     id: "AUT",
@@ -331,6 +445,13 @@ const baseCountriesData = [
     dominantIdeologies: ["Conservative", "Social Democrat", "Nationalist"],
     politicalSystem: "Parliamentary Republic",
     regions: austrianStates.map((p) => ({ ...p })),
+    nationalLowerHouseDistricts: [],
+    departments: {
+      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL],
+      state: DEPARTMENT_LEVELS.STATE,
+      county: DEPARTMENT_LEVELS.COUNTY,
+      city: DEPARTMENT_LEVELS.CITY
+    },
   },
   {
     id: "BEL",
@@ -344,6 +465,13 @@ const baseCountriesData = [
     ],
     politicalSystem: "Parliamentary Monarchy (Federal)",
     regions: belgianRegions.map((p) => ({ ...p })),
+    nationalLowerHouseDistricts: [],
+    departments: {
+      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.MONARCHY.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.FEDERAL.NATIONAL],
+      state: DEPARTMENT_LEVELS.STATE,
+      county: DEPARTMENT_LEVELS.COUNTY,
+      city: DEPARTMENT_LEVELS.CITY
+    },
   },
   {
     id: "DNK",
@@ -352,6 +480,13 @@ const baseCountriesData = [
     dominantIdeologies: ["Social Democrat", "Liberal", "Conservative"],
     politicalSystem: "Parliamentary Monarchy (Constitutional)",
     regions: danishRegions.map((p) => ({ ...p })),
+    nationalLowerHouseDistricts: [],
+    departments: {
+      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.MONARCHY.NATIONAL],
+      state: DEPARTMENT_LEVELS.STATE,
+      county: DEPARTMENT_LEVELS.COUNTY,
+      city: DEPARTMENT_LEVELS.CITY
+    },
   },
   {
     id: "FIN",
@@ -360,6 +495,13 @@ const baseCountriesData = [
     dominantIdeologies: ["Social Democrat", "Conservative", "Centrist"],
     politicalSystem: "Parliamentary Republic",
     regions: [],
+    nationalLowerHouseDistricts: [],
+    departments: {
+      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL],
+      state: DEPARTMENT_LEVELS.STATE,
+      county: DEPARTMENT_LEVELS.COUNTY,
+      city: DEPARTMENT_LEVELS.CITY
+    },
   },
   {
     id: "NOR",
@@ -368,6 +510,13 @@ const baseCountriesData = [
     dominantIdeologies: ["Social Democrat", "Conservative", "Progressive"],
     politicalSystem: "Parliamentary Monarchy (Constitutional)",
     regions: [],
+    nationalLowerHouseDistricts: [],
+    departments: {
+      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.MONARCHY.NATIONAL],
+      state: DEPARTMENT_LEVELS.STATE,
+      county: DEPARTMENT_LEVELS.COUNTY,
+      city: DEPARTMENT_LEVELS.CITY
+    },
   },
   {
     id: "IRL",
@@ -376,6 +525,13 @@ const baseCountriesData = [
     dominantIdeologies: ["Centrist", "Conservative", "Nationalist"],
     politicalSystem: "Parliamentary Republic",
     regions: [],
+    nationalLowerHouseDistricts: [],
+    departments: {
+      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL],
+      state: DEPARTMENT_LEVELS.STATE,
+      county: DEPARTMENT_LEVELS.COUNTY,
+      city: DEPARTMENT_LEVELS.CITY
+    },
   },
   {
     id: "PRT",
@@ -384,6 +540,13 @@ const baseCountriesData = [
     dominantIdeologies: ["Socialist", "Social Democrat", "Conservative"],
     politicalSystem: "Semi-Presidential Republic",
     regions: [],
+    nationalLowerHouseDistricts: [],
+    departments: {
+      national: DEPARTMENT_LEVELS.NATIONAL,
+      state: DEPARTMENT_LEVELS.STATE,
+      county: DEPARTMENT_LEVELS.COUNTY,
+      city: DEPARTMENT_LEVELS.CITY
+    },
   },
   {
     id: "GRC",
@@ -392,6 +555,13 @@ const baseCountriesData = [
     dominantIdeologies: ["Conservative", "Socialist", "Social Democrat"],
     politicalSystem: "Parliamentary Republic",
     regions: [],
+    nationalLowerHouseDistricts: [],
+    departments: {
+      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL],
+      state: DEPARTMENT_LEVELS.STATE,
+      county: DEPARTMENT_LEVELS.COUNTY,
+      city: DEPARTMENT_LEVELS.CITY
+    },
   },
   {
     id: "NZL",
@@ -405,6 +575,13 @@ const baseCountriesData = [
     ],
     politicalSystem: "Parliamentary Monarchy (Constitutional)",
     regions: [],
+    nationalLowerHouseDistricts: [],
+    departments: {
+      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.MONARCHY.NATIONAL],
+      state: DEPARTMENT_LEVELS.STATE,
+      county: DEPARTMENT_LEVELS.COUNTY,
+      city: DEPARTMENT_LEVELS.CITY
+    },
   },
   {
     id: "CHL",
@@ -418,6 +595,13 @@ const baseCountriesData = [
     ],
     politicalSystem: "Presidential Republic",
     regions: chileanRegions.map((p) => ({ ...p })),
+    nationalLowerHouseDistricts: [],
+    departments: {
+      national: DEPARTMENT_LEVELS.NATIONAL,
+      state: DEPARTMENT_LEVELS.STATE,
+      county: DEPARTMENT_LEVELS.COUNTY,
+      city: DEPARTMENT_LEVELS.CITY
+    },
   },
   {
     id: "COL",
@@ -426,6 +610,13 @@ const baseCountriesData = [
     dominantIdeologies: ["Conservative", "Liberal", "Progressive", "Populist"],
     politicalSystem: "Presidential Republic",
     regions: colombianDepartments.map((p) => ({ ...p })),
+    nationalLowerHouseDistricts: [],
+    departments: {
+      national: DEPARTMENT_LEVELS.NATIONAL,
+      state: DEPARTMENT_LEVELS.STATE,
+      county: DEPARTMENT_LEVELS.COUNTY,
+      city: DEPARTMENT_LEVELS.CITY
+    },
   },
   {
     id: "PER",
@@ -434,6 +625,13 @@ const baseCountriesData = [
     dominantIdeologies: ["Conservative", "Populist", "Liberal"],
     politicalSystem: "Presidential Republic",
     regions: [],
+    nationalLowerHouseDistricts: [],
+    departments: {
+      national: DEPARTMENT_LEVELS.NATIONAL,
+      state: DEPARTMENT_LEVELS.STATE,
+      county: DEPARTMENT_LEVELS.COUNTY,
+      city: DEPARTMENT_LEVELS.CITY
+    },
   },
   {
     id: "MYS",
@@ -446,6 +644,13 @@ const baseCountriesData = [
     ],
     politicalSystem: "Parliamentary Monarchy (Federal)",
     regions: [],
+    nationalLowerHouseDistricts: [],
+    departments: {
+      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.MONARCHY.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.FEDERAL.NATIONAL],
+      state: DEPARTMENT_LEVELS.STATE,
+      county: DEPARTMENT_LEVELS.COUNTY,
+      city: DEPARTMENT_LEVELS.CITY
+    },
   },
   {
     id: "SGP",
@@ -454,6 +659,13 @@ const baseCountriesData = [
     dominantIdeologies: ["Conservative", "Social Democrat", "Technocratic"],
     politicalSystem: "Parliamentary Republic",
     regions: [],
+    nationalLowerHouseDistricts: [],
+    departments: {
+      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL],
+      state: DEPARTMENT_LEVELS.STATE,
+      county: DEPARTMENT_LEVELS.COUNTY,
+      city: DEPARTMENT_LEVELS.CITY
+    },
   },
   {
     id: "THA",
@@ -462,6 +674,13 @@ const baseCountriesData = [
     dominantIdeologies: ["Monarchist", "Populist", "Conservative"],
     politicalSystem: "Parliamentary Monarchy (Constitutional)",
     regions: [],
+    nationalLowerHouseDistricts: [],
+    departments: {
+      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.MONARCHY.NATIONAL],
+      state: DEPARTMENT_LEVELS.STATE,
+      county: DEPARTMENT_LEVELS.COUNTY,
+      city: DEPARTMENT_LEVELS.CITY
+    },
   },
   {
     id: "CZE",
@@ -470,6 +689,12 @@ const baseCountriesData = [
     dominantIdeologies: ["Populist", "Conservative", "Liberal"],
     politicalSystem: "Parliamentary Republic",
     regions: czechRegions.map((p) => ({ ...p })),
+    departments: {
+      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL],
+      state: DEPARTMENT_LEVELS.STATE,
+      county: DEPARTMENT_LEVELS.COUNTY,
+      city: DEPARTMENT_LEVELS.CITY
+    },
   },
   {
     id: "ROU",
@@ -478,6 +703,12 @@ const baseCountriesData = [
     dominantIdeologies: ["Social Democrat", "Liberal", "Conservative"],
     politicalSystem: "Semi-Presidential Republic",
     regions: [],
+    departments: {
+      national: DEPARTMENT_LEVELS.NATIONAL,
+      state: DEPARTMENT_LEVELS.STATE,
+      county: DEPARTMENT_LEVELS.COUNTY,
+      city: DEPARTMENT_LEVELS.CITY
+    },
   },
   {
     id: "BGR",
@@ -486,6 +717,12 @@ const baseCountriesData = [
     dominantIdeologies: ["Populist", "Conservative", "Socialist"],
     politicalSystem: "Parliamentary Republic",
     regions: [],
+    departments: {
+      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL],
+      state: DEPARTMENT_LEVELS.STATE,
+      county: DEPARTMENT_LEVELS.COUNTY,
+      city: DEPARTMENT_LEVELS.CITY
+    },
   },
   {
     id: "HRV",
@@ -494,6 +731,12 @@ const baseCountriesData = [
     dominantIdeologies: ["Conservative", "Social Democrat", "Nationalist"],
     politicalSystem: "Parliamentary Republic",
     regions: [],
+    departments: {
+      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL],
+      state: DEPARTMENT_LEVELS.STATE,
+      county: DEPARTMENT_LEVELS.COUNTY,
+      city: DEPARTMENT_LEVELS.CITY
+    },
   },
   {
     id: "SVK",
@@ -502,6 +745,12 @@ const baseCountriesData = [
     dominantIdeologies: ["Populist", "Social Democrat", "Progressive"],
     politicalSystem: "Parliamentary Republic",
     regions: [],
+    departments: {
+      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL],
+      state: DEPARTMENT_LEVELS.STATE,
+      county: DEPARTMENT_LEVELS.COUNTY,
+      city: DEPARTMENT_LEVELS.CITY
+    },
   },
   {
     id: "LTU",
@@ -510,6 +759,12 @@ const baseCountriesData = [
     dominantIdeologies: ["Conservative", "Christian Democrat", "Liberal"],
     politicalSystem: "Semi-Presidential Republic",
     regions: [],
+    departments: {
+      national: DEPARTMENT_LEVELS.NATIONAL,
+      state: DEPARTMENT_LEVELS.STATE,
+      county: DEPARTMENT_LEVELS.COUNTY,
+      city: DEPARTMENT_LEVELS.CITY
+    },
   },
   {
     id: "LVA",
@@ -518,6 +773,12 @@ const baseCountriesData = [
     dominantIdeologies: ["Centrist", "Conservative", "Social Democrat"],
     politicalSystem: "Parliamentary Republic",
     regions: [],
+    departments: {
+      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL],
+      state: DEPARTMENT_LEVELS.STATE,
+      county: DEPARTMENT_LEVELS.COUNTY,
+      city: DEPARTMENT_LEVELS.CITY
+    },
   },
   {
     id: "EST",
@@ -526,6 +787,12 @@ const baseCountriesData = [
     dominantIdeologies: ["Liberal", "Centrist", "Populist"],
     politicalSystem: "Parliamentary Republic",
     regions: [],
+    departments: {
+      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL],
+      state: DEPARTMENT_LEVELS.STATE,
+      county: DEPARTMENT_LEVELS.COUNTY,
+      city: DEPARTMENT_LEVELS.CITY
+    },
   },
   {
     id: "SVN",
@@ -534,6 +801,12 @@ const baseCountriesData = [
     dominantIdeologies: ["Liberal", "Social Democrat", "Conservative"],
     politicalSystem: "Parliamentary Republic",
     regions: [],
+    departments: {
+      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL],
+      state: DEPARTMENT_LEVELS.STATE,
+      county: DEPARTMENT_LEVELS.COUNTY,
+      city: DEPARTMENT_LEVELS.CITY
+    },
   },
   {
     id: "LUX",
@@ -542,6 +815,12 @@ const baseCountriesData = [
     dominantIdeologies: ["Christian Democrat", "Liberal", "Socialist"],
     politicalSystem: "Parliamentary Monarchy (Constitutional)",
     regions: [],
+    departments: {
+      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.MONARCHY.NATIONAL],
+      state: DEPARTMENT_LEVELS.STATE,
+      county: DEPARTMENT_LEVELS.COUNTY,
+      city: DEPARTMENT_LEVELS.CITY
+    },
   },
   {
     id: "ISL",
@@ -550,6 +829,12 @@ const baseCountriesData = [
     dominantIdeologies: ["Progressive", "Conservative", "Green"],
     politicalSystem: "Parliamentary Republic",
     regions: [],
+    departments: {
+      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL],
+      state: DEPARTMENT_LEVELS.STATE,
+      county: DEPARTMENT_LEVELS.COUNTY,
+      city: DEPARTMENT_LEVELS.CITY
+    },
   },
   {
     id: "CRI",
@@ -558,6 +843,12 @@ const baseCountriesData = [
     dominantIdeologies: ["Social Democrat", "Christian Democrat", "Green"],
     politicalSystem: "Presidential Republic",
     regions: [],
+    departments: {
+      national: DEPARTMENT_LEVELS.NATIONAL,
+      state: DEPARTMENT_LEVELS.STATE,
+      county: DEPARTMENT_LEVELS.COUNTY,
+      city: DEPARTMENT_LEVELS.CITY
+    },
   },
   {
     id: "URY",
@@ -566,6 +857,12 @@ const baseCountriesData = [
     dominantIdeologies: ["Liberal", "Conservative", "Social Democrat"],
     politicalSystem: "Presidential Republic",
     regions: [],
+    departments: {
+      national: DEPARTMENT_LEVELS.NATIONAL,
+      state: DEPARTMENT_LEVELS.STATE,
+      county: DEPARTMENT_LEVELS.COUNTY,
+      city: DEPARTMENT_LEVELS.CITY
+    },
   },
   {
     id: "MLT",
@@ -578,6 +875,12 @@ const baseCountriesData = [
     ],
     politicalSystem: "Parliamentary Republic",
     regions: [],
+    departments: {
+      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL],
+      state: DEPARTMENT_LEVELS.STATE,
+      county: DEPARTMENT_LEVELS.COUNTY,
+      city: DEPARTMENT_LEVELS.CITY
+    },
   },
 ];
 

@@ -17,6 +17,7 @@ import {
   generatePollingFirms,
 } from "../entities/organizationEntities";
 import { POLICY_QUESTIONS } from "../data/policyData";
+import { generateAllGovernmentDepartments } from "../entities/departmentEntities";
 
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -162,6 +163,36 @@ export const createCampaignSetupSlice = (set, get) => {
         const allInitialPoliticianIds = initialPoliticians.map((p) => p.id);
         initializeRelationships(allInitialPoliticianIds);
 
+        setLoadingGame(true, "Setting up government departments...");
+        await pause(20);
+        const governmentDepartments = generateAllGovernmentDepartments({
+          countryId: setupState.selectedCountryId,
+          countryData: currentCountryData,
+          availableParties: setupState.generatedPartiesInCountry,
+          selectedRegionId: setupState.selectedRegionId,
+          selectedCityId: selectedCityObject.id,
+        });
+
+        // Add department heads to the politician store
+        const departmentPoliticians = [];
+        Object.values(governmentDepartments).forEach(departmentArray => {
+          departmentArray.forEach(department => {
+            if (department.head) {
+              departmentPoliticians.push(department.head);
+            }
+          });
+        });
+
+        if (departmentPoliticians.length > 0) {
+          addMultiplePoliticiansToStore(
+            departmentPoliticians,
+            "activeCampaign.politicians"
+          );
+          // Add department head IDs to relationship initialization
+          const departmentHeadIds = departmentPoliticians.map(p => p.id);
+          initializeRelationships([...allInitialPoliticianIds, ...departmentHeadIds]);
+        }
+
         setLoadingGame(true, "Setting up media and special interests...");
         await pause(20);
         const regionalLocationName = currentRegionData
@@ -226,6 +257,7 @@ export const createCampaignSetupSlice = (set, get) => {
             elections: [],
             lastElectionYear: {},
             governmentOffices: initialGovernmentOffices,
+            governmentDepartments: governmentDepartments,
             newsOutlets: [...nationalNews, ...regionalNews],
             lobbyingGroups: allLobbyingGroups,
             pollingFirms: [...nationalPollingFirms, ...regionalPollingFirms],

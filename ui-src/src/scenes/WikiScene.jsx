@@ -59,30 +59,181 @@ const sections = [
     content: (
       <>
         <p>
-          Laws shape your city, state, and nation. Bills are proposed, voted on, and—if passed—become active
-          legislation whose effects apply when they take effect.
+          The legislative system allows elected officials to propose and vote on bills that shape 
+          your city, state, and nation. Bills contain policies that, when passed, become active 
+          legislation with real effects on society.
         </p>
 
-        <h3>Government Levels</h3>
+        <h3>Current Implementation</h3>
+        
+        <h4>Government Levels</h4>
         <ul>
-          <li><strong>City</strong>: Local ordinances and budget/tax changes.</li>
-          <li><strong>State</strong>: Regional policies that affect all cities in the state.</li>
-          <li><strong>National</strong>: Federal policies that influence the entire country.</li>
+          <li><strong>City Level</strong>: Local ordinances affecting your city</li>
+          <li><strong>State Level</strong>: Regional policies affecting all cities in the state</li>
+          <li><strong>National Level</strong>: Federal policies affecting the entire country</li>
         </ul>
 
-        <h3>Proposing & Voting</h3>
+        <h4>Bill Proposal Process</h4>
         <ul>
-          <li>Bills contain one or more policies and are voted on after a pending period.</li>
-          <li>A simple majority of the legislature is required for a bill to pass.</li>
-          <li>Passed bills are archived and become active laws; failed bills are recorded for AI memory.</li>
+          <li><strong>Proposing Bills</strong>: Any legislator (including you) can propose a bill containing one or more policies</li>
+          <li><strong>Bill Naming</strong>: Bills can be given custom names or auto-generated titles</li>
+          <li><strong>Policy Selection</strong>: Choose from available policies for your government level</li>
+          <li><strong>Parameterized Policies</strong>: Some policies allow you to set specific values (e.g., tax rates, budget amounts)</li>
+          <li><strong>Vote Scheduling</strong>: Bills are scheduled for a vote 7-21 days after proposal</li>
         </ul>
 
-        <h3>Policy Effects</h3>
+        <h4>Voting System</h4>
         <ul>
-          <li><strong>Effective Date</strong>: Each policy has a delay (<code>monthsUntilEffective</code>). When it reaches 0, its effects are applied.</li>
-          <li><strong>Standard Effects</strong>: Immediate changes defined by the policy’s effect list.</li>
-          <li><strong>Parameterized Policies</strong>: Adjust budget lines or tax rates by a specific amount.</li>
-          <li><strong>Simulation Variables</strong>: Directly set or modify core game stats like minimum wage.</li>
+          <li><strong>Simple Majority</strong>: Bills require 50% + 1 votes to pass</li>
+          <li><strong>AI Voting</strong>: AI legislators vote based on ideology, fiscal situation, and policy alignment</li>
+          <li><strong>Player Voting</strong>: You cast your vote when the bill comes up</li>
+          <li><strong>Vote Recording</strong>: All votes are recorded and can be viewed</li>
+          <li><strong>Public Stances</strong>: Legislators may announce their voting intentions before the vote</li>
+        </ul>
+
+        <h4>Bill Types</h4>
+        <ul>
+          <li><strong>New Bills</strong>: Introduce new policies and laws</li>
+          <li><strong>Amendment Bills</strong>: Modify existing legislation (planned feature)</li>
+          <li><strong>Repeal Bills</strong>: Remove existing laws (planned feature)</li>
+        </ul>
+
+        <h3>Policy Implementation</h3>
+        
+        <h4>Implementation Timeline</h4>
+        <ul>
+          <li><strong>Months Until Effective</strong>: Each policy has a delay before taking effect (typically 1-6 months)</li>
+          <li><strong>Countdown System</strong>: The game tracks when each policy will become active</li>
+          <li><strong>Immediate Notification</strong>: You're notified when policies take effect</li>
+        </ul>
+
+        <h4>Policy Effects</h4>
+        <ul>
+          <li><strong>Direct Effects</strong>: Immediate changes to statistics when policy activates</li>
+          <li><strong>Budget Effects</strong>: Changes to revenue, expenses, or specific budget lines</li>
+          <li><strong>Service Effects</strong>: Impact on service quality ratings</li>
+          <li><strong>Demographic Effects</strong>: Changes to population statistics</li>
+        </ul>
+
+        <h4>Parameterized Policies</h4>
+        <ul>
+          <li><strong>Budget Adjustments</strong>: Set specific funding levels for services</li>
+          <li><strong>Tax Rate Changes</strong>: Adjust various tax rates by percentage points</li>
+          <li><strong>Minimum Wage</strong>: Set specific wage levels</li>
+          <li><strong>Dynamic Calculation</strong>: AI legislators propose values based on current needs</li>
+        </ul>
+
+        <h3>AI Legislative Behavior</h3>
+        
+        <h4>AI Proposal System</h4>
+        <ul>
+          <li><strong>Need-Based Proposals</strong>: AI analyzes current problems and proposes solutions</li>
+          <li><strong>Ideological Alignment</strong>: Proposals match the AI's political ideology</li>
+          <li><strong>Fiscal Awareness</strong>: AI considers budget situation when proposing</li>
+          <li><strong>Failed Bill Memory</strong>: AI avoids re-proposing recently failed policies</li>
+          <li><strong>Bill Bundling</strong>: AI may combine related policies into single bills</li>
+        </ul>
+
+        <h4>AI Voting Logic</h4>
+        <ul>
+          <li><strong>Ideological Scoring</strong>: Votes based on policy alignment with beliefs</li>
+          <li><strong>Financial Impact</strong>: Considers fiscal effects and current budget health</li>
+          <li><strong>Service Needs</strong>: Supports policies addressing poor service ratings</li>
+          <li><strong>Issue Priority</strong>: Favors bills addressing main city issues</li>
+          <li><strong>Personal Variation</strong>: Individual AI personalities affect decisions</li>
+        </ul>
+
+        <h4>Strategic AI Features</h4>
+        <ul>
+          <li><strong>Vote Prediction</strong>: AI calculates probability of bills passing</li>
+          <li><strong>Bill Modification</strong>: AI may moderate proposals to gain support</li>
+          <li><strong>Coalition Analysis</strong>: AI identifies supporting and opposing members</li>
+        </ul>
+
+        <h3>Legislative Archives</h3>
+        
+        <h4>Active Legislation</h4>
+        <ul>
+          <li><strong>Current Laws</strong>: View all active legislation at each level</li>
+          <li><strong>Policy Details</strong>: See effects and parameters of each law</li>
+          <li><strong>Implementation Status</strong>: Track which policies are pending activation</li>
+        </ul>
+
+        <h4>Bill History</h4>
+        <ul>
+          <li><strong>Passed Bills Archive</strong>: Complete record of successful legislation</li>
+          <li><strong>Failed Bills History</strong>: Last 50 failed bills tracked for AI memory</li>
+          <li><strong>Vote Records</strong>: See how each legislator voted on past bills</li>
+        </ul>
+
+        <h4>Bill Templates</h4>
+        <ul>
+          <li><strong>Save Templates</strong>: Store bill configurations for reuse</li>
+          <li><strong>Quick Proposal</strong>: Use templates to quickly propose similar bills</li>
+        </ul>
+
+        <h3>Political Capital System</h3>
+        
+        <h4>Capital Costs</h4>
+        <ul>
+          <li><strong>Base Cost</strong>: Each policy has a political capital requirement</li>
+          <li><strong>Bill Total</strong>: Capital needed is sum of all policies in the bill</li>
+          <li><strong>Spending Capital</strong>: Proposing bills consumes your political capital</li>
+        </ul>
+
+        <h3>Budget Integration</h3>
+        
+        <h4>Automatic Recalculation</h4>
+        <ul>
+          <li><strong>City Budget</strong>: Updates when city-level policies take effect</li>
+          <li><strong>State Budget</strong>: Recalculates for state-level changes</li>
+          <li><strong>National Budget</strong>: Adjusts based on federal policy implementation</li>
+        </ul>
+
+        <h4>Budget Policy Types</h4>
+        <ul>
+          <li><strong>Revenue Policies</strong>: Tax changes, fees, and income generation</li>
+          <li><strong>Expense Policies</strong>: Service funding, program costs</li>
+          <li><strong>Allocation Policies</strong>: Redistribute existing budget lines</li>
+        </ul>
+
+        <h3>Planned Features (Not Yet Implemented)</h3>
+        
+        <h4>Advanced Legislative Process</h4>
+        <ul>
+          <li><strong>Committee System</strong>: Bills reviewed by specialized committees</li>
+          <li><strong>Floor Amendments</strong>: Modify bills during debate</li>
+          <li><strong>Executive Veto</strong>: Mayors/Governors/President can veto bills</li>
+          <li><strong>Veto Override</strong>: Legislature can override with supermajority</li>
+          <li><strong>Filibuster</strong>: Extended debate to delay votes</li>
+        </ul>
+
+        <h4>Additional Bill Types</h4>
+        <ul>
+          <li><strong>Emergency Legislation</strong>: Fast-track critical bills</li>
+          <li><strong>Constitutional Amendments</strong>: Fundamental law changes</li>
+          <li><strong>Resolutions</strong>: Non-binding legislative statements</li>
+          <li><strong>Referendum & Initiative</strong>: Direct voter legislation</li>
+        </ul>
+
+        <h4>Enhanced Features</h4>
+        <ul>
+          <li><strong>Co-Sponsorship</strong>: Multiple legislators backing bills</li>
+          <li><strong>Omnibus Bills</strong>: Large packages combining many policies</li>
+          <li><strong>Sunset Provisions</strong>: Laws that expire automatically</li>
+          <li><strong>Interstate Compacts</strong>: Multi-state agreements</li>
+          <li><strong>Line-Item Veto</strong>: Partial bill rejection</li>
+        </ul>
+
+        <h3>Tips for Effective Legislation</h3>
+        
+        <ul>
+          <li><strong>Check Support</strong>: Count likely votes before proposing</li>
+          <li><strong>Bundle Wisely</strong>: Combine compatible policies for broader appeal</li>
+          <li><strong>Time Strategically</strong>: Propose when political climate is favorable</li>
+          <li><strong>Watch Finances</strong>: Consider budget impact of your proposals</li>
+          <li><strong>Build Coalitions</strong>: Work with legislators who share your goals</li>
+          <li><strong>Learn from Failures</strong>: Review why bills failed to improve future proposals</li>
         </ul>
       </>
     ),

@@ -66,7 +66,7 @@ const formatLawValue = (key, value) => {
   return String(value);
 };
 
-const CityOverviewTab = ({ campaignData, activeSubTab = "summary" }) => {
+const CityOverviewTab = ({ campaignData, activeSubTab = "summary", governmentSubTab = "offices" }) => {
   const [governmentFilter, setGovernmentFilter] = useState("all");
 
   const SUBTABS = [
@@ -82,6 +82,7 @@ const CityOverviewTab = ({ campaignData, activeSubTab = "summary" }) => {
   const activeCampaign = useGameStore((state) => state.activeCampaign);
   const { openViewPoliticianModal, getCoalitionsForCity, openSeatHistoryModal } = useGameStore((state) => state.actions);
   const governmentOffices = useGameStore((state) => state.activeCampaign?.governmentOffices);
+  const governmentDepartments = useGameStore((state) => state.activeCampaign?.governmentDepartments);
   const currentTheme = useGameStore(
     (state) => state.availableThemes[state.activeThemeName]
   );
@@ -899,8 +900,10 @@ const CityOverviewTab = ({ campaignData, activeSubTab = "summary" }) => {
         return (
           <section className="city-officials-section city-section">
             <h4>City Government Structure</h4>
-            
-            {/* Executive Branch Section */}
+
+            {governmentSubTab === "offices" && (
+              <>
+                {/* Executive Branch Section */}
             <div className="government-branch-section executive-branch">
               <div className="branch-header">
                 <h5>Executive Branch</h5>
@@ -1092,27 +1095,89 @@ const CityOverviewTab = ({ campaignData, activeSubTab = "summary" }) => {
               </div>
             </div>
 
-            {/* Government Summary Stats */}
-            <div className="government-summary-stats">
-              <div className="summary-stat">
-                <span className="stat-label">Total Positions</span>
-                <span className="stat-value">
-                  {(mayorOffice ? 1 : 0) + (viceMayorOffice ? 1 : 0) + councilOffices.length}
-                </span>
+                {/* Government Summary Stats */}
+                <div className="government-summary-stats">
+                  <div className="summary-stat">
+                    <span className="stat-label">Total Positions</span>
+                    <span className="stat-value">
+                      {(mayorOffice ? 1 : 0) + (viceMayorOffice ? 1 : 0) + councilOffices.length}
+                    </span>
+                  </div>
+                  <div className="summary-stat">
+                    <span className="stat-label">Filled Positions</span>
+                    <span className="stat-value">
+                      {(mayorOffice?.holder ? 1 : 0) + (viceMayorOffice?.holder ? 1 : 0) + councilOffices.filter(o => o.holder).length}
+                    </span>
+                  </div>
+                  <div className="summary-stat">
+                    <span className="stat-label">Majority Party</span>
+                    <span className="stat-value">
+                      {councilPartyComposition.sort((a, b) => b.popularity - a.popularity)[0]?.name || "None"}
+                    </span>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {governmentSubTab === "departments" && (
+              <>
+                {/* Departments Section */}
+            <div className="government-branch-section departments-branch">
+              <div className="branch-header">
+                <h5>Government Departments</h5>
+                <span className="branch-subtitle">City Department Heads • {governmentDepartments?.city?.length || 0} Departments</span>
               </div>
-              <div className="summary-stat">
-                <span className="stat-label">Filled Positions</span>
-                <span className="stat-value">
-                  {(mayorOffice?.holder ? 1 : 0) + (viceMayorOffice?.holder ? 1 : 0) + councilOffices.filter(o => o.holder).length}
-                </span>
-              </div>
-              <div className="summary-stat">
-                <span className="stat-label">Majority Party</span>
-                <span className="stat-value">
-                  {councilPartyComposition.sort((a, b) => b.popularity - a.popularity)[0]?.name || "None"}
-                </span>
+              
+              <div className="departments-grid">
+                {governmentDepartments?.city?.length > 0 ? (
+                  governmentDepartments.city.map((department) => {
+                    const departmentHead = getUpdatedPolitician(department.head);
+                    return (
+                      <div key={department.id} className="department-card">
+                        <div className="department-header">
+                          <h6 className="department-name">{department.name}</h6>
+                          <span className="department-budget">
+                            ${(department.budget / 1000000).toFixed(1)}M budget
+                          </span>
+                        </div>
+                        <div className="department-info">
+                          {departmentHead ? (
+                            <>
+                              <div className="department-head-info">
+                                <span className="head-title">{departmentHead.currentOffice?.title || 'Director'}</span>
+                                <p className="head-name"
+                                   onClick={() => handlePoliticianClick(departmentHead)}>
+                                  {departmentHead.firstName} {departmentHead.lastName}
+                                </p>
+                                <p className="head-party" style={{ color: departmentHead.partyColor || "#888" }}>
+                                  {departmentHead.partyName || "Independent"}
+                                </p>
+                              </div>
+                              <div className="department-stats">
+                                <div className="stat-mini">
+                                  <span className="stat-label">Employees</span>
+                                  <span className="stat-value">{department.employees?.toLocaleString() || "N/A"}</span>
+                                </div>
+                                <div className="stat-mini">
+                                  <span className="stat-label">Est.</span>
+                                  <span className="stat-value">{department.createdYear || "N/A"}</span>
+                                </div>
+                              </div>
+                            </>
+                          ) : (
+                            <p className="no-head-message">No department head assigned</p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <p className="no-departments-message">No city departments available</p>
+                )}
               </div>
             </div>
+              </>
+            )}
           </section>
         );
       case "laws":

@@ -1,10 +1,5 @@
 // src/entities/politicalEntities.js
-import {
-  generateId,
-  getRandomInt,
-  getRandomElement,
-  normalizeArrayBySum,
-} from "../utils/core";
+import { generateId, getRandomInt, getRandomElement } from "../utils/core";
 import {
   MOOD_LEVELS,
   ECONOMIC_OUTLOOK_LEVELS,
@@ -23,6 +18,16 @@ import {
 } from "./personnel";
 import { IDEOLOGY_DEFINITIONS } from "../data/ideologiesData";
 import { normalizePartyPopularities } from "../utils/electionUtils";
+// New modular imports for economics
+import {
+  generateInitialBudget,
+  generateStateBudget,
+  generateNationalBudget,
+} from "./economics/budgetCalculations";
+import {
+  generateEconomicProfile,
+  generateBasicDemographics,
+} from "./economics/economicProfiles";
 import usaCityParts from "../data/cityNames/usa_city_parts.json";
 import jpnCityParts from "../data/cityNames/jpn_city_parts.json";
 import canCityParts from "../data/cityNames/can_city_parts.json";
@@ -221,7 +226,7 @@ export const generateFullSecondAdminRegionData = (params = {}) => {
       const newPopularity = Math.max(0, Math.min(100, basePopularity + shift));
       return {
         ...party,
-        popularity: newPopularity
+        popularity: newPopularity,
       };
     });
 
@@ -295,79 +300,10 @@ const generateCityName = (countryId, usedNames) => {
   return `New Town ${getRandomInt(100, 999)}`;
 };
 
-export const generateCityDemographics = () => {
-  let ageDist = { youth: 20, youngAdult: 25, adult: 35, senior: 20 };
-  ageDist.youth = getRandomInt(15, 25);
-  ageDist.youngAdult = getRandomInt(20, 30);
-  ageDist.adult = getRandomInt(30, 40);
-  ageDist.senior = 100 - ageDist.youth - ageDist.youngAdult - ageDist.adult;
-  if (ageDist.senior < 10) {
-    let deficit = 10 - ageDist.senior;
-    ageDist.adult -= deficit;
-    ageDist.senior = 10;
-  }
+// generateCityDemographics moved to ./economics/economicProfiles.js as generateBasicDemographics
+export const generateCityDemographics = generateBasicDemographics;
 
-  let eduLevels = {
-    highSchoolOrLess: 30,
-    someCollege: 40,
-    bachelorsOrHigher: 30,
-  };
-  eduLevels.bachelorsOrHigher = getRandomInt(15, 40);
-  eduLevels.someCollege = getRandomInt(25, 45);
-  eduLevels.highSchoolOrLess =
-    100 - eduLevels.bachelorsOrHigher - eduLevels.someCollege;
-  if (eduLevels.highSchoolOrLess < 15) {
-    let deficit = 15 - eduLevels.highSchoolOrLess;
-    eduLevels.someCollege -= deficit;
-    eduLevels.highSchoolOrLess = 15;
-  }
-
-  return {
-    ageDistribution: normalizeArrayBySum(ageDist, 100, 0),
-    educationLevels: normalizeArrayBySum(eduLevels, 100, 0),
-  };
-};
-
-export const generateEconomicProfile = (population, demographics) => {
-  const industries = [
-    "manufacturing",
-    "services",
-    "tech",
-    "tourism",
-    "agriculture",
-    "education",
-    "healthcare",
-    "government",
-  ];
-  let dominantIndustries = [];
-  const numIndustries = getRandomInt(1, 3);
-  let availableIndustries = [...industries];
-  for (let i = 0; i < numIndustries; i++) {
-    if (availableIndustries.length === 0) break;
-    const industry = getRandomElement(availableIndustries);
-    dominantIndustries.push(industry);
-    availableIndustries = availableIndustries.filter(
-      (item) => item !== industry
-    );
-  }
-
-  let gdpPerCapita = getRandomInt(20000, 50000);
-  if (demographics.educationLevels.bachelorsOrHigher > 30)
-    gdpPerCapita += getRandomInt(5000, 15000);
-  if (dominantIndustries.includes("tech"))
-    gdpPerCapita += getRandomInt(5000, 20000);
-  if (
-    dominantIndustries.includes("manufacturing") &&
-    !dominantIndustries.includes("tech")
-  )
-    gdpPerCapita -= getRandomInt(0, 5000);
-
-  return {
-    dominantIndustries,
-    gdpPerCapita,
-    keyLocalIssuesFromProfile: [],
-  };
-};
+// generateEconomicProfile moved to ./economics/economicProfiles.js
 
 export const generateInitialElectoratePolicyProfile = () => {
   const profile = {};
@@ -379,229 +315,9 @@ export const generateInitialElectoratePolicyProfile = () => {
   return profile;
 };
 
-export const calculateDetailedIncomeSources = (
-  population,
-  gdpPerCapita,
-  taxRates,
-  cityType,
-  dominantIndustries,
-  cityLaws = {}
-) => {
-  // ... implementation from governmentUtils.js ...
-  const incomeSources = {
-    propertyTaxRevenue: 0,
-    salesTaxRevenue: 0,
-    businessTaxRevenue: 0,
-    feesAndPermits: 0,
-    utilityRevenue: 0,
-    grantsAndSubsidies: 0,
-    investmentIncome: 0,
-    otherRevenue: 0,
-  };
-  const avgPropertyValueFactor =
-    gdpPerCapita *
-    (cityType === "Metropolis" ? 3.0 : cityType === "City" ? 2.5 : 2.0);
-  const propertyValueBase =
-    population * avgPropertyValueFactor * (getRandomInt(35, 45) / 100);
-  incomeSources.propertyTaxRevenue = Math.floor(
-    propertyValueBase * (taxRates.property || 0)
-  );
-  const consumerSpendingPerCapita = gdpPerCapita * (getRandomInt(25, 35) / 100);
+// calculateDetailedIncomeSources moved to ./economics/budgetCalculations.js
 
-  // Calculate minimum wage impact on consumer spending
-  let minimumWageMultiplier = 1.0;
-  if (cityLaws.minimumWage) {
-    const federalMinimumWage = 7.25; // Base federal minimum wage
-    const wageRatio = cityLaws.minimumWage / federalMinimumWage;
-    // Higher minimum wage increases consumer spending (more disposable income)
-    // Multiplier ranges from 1.0 (at federal minimum) to ~1.4 (at $15/hr)
-    minimumWageMultiplier = Math.min(1.0 + (wageRatio - 1.0) * 0.4, 1.5);
-  }
-
-  const totalSalesVolume =
-    population * consumerSpendingPerCapita * minimumWageMultiplier;
-  incomeSources.salesTaxRevenue = Math.floor(
-    totalSalesVolume * (taxRates.sales || 0)
-  );
-  const totalCityGDP = population * gdpPerCapita;
-  let businessProfitPoolFactor = 0.1;
-  if (
-    dominantIndustries.includes("finance") ||
-    dominantIndustries.includes("tech")
-  )
-    businessProfitPoolFactor += 0.05;
-  if (dominantIndustries.includes("manufacturing"))
-    businessProfitPoolFactor += 0.03;
-  const totalBusinessProfitPool = totalCityGDP * businessProfitPoolFactor;
-  incomeSources.businessTaxRevenue = Math.floor(
-    totalBusinessProfitPool * (taxRates.business || 0)
-  );
-  incomeSources.feesAndPermits = Math.floor(
-    population * getRandomInt(15, 35) +
-      dominantIndustries.length * gdpPerCapita * 0.0015
-  );
-  if (cityType !== "Village/Town" && Math.random() < 0.6) {
-    incomeSources.utilityRevenue = Math.floor(
-      population * getRandomInt(25, 60)
-    );
-  }
-  incomeSources.grantsAndSubsidies = Math.floor(
-    population * getRandomInt(10, 30) +
-      (gdpPerCapita < 35000 ? population * 15 : 0)
-  );
-  incomeSources.investmentIncome = Math.floor(
-    (incomeSources.propertyTaxRevenue +
-      incomeSources.salesTaxRevenue +
-      incomeSources.businessTaxRevenue) *
-      (getRandomInt(1, 15) / 1000)
-  );
-  incomeSources.otherRevenue = Math.floor(population * getRandomInt(5, 15));
-  return incomeSources;
-};
-
-export const generateInitialBudget = (
-  population,
-  gdpPerCapita,
-  initialTaxRates,
-  wealthLevel,
-  dominantIndustries,
-  mainIssues,
-  cityType,
-  cityLaws = {}
-) => {
-  // ... implementation from governmentUtils.js ...
-  const incomeSources = calculateDetailedIncomeSources(
-    population,
-    gdpPerCapita,
-    initialTaxRates,
-    cityType,
-    dominantIndustries,
-    cityLaws
-  );
-  const totalAnnualIncome = Math.floor(
-    Object.values(incomeSources).reduce((sum, val) => sum + val, 0)
-  );
-  let baseTotalExpensesPerCapita = getRandomInt(550, 950);
-  if (wealthLevel === "high")
-    baseTotalExpensesPerCapita *= getRandomInt(120, 140) / 100;
-  else if (wealthLevel === "low")
-    baseTotalExpensesPerCapita *= getRandomInt(70, 85) / 100;
-  if (cityType === "Metropolis")
-    baseTotalExpensesPerCapita *= getRandomInt(105, 115) / 100;
-  let targetTotalAnnualExpenses = Math.floor(
-    population * baseTotalExpensesPerCapita
-  );
-  targetTotalAnnualExpenses = Math.max(
-    Math.floor(totalAnnualIncome * 0.8),
-    Math.min(targetTotalAnnualExpenses, Math.floor(totalAnnualIncome * 1.2))
-  );
-  const expenseAllocations = {
-    policeDepartment: 0,
-    fireDepartment: 0,
-    emergencyServices: 0,
-    roadInfrastructure: 0,
-    publicTransit: 0,
-    waterAndSewer: 0,
-    wasteManagement: 0,
-    publicEducation: 0,
-    publicHealthServices: 0,
-    socialWelfarePrograms: 0,
-    parksAndRecreation: 0,
-    librariesAndCulture: 0,
-    cityPlanningAndDevelopment: 0,
-    generalAdministration: 0,
-    debtServicing: 0,
-    miscellaneousExpenses: 0,
-  };
-  let allocations = {
-    policeDepartment: getRandomInt(10, 16),
-    fireDepartment: getRandomInt(5, 9),
-    emergencyServices: getRandomInt(2, 5),
-    roadInfrastructure: getRandomInt(7, 11),
-    publicTransit:
-      cityType === "Village/Town" ? getRandomInt(1, 4) : getRandomInt(5, 9),
-    waterAndSewer: getRandomInt(3, 6),
-    wasteManagement: getRandomInt(2, 5),
-    publicEducation:
-      cityType === "Metropolis" || cityType === "City"
-        ? getRandomInt(18, 25)
-        : getRandomInt(12, 20),
-    publicHealthServices: getRandomInt(4, 7),
-    socialWelfarePrograms: getRandomInt(5, 9),
-    parksAndRecreation: getRandomInt(2, 5),
-    librariesAndCulture: getRandomInt(1, 4),
-    cityPlanningAndDevelopment: getRandomInt(2, 5),
-    generalAdministration: getRandomInt(6, 10),
-  };
-  if (mainIssues.includes("Crime") || mainIssues.includes("Public Safety"))
-    allocations.policeDepartment = Math.min(
-      25,
-      allocations.policeDepartment + getRandomInt(2, 4)
-    );
-  if (mainIssues.includes("Infrastructure"))
-    allocations.roadInfrastructure = Math.min(
-      20,
-      allocations.roadInfrastructure + getRandomInt(2, 3)
-    );
-  if (mainIssues.includes("Education"))
-    allocations.publicEducation = Math.min(
-      30,
-      allocations.publicEducation + getRandomInt(2, 4)
-    );
-  if (mainIssues.includes("Healthcare"))
-    allocations.publicHealthServices = Math.min(
-      15,
-      allocations.publicHealthServices + getRandomInt(1, 2)
-    );
-  if (mainIssues.includes("Housing") || mainIssues.includes("Poverty"))
-    allocations.socialWelfarePrograms = Math.min(
-      15,
-      allocations.socialWelfarePrograms + getRandomInt(1, 3)
-    );
-  const normalizedAllocations = normalizeArrayBySum(allocations, 90, 1);
-  let sumOfAllocatedExpenses = 0;
-  for (const key in normalizedAllocations) {
-    if (Object.prototype.hasOwnProperty.call(expenseAllocations, key)) {
-      expenseAllocations[key] = Math.floor(
-        targetTotalAnnualExpenses * (normalizedAllocations[key] / 100)
-      );
-      sumOfAllocatedExpenses += expenseAllocations[key];
-    }
-  }
-  let accumulatedDebt = 0;
-  if (
-    totalAnnualIncome < targetTotalAnnualExpenses * 0.9 ||
-    Math.random() < 0.35
-  ) {
-    accumulatedDebt = getRandomInt(
-      0,
-      Math.floor(totalAnnualIncome * (getRandomInt(15, 70) / 100))
-    );
-  }
-  if (accumulatedDebt > 0) {
-    expenseAllocations.debtServicing = Math.floor(
-      accumulatedDebt * (getRandomInt(4, 8) / 100)
-    );
-    sumOfAllocatedExpenses += expenseAllocations.debtServicing;
-  }
-  expenseAllocations.miscellaneousExpenses = Math.max(
-    0,
-    targetTotalAnnualExpenses - sumOfAllocatedExpenses
-  );
-  const finalTotalAnnualExpenses = Math.floor(
-    Object.values(expenseAllocations).reduce((sum, val) => sum + val, 0)
-  );
-  const finalBalance = totalAnnualIncome - finalTotalAnnualExpenses;
-  return {
-    totalAnnualIncome,
-    totalAnnualExpenses: finalTotalAnnualExpenses,
-    balance: finalBalance,
-    accumulatedDebt,
-    taxRates: { ...initialTaxRates },
-    incomeSources,
-    expenseAllocations,
-  };
-};
+// generateInitialBudget moved to ./economics/budgetCalculations.js
 
 export const generateInitialCityStats = (
   population,
@@ -910,7 +626,7 @@ export const generateFullCityData = (params = {}) => {
       const newPopularity = Math.max(0, Math.min(100, basePopularity + shift));
       return {
         ...party,
-        popularity: newPopularity
+        popularity: newPopularity,
       };
     }
   );
@@ -976,7 +692,7 @@ export const generateFullStateData = (params = {}) => {
     const newPopularity = Math.max(5, Math.min(95, 50 + shift));
     return {
       ...party,
-      popularity: newPopularity
+      popularity: newPopularity,
     };
   });
   const normalizedBaseLandscape = normalizePartyPopularities(
@@ -1216,162 +932,11 @@ export const generateFullStateData = (params = {}) => {
   });
 };
 
-/**
- * Generates budget data for a state/region
- */
-export const generateStateBudget = ({
-  population,
-  gdpPerCapita,
-  countryId,
-}) => {
-  // Base tax rates for states (different from cities)
-  const taxRates = {
-    property: 0.008, // 0.8% property tax
-    sales: 0.06, // 6% sales tax
-    business: 0.04, // 4% business tax
-    income: 0.05, // 5% state income tax
-  };
+// generateStateBudget moved to ./economics/budgetCalculations.js
 
-  // Calculate income sources based on population and economic factors
-  const incomeSources = {
-    propertyTaxes: Math.floor(
-      population * gdpPerCapita * 0.1 * taxRates.property
-    ),
-    salesTaxes: Math.floor(population * gdpPerCapita * 0.2 * taxRates.sales),
-    businessTaxes: Math.floor(
-      population * gdpPerCapita * 0.3 * taxRates.business
-    ),
-    incomeTaxes: Math.floor(population * gdpPerCapita * 0.4 * taxRates.income),
-    federalGrants: Math.floor(population * 150), // $150 per capita in federal grants
-  };
+// generateNationalDemographics moved to ./economics/economicProfiles.js
 
-  const totalAnnualIncome = Object.values(incomeSources).reduce(
-    (sum, val) => sum + val,
-    0
-  );
-
-  // State-level expense allocations with realistic budget imbalance
-  // Add random variation (±10-20%) to create realistic surpluses/deficits
-  const budgetImbalanceFactor = 1 + (Math.random() - 0.3) * 0.3; // -30% to +0% (tends toward deficit)
-  const adjustedBudgetBase = totalAnnualIncome * budgetImbalanceFactor;
-
-  const expenseAllocations = {
-    publicEducation: Math.floor(adjustedBudgetBase * 0.35), // 35% of budget
-    publicHealthServices: Math.floor(adjustedBudgetBase * 0.2), // 20% of budget
-    transportationInfrastructure: Math.floor(adjustedBudgetBase * 0.15), // 15% of budget
-    socialWelfarePrograms: Math.floor(adjustedBudgetBase * 0.12), // 12% of budget
-    publicSafety: Math.floor(adjustedBudgetBase * 0.08), // 8% of budget
-    environmentalProtection: Math.floor(adjustedBudgetBase * 0.05), // 5% of budget
-    generalAdministration: Math.floor(adjustedBudgetBase * 0.05), // 5% of budget
-  };
-
-  const totalAnnualExpenses = Object.values(expenseAllocations).reduce(
-    (sum, val) => sum + val,
-    0
-  );
-  const balance = totalAnnualIncome - totalAnnualExpenses;
-
-  return {
-    totalAnnualIncome,
-    totalAnnualExpenses,
-    balance,
-    accumulatedDebt: 0,
-    taxRates,
-    incomeSources,
-    expenseAllocations,
-  };
-};
-
-export const generateNationalDemographics = (countryId) => {
-  // Simplified ethnicity data; this can be expanded with more detail
-  const ethnicityData = {
-    USA: {
-      White: 40,
-      European: 20,
-      Hispanic: 18,
-      Black: 13,
-      Asian: 6,
-      Other: 3,
-    },
-    JPN: { Japanese: 98, Other: 2 },
-    CAN: { European: 38, White: 42, Asian: 18, Indigenous: 5, Other: 5 },
-  };
-
-  const demographics = generateCityDemographics(); // Reuse for age/education structure
-  demographics.ethnicities = ethnicityData[countryId] || { Dominant: 100 };
-
-  return demographics;
-};
-
-/**
- * Generates budget data for a country/nation
- */
-export const generateNationalBudget = ({
-  population,
-  gdpPerCapita,
-  countryId,
-}) => {
-  // National-level tax rates (different from state/city rates)
-  const taxRates = {
-    corporate: 0.21, // 21% corporate tax
-    income: 0.25, // 25% federal income tax
-    importTariffs: 0.03, // 3% average tariff rate
-  };
-
-  // Calculate income sources based on population and economic factors
-  const incomeSources = {
-    corporateTaxes: Math.floor(
-      population * gdpPerCapita * 0.4 * taxRates.corporate
-    ),
-    incomeTaxes: Math.floor(population * gdpPerCapita * 0.5 * taxRates.income),
-    tariffs: Math.floor(
-      population * gdpPerCapita * 0.1 * taxRates.importTariffs
-    ),
-  };
-
-  const totalAnnualIncome = Object.values(incomeSources).reduce(
-    (sum, val) => sum + val,
-    0
-  );
-
-  // National-level expense allocations with realistic budget imbalance
-  // Add random variation (±15-25%) to create realistic surpluses/deficits
-  const budgetImbalanceFactor = 1 + (Math.random() - 0.2) * 0.4; // -20% to +20% (balanced tendency)
-  const adjustedBudgetBase = totalAnnualIncome * budgetImbalanceFactor;
-
-  const expenseAllocations = {
-    defense: Math.floor(adjustedBudgetBase * 0.25), // 25% of budget
-    socialSecurity: Math.floor(adjustedBudgetBase * 0.2), // 20% of budget
-    healthcare: Math.floor(adjustedBudgetBase * 0.15), // 15% of budget
-    education: Math.floor(adjustedBudgetBase * 0.1), // 10% of budget
-    infrastructure: Math.floor(adjustedBudgetBase * 0.08), // 8% of budget
-    interestOnDebt: Math.floor(adjustedBudgetBase * 0.07), // 7% of budget
-    veteransAffairs: Math.floor(adjustedBudgetBase * 0.05), // 5% of budget
-    foreignAid: Math.floor(adjustedBudgetBase * 0.02), // 2% of budget
-    generalGovernment: Math.floor(adjustedBudgetBase * 0.08), // 8% of budget
-  };
-
-  const totalAnnualExpenses = Object.values(expenseAllocations).reduce(
-    (sum, val) => sum + val,
-    0
-  );
-  const balance = totalAnnualIncome - totalAnnualExpenses;
-
-  // National debt (typically substantial for developed countries)
-  const accumulatedDebt = Math.floor(
-    totalAnnualIncome * (getRandomInt(80, 120) / 100)
-  ); // 80-120% of annual income
-
-  return {
-    totalAnnualIncome,
-    totalAnnualExpenses,
-    balance,
-    accumulatedDebt,
-    taxRates,
-    incomeSources,
-    expenseAllocations,
-  };
-};
+// generateNationalBudget moved to ./economics/budgetCalculations.js
 
 export const generateInitialNationalStats = (countryData) => {
   console.log(countryData.economicProfile);
@@ -1508,13 +1073,9 @@ const generateInitialStateOffices = (
     );
     const termLength = electionType.frequencyYears || 4;
 
-    const holder = generateFullAIPolitician(
-      countryData.id,
-      processedParties,
-      {
-        regionId: regionId,
-      }
-    );
+    const holder = generateFullAIPolitician(countryData.id, processedParties, {
+      regionId: regionId,
+    });
     holder.currentOffice = officeName;
 
     stateOffices.push(
@@ -1818,12 +1379,12 @@ export const createGovernmentOfficeStructure = () => ({
     executive: [],
     legislative: {
       lowerHouse: [],
-      upperHouse: []
+      upperHouse: [],
     },
-    judicial: []
+    judicial: [],
   },
   states: {},
-  cities: {}
+  cities: {},
 });
 
 /**
@@ -1831,15 +1392,25 @@ export const createGovernmentOfficeStructure = () => ({
  */
 const addOfficeToStructure = (structure, office) => {
   const level = office.level;
-  
-  if (level?.startsWith('national_')) {
-    if (level.includes('head_of_state') || level.includes('executive') || level === 'national_head_of_state_and_government') {
+
+  if (level?.startsWith("national_")) {
+    if (
+      level.includes("head_of_state") ||
+      level.includes("executive") ||
+      level === "national_head_of_state_and_government"
+    ) {
       structure.national.executive.push(office);
-    } else if (level.includes('lower_house') || level === 'national_lower_house_constituency') {
+    } else if (
+      level.includes("lower_house") ||
+      level === "national_lower_house_constituency"
+    ) {
       structure.national.legislative.lowerHouse.push(office);
-    } else if (level.includes('upper_house') || level === 'national_upper_house_state_rep') {
+    } else if (
+      level.includes("upper_house") ||
+      level === "national_upper_house_state_rep"
+    ) {
       structure.national.legislative.upperHouse.push(office);
-    } else if (level.includes('judicial')) {
+    } else if (level.includes("judicial")) {
       structure.national.judicial.push(office);
     } else {
       // Default fallback for unknown national offices - put single offices in executive, multi-member in lower house
@@ -1849,42 +1420,52 @@ const addOfficeToStructure = (structure, office) => {
         structure.national.executive.push(office);
       }
     }
-  } else if (level?.includes('local_state')) {
+  } else if (level?.includes("local_state")) {
     const stateId = office.regionId;
     if (!structure.states[stateId]) {
       structure.states[stateId] = {
         executive: [],
         legislative: {
           lowerHouse: [],
-          upperHouse: []
-        }
+          upperHouse: [],
+        },
       };
     }
-    
-    if (level.includes('governor') || office.officeNameTemplateId?.includes('governor')) {
+
+    if (
+      level.includes("governor") ||
+      office.officeNameTemplateId?.includes("governor")
+    ) {
       structure.states[stateId].executive.push(office);
-    } else if (level.includes('lower_house')) {
+    } else if (level.includes("lower_house")) {
       structure.states[stateId].legislative.lowerHouse.push(office);
-    } else if (level.includes('upper_house')) {
+    } else if (level.includes("upper_house")) {
       structure.states[stateId].legislative.upperHouse.push(office);
     }
-  } else if (level?.startsWith('local_') && (level.includes('city') || office.cityId)) {
+  } else if (
+    level?.startsWith("local_") &&
+    (level.includes("city") || office.cityId)
+  ) {
     const cityId = office.cityId;
     if (!structure.cities[cityId]) {
       structure.cities[cityId] = {
         executive: [],
-        legislative: []
+        legislative: [],
       };
     }
-    
-    if (office.officeNameTemplateId?.includes('mayor') || level.includes('mayor') || office.officeName?.toLowerCase().includes('mayor')) {
+
+    if (
+      office.officeNameTemplateId?.includes("mayor") ||
+      level.includes("mayor") ||
+      office.officeName?.toLowerCase().includes("mayor")
+    ) {
       structure.cities[cityId].executive.push(office);
     } else if (
-      office.officeNameTemplateId?.includes('council') || 
-      office.officeNameTemplateId === 'city_council' ||
-      level.includes('council') || 
-      office.officeName?.toLowerCase().includes('council') ||
-      office.officeName?.toLowerCase().includes('city council') ||
+      office.officeNameTemplateId?.includes("council") ||
+      office.officeNameTemplateId === "city_council" ||
+      level.includes("council") ||
+      office.officeName?.toLowerCase().includes("council") ||
+      office.officeName?.toLowerCase().includes("city council") ||
       office.members?.length > 1
     ) {
       structure.cities[cityId].legislative.push(office);
@@ -1935,9 +1516,9 @@ export const generateInitialGovernmentOffices = ({
 
   // Create hierarchical structure
   const structure = createGovernmentOfficeStructure();
-  
+
   // Add all offices to the structure
-  [...localOffices, ...stateOffices, ...nationalOffices].forEach(office => {
+  [...localOffices, ...stateOffices, ...nationalOffices].forEach((office) => {
     addOfficeToStructure(structure, office);
   });
 
@@ -1950,26 +1531,26 @@ export const generateInitialGovernmentOffices = ({
  */
 export const flattenGovernmentOffices = (structure) => {
   const offices = [];
-  
+
   // National offices
   offices.push(...structure.national.executive);
   offices.push(...structure.national.legislative.lowerHouse);
   offices.push(...structure.national.legislative.upperHouse);
   offices.push(...structure.national.judicial);
-  
+
   // State offices
-  Object.values(structure.states).forEach(state => {
+  Object.values(structure.states).forEach((state) => {
     offices.push(...state.executive);
     offices.push(...state.legislative.lowerHouse);
     offices.push(...state.legislative.upperHouse);
   });
-  
+
   // City offices
-  Object.values(structure.cities).forEach(city => {
+  Object.values(structure.cities).forEach((city) => {
     offices.push(...city.executive);
     offices.push(...city.legislative);
   });
-  
+
   return offices;
 };
 

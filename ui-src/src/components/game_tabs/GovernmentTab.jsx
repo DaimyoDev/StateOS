@@ -11,6 +11,11 @@ import NationalOverviewTab from "./government_tabs/NationalOverviewTab";
 const GovernmentTab = ({ campaignData }) => {
   const [activeGovSubTab, setActiveGovSubTab] = useState("city"); // Default to city
   const [activeSubSection, setActiveSubSection] = useState("summary");
+  const [activeGovernmentSubTab, setActiveGovernmentSubTab] = useState("offices"); // For government offices vs departments
+  
+  // Legislation-specific states
+  const [legislationLevel, setLegislationLevel] = useState("city");
+  const [legislationView, setLegislationView] = useState("proposed");
 
   const mainSubtabs = [
     { id: "city", label: "City / Local" },
@@ -29,18 +34,40 @@ const GovernmentTab = ({ campaignData }) => {
     { id: "coalitions", label: "Coalitions" }
   ];
 
+  const governmentSubtabs = [
+    { id: "offices", label: "Government Offices" },
+    { id: "departments", label: "Department Heads" }
+  ];
+
+  const legislationLevelTabs = [
+    { id: "city", label: "City" },
+    { id: "state", label: "State" },
+    { id: "national", label: "National" }
+  ];
+
+  const legislationViewTabs = [
+    { id: "proposed", label: "Proposed & Voting" },
+    { id: "active", label: "Active Legislation" },
+    { id: "archive", label: "Passed Bills" },
+    { id: "failed", label: "Failed Bills" }
+  ];
+
   const renderSubTabContent = () => {
     switch (activeGovSubTab) {
       case "city":
-        return <CityOverviewTab campaignData={campaignData} activeSubTab={activeSubSection} />;
+        return <CityOverviewTab campaignData={campaignData} activeSubTab={activeSubSection} governmentSubTab={activeGovernmentSubTab} />;
       case "legislation":
-        return <LegislationSubTab campaignData={campaignData} />;
+        return <LegislationSubTab 
+          campaignData={campaignData} 
+          currentLevel={legislationLevel}
+          activeTab={legislationView}
+        />;
       case "state":
-        return <StateOverviewTab campaignData={campaignData} activeSubTab={activeSubSection} />;
+        return <StateOverviewTab campaignData={campaignData} activeSubTab={activeSubSection} governmentSubTab={activeGovernmentSubTab} />;
       case "federal":
-        return <NationalOverviewTab campaignData={campaignData} activeSubTab={activeSubSection} />;
+        return <NationalOverviewTab campaignData={campaignData} activeSubTab={activeSubSection} governmentSubTab={activeGovernmentSubTab} />;
       default:
-        return <CityOverviewTab campaignData={campaignData} activeSubTab={activeSubSection} />;
+        return <CityOverviewTab campaignData={campaignData} activeSubTab={activeSubSection} governmentSubTab={activeGovernmentSubTab} />;
     }
   };
 
@@ -85,6 +112,30 @@ const GovernmentTab = ({ campaignData }) => {
             onTabChange={setActiveSubSection}
             label="Select Section"
           />
+        )}
+        {activeGovSubTab !== "legislation" && activeSubSection === "government" && (
+          <SubtabDropdown 
+            tabs={governmentSubtabs}
+            activeTab={activeGovernmentSubTab}
+            onTabChange={setActiveGovernmentSubTab}
+            label="Select Government Type"
+          />
+        )}
+        {activeGovSubTab === "legislation" && (
+          <>
+            <SubtabDropdown 
+              tabs={legislationLevelTabs}
+              activeTab={legislationLevel}
+              onTabChange={setLegislationLevel}
+              label="Select Level"
+            />
+            <SubtabDropdown 
+              tabs={legislationViewTabs}
+              activeTab={legislationView}
+              onTabChange={setLegislationView}
+              label="Select View"
+            />
+          </>
         )}
       </div>
       <div className="sub-tab-content-area">{renderSubTabContent()}</div>

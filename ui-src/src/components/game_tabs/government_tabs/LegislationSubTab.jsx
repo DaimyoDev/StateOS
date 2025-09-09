@@ -1,18 +1,14 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import useGameStore from "../../../store";
 import "./GovernmentSubTabStyles.css";
 import "./LegislationSubTab.css";
 import { areDatesEqual } from "../../../utils/core";
 import PassedBillsArchive from "../PassedBillsArchive";
 import FailedBillsArchive from "../FailedBillsArchive";
-import SubtabDropdown from "../../ui/SubtabDropdown";
 
 const EMPTY_ARRAY = [];
 
-const LegislationSubTab = ({ campaignData }) => {
-  const [currentLevel, setCurrentLevel] = useState('city');
-  const [activeMainSubtab, setActiveMainSubtab] = useState('legislation');
-  const [activeTab, setActiveTab] = useState('proposed');
+const LegislationSubTab = ({ campaignData, currentLevel = 'city', activeTab = 'proposed' }) => {
   const proposedBills = useGameStore(
     (state) => state[currentLevel]?.proposedBills || EMPTY_ARRAY
   );
@@ -122,45 +118,8 @@ const LegislationSubTab = ({ campaignData }) => {
     });
   }, [activeLegislation]);
 
-  const mainSubtabs = [
-    { id: "legislation", label: "Legislation" }
-  ];
-
-  const levelTabs = [
-    { id: "city", label: "City" },
-    { id: "state", label: "State" },
-    { id: "national", label: "National" }
-  ];
-
-  const legislationSubtabs = [
-    { id: "proposed", label: "Proposed & Voting" },
-    { id: "active", label: "Active Legislation" },
-    { id: "archive", label: "Passed Bills" },
-    { id: "failed", label: "Failed Bills" }
-  ];
-
   return (
     <div className="legislation-sub-tab">
-      <div className="dropdown-container">
-        <SubtabDropdown 
-          tabs={mainSubtabs}
-          activeTab={activeMainSubtab}
-          onTabChange={setActiveMainSubtab}
-          label="Select Main View"
-        />
-        <SubtabDropdown 
-          tabs={levelTabs}
-          activeTab={currentLevel}
-          onTabChange={setCurrentLevel}
-          label="Select Government Level"
-        />
-        <SubtabDropdown 
-          tabs={legislationSubtabs}
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-          label="Select Legislation View"
-        />
-      </div>
 
       {activeTab === 'proposed' && (
         <section className="legislation-section proposed-legislation">
