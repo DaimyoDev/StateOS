@@ -2,6 +2,7 @@ import React, { useState, useMemo, useCallback } from "react";
 import useGameStore from "../../../store";
 import PoliticianCard from "../../PoliticianCard";
 import CouncilCompositionPieChart from "../../charts/CouncilCompositionPieChart";
+import { COMMITTEE_SYSTEMS, COMMITTEE_TYPES } from "../../../data/legislativeCommittees";
 import "./GovernmentSubTabStyles.css";
 import "./CityOverviewTab.css"; // Reusing styles for consistency
 
@@ -78,6 +79,12 @@ const NationalOverviewTab = ({ campaignData, activeSubTab = "summary", governmen
       (c) => c.id === campaignData.countryId
     );
   }, [campaignData]);
+
+  // Get committee system information
+  const committeeSystem = useMemo(() => {
+    if (!countryData?.politicalSystemId) return null;
+    return COMMITTEE_SYSTEMS[countryData.politicalSystemId];
+  }, [countryData]);
 
   const headOfState = useMemo(() => {
     if (!nationalGovernmentOffices?.executive) return null;
@@ -447,6 +454,114 @@ const NationalOverviewTab = ({ campaignData, activeSubTab = "summary", governmen
                           <p className="no-officials-message">No upper house members currently in office</p>
                         )}
                       </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* National Committees Section */}
+                {committeeSystem && (
+                  <div className="legislature-committees-section">
+                    <div className="committees-header">
+                      <h6>National Legislative Committees</h6>
+                      <span className="committees-subtitle">
+                        {committeeSystem.systemName} • {Object.keys(COMMITTEE_TYPES.STANDING).length} Standing Committees
+                      </span>
+                    </div>
+
+                    {/* Committee System Features */}
+                    <div className="committee-system-info">
+                      <div className="system-features">
+                        <h6>System Features</h6>
+                        <div className="features-tags">
+                          {committeeSystem.features.map((feature) => (
+                            <span key={feature} className="feature-tag">
+                              {feature.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Standing Committees Grid */}
+                    <div className="committees-grid">
+                      <div className="committees-category">
+                        <h6>Standing Committees</h6>
+                        <div className="committee-cards-grid">
+                          {Object.entries(COMMITTEE_TYPES.STANDING).map(([key, committee]) => (
+                            <div key={key} className="committee-card">
+                              <div className="committee-header">
+                                <h5 className="committee-name">{committee.name}</h5>
+                                <span className="committee-status vacant">Vacant Chair</span>
+                              </div>
+                              
+                              <div className="committee-details">
+                                <div className="jurisdiction-section">
+                                  <strong>Jurisdiction:</strong>
+                                  <div className="jurisdiction-tags">
+                                    {committee.jurisdiction.map((area) => (
+                                      <span key={area} className="jurisdiction-tag">
+                                        {area.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                                
+                                <div className="powers-section">
+                                  <strong>Key Powers:</strong>
+                                  <ul className="powers-list">
+                                    {committee.keyPowers.map((power) => (
+                                      <li key={power}>
+                                        {power.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Select Committees if applicable */}
+                      {Object.keys(COMMITTEE_TYPES.SELECT).length > 0 && (
+                        <div className="committees-category">
+                          <h6>Select Committees</h6>
+                          <div className="committee-cards-grid">
+                            {Object.entries(COMMITTEE_TYPES.SELECT).map(([key, committee]) => (
+                              <div key={key} className="committee-card select-committee">
+                                <div className="committee-header">
+                                  <h5 className="committee-name">{committee.name}</h5>
+                                  <span className="committee-status vacant">Vacant Chair</span>
+                                </div>
+                                
+                                <div className="committee-details">
+                                  <div className="jurisdiction-section">
+                                    <strong>Jurisdiction:</strong>
+                                    <div className="jurisdiction-tags">
+                                      {committee.jurisdiction.map((area) => (
+                                        <span key={area} className="jurisdiction-tag">
+                                          {area.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                  
+                                  <div className="powers-section">
+                                    <strong>Key Powers:</strong>
+                                    <ul className="powers-list">
+                                      {committee.keyPowers.map((power) => (
+                                        <li key={power}>
+                                          {power.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

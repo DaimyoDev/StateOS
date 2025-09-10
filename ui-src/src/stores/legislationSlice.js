@@ -19,6 +19,11 @@ import {
   getStatsForLevel,
 } from "../utils/legislationUtils";
 import {
+  initializeBillStages,
+  processBillStage,
+  getBillProgressionWorkflow
+} from "../utils/billProgressionUtils";
+import {
   runStateBudgetUpdate,
   runNationalBudgetUpdate,
 } from "../utils/regionalStatCalc.js";
@@ -95,7 +100,7 @@ const getInitialLegislationState = () => ({
   savedBillTemplates: [],
 });
 
-const addDaysToDate = (date, days) => {
+export const addDaysToDate = (date, days) => {
   const newDate = new Date(date.year, date.month - 1, date.day);
   newDate.setDate(newDate.getDate() + days);
   return {
@@ -162,12 +167,13 @@ export const createLegislationSlice = (set, get) => ({
         }
 
         const dateProposed = { ...state.activeCampaign.currentDate };
-        const voteScheduledFor = addDaysToDate(
-          dateProposed,
-          getRandomInt(7, 21)
-        );
+        
+        // Get country's political system for bill progression
+        const countryData = state.activeCampaign.availableCountries?.find(c => c.id === state.activeCampaign.countryId) ||
+                           state.activeCampaign.country;
+        const politicalSystemId = countryData?.politicalSystemId || 'PRESIDENTIAL_REPUBLIC';
 
-        const newBill = {
+        const baseBill = {
           id: `bill_${generateId()}`,
           name:
             billName ||
@@ -189,12 +195,14 @@ export const createLegislationSlice = (set, get) => ({
             };
           }),
           parameters: parameters, // Store the chosen parameters for the bill
-          status: "pending_vote",
+          status: "in_committee", // Updated status for new progression system
           dateProposed: dateProposed,
-          voteScheduledFor: voteScheduledFor,
           votes: { yea: [], nay: [], abstain: [] },
           councilVotesCast: {},
         };
+
+        // Initialize bill with political system-based stages
+        const newBill = initializeBillStages(baseBill, politicalSystemId, dateProposed);
 
         get().actions.addNotification?.({
           message: `Bill Proposed: "${newBill.name}"`,
@@ -238,8 +246,172 @@ export const createLegislationSlice = (set, get) => ({
       });
     },
 
-    // NEW: This action now finalizes a BILL vote
+    // NEW: Process a bill through its current stage in the political system workflow
+    processBillStage: (billId, level, aiVotes = {}) => {
+      set((state) => {
+        let bill = null;
+        let foundLevel = null;
+
+        // Find the bill and its level
+        for (const key of ["city", "state", "national"]) {
+          const foundBill = state[key].proposedBills.find(
+            (b) => b.id === billId
+          );
+          if (foundBill) {
+            bill = foundBill;
+            foundLevel = key;
+            break;
+          }
+        }
+
+        if (!bill) {
+          return state;
+        }
+
+        level = foundLevel;
+
+        // Get political system and legislature info
+        const countryData = state.activeCampaign.availableCountries?.find(c => c.id === state.activeCampaign.countryId) ||
+                           state.activeCampaign.country;
+        const politicalSystemId = countryData?.politicalSystemId || bill.politicalSystemId || 'PRESIDENTIAL_REPUBLIC';
+        const legislature = getLegislatureDetails(state.activeCampaign, level);
+
+        // Process the bill through its current stage
+        const processedBill = processBillStage(bill, aiVotes, legislature, politicalSystemId, state.activeCampaign.currentDate);
+
+        // Handle the result based on the bill's new status
+        let newActiveLegislationList = [...state[level].activeLegislation];
+        let newPassedBillsArchive = [...state[level].passedBillsArchive];
+        let newFailedBillsHistory = [...state[level].failedBillsHistory];
+        let updatedBills = [...state[level].proposedBills];
+
+        // Update the bill in the proposed bills list
+        const billIndex = updatedBills.findIndex(b => b.id === billId);
+        if (billIndex !== -1) {
+          if (processedBill.status === 'passed') {
+            // Bill completed all stages, move to active legislation
+            updatedBills.splice(billIndex, 1);
+            
+            // Handle different bill types for passed bills
+            if (processedBill.billType === "repeal" && processedBill.targetLawId) {
+              newActiveLegislationList = newActiveLegislationList.filter(
+                (law) => law.id !== processedBill.targetLawId
+              );
+              get().actions.addNotification?.({
+                message: `Law "${processedBill.name}" has been repealed.`,
+                category: "Legislation",
+                type: "success",
+              });
+            } else if (processedBill.billType === "amend" && processedBill.targetLawId) {
+              // Amendment logic
+              newActiveLegislationList = newActiveLegislationList.map((law) => {
+                if (law.id === processedBill.targetLawId) {
+                  const updatedPolicies = processedBill.policies.map((policyInBill) => {
+                    const policyDef = state.availablePolicies[level].find(
+                      (def) => def.id === policyInBill.policyId
+                    );
+                    return {
+                      ...policyDef,
+                      chosenParameters: policyInBill.chosenParameters,
+                      monthsUntilEffective: policyDef.durationToImplement || 0,
+                      effectsApplied: false,
+                    };
+                  });
+                  return {
+                    ...law,
+                    name: processedBill.name,
+                    policies: updatedPolicies,
+                    monthsUntilEffective: Math.max(
+                      ...updatedPolicies.map((p) => p.durationToImplement || 0)
+                    ),
+                    effectsApplied: false,
+                  };
+                }
+                return law;
+              });
+            } else {
+              // New law
+              const newPoliciesForLaw = processedBill.policies.map((policyInBill) => {
+                const policyDef = state.availablePolicies[level].find(
+                  (def) => def.id === policyInBill.policyId
+                );
+                return {
+                  ...policyDef,
+                  chosenParameters: policyInBill.chosenParameters,
+                  monthsUntilEffective: policyDef?.durationToImplement || 0,
+                  effectsApplied: false,
+                };
+              });
+              if (newPoliciesForLaw.length > 0) {
+                newActiveLegislationList.push({
+                  id: `law_${processedBill.id}`,
+                  name: processedBill.name,
+                  level: level,
+                  proposerId: processedBill.proposerId,
+                  proposerName: processedBill.proposerName,
+                  policies: newPoliciesForLaw,
+                  dateEnacted: { ...state.activeCampaign.currentDate },
+                  monthsUntilEffective: Math.max(
+                    ...newPoliciesForLaw.map((p) => p.durationToImplement || 0)
+                  ),
+                  effectsApplied: false,
+                });
+              }
+            }
+            
+            newPassedBillsArchive.push(processedBill);
+            get().actions.addNotification?.({
+              message: `Bill "${processedBill.name}" has been enacted into law!`,
+              category: "Legislation",
+              type: "success",
+            });
+            
+          } else if (processedBill.status === 'failed') {
+            // Bill failed at some stage, move to failed history
+            updatedBills.splice(billIndex, 1);
+            newFailedBillsHistory.push(processedBill);
+            if (newFailedBillsHistory.length > 50) {
+              newFailedBillsHistory = newFailedBillsHistory.slice(-50);
+            }
+            
+            get().actions.addNotification?.({
+              message: `Bill "${processedBill.name}" failed at ${processedBill.failureStage?.replace(/_/g, ' ')} stage.`,
+              category: "Legislation",
+              type: "error",
+            });
+            
+          } else {
+            // Bill continues to next stage
+            updatedBills[billIndex] = processedBill;
+            const stageName = processedBill.currentStage?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            get().actions.addNotification?.({
+              message: `Bill "${processedBill.name}" advanced to ${stageName} stage.`,
+              category: "Legislation",
+              type: "info",
+            });
+          }
+        }
+
+        return {
+          [level]: {
+            ...state[level],
+            proposedBills: updatedBills,
+            activeLegislation: newActiveLegislationList,
+            passedBillsArchive: newPassedBillsArchive,
+            failedBillsHistory: newFailedBillsHistory,
+          },
+        };
+      });
+    },
+
+    // DEPRECATED: Legacy function for backward compatibility - now uses the new stage system
     finalizeBillVote: (billId, level, aiVotes = {}) => {
+      // For backward compatibility, just call the new processBillStage function
+      get().actions.processBillStage(billId, level, aiVotes);
+    },
+
+    // LEGACY: This action now finalizes a BILL vote (kept for reference but deprecated)
+    finalizeBillVoteOld: (billId, level, aiVotes = {}) => {
       set((state) => {
         let bill = null;
         let foundLevel = null;
