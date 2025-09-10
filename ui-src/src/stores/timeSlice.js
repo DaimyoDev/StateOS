@@ -1,31 +1,64 @@
 // ui-src/src/stores/timeSlice.js
 import { isDateBefore, areDatesEqual, getRandomInt } from "../utils/core";
-import {
-  runMonthlyBudgetUpdate,
-  runMonthlyStatUpdate,
-  runMonthlyPlayerApprovalUpdate,
-  runMonthlyPartyPopularityUpdate,
-  runAIBillProposals,
-  runMonthlyRegionalUpdates,
-} from "../simulation/monthlyTick.js";
-import { 
-  shouldGenerateRandomEvent, 
-  generateRandomEvent, 
-  processRandomEvent 
-} from "../simulation/randomEventsSystem.js";
+import { TimeOrchestrator } from "./timeOrchestrator.js";
 import { simulateAICampaignDayForPolitician } from "../utils/aiUtils.js";
 import { rehydrateLeanCampaigner } from "../entities/personnel.js";
 import { pollingOptimizer } from "../General Scripts/OptimizedPollingFunctions.js";
+import { shouldGenerateRandomEvent, generateRandomEvent, processRandomEvent } from "../simulation/randomEventsSystem.js";
 
-const _updateCityStatsPure = (campaign, statUpdates) => {
-  if (!campaign?.startingCity?.stats) return campaign;
-  return {
-    ...campaign,
-    startingCity: {
-      ...campaign.startingCity,
-      stats: { ...campaign.startingCity.stats, ...statUpdates },
-    },
-  };
+/**
+ * Apply orchestrated state updates using nested path notation
+ */
+const _applyOrchestratedUpdates = (set, get, stateUpdates) => {
+  set((state) => {
+    let newState = { ...state };
+    
+    // Apply each update using path notation
+    Object.entries(stateUpdates).forEach(([path, value]) => {
+      if (path.includes('.')) {
+        // Handle nested paths like 'campaign.startingCity.stats'
+        const pathParts = path.split('.');
+        let current = newState;
+        
+        // Navigate to the parent object
+        for (let i = 0; i < pathParts.length - 1; i++) {
+          if (!current[pathParts[i]]) current[pathParts[i]] = {};
+          current = current[pathParts[i]];
+        }
+        
+        // Set the final value
+        current[pathParts[pathParts.length - 1]] = value;
+      } else {
+        // Handle direct updates
+        switch (path) {
+          case 'playerApprovalUpdate':
+            newState = _updatePlayerApprovalPure(
+              newState.activeCampaign,
+              newState.activeCampaign?.playerPoliticianId,
+              value
+            );
+            newState = { ...state, activeCampaign: newState };
+            break;
+            
+          case 'playerPoliticalCapitalUpdate':
+            newState = _updatePlayerPoliticalCapitalPure(
+              newState.activeCampaign,
+              newState.activeCampaign?.playerPoliticianId,
+              value,
+              get
+            );
+            newState = { ...state, activeCampaign: newState };
+            break;
+            
+          default:
+            // Handle other update types as needed
+            break;
+        }
+      }
+    });
+    
+    return newState;
+  });
 };
 
 const areGameDatesEqual = (date1, date2) => {
@@ -35,20 +68,6 @@ const areGameDatesEqual = (date1, date2) => {
     date1.month === date2.month &&
     date1.day === date2.day
   );
-};
-
-const _updateBudgetFiguresPure = (campaign, budgetUpdates) => {
-  if (!budgetUpdates || !campaign?.startingCity?.stats?.budget) return campaign;
-  return {
-    ...campaign,
-    startingCity: {
-      ...campaign.startingCity,
-      stats: {
-        ...campaign.startingCity.stats,
-        budget: { ...campaign.startingCity.stats.budget, ...budgetUpdates },
-      },
-    },
-  };
 };
 
 const _updatePoliticalLandscapePure = (campaign, newLandscape) => {
@@ -81,6 +100,38 @@ const _updatePlayerApprovalPure = (campaign, playerId, newApproval) => {
   };
 };
 
+const _updatePlayerPoliticalCapitalPure = (campaign, playerId, updateData, get) => {
+  if (!updateData || !campaign || !playerId) return campaign;
+
+  const politicians = campaign.politicians;
+  const baseData = politicians.base?.get(playerId);
+  if (!baseData) return campaign;
+
+  const newBaseMap = new Map(politicians.base);
+  newBaseMap.set(playerId, {
+    ...baseData,
+    politicalCapital: updateData.newPoliticalCapital,
+  });
+
+  // Add notification about political capital change
+  if (get?.().actions?.addNotification) {
+    const message = updateData.adjustment > 0 
+      ? `Political Capital +${updateData.adjustment}: ${updateData.breakdown.join(', ')}`
+      : `Political Capital ${updateData.adjustment}: ${updateData.breakdown.join(', ')}`;
+    
+    get().actions.addNotification({
+      message,
+      type: updateData.adjustment > 0 ? "success" : "warning",
+      category: "Political Capital"
+    });
+  }
+
+  return {
+    ...campaign,
+    politicians: { ...politicians, base: newBaseMap },
+  };
+};
+
 const _updateCountryPure = (campaign, updatedCountry) => {
   if (!updatedCountry || !campaign?.country) return campaign;
   return {
@@ -101,124 +152,60 @@ const _updateRegionsPure = (campaign, updatedRegions) => {
 };
 
 export const createTimeSlice = (set, get) => {
+  // Initialize the time orchestrator
+  const timeOrchestrator = new TimeOrchestrator();
+
   return {
     isAdvancingToNextElection: false,
 
     actions: {
       processMonthlyUpdates: () => {
         set((state) => {
-          let currentCampaign = { ...state.activeCampaign };
+          const currentCampaign = { ...state.activeCampaign };
           if (!currentCampaign?.currentDate) return state;
-
-          const playerPoliticianId = currentCampaign.playerPoliticianId;
-          let collectedNewsThisMonth = [];
-
-          // --- REFACTORED MONTHLY UPDATE PIPELINE ---
 
           // 1. Apply active legislation effects (this action calls its own `set`)
           get().actions.applyActiveLegislationEffects?.();
-          currentCampaign = get().activeCampaign; // Re-fetch state
-          if (!currentCampaign) return state;
+          
+          // Re-fetch state after legislation effects
+          const updatedState = get();
+          if (!updatedState.activeCampaign) return state;
 
-          // 2. Recalculate Budget
-          const budgetResult = runMonthlyBudgetUpdate(currentCampaign);
-          if (budgetResult.budgetUpdates) {
-            currentCampaign = _updateBudgetFiguresPure(
-              currentCampaign,
-              budgetResult.budgetUpdates
-            );
-          }
-                    collectedNewsThisMonth.push(...budgetResult.newsItems);
+          // 2. Execute orchestrated monthly updates
+          const orchestratorResult = timeOrchestrator.executeMonthlyTick(
+            updatedState,
+            get,
+            (stateUpdates) => {
+              // Apply state updates through the orchestrator
+              _applyOrchestratedUpdates(set, get, stateUpdates);
+            }
+          );
 
-          // 2.5 Recalculate Regional & National Budgets
-          const regionalResult = runMonthlyRegionalUpdates(currentCampaign);
-          if (regionalResult.updatedRegions) {
-            currentCampaign = _updateRegionsPure(currentCampaign, regionalResult.updatedRegions);
+          if (!orchestratorResult.success) {
+            console.error('[TimeSlice] Monthly orchestrator failed:', orchestratorResult.error);
+            return state; // Return original state on failure
           }
-          if (regionalResult.updatedCountry) {
-            currentCampaign = _updateCountryPure(currentCampaign, regionalResult.updatedCountry);
-          }
-          collectedNewsThisMonth.push(...regionalResult.newsItems);
 
-          // 3. Simulate and update all city stats
-          const statResult = runMonthlyStatUpdate(currentCampaign);
-          if (Object.keys(statResult.statUpdates).length > 0) {
-            currentCampaign = _updateCityStatsPure(
-              currentCampaign,
-              statResult.statUpdates
-            );
-          }
-          collectedNewsThisMonth.push(...statResult.newsItems);
-
-          // 4. Process monthly job income for player
+          // 3. Process monthly job income for player
           get().actions.processMonthlyJobIncome?.();
-          currentCampaign = get().activeCampaign; // Re-fetch state after job income
 
-          // 5. Simulate player approval update
-          const newPlayerApproval =
-            runMonthlyPlayerApprovalUpdate(currentCampaign, get);
-          currentCampaign = _updatePlayerApprovalPure(
-            currentCampaign,
-            playerPoliticianId,
-            newPlayerApproval
-          );
-
-
-          // 7. Update Party Popularity (Multi-level)
-          const partyPopResult = runMonthlyPartyPopularityUpdate(
-            currentCampaign,
-            get
-          );
-          
-          // Update city-level political landscape
-          if (partyPopResult.cityPoliticalLandscape) {
-            currentCampaign = _updatePoliticalLandscapePure(
-              currentCampaign,
-              partyPopResult.cityPoliticalLandscape
-            );
-            
-            // Invalidate coalition cache for all city elections due to party popularity changes
-            const cityElections = currentCampaign.elections?.filter(e => e.level === 'city') || [];
-            cityElections.forEach(election => {
-              pollingOptimizer.invalidateCoalitionCache(election.id);
-            });
-          }
-          
-          // Update state-level political landscape
-          if (partyPopResult.statePoliticalLandscape && currentCampaign.parentState) {
-            currentCampaign = {
-              ...currentCampaign,
-              parentState: {
-                ...currentCampaign.parentState,
-                politicalLandscape: partyPopResult.statePoliticalLandscape
-              }
-            };
-            
-            // Invalidate coalition cache for all state elections due to party popularity changes
-            const stateElections = currentCampaign.elections?.filter(e => e.level === 'state') || [];
-            stateElections.forEach(election => {
-              pollingOptimizer.invalidateCoalitionCache(election.id);
-            });
-          }
-          
-          collectedNewsThisMonth.push(...partyPopResult.newsItems);
-
-          // 8. Run AI Bill Proposals
-          const proposedBills = runAIBillProposals(currentCampaign, get);
-          if (proposedBills.length > 0) {
-            get().actions.addProposedBills?.(proposedBills);
+          // 4. Run AI Bill Proposals (handled by orchestrator now, but keeping for backwards compatibility)
+          if (orchestratorResult.monthlyResults?.newBills?.length > 0) {
+            get().actions.addProposedBills?.(orchestratorResult.monthlyResults.newBills);
           }
 
-          // 9. Dispatch collected news
-          if (collectedNewsThisMonth.length > 0) {
-            const datedNews = collectedNewsThisMonth.map((d) => ({
+          // 5. Dispatch collected news
+          if (orchestratorResult.monthlyResults?.newsItems?.length > 0) {
+            const finalCampaign = get().activeCampaign;
+            const datedNews = orchestratorResult.monthlyResults.newsItems.map((d) => ({
               ...d,
-              date: { ...currentCampaign.currentDate },
+              date: { ...finalCampaign.currentDate },
             }));
             get().actions.addNewsEvent?.(datedNews);
           }
 
-          return { activeCampaign: currentCampaign };
+          // Return the final state
+          return { activeCampaign: get().activeCampaign };
         });
       },
 
@@ -382,14 +369,6 @@ export const createTimeSlice = (set, get) => {
             const coalitionSoA = get().actions.getCoalitionsForCity?.(campaignAfterDateAdvance.startingCity?.id);
             let coalitionResults = null;
             if (coalitionSoA) {
-              console.log(`[TIME SLICE] Processing coalition effects for event: ${processedEvent.name || processedEvent.title}`);
-              
-              // Log current mobilization values before applying effects
-              console.log(`[TIME SLICE] Coalition mobilization BEFORE effects:`);
-              for (const [coalitionId, state] of coalitionSoA.state) {
-                console.log(`  - ${coalitionId}: ${(state.mobilization * 100).toFixed(1)}%`);
-              }
-              
               import("../simulation/randomEventsSystem.js").then(({ processEventCoalitionEffects }) => {
                 coalitionResults = processEventCoalitionEffects(
                   processedEvent, 
@@ -400,21 +379,9 @@ export const createTimeSlice = (set, get) => {
                 
                 // Apply coalition updates if any occurred
                 if (coalitionResults?.coalitionUpdates) {
-                  console.log(`[TIME SLICE] Applying coalition updates from event effects`);
                   get().actions.updateCityCoalitions?.(campaignAfterDateAdvance.startingCity.id, coalitionResults.coalitionUpdates);
-                  
-                  // Log mobilization values after applying effects
-                  const updatedCoalitions = get().actions.getCoalitionsForCity?.(campaignAfterDateAdvance.startingCity?.id);
-                  if (updatedCoalitions) {
-                    console.log(`[TIME SLICE] Coalition mobilization AFTER effects:`);
-                    for (const [coalitionId, state] of updatedCoalitions.state) {
-                      console.log(`  - ${coalitionId}: ${(state.mobilization * 100).toFixed(1)}%`);
-                    }
-                  }
                 }
               });
-            } else {
-              console.log(`[TIME SLICE] No coalition system available for event: ${processedEvent.name || processedEvent.title}`);
             }
             
             // Add the generated news articles to the news system

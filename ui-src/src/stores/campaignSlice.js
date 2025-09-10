@@ -3,6 +3,7 @@ import { pollingOptimizer } from "../General Scripts/OptimizedPollingFunctions.j
 import { getRandomInt, calculateAdultPopulation } from "../utils/core.js";
 import { calculateCandidateDonations } from "../entities/donationSystem.js";
 import { getDonationLawById } from "../data/politicalDonationLaws.js";
+import { calculateEnhancedMediaAppearance } from "../entities/politicalCapitalSystem.js";
 
 /**
  * Helper function to find and update a specific politician (player or AI) within the activeCampaign state.
@@ -470,7 +471,7 @@ export const createCampaignSlice = (set, get) => ({
       });
     },
 
-    makePublicAppearanceActivity: (hoursToSpend = 2) => {
+    makePublicAppearanceActivity: (hoursToSpend = 2, mediaType = 'local') => {
       set((state) => {
         const { activeCampaign } = state;
         const { playerPoliticianId, politicians, startingCity } =
@@ -481,10 +482,11 @@ export const createCampaignSlice = (set, get) => ({
         const financesData = politicians.finances.get(playerPoliticianId);
         const stateData = politicians.state.get(playerPoliticianId);
         const attributesData = politicians.attributes.get(playerPoliticianId);
+        const baseData = politicians.base?.get(playerPoliticianId);
 
         const cost = 200;
         const hoursAvailable = campaignData.campaignHoursRemainingToday || 0;
-        const fundsAvailable = financesData.campaignFunds || 0;
+        const fundsAvailable = activeCampaign.politician?.treasury || 0; // Use treasury for media appearances
 
         if (hoursAvailable < hoursToSpend) {
           get().actions.addToast?.({
@@ -501,24 +503,30 @@ export const createCampaignSlice = (set, get) => ({
           return state;
         }
 
+        // Create politician object for enhanced media system
+        const politician = {
+          ...baseData,
+          ...stateData,
+          attributes: attributesData,
+          politicalCapital: baseData?.politicalCapital || 20
+        };
+
+        // Use enhanced media appearance system
+        const mediaResults = calculateEnhancedMediaAppearance(politician, hoursToSpend, mediaType);
+        
+        if (!mediaResults.success) {
+          get().actions.addToast?.({
+            message: mediaResults.message,
+            type: "error",
+          });
+          return state;
+        }
+
         const adultPop =
           calculateAdultPopulation(
             startingCity.population,
             startingCity.demographics?.ageDistribution
           ) || 1;
-        const charismaFactor = Math.max(
-          0.5,
-          (attributesData.charisma || 3) / 5
-        );
-        const approvalBoost = Math.round(
-          getRandomInt(0, hoursToSpend) * charismaFactor
-        );
-        const nameRecGain = Math.round(
-          getRandomInt(10 * hoursToSpend, 30 * hoursToSpend) * charismaFactor
-        );
-        const mediaBuzzGain =
-          getRandomInt(1 * hoursToSpend, 3 * hoursToSpend) +
-          Math.floor((attributesData.charisma || 5) / 2);
 
         const newCampaignMap = new Map(politicians.campaign);
         newCampaignMap.set(playerPoliticianId, {
@@ -526,25 +534,32 @@ export const createCampaignSlice = (set, get) => ({
           campaignHoursRemainingToday: hoursAvailable - hoursToSpend,
         });
 
-        const newFinancesMap = new Map(politicians.finances);
-        newFinancesMap.set(playerPoliticianId, {
-          ...financesData,
-          campaignFunds: fundsAvailable - cost,
-        });
-
         const newStateMap = new Map(politicians.state);
         newStateMap.set(playerPoliticianId, {
           ...stateData,
           approvalRating: Math.min(
             100,
-            (stateData.approvalRating || 0) + approvalBoost
+            (stateData.approvalRating || 0) + mediaResults.approvalBoost
           ),
           nameRecognition: Math.min(
             adultPop,
-            (stateData.nameRecognition || 0) + nameRecGain
+            (stateData.nameRecognition || 0) + mediaResults.nameRecGain
           ),
-          mediaBuzz: Math.min(100, (stateData.mediaBuzz || 0) + mediaBuzzGain),
+          mediaBuzz: Math.min(100, (stateData.mediaBuzz || 0) + mediaResults.mediaBuzzGain),
         });
+
+        // Update political capital
+        const newBaseMap = new Map(politicians.base);
+        newBaseMap.set(playerPoliticianId, {
+          ...baseData,
+          politicalCapital: Math.min(100, (baseData?.politicalCapital || 20) + mediaResults.politicalCapitalGain),
+        });
+
+        // Update politician treasury (not campaign funds)
+        const updatedPolitician = {
+          ...activeCampaign.politician,
+          treasury: fundsAvailable - cost
+        };
 
         const newDirtyList = new Set(
           state.activeCampaign.politicianIdsWithSpentHours
@@ -552,7 +567,7 @@ export const createCampaignSlice = (set, get) => ({
         newDirtyList.add(playerPoliticianId);
 
         get().actions.addNotification?.({
-          message: `Public appearance: Approval +${approvalBoost}%. Name Rec +${nameRecGain.toLocaleString()}. Buzz +${mediaBuzzGain}.`,
+          message: `${mediaResults.message} Approval +${mediaResults.approvalBoost}%, Name Rec +${mediaResults.nameRecGain.toLocaleString()}, Buzz +${mediaResults.mediaBuzzGain}, Political Capital +${mediaResults.politicalCapitalGain}`,
           type: "success",
           category: 'Campaign'
         });
@@ -560,12 +575,14 @@ export const createCampaignSlice = (set, get) => ({
         return {
           activeCampaign: {
             ...activeCampaign,
+            politician: updatedPolitician,
             politicians: {
               ...politicians,
               campaign: newCampaignMap,
-              finances: newFinancesMap,
               state: newStateMap,
+              base: newBaseMap,
             },
+            politicianIdsWithSpentHours: newDirtyList,
           },
         };
       });

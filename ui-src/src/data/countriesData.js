@@ -163,6 +163,10 @@ const baseCountriesData = [
     regions: germanStates.map((r) => ({ ...r })),
     regionTerm: "State",
     nationalLowerHouseDistricts: [],
+    nationalHrTiers: chamberTiers.GER?.NATIONAL?.GER_BUNDESTAG_DISTRICT_TIERS,
+    nationalHrName: "Bundestag District",
+    lowerStateHrTiers: chamberTiers.GER?.STATE?.GER_STATE_ASSEMBLY_TIERS,
+    lowerStateHrName: "Landtag District",
     departments: {
       national: [
         ...DEPARTMENT_LEVELS.NATIONAL,
@@ -418,6 +422,12 @@ const baseCountriesData = [
     politicalSystem: "Presidential Republic",
     regions: argentinianStates.map((p) => ({ ...p })),
     nationalLowerHouseDistricts: [],
+    departments: {
+      national: DEPARTMENT_LEVELS.NATIONAL,
+      state: DEPARTMENT_LEVELS.STATE,
+      county: DEPARTMENT_LEVELS.COUNTY,
+      city: DEPARTMENT_LEVELS.CITY,
+    },
     donationLawId: "MODERATE_LIMITS",
   },
   {
@@ -569,6 +579,7 @@ const baseCountriesData = [
       county: DEPARTMENT_LEVELS.COUNTY,
       city: DEPARTMENT_LEVELS.CITY,
     },
+    donationLawId: "VERY_STRICT",
   },
   {
     id: "FIN",
@@ -626,6 +637,7 @@ const baseCountriesData = [
       county: DEPARTMENT_LEVELS.COUNTY,
       city: DEPARTMENT_LEVELS.CITY,
     },
+    donationLawId: "MODERATE_LIMITS",
   },
   {
     id: "PRT",
@@ -641,6 +653,7 @@ const baseCountriesData = [
       county: DEPARTMENT_LEVELS.COUNTY,
       city: DEPARTMENT_LEVELS.CITY,
     },
+    donationLawId: "MODERATE_LIMITS",
   },
   {
     id: "GRC",
@@ -659,6 +672,7 @@ const baseCountriesData = [
       county: DEPARTMENT_LEVELS.COUNTY,
       city: DEPARTMENT_LEVELS.CITY,
     },
+    donationLawId: "STRICT_LIMITS",
   },
   {
     id: "NZL",
@@ -683,6 +697,7 @@ const baseCountriesData = [
       county: DEPARTMENT_LEVELS.COUNTY,
       city: DEPARTMENT_LEVELS.CITY,
     },
+    donationLawId: "STRICT_LIMITS",
   },
   {
     id: "CHL",
@@ -703,6 +718,7 @@ const baseCountriesData = [
       county: DEPARTMENT_LEVELS.COUNTY,
       city: DEPARTMENT_LEVELS.CITY,
     },
+    donationLawId: "MODERATE_LIMITS",
   },
   {
     id: "COL",
@@ -718,6 +734,7 @@ const baseCountriesData = [
       county: DEPARTMENT_LEVELS.COUNTY,
       city: DEPARTMENT_LEVELS.CITY,
     },
+    donationLawId: "MODERATE_LIMITS",
   },
   {
     id: "PER",
@@ -733,6 +750,7 @@ const baseCountriesData = [
       county: DEPARTMENT_LEVELS.COUNTY,
       city: DEPARTMENT_LEVELS.CITY,
     },
+    donationLawId: "MODERATE_LIMITS",
   },
   {
     id: "MYS",
@@ -757,6 +775,7 @@ const baseCountriesData = [
       county: DEPARTMENT_LEVELS.COUNTY,
       city: DEPARTMENT_LEVELS.CITY,
     },
+    donationLawId: "STRICT_LIMITS",
   },
   {
     id: "SGP",
@@ -775,6 +794,7 @@ const baseCountriesData = [
       county: DEPARTMENT_LEVELS.COUNTY,
       city: DEPARTMENT_LEVELS.CITY,
     },
+    donationLawId: "MODERATE_LIMITS",
   },
   {
     id: "THA",
@@ -794,6 +814,7 @@ const baseCountriesData = [
       county: DEPARTMENT_LEVELS.COUNTY,
       city: DEPARTMENT_LEVELS.CITY,
     },
+    donationLawId: "MODERATE_LIMITS",
   },
   {
     id: "CZE",
@@ -802,6 +823,7 @@ const baseCountriesData = [
     dominantIdeologies: ["Populist", "Conservative", "Liberal"],
     politicalSystem: "Parliamentary Republic",
     regions: czechRegions.map((p) => ({ ...p })),
+    nationalLowerHouseDistricts: [],
     departments: {
       national: [
         ...DEPARTMENT_LEVELS.NATIONAL,
@@ -811,6 +833,7 @@ const baseCountriesData = [
       county: DEPARTMENT_LEVELS.COUNTY,
       city: DEPARTMENT_LEVELS.CITY,
     },
+    donationLawId: "STRICT_LIMITS",
   },
   {
     id: "ROU",
@@ -819,12 +842,14 @@ const baseCountriesData = [
     dominantIdeologies: ["Social Democrat", "Liberal", "Conservative"],
     politicalSystem: "Semi-Presidential Republic",
     regions: [],
+    nationalLowerHouseDistricts: [],
     departments: {
       national: DEPARTMENT_LEVELS.NATIONAL,
       state: DEPARTMENT_LEVELS.STATE,
       county: DEPARTMENT_LEVELS.COUNTY,
       city: DEPARTMENT_LEVELS.CITY,
     },
+    donationLawId: "STRICT_LIMITS",
   },
   {
     id: "BGR",
@@ -833,6 +858,7 @@ const baseCountriesData = [
     dominantIdeologies: ["Populist", "Conservative", "Socialist"],
     politicalSystem: "Parliamentary Republic",
     regions: [],
+    nationalLowerHouseDistricts: [],
     departments: {
       national: [
         ...DEPARTMENT_LEVELS.NATIONAL,
@@ -842,6 +868,7 @@ const baseCountriesData = [
       county: DEPARTMENT_LEVELS.COUNTY,
       city: DEPARTMENT_LEVELS.CITY,
     },
+    donationLawId: "STRICT_LIMITS",
   },
   {
     id: "HRV",
@@ -850,6 +877,7 @@ const baseCountriesData = [
     dominantIdeologies: ["Conservative", "Social Democrat", "Nationalist"],
     politicalSystem: "Parliamentary Republic",
     regions: [],
+    nationalLowerHouseDistricts: [],
     departments: {
       national: [
         ...DEPARTMENT_LEVELS.NATIONAL,
@@ -859,6 +887,7 @@ const baseCountriesData = [
       county: DEPARTMENT_LEVELS.COUNTY,
       city: DEPARTMENT_LEVELS.CITY,
     },
+    donationLawId: "STRICT_LIMITS",
   },
   {
     id: "SVK",
@@ -867,6 +896,7 @@ const baseCountriesData = [
     dominantIdeologies: ["Populist", "Social Democrat", "Progressive"],
     politicalSystem: "Parliamentary Republic",
     regions: [],
+    nationalLowerHouseDistricts: [],
     departments: {
       national: [
         ...DEPARTMENT_LEVELS.NATIONAL,
@@ -876,6 +906,7 @@ const baseCountriesData = [
       county: DEPARTMENT_LEVELS.COUNTY,
       city: DEPARTMENT_LEVELS.CITY,
     },
+    donationLawId: "STRICT_LIMITS",
   },
   {
     id: "LTU",
@@ -884,12 +915,14 @@ const baseCountriesData = [
     dominantIdeologies: ["Conservative", "Christian Democrat", "Liberal"],
     politicalSystem: "Semi-Presidential Republic",
     regions: [],
+    nationalLowerHouseDistricts: [],
     departments: {
       national: DEPARTMENT_LEVELS.NATIONAL,
       state: DEPARTMENT_LEVELS.STATE,
       county: DEPARTMENT_LEVELS.COUNTY,
       city: DEPARTMENT_LEVELS.CITY,
     },
+    donationLawId: "STRICT_LIMITS",
   },
   {
     id: "LVA",
@@ -898,6 +931,7 @@ const baseCountriesData = [
     dominantIdeologies: ["Centrist", "Conservative", "Social Democrat"],
     politicalSystem: "Parliamentary Republic",
     regions: [],
+    nationalLowerHouseDistricts: [],
     departments: {
       national: [
         ...DEPARTMENT_LEVELS.NATIONAL,
@@ -907,6 +941,7 @@ const baseCountriesData = [
       county: DEPARTMENT_LEVELS.COUNTY,
       city: DEPARTMENT_LEVELS.CITY,
     },
+    donationLawId: "STRICT_LIMITS",
   },
   {
     id: "EST",
@@ -915,6 +950,7 @@ const baseCountriesData = [
     dominantIdeologies: ["Liberal", "Centrist", "Populist"],
     politicalSystem: "Parliamentary Republic",
     regions: [],
+    nationalLowerHouseDistricts: [],
     departments: {
       national: [
         ...DEPARTMENT_LEVELS.NATIONAL,
@@ -924,6 +960,7 @@ const baseCountriesData = [
       county: DEPARTMENT_LEVELS.COUNTY,
       city: DEPARTMENT_LEVELS.CITY,
     },
+    donationLawId: "VERY_STRICT",
   },
   {
     id: "SVN",
@@ -932,6 +969,7 @@ const baseCountriesData = [
     dominantIdeologies: ["Liberal", "Social Democrat", "Conservative"],
     politicalSystem: "Parliamentary Republic",
     regions: [],
+    nationalLowerHouseDistricts: [],
     departments: {
       national: [
         ...DEPARTMENT_LEVELS.NATIONAL,
@@ -941,6 +979,7 @@ const baseCountriesData = [
       county: DEPARTMENT_LEVELS.COUNTY,
       city: DEPARTMENT_LEVELS.CITY,
     },
+    donationLawId: "VERY_STRICT",
   },
   {
     id: "LUX",
@@ -949,6 +988,7 @@ const baseCountriesData = [
     dominantIdeologies: ["Christian Democrat", "Liberal", "Socialist"],
     politicalSystem: "Parliamentary Monarchy (Constitutional)",
     regions: [],
+    nationalLowerHouseDistricts: [],
     departments: {
       national: [
         ...DEPARTMENT_LEVELS.NATIONAL,
@@ -959,6 +999,7 @@ const baseCountriesData = [
       county: DEPARTMENT_LEVELS.COUNTY,
       city: DEPARTMENT_LEVELS.CITY,
     },
+    donationLawId: "VERY_STRICT",
   },
   {
     id: "ISL",
@@ -967,6 +1008,7 @@ const baseCountriesData = [
     dominantIdeologies: ["Progressive", "Conservative", "Green"],
     politicalSystem: "Parliamentary Republic",
     regions: [],
+    nationalLowerHouseDistricts: [],
     departments: {
       national: [
         ...DEPARTMENT_LEVELS.NATIONAL,
@@ -976,6 +1018,7 @@ const baseCountriesData = [
       county: DEPARTMENT_LEVELS.COUNTY,
       city: DEPARTMENT_LEVELS.CITY,
     },
+    donationLawId: "VERY_STRICT",
   },
   {
     id: "CRI",
@@ -984,12 +1027,14 @@ const baseCountriesData = [
     dominantIdeologies: ["Social Democrat", "Christian Democrat", "Green"],
     politicalSystem: "Presidential Republic",
     regions: [],
+    nationalLowerHouseDistricts: [],
     departments: {
       national: DEPARTMENT_LEVELS.NATIONAL,
       state: DEPARTMENT_LEVELS.STATE,
       county: DEPARTMENT_LEVELS.COUNTY,
       city: DEPARTMENT_LEVELS.CITY,
     },
+    donationLawId: "MODERATE_LIMITS",
   },
   {
     id: "URY",
@@ -998,12 +1043,14 @@ const baseCountriesData = [
     dominantIdeologies: ["Liberal", "Conservative", "Social Democrat"],
     politicalSystem: "Presidential Republic",
     regions: [],
+    nationalLowerHouseDistricts: [],
     departments: {
       national: DEPARTMENT_LEVELS.NATIONAL,
       state: DEPARTMENT_LEVELS.STATE,
       county: DEPARTMENT_LEVELS.COUNTY,
       city: DEPARTMENT_LEVELS.CITY,
     },
+    donationLawId: "MODERATE_LIMITS",
   },
   {
     id: "MLT",

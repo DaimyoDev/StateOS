@@ -650,6 +650,7 @@ export const createLegislationSlice = (set, get) => ({
           // Process each legislation item
           for (let i = 0; i < activeLegislation.length; i++) {
             const leg = activeLegislation[i];
+            
 
             // Fix legacy legislation with undefined properties
             if (leg.monthsUntilEffective === undefined) {
@@ -660,14 +661,35 @@ export const createLegislationSlice = (set, get) => ({
             }
 
             if (leg.monthsUntilEffective > 0) {
+              
+              // Update both the bill level and policy level monthsUntilEffective
+              const updatedPolicies = leg.policies?.map(policy => ({
+                ...policy,
+                monthsUntilEffective: Math.max(0, (policy.monthsUntilEffective || leg.monthsUntilEffective) - 1)
+              })) || [];
+              
               updatedLegislation.push({
                 ...leg,
                 monthsUntilEffective: leg.monthsUntilEffective - 1,
+                policies: updatedPolicies
               });
               hasChanges = true;
             } else if (leg.monthsUntilEffective === 0 && !leg.effectsApplied) {
+              
               effectsToApplyNow.push(leg);
-              updatedLegislation.push({ ...leg, effectsApplied: true });
+              
+              // Update policies to mark as effective
+              const updatedPolicies = leg.policies?.map(policy => ({
+                ...policy,
+                monthsUntilEffective: 0,
+                effectsApplied: true
+              })) || [];
+              
+              updatedLegislation.push({ 
+                ...leg, 
+                effectsApplied: true,
+                policies: updatedPolicies
+              });
               hasChanges = true;
             } else {
               updatedLegislation.push(leg);
@@ -711,11 +733,6 @@ export const createLegislationSlice = (set, get) => ({
                   if (chosenValue !== undefined) {
                     // Handle budget and tax rate changes
                     if (pDetails.targetBudgetLine || pDetails.targetTaxRate) {
-                      console.log(
-                        `[Policy Effect] Applying ${
-                          pDetails.targetBudgetLine || pDetails.targetTaxRate
-                        } change: ${chosenValue}`
-                      );
                       const tempEffect = {
                         targetStat:
                           pDetails.targetBudgetLine || pDetails.targetTaxRate,
@@ -789,7 +806,15 @@ export const createLegislationSlice = (set, get) => ({
           }
         }
 
-        return hasChanges ? { ...state, ...updates } : state;
+        if (hasChanges) {
+          const newState = { ...state };
+          // Ensure proper immutable updates for each level
+          Object.keys(updates).forEach(level => {
+            newState[level] = { ...newState[level], ...updates[level] };
+          });
+          return newState;
+        }
+        return state;
       });
 
       // Add all news events in a single batch after state update
