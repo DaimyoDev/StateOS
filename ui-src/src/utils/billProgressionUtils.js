@@ -1,9 +1,15 @@
 // Bill progression utilities for different political systems
-import { BILL_PROGRESSION_WORKFLOWS, COMMITTEE_MEMBERSHIP_RULES } from '../data/legislativeCommittees';
+import { BILL_PROGRESSION_WORKFLOWS, COMMITTEE_MEMBERSHIP_RULES, COMMITTEE_TYPES } from '../data/legislativeCommittees';
 import { addDaysToDate } from '../stores/legislationSlice';
 
-// Get the bill progression workflow for a country's political system
+// Get the bill progression workflow for a country's political system and level
 export const getBillProgressionWorkflow = (politicalSystemId, level = 'state') => {
+  // City level uses simplified city council workflow regardless of political system
+  if (level === 'city') {
+    return BILL_PROGRESSION_WORKFLOWS.CITY_COUNCIL || BILL_PROGRESSION_WORKFLOWS.PRESIDENTIAL_REPUBLIC;
+  }
+  
+  // State and federal levels use the full political system workflow
   if (!politicalSystemId || !BILL_PROGRESSION_WORKFLOWS[politicalSystemId]) {
     // Fallback to presidential republic if no system found
     return BILL_PROGRESSION_WORKFLOWS.PRESIDENTIAL_REPUBLIC;
@@ -88,7 +94,7 @@ export const initializeBillStages = (bill, politicalSystemId, currentDate) => {
   // Calculate initial stage completion date
   const daysToAdd = Math.floor(Math.random() * (firstStageConfig.duration.max - firstStageConfig.duration.min + 1)) + firstStageConfig.duration.min;
   
-  return {
+  const enhancedBill = {
     ...bill,
     currentStage: firstStage,
     stageScheduledFor: addDaysToDate(currentDate, daysToAdd),
@@ -98,6 +104,99 @@ export const initializeBillStages = (bill, politicalSystemId, currentDate) => {
       status: 'in_progress'
     }],
     politicalSystemId
+  };
+
+  // For state/national bills, add committee information
+  if (bill.level !== 'city') {
+    enhancedBill.committeeInfo = assignBillToCommittee(bill, politicalSystemId, currentDate);
+  }
+
+  return enhancedBill;
+};
+
+// Assign a bill to appropriate committee based on policy content
+const assignBillToCommittee = (bill, politicalSystemId, currentDate) => {
+  
+  // Determine appropriate committee based on bill's policies
+  const primaryPolicy = bill.policies?.[0];
+  let assignedCommittee = 'JUDICIARY'; // Default fallback
+  
+  if (primaryPolicy?.policyId) {
+    // Map policy types to committees
+    const policyToCommitteeMap = {
+      // Education policies
+      'education': 'EDUCATION',
+      'school': 'EDUCATION',
+      'teacher': 'EDUCATION',
+      'student': 'EDUCATION',
+      
+      // Healthcare policies  
+      'health': 'HEALTH',
+      'medical': 'HEALTH',
+      'hospital': 'HEALTH',
+      'healthcare': 'HEALTH',
+      
+      // Economic/Finance policies
+      'tax': 'FINANCE',
+      'budget': 'FINANCE',
+      'economic': 'FINANCE',
+      'finance': 'FINANCE',
+      'debt': 'FINANCE',
+      
+      // Commerce/Business
+      'business': 'COMMERCE',
+      'trade': 'COMMERCE',
+      'commerce': 'COMMERCE',
+      'regulation': 'COMMERCE',
+      
+      // Environment
+      'environment': 'ENVIRONMENT',
+      'climate': 'ENVIRONMENT',
+      'energy': 'ENVIRONMENT',
+      'pollution': 'ENVIRONMENT',
+      
+      // Agriculture
+      'agriculture': 'AGRICULTURE',
+      'farm': 'AGRICULTURE',
+      'food': 'AGRICULTURE',
+      
+      // Transportation
+      'transport': 'TRANSPORTATION',
+      'highway': 'TRANSPORTATION',
+      'transit': 'TRANSPORTATION',
+      'infrastructure': 'TRANSPORTATION',
+      
+      // Defense/Security
+      'defense': 'DEFENSE',
+      'military': 'DEFENSE',
+      'security': 'DEFENSE',
+      'police': 'DEFENSE'
+    };
+    
+    // Check policy ID and name for committee assignment
+    const policyText = `${primaryPolicy.policyId} ${primaryPolicy.policyName || ''}`.toLowerCase();
+    
+    for (const [keyword, committee] of Object.entries(policyToCommitteeMap)) {
+      if (policyText.includes(keyword)) {
+        assignedCommittee = committee;
+        break;
+      }
+    }
+  }
+  
+  const committeeData = COMMITTEE_TYPES.STANDING[assignedCommittee] || COMMITTEE_TYPES.STANDING.JUDICIARY;
+  
+  // Schedule committee vote
+  const committeeMeetingDays = Math.floor(Math.random() * 21) + 14; // 14-35 days
+  const committeeVoteDate = addDaysToDate(currentDate, committeeMeetingDays);
+  
+  return {
+    assignedCommittee: assignedCommittee,
+    committeeName: committeeData.name,
+    committeeJurisdiction: committeeData.jurisdiction,
+    committeeVoteScheduled: committeeVoteDate,
+    committeeStatus: 'under_review',
+    assignedDate: currentDate
   };
 };
 
@@ -179,6 +278,12 @@ export const getStageDescription = (stageName, workflow) => {
   if (!stageConfig) return 'Unknown stage';
   
   const descriptions = {
+    // City council stages
+    proposal_submitted: 'Bill is officially submitted to the city council',
+    public_comment_period: 'Public review and comment period for community input',
+    council_vote: 'City council votes on the ordinance',
+    
+    // State/federal committee stages  
     committee_assignment: 'Bill is assigned to the appropriate committee for review',
     committee_markup: 'Committee reviews, amends, and marks up the bill',
     committee_vote: 'Committee votes on whether to advance the bill',

@@ -392,7 +392,7 @@ function getCoalitionSystem(electionId, electorateProfile, demographics, availab
       const stateCoalitionKey = `state_${stateId}`;
       
       if (activeCampaign.coalitionSystems[stateCoalitionKey]) {
-        console.log(`[COALITION MAPPING] Congressional election ${electionId} using state coalitions: ${stateCoalitionKey}`);
+        // Removed console logging for cleaner output
         return activeCampaign.coalitionSystems[stateCoalitionKey];
       }
     }
@@ -413,7 +413,7 @@ function getCoalitionSystem(electionId, electorateProfile, demographics, availab
     // Fallback: use any available pre-generated coalition system
     const availableCoalitions = Object.values(activeCampaign.coalitionSystems);
     if (availableCoalitions.length > 0) {
-      console.log(`[COALITION FALLBACK] Using available coalition system for election: ${electionId}`);
+      // Removed console logging for cleaner output
       return availableCoalitions[0];
     }
   }
@@ -636,7 +636,7 @@ export function calculatePlayerElectionPolling(election, campaignData, politicia
         finalScore += 5; // 5% player effort bonus
       }
       
-      console.log(`[PLAYER POLLING] ${candidateData.name}: Base=${coalitionScore.toFixed(1)}, NameRec=+${nameRecognitionBonus.toFixed(1)}, Approval=${approvalModifier >= 0 ? '+' : ''}${approvalModifier.toFixed(1)}, MediaBuzz=+${mediaBuzzBonus.toFixed(1)}, Funding=+${fundingBonus.toFixed(1)}, Final=${finalScore.toFixed(1)}`);
+      // Removed console logging for cleaner output
     }
     
     // Clamp final score to reasonable bounds

@@ -26,7 +26,7 @@ import {
 import {
   runStateBudgetUpdate,
   runNationalBudgetUpdate,
-} from "../utils/regionalStatCalc.js";
+} from "../utils/statCalculationEngine.js";
 import { runMonthlyBudgetUpdate } from "../simulation/monthlyTick.js";
 
 // Helper function to recalculate budgets after policy effects
@@ -195,7 +195,7 @@ export const createLegislationSlice = (set, get) => ({
             };
           }),
           parameters: parameters, // Store the chosen parameters for the bill
-          status: "in_committee", // Updated status for new progression system
+          status: level === 'city' ? "under_review" : "in_committee", // City bills don't use committees
           dateProposed: dateProposed,
           votes: { yea: [], nay: [], abstain: [] },
           councilVotesCast: {},
@@ -1089,25 +1089,65 @@ export const createLegislationSlice = (set, get) => ({
     runAllAIVotesForBill: (billId, level) => {
       const { activeCampaign, availablePolicies } = get();
       const bill = get()[level]?.proposedBills.find((b) => b.id === billId);
+      console.log(`[AI VOTING] Starting AI votes for bill ${billId} at ${level} level`);
+      console.log(`[AI VOTING] Found bill:`, bill ? bill.name : 'NOT FOUND');
       if (!bill) return {};
 
-      // PERFORMANCE OPTIMIZATION: Only get government offices relevant to this level
-      const cityId = level === "city" ? activeCampaign?.startingCity?.id : null;
-      const stateId =
-        level === "state" || level === "city" ? activeCampaign?.regionId : null;
-      const contextualGovernmentOffices =
-        get().actions.getGovernmentOfficesForContext(level, cityId, stateId);
-      const { members } = getLegislatureDetails(
-        activeCampaign,
-        level,
-        contextualGovernmentOffices
-      );
+      let members = [];
+      
+      if (level === "city") {
+        // For city bills, get city council members directly
+        const cityOffices = get().actions.getCurrentCityGovernmentOffices?.() || { 
+          executive: [], 
+          legislative: [] 
+        };
+        console.log(`[AI VOTING] City offices structure:`, cityOffices);
+        
+        // Extract all city council members from legislative offices
+        const councilMembers = [];
+        cityOffices.legislative?.forEach(office => {
+          if (office.members && Array.isArray(office.members)) {
+            councilMembers.push(...office.members);
+            console.log(`[AI VOTING] Found ${office.members.length} members in office: ${office.name}`);
+          }
+        });
+        
+        members = councilMembers;
+        console.log(`[AI VOTING] Total city council members found: ${members.length}`);
+      } else {
+        // For state/national bills, use the existing system
+        const cityId = activeCampaign?.startingCity?.id;
+        const stateId = activeCampaign?.regionId;
+        const contextualGovernmentOffices =
+          get().actions.getGovernmentOfficesForContext(level, cityId, stateId);
+        const legislatureDetails = getLegislatureDetails(
+          activeCampaign,
+          level,
+          contextualGovernmentOffices
+        );
+        members = legislatureDetails.members || [];
+        console.log(`[AI VOTING] Found ${members.length} ${level} legislature members`);
+      }
 
       // AI members are those who are not the player (isPlayer: false)
       const aiCouncilMembers = members.filter((m) => !m.isPlayer);
+      console.log(`[AI VOTING] Found ${aiCouncilMembers.length} AI members to vote out of ${members.length} total members`);
 
       const policiesForLevel = availablePolicies[level];
       const stats = getStatsForLevel(activeCampaign, level);
+
+      // Get the appropriate government offices context for the AI voting function
+      let governmentOffices;
+      if (level === "city") {
+        governmentOffices = get().actions.getCurrentCityGovernmentOffices?.() || { 
+          executive: [], 
+          legislative: [] 
+        };
+      } else {
+        const cityId = activeCampaign?.startingCity?.id;
+        const stateId = activeCampaign?.regionId;
+        governmentOffices = get().actions.getGovernmentOfficesForContext(level, cityId, stateId);
+      }
 
       const votes = {};
 
@@ -1123,7 +1163,7 @@ export const createLegislationSlice = (set, get) => ({
             stats,
             get()[level].activeLegislation,
             get()[level].proposedBills,
-            contextualGovernmentOffices,
+            governmentOffices,
             // Convert array to object with policy IDs as keys, and include bill-specific policies
             {
               ...policiesForLevel.reduce((acc, policy) => {
@@ -1154,25 +1194,42 @@ export const createLegislationSlice = (set, get) => ({
     processImpendingVotes: () => {
       const state = get();
       const currentDate = state.activeCampaign.currentDate;
+      console.log(`[PROCESS IMPENDING VOTES] Checking for votes due on ${currentDate.month}/${currentDate.day}/${currentDate.year}`);
+      
       const allProposedBills = [
         ...state.city.proposedBills,
         ...state.state.proposedBills,
         ...state.national.proposedBills,
       ];
+      
+      console.log(`[PROCESS IMPENDING VOTES] Found ${allProposedBills.length} total bills to check`);
 
       const votesToQueue = [];
       const existingQueue = state.voteQueue || [];
       const existingIds = new Set(existingQueue.map((v) => v.billId));
+      
+      console.log(`[PROCESS IMPENDING VOTES] Existing vote queue length: ${existingQueue.length}`);
 
       allProposedBills.forEach((bill) => {
-        if (
-          bill.status === "pending_vote" &&
-          bill.voteScheduledFor.year === currentDate.year &&
-          bill.voteScheduledFor.month === currentDate.month &&
-          bill.voteScheduledFor.day === currentDate.day &&
-          !existingIds.has(bill.id)
-        ) {
-          votesToQueue.push({ billId: bill.id, level: bill.level });
+        console.log(`[PROCESS IMPENDING VOTES] Checking bill ${bill.name || bill.id}: status=${bill.status}, voteScheduledFor=${bill.voteScheduledFor?.month}/${bill.voteScheduledFor?.day}/${bill.voteScheduledFor?.year}, level=${bill.level}`);
+        
+        if (bill.status === "pending_vote") {
+          if (!bill.voteScheduledFor) {
+            console.log(`[PROCESS IMPENDING VOTES] Bill ${bill.name || bill.id} has pending_vote status but no voteScheduledFor date!`);
+          } else if (
+            bill.voteScheduledFor.year === currentDate.year &&
+            bill.voteScheduledFor.month === currentDate.month &&
+            bill.voteScheduledFor.day === currentDate.day
+          ) {
+            if (!existingIds.has(bill.id)) {
+              console.log(`[PROCESS IMPENDING VOTES] Adding bill ${bill.name || bill.id} to vote queue`);
+              votesToQueue.push({ billId: bill.id, level: bill.level });
+            } else {
+              console.log(`[PROCESS IMPENDING VOTES] Bill ${bill.name || bill.id} already in vote queue`);
+            }
+          } else {
+            console.log(`[PROCESS IMPENDING VOTES] Bill ${bill.name || bill.id} vote scheduled for different date`);
+          }
         }
       });
 

@@ -434,4 +434,9 @@
   }
 }
 
+/* Education Quality Numerical Display */
+.quality-fill.poor.very-poor {
+  background: #d32f2f; /* Darker red for very poor scores */
+}
+
 /* Special Card Variations */

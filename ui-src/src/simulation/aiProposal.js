@@ -863,19 +863,32 @@ const shouldAvoidPolicyDueToFailures = (
   if (relevantFailures.length === 0) return false;
 
   // Get the most recent failure for this policy
-  const mostRecentFailure = relevantFailures.sort((a, b) => {
-    const dateA = new Date(
-      a.dateFailed.year,
-      a.dateFailed.month - 1,
-      a.dateFailed.day
-    );
-    const dateB = new Date(
-      b.dateFailed.year,
-      b.dateFailed.month - 1,
-      b.dateFailed.day
-    );
-    return dateB - dateA;
-  })[0];
+  const mostRecentFailure = relevantFailures
+    .filter(failure => failure.dateFailed) // Only include failures with valid dateFailed
+    .sort((a, b) => {
+      const dateA = new Date(
+        a.dateFailed.year,
+        a.dateFailed.month - 1,
+        a.dateFailed.day
+      );
+      const dateB = new Date(
+        b.dateFailed.year,
+        b.dateFailed.month - 1,
+        b.dateFailed.day
+      );
+      return dateB - dateA;
+    })[0];
+  
+  // If no failures have valid dateFailed, don't avoid the policy
+  if (!mostRecentFailure) {
+    return false;
+  }
+
+  // Safety check: ensure mostRecentFailure has dateFailed property
+  if (!mostRecentFailure.dateFailed) {
+    console.warn('[AI Proposal] Failed bill missing dateFailed property:', mostRecentFailure);
+    return false; // Don't avoid proposal if we can't determine failure date
+  }
 
   // Calculate months since the failure
   const failureDate = new Date(

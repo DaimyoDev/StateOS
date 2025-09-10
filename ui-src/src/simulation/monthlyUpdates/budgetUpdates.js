@@ -1,7 +1,7 @@
 // src/simulation/monthlyUpdates/budgetUpdates.js
 
 import { calculateDetailedIncomeSources } from "../../entities/economics/budgetCalculations.js";
-import { runStateBudgetUpdate, runNationalBudgetUpdate } from "../../utils/regionalStatCalc.js";
+import { runStateBudgetUpdate, runNationalBudgetUpdate } from "../../utils/statCalculationEngine.js";
 
 /**
  * Handles all budget-related monthly updates for city, state, and national levels

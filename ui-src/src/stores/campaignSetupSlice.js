@@ -354,9 +354,9 @@ export const createCampaignSetupSlice = (set, get) => {
               district,
               "congressional_district"
             );
-            console.log(`Generated coalitions for congressional district: ${district.name || district.id}`);
+            // Removed console logging for cleaner output
           } else {
-            console.log(`Skipped coalition generation for congressional district ${district.name || district.id} - insufficient demographic data`);
+            // Removed console logging for cleaner output
           }
         });
 

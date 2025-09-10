@@ -145,20 +145,20 @@ export class TimeOrchestrator {
     }
 
     // Update political data
-    if (monthlyResults.politicalUpdates.approvalRating !== null) {
+    if (monthlyResults.politicalUpdates?.approvalRating !== null) {
       updates.playerApprovalUpdate = monthlyResults.politicalUpdates.approvalRating;
     }
 
-    if (monthlyResults.politicalUpdates.politicalCapital !== null) {
+    if (monthlyResults.politicalUpdates?.politicalCapital !== null) {
       updates.playerPoliticalCapitalUpdate = monthlyResults.politicalUpdates.politicalCapital;
     }
 
-    if (monthlyResults.politicalUpdates.partyPopularity.cityPoliticalLandscape) {
+    if (monthlyResults.politicalUpdates.partyPopularity?.cityPoliticalLandscape) {
       updates['activeCampaign.startingCity.politicalLandscape'] = 
         monthlyResults.politicalUpdates.partyPopularity.cityPoliticalLandscape;
     }
 
-    if (monthlyResults.politicalUpdates.partyPopularity.statePoliticalLandscape) {
+    if (monthlyResults.politicalUpdates.partyPopularity?.statePoliticalLandscape) {
       updates['activeCampaign.parentState.politicalLandscape'] = 
         monthlyResults.politicalUpdates.partyPopularity.statePoliticalLandscape;
     }

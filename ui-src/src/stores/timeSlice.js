@@ -50,6 +50,10 @@ const _applyOrchestratedUpdates = (set, get, stateUpdates) => {
             newState = { ...state, activeCampaign: newState };
             break;
             
+          case 'billStatusUpdates':
+            newState = _updateBillStatusesPure(newState, value);
+            break;
+            
           default:
             // Handle other update types as needed
             break;
@@ -59,6 +63,225 @@ const _applyOrchestratedUpdates = (set, get, stateUpdates) => {
     
     return newState;
   });
+};
+
+const _processDailyBillProgressions = (state, campaign) => {
+  if (!campaign || !state) return state;
+  
+  const currentDate = campaign.currentDate;
+  let updatedState = { ...state };
+  updatedState.activeCampaign = { ...campaign };
+  
+  console.log(`[Bill Progress] Processing daily progressions for ${currentDate.month}/${currentDate.day}/${currentDate.year}`);
+  
+  // Check bills at each level for progression - bills are stored directly in state, not in campaign
+  ['city', 'state', 'national'].forEach(level => {
+    if (!updatedState[level]?.proposedBills) {
+      console.log(`[Bill Progress] No proposed bills at ${level} level`);
+      return;
+    }
+    
+    console.log(`[Bill Progress] Found ${updatedState[level].proposedBills.length} bills at ${level} level`);
+    
+    const updatedProposedBills = updatedState[level].proposedBills.map(bill => {
+      console.log(`[Bill Progress] Processing bill: ${bill.name || bill.id}, Status: ${bill.status}, Level: ${level}`);
+      
+      // Skip bills that are already finished
+      if (bill.status === 'passed' || bill.status === 'failed') {
+        console.log(`[Bill Progress] Skipping completed bill: ${bill.name || bill.id}`);
+        return bill;
+      }
+      
+      // Fix: If bill doesn't have stageScheduledFor, add it based on when it was proposed
+      let billToProcess = bill;
+      if (!bill.stageScheduledFor && bill.dateProposed) {
+        const daysToAdd = level === 'city' ? 
+          Math.floor(Math.random() * 3) + 1 :  // 1-4 days for city (much faster)
+          Math.floor(Math.random() * 14) + 7;  // 7-21 days for state/national
+        
+        const newScheduledDate = _addDays(bill.dateProposed, daysToAdd);
+        console.log(`[Bill Progress] Adding scheduled date to ${bill.name || bill.id}: ${newScheduledDate.month}/${newScheduledDate.day}/${newScheduledDate.year}`);
+        
+        billToProcess = {
+          ...bill,
+          stageScheduledFor: newScheduledDate
+        };
+      }
+      
+      // If bill STILL doesn't have a scheduled date, force one for TODAY (emergency fix for stuck bills)
+      if (!billToProcess.stageScheduledFor) {
+        console.log(`[Bill Progress] Emergency: Setting today's date for stuck bill: ${bill.name || bill.id}`);
+        billToProcess = {
+          ...billToProcess,
+          stageScheduledFor: currentDate  // Schedule for today so it progresses immediately
+        };
+      }
+      
+      // Check if bill should progress today
+      const shouldProgress = _shouldBillProgressToday(billToProcess, currentDate);
+      console.log(`[Bill Progress] Bill ${bill.name || bill.id} should progress: ${shouldProgress}, scheduled for: ${billToProcess.stageScheduledFor?.month}/${billToProcess.stageScheduledFor?.day}/${billToProcess.stageScheduledFor?.year}`);
+      
+      if (shouldProgress) {
+        const advancedBill = _advanceBillToNextStage(billToProcess, level, currentDate);
+        
+        // Debug: Log when bills advance (can remove later)
+        if (advancedBill.status !== billToProcess.status) {
+          console.log(`[Bill Progress] ${advancedBill.name || 'Bill'} advanced from ${billToProcess.status} to ${advancedBill.status}`);
+        }
+        
+        return advancedBill;
+      }
+      
+      return billToProcess;
+    });
+    
+    updatedState[level] = {
+      ...updatedState[level],
+      proposedBills: updatedProposedBills
+    };
+  });
+  
+  return updatedState;
+};
+
+const _shouldBillProgressToday = (bill, currentDate) => {
+  // If no scheduled date, set a fallback based on when it was proposed
+  if (!bill.stageScheduledFor) {
+    if (bill.dateProposed) {
+      const daysSinceProposed = _daysBetween(bill.dateProposed, currentDate);
+      // City bills should advance after 7-14 days, state/national after 21-35 days
+      const minDays = bill.level === 'city' ? 7 : 21;
+      const maxDays = bill.level === 'city' ? 14 : 35;
+      return daysSinceProposed >= minDays && Math.random() < 0.3;
+    }
+    return false;
+  }
+  
+  const scheduledDate = new Date(
+    bill.stageScheduledFor.year,
+    bill.stageScheduledFor.month - 1,
+    bill.stageScheduledFor.day
+  );
+  const today = new Date(
+    currentDate.year,
+    currentDate.month - 1,
+    currentDate.day
+  );
+  
+  return today >= scheduledDate;
+};
+
+const _daysBetween = (startDate, endDate) => {
+  const start = new Date(startDate.year, startDate.month - 1, startDate.day);
+  const end = new Date(endDate.year, endDate.month - 1, endDate.day);
+  const diffTime = end.getTime() - start.getTime();
+  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+};
+
+const _advanceBillToNextStage = (bill, level, currentDate) => {
+  const progressChance = Math.random();
+  
+  if (level === 'city') {
+    // City bills: under_review -> pending_vote -> passed/failed
+    if (bill.status === 'under_review' || bill.currentStage === 'introduction') {
+      if (progressChance < 0.8) { // High chance for city bills to advance
+        const nextStageDate = _addDays(currentDate, Math.floor(Math.random() * 7) + 3); // 3-10 days
+        return {
+          ...bill,
+          status: 'pending_vote',
+          currentStage: 'public_review',
+          stageScheduledFor: nextStageDate,
+          voteScheduledFor: nextStageDate,
+          stageHistory: [
+            ...(bill.stageHistory || []),
+            {
+              stage: bill.currentStage || 'introduction',
+              completedOn: currentDate,
+              status: 'passed'
+            }
+          ]
+        };
+      }
+    } else if (bill.status === 'pending_vote' || bill.currentStage === 'public_review') {
+      // Bill is ready for voting - DON'T automatically pass/fail here
+      // The vote queue system and VoteAlert should handle this
+      console.log(`[Bill Progress] Bill ${bill.name || bill.id} is ready for voting - letting vote queue system handle it`);
+      return bill; // Keep the bill in pending_vote status for the vote queue system
+    }
+  } else {
+    // State/national bills: in_committee -> pending_vote -> passed/failed
+    if (bill.status === 'in_committee') {
+      if (progressChance < 0.4) {
+        const committeeVoteChance = Math.random();
+        if (committeeVoteChance < 0.7) {
+          const nextStageDate = _addDays(currentDate, Math.floor(Math.random() * 21) + 14); // 2-5 weeks
+          return {
+            ...bill,
+            status: 'pending_vote',
+            stageScheduledFor: nextStageDate,
+            voteScheduledFor: nextStageDate
+          };
+        } else {
+          return {
+            ...bill,
+            status: 'failed',
+            stageScheduledFor: null,
+            dateFailed: currentDate
+          };
+        }
+      }
+    } else if (bill.status === 'pending_vote') {
+      // Bill is ready for voting - DON'T automatically pass/fail here
+      // The vote queue system and VoteAlert should handle this
+      console.log(`[Bill Progress] ${level} bill ${bill.name || bill.id} is ready for voting - letting vote queue system handle it`);
+      return bill; // Keep the bill in pending_vote status for the vote queue system
+    }
+  }
+  
+  return bill;
+};
+
+const _addDays = (date, daysToAdd) => {
+  const newDate = new Date(date.year, date.month - 1, date.day);
+  newDate.setDate(newDate.getDate() + daysToAdd);
+  
+  return {
+    year: newDate.getFullYear(),
+    month: newDate.getMonth() + 1,
+    day: newDate.getDate()
+  };
+};
+
+const _updateBillStatusesPure = (state, billStatusUpdates) => {
+  if (!billStatusUpdates || billStatusUpdates.length === 0) {
+    return state;
+  }
+  
+  const newState = { ...state };
+  
+  ['city', 'state', 'national'].forEach(level => {
+    if (!newState[level]?.proposedBills) return;
+    
+    const updatedProposedBills = newState[level].proposedBills.map(bill => {
+      const update = billStatusUpdates.find(u => u.billId === bill.id);
+      if (update) {
+        return {
+          ...bill,
+          status: update.newStatus,
+          stageScheduledFor: update.nextStageScheduledFor || bill.stageScheduledFor,
+          lastStatusUpdate: newState.activeCampaign?.currentDate
+        };
+      }
+      return bill;
+    });
+    
+    newState[level] = {
+      ...newState[level],
+      proposedBills: updatedProposedBills
+    };
+  });
+  
+  return newState;
 };
 
 const areGameDatesEqual = (date1, date2) => {
@@ -289,6 +512,9 @@ export const createTimeSlice = (set, get) => {
           }
           updatedCampaign.currentDate = { year, month, day };
 
+          // Check for bill progressions that should happen today
+          console.log(`[Daily Progress] Checking bills for ${year}/${month}/${day}`);
+
           // Player politician daily updates using SoA
           if (playerPoliticianId && politicians) {
             const stateData = politicians.state.get(playerPoliticianId);
@@ -310,7 +536,10 @@ export const createTimeSlice = (set, get) => {
             }
           }
 
-          return { activeCampaign: updatedCampaign };
+          // Process bill progressions with the updated state
+          const processedState = _processDailyBillProgressions(state, updatedCampaign);
+          
+          return processedState;
         });
 
         // This action now correctly resets hours for ALL politicians, including the player
@@ -318,6 +547,9 @@ export const createTimeSlice = (set, get) => {
         
         // Process daily staff tasks before AI actions
         get().actions.processDailyStaffTasks?.();
+        
+        // Check for bills that are now due for voting (after daily progression)
+        get().actions.processImpendingVotes?.();
 
         // --- PHASE 3: Post-date-advancement operations (using the NEW date) ---
         // Get the campaign state AFTER the date advancement. This is crucial for monthly updates and AI.

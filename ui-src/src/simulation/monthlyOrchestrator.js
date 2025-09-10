@@ -64,9 +64,20 @@ export class MonthlyOrchestrator {
       // Phase 1: Core Statistics Updates
       // These need to run first as other systems depend on updated stats
       results.executionOrder.push("statistics_update");
-      const statsResults = this.statisticsUpdater.updateCityStatistics(campaign);
-      results.statUpdates = statsResults.statUpdates;
-      results.newsItems.push(...statsResults.newsItems);
+      try {
+        const statsResults = this.statisticsUpdater.updateCityStatistics(campaign);
+        results.statUpdates = statsResults.statUpdates;
+        results.newsItems.push(...statsResults.newsItems);
+      } catch (statsError) {
+        console.error('Error in statistics update:', statsError);
+        results.errors.push({
+          phase: 'statistics_update',
+          error: statsError.message,
+          timestamp: new Date().toISOString()
+        });
+        // Continue with default/empty stats to prevent complete failure
+        results.statUpdates = {};
+      }
 
       // Phase 2: Budget Updates  
       // Run after stats are updated since budget calculations may depend on current stats

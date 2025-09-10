@@ -2,6 +2,8 @@
 
 import { decideAndAuthorAIBill } from "../aiProposal.js";
 import { getRandomElement } from "../../utils/core.js";
+import { getBillProgressionWorkflow, processBillStage, getNextBillStage } from "../../utils/billProgressionUtils.js";
+import { addDaysToDate } from "../../stores/legislationSlice.js";
 
 /**
  * Handles all legislative-related monthly updates including AI bill proposals
@@ -272,26 +274,30 @@ export class LegislativeUpdater {
     // Get current bills in various stages
     const activeBills = getFromStore()?.activeBills || [];
     const pendingBills = activeBills.filter(bill => 
-      bill.status === 'proposed' || bill.status === 'in_committee'
+      bill.status === 'proposed' || bill.status === 'in_committee' || bill.status === 'under_review'
     );
 
     // Process bill advancement through legislative process
     pendingBills.forEach(bill => {
       const advancement = this._processBillAdvancement(bill, campaign, getFromStore);
       if (advancement.statusChanged) {
+        // Calculate next stage scheduled date if bill is still progressing
+        const nextStageDate = this._calculateNextStageDate(advancement.newStatus, campaign.currentDate);
+        
         results.billUpdates.push({
           billId: bill.id,
           newStatus: advancement.newStatus,
-          statusReason: advancement.reason
+          statusReason: advancement.reason,
+          nextStageScheduledFor: nextStageDate
         });
 
         // Generate news for significant status changes
         if (advancement.newStatus === 'passed' || advancement.newStatus === 'failed') {
           results.newsItems.push({
-            headline: `${bill.name} ${advancement.newStatus === 'passed' ? 'Passes' : 'Fails'} City Council`,
+            headline: `${bill.name} ${advancement.newStatus === 'passed' ? 'Passes' : 'Fails'} ${bill.level === 'city' ? 'City Council' : 'Legislature'}`,
             summary: advancement.reason,
             type: "bill_outcome",
-            scope: "local",
+            scope: bill.level === 'city' ? "local" : (bill.level === 'state' ? "regional" : "national"),
             impact: advancement.newStatus === 'passed' ? "positive" : "neutral",
             relatedBillId: bill.id,
             date: campaign.currentDate
@@ -313,33 +319,152 @@ export class LegislativeUpdater {
       reason: ''
     };
 
-    // Simple simulation of bill progression
-    // In reality, this would depend on council composition, political capital, etc.
-    const progressChance = Math.random();
-
-    if (bill.status === 'proposed') {
-      if (progressChance < 0.3) {
-        advancement.statusChanged = true;
-        advancement.newStatus = 'in_committee';
-        advancement.reason = 'Bill advanced to committee review';
+    try {
+      // Get the political system and bill level
+      const politicalSystemId = campaign?.country?.politicalSystemId || 'PRESIDENTIAL_REPUBLIC';
+      const currentDate = campaign.currentDate;
+      
+      // Check if it's time for this bill to advance to the next stage
+      const shouldAdvance = this._shouldBillAdvance(bill, currentDate);
+      
+      if (!shouldAdvance) {
+        return advancement;
       }
-    } else if (bill.status === 'in_committee') {
-      if (progressChance < 0.25) {
-        // Bill passes committee and goes to full council vote
-        const voteChance = Math.random();
-        if (voteChance < 0.6) {
-          advancement.statusChanged = true;
-          advancement.newStatus = 'passed';
-          advancement.reason = 'Bill passed by city council';
-        } else {
-          advancement.statusChanged = true;
-          advancement.newStatus = 'failed';
-          advancement.reason = 'Bill failed to gain sufficient council support';
-        }
+
+      // Handle different bill statuses based on level and progression
+      if (bill.level === 'city') {
+        return this._processCityBillAdvancement(bill, campaign, getFromStore);
+      } else {
+        return this._processStateNationalBillAdvancement(bill, campaign, getFromStore, politicalSystemId);
+      }
+      
+    } catch (error) {
+      console.warn(`Error processing bill advancement for ${bill.id}:`, error);
+      return advancement;
+    }
+  }
+
+  /**
+   * Check if a bill should advance to the next stage based on its scheduled dates
+   */
+  _shouldBillAdvance(bill, currentDate) {
+    // Check if we have a scheduled date for the current stage
+    if (bill.stageScheduledFor) {
+      const scheduledDate = new Date(
+        bill.stageScheduledFor.year,
+        bill.stageScheduledFor.month - 1,
+        bill.stageScheduledFor.day
+      );
+      const today = new Date(
+        currentDate.year,
+        currentDate.month - 1,
+        currentDate.day
+      );
+      
+      return today >= scheduledDate;
+    }
+    
+    // If no scheduled date, use random chance for advancement
+    return Math.random() < 0.3;
+  }
+
+  /**
+   * Process advancement for city-level bills (no committees)
+   */
+  _processCityBillAdvancement(bill, campaign, getFromStore) {
+    const advancement = {
+      statusChanged: false,
+      newStatus: bill.status,
+      reason: ''
+    };
+
+    const progressChance = Math.random();
+    
+    if (bill.status === 'under_review') {
+      if (progressChance < 0.4) {
+        // Move to pending vote
+        advancement.statusChanged = true;
+        advancement.newStatus = 'pending_vote';
+        advancement.reason = 'Bill scheduled for city council vote';
+      }
+    } else if (bill.status === 'pending_vote') {
+      // Simulate the vote outcome
+      const voteChance = Math.random();
+      if (voteChance < 0.6) {
+        advancement.statusChanged = true;
+        advancement.newStatus = 'passed';
+        advancement.reason = 'Bill passed by city council';
+      } else {
+        advancement.statusChanged = true;
+        advancement.newStatus = 'failed';
+        advancement.reason = 'Bill failed to gain sufficient council support';
       }
     }
 
     return advancement;
+  }
+
+  /**
+   * Process advancement for state/national bills (with committees)
+   */
+  _processStateNationalBillAdvancement(bill, campaign, getFromStore, politicalSystemId) {
+    const advancement = {
+      statusChanged: false,
+      newStatus: bill.status,
+      reason: ''
+    };
+
+    const progressChance = Math.random();
+    
+    if (bill.status === 'in_committee') {
+      if (progressChance < 0.3) {
+        // Committee votes to advance bill
+        const committeeVoteChance = Math.random();
+        if (committeeVoteChance < 0.7) {
+          advancement.statusChanged = true;
+          advancement.newStatus = 'pending_vote';
+          advancement.reason = 'Bill advanced from committee to floor vote';
+        } else {
+          advancement.statusChanged = true;
+          advancement.newStatus = 'failed';
+          advancement.reason = 'Bill failed in committee review';
+        }
+      }
+    } else if (bill.status === 'pending_vote') {
+      // Simulate the floor vote outcome
+      const voteChance = Math.random();
+      if (voteChance < 0.6) {
+        advancement.statusChanged = true;
+        advancement.newStatus = 'passed';
+        advancement.reason = `Bill passed by ${bill.level} legislature`;
+      } else {
+        advancement.statusChanged = true;
+        advancement.newStatus = 'failed';
+        advancement.reason = `Bill failed to gain sufficient ${bill.level} legislative support`;
+      }
+    }
+
+    return advancement;
+  }
+
+  /**
+   * Calculate when the next stage should be scheduled
+   */
+  _calculateNextStageDate(status, currentDate) {
+    if (status === 'passed' || status === 'failed') {
+      return null; // No next stage for completed bills
+    }
+    
+    let daysToAdd;
+    if (status === 'pending_vote') {
+      daysToAdd = Math.floor(Math.random() * 14) + 7; // 1-2 weeks for votes
+    } else if (status === 'under_review') {
+      daysToAdd = Math.floor(Math.random() * 21) + 14; // 2-5 weeks for review
+    } else {
+      daysToAdd = Math.floor(Math.random() * 30) + 14; // 2-6 weeks for other stages
+    }
+    
+    return addDaysToDate(currentDate, daysToAdd);
   }
 
   /**

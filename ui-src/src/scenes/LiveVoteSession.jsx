@@ -6,6 +6,7 @@ import { CITY_POLICIES } from "../data/cityPolicyDefinitions";
 import { STATE_POLICIES } from "../data/statePolicyDefinitions";
 import { FEDERAL_POLICIES } from "../data/nationalPolicyDefinitions";
 import { GENERAL_POLICIES } from "../data/generalPolicyDefinitions";
+import { COMMITTEE_TYPES } from "../data/legislativeCommittees";
 import { Pie } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, Title } from "chart.js";
 import "./LiveVoteSession.css";
@@ -37,12 +38,88 @@ const LiveVoteSession = () => {
     return levelSlice.proposedBills.find((b) => b.id === billId) || null;
   });
 
-  const councilMembers = useMemo(() => {
+  // Determine if this is a committee vote or full legislature vote
+  const isCommitteeVote = useMemo(() => {
+    return bill?.currentStage && (
+      bill.currentStage.includes('committee') || 
+      bill.currentStage === 'committee_assignment' ||
+      bill.currentStage === 'committee_markup' ||
+      bill.currentStage === 'committee_review'
+    );
+  }, [bill]);
+
+  // Get committee members if this is a committee vote
+  const committeeMembers = useMemo(() => {
+    if (!isCommitteeVote || !bill || !governmentOffices) return [];
+    
+    // Determine which committee should handle this bill based on its policies
+    const relevantCommitteeType = getRelevantCommitteeForBill(bill);
+    if (!relevantCommitteeType) return [];
+
+    // Generate committee membership (similar to StateOverviewTab logic)
+    const allLegislators = governmentOffices.filter(office => 
+      office.level?.includes('_house') || office.level?.includes('_senate')
+    );
+    
+    const legislatureSize = allLegislators.length;
+    const committeeSize = Math.max(3, Math.floor(legislatureSize * 0.18));
+    
+    // For demo purposes, use a consistent selection based on bill ID
+    const seed = parseInt(bill.id.slice(-4), 16) || 1;
+    const shuffledLegislators = [...allLegislators].sort((a, b) => {
+      const aHash = (a.officeId?.charCodeAt(0) || 0) * seed;
+      const bHash = (b.officeId?.charCodeAt(0) || 0) * seed;
+      return aHash - bHash;
+    });
+    
+    return shuffledLegislators.slice(0, Math.min(committeeSize, shuffledLegislators.length));
+  }, [isCommitteeVote, bill, governmentOffices]);
+
+  // Get voting members (either committee or full legislature)
+  const votingMembers = useMemo(() => {
+    if (isCommitteeVote) {
+      return committeeMembers;
+    }
     if (!activeCampaign || !session) return [];
     return getLegislatureDetails(activeCampaign, session.level)?.members || [];
-  }, [activeCampaign, session]);
+  }, [isCommitteeVote, committeeMembers, activeCampaign, session]);
 
-  const playerIsVoter = useMemo(() => councilMembers.some((m) => m.id === playerId), [councilMembers, playerId]);
+  const playerIsVoter = useMemo(() => {
+    const playerId = useGameStore.getState().activeCampaign?.playerPoliticianId;
+    return votingMembers.some((m) => m.id === playerId);
+  }, [votingMembers]);
+
+  // Helper function to determine relevant committee for a bill
+  function getRelevantCommitteeForBill(bill) {
+    if (!bill || !bill.policies || bill.policies.length === 0) return 'JUDICIARY';
+    
+    const policyId = bill.policies[0].policyId;
+    
+    // Map policy types to committees (simplified mapping)
+    const policyCommitteeMap = {
+      'budget': 'FINANCE',
+      'tax': 'FINANCE', 
+      'finance': 'FINANCE',
+      'education': 'EDUCATION',
+      'health': 'HEALTH',
+      'environment': 'ENVIRONMENT',
+      'agriculture': 'AGRICULTURE',
+      'transportation': 'TRANSPORTATION',
+      'commerce': 'COMMERCE',
+      'defense': 'DEFENSE',
+      'foreign': 'FOREIGN_AFFAIRS',
+    };
+    
+    // Find matching committee based on policy ID keywords
+    for (const [keyword, committee] of Object.entries(policyCommitteeMap)) {
+      if (policyId.toLowerCase().includes(keyword)) {
+        return committee;
+      }
+    }
+    
+    // Default to Judiciary for legal/general policies
+    return 'JUDICIARY';
+  }
 
   const activeLegislation = useGameStore((state) => (session ? state[session.level]?.activeLegislation : []));
   const proposedBillsForLevel = useGameStore((state) => (session ? state[session.level]?.proposedBills : []));
@@ -68,7 +145,7 @@ const LiveVoteSession = () => {
   useEffect(() => {
     if (!bill || !session) return;
 
-    const unvotedMembers = councilMembers.filter(
+    const unvotedMembers = votingMembers.filter(
       (m) => m.id !== playerId && !(bill.councilVotesCast && bill.councilVotesCast[m.id])
     );
     if (unvotedMembers.length === 0) return;
@@ -92,7 +169,7 @@ const LiveVoteSession = () => {
     return () => clearInterval(interval);
   }, [
     bill,
-    councilMembers,
+    votingMembers,
     timeScale,
     relevantStats,
     activeLegislation,
@@ -105,10 +182,10 @@ const LiveVoteSession = () => {
   ]);
 
   useEffect(() => {
-    if (!bill || councilMembers.length === 0) return;
+    if (!bill || votingMembers.length === 0) return;
 
     const totalVotesCast = Object.keys(bill.councilVotesCast || {}).length;
-    const totalVoters = councilMembers.length;
+    const totalVoters = votingMembers.length;
 
     if (totalVotesCast >= totalVoters) {
       const timer = setTimeout(() => {
@@ -117,14 +194,14 @@ const LiveVoteSession = () => {
 
       return () => clearTimeout(timer);
     }
-  }, [bill, councilMembers, endVotingSession]);
+  }, [bill, votingMembers, endVotingSession]);
 
   const handlePlayerVote = (voteChoice) => {
     recordCouncilVote(bill.id, playerId, voteChoice);
   };
 
   const handleSkip = () => {
-    councilMembers.forEach((m) => {
+    votingMembers.forEach((m) => {
       if (m.id !== playerId && !(bill.councilVotesCast && bill.councilVotesCast[m.id])) {
         const voteChoice = decideAIVote(
           m,
@@ -144,7 +221,7 @@ const LiveVoteSession = () => {
   // Calculate vote tallies by party
   const votesByParty = useMemo(() => {
     const partyVotes = {};
-    councilMembers.forEach((member) => {
+    votingMembers.forEach((member) => {
       const partyName = member.partyName || 'Independent';
       const vote = bill.councilVotesCast?.[member.id] || 'pending';
       
@@ -154,14 +231,14 @@ const LiveVoteSession = () => {
       partyVotes[partyName][vote]++;
     });
     return partyVotes;
-  }, [councilMembers, bill.councilVotesCast]);
+  }, [votingMembers, bill.councilVotesCast]);
 
   const yeaCount = bill.votes?.yea?.length || 0;
   const nayCount = bill.votes?.nay?.length || 0;
   const abstainCount = bill.votes?.abstain?.length || 0;
 
   // Chart data for overall vote distribution
-  const pendingCount = councilMembers.length - yeaCount - nayCount - abstainCount;
+  const pendingCount = votingMembers.length - yeaCount - nayCount - abstainCount;
 
   // Resolve theme colors from CSS variables (with sensible fallbacks)
   const rootStyles = typeof window !== 'undefined' ? getComputedStyle(document.documentElement) : null;
@@ -220,17 +297,25 @@ const LiveVoteSession = () => {
     <div className="live-vote-session-overlay">
       <div className="live-vote-panel">
         <div className="vote-session-header">
-          <h2>VOTING IN SESSION</h2>
+          <h2>{isCommitteeVote ? 'COMMITTEE VOTE IN SESSION' : 'FLOOR VOTE IN SESSION'}</h2>
           <h3>{bill.name}</h3>
           <p>Proposed by: {bill.proposerName}</p>
+          {isCommitteeVote && (
+            <p className="committee-info">
+              <span className="committee-stage">
+                {bill.currentStage?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())} Stage
+              </span>
+              • {votingMembers.length} Committee Members
+            </p>
+          )}
         </div>
         
         <div className="vote-session-content">
           {/* Left Panel - Voters List */}
           <div className="voters-panel">
-            <h4>Council Members</h4>
+            <h4>{isCommitteeVote ? 'Committee Members' : 'Legislature Members'}</h4>
             <ul className="council-voter-list">
-              {councilMembers.map((m) => {
+              {votingMembers.map((m) => {
                 const currentVote = bill.councilVotesCast
                   ? bill.councilVotesCast[m.id]
                   : "pending";
@@ -274,7 +359,7 @@ const LiveVoteSession = () => {
                   <span className="tally-label">Abstain</span>
                 </div>
                 <div className="tally-item tally-pending">
-                  <span className="tally-number">{councilMembers.length - yeaCount - nayCount - abstainCount}</span>
+                  <span className="tally-number">{votingMembers.length - yeaCount - nayCount - abstainCount}</span>
                   <span className="tally-label">Pending</span>
                 </div>
               </div>

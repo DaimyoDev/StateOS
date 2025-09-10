@@ -490,8 +490,7 @@ export class CoalitionEffectBatch {
           currentState.mobilization + effect.total
         ));
         
-        // Log mobilization changes
-        console.log(`[COALITION EFFECT] ${coalitionId} mobilization: ${(oldMobilization * 100).toFixed(1)}% → ${(newMobilization * 100).toFixed(1)}% (${effect.total >= 0 ? '+' : ''}${(effect.total * 100).toFixed(1)}%)`);
+        // Removed console logging for cleaner output
         
         coalitionSoA.state.set(coalitionId, {
           ...currentState,
@@ -538,8 +537,7 @@ export class CoalitionEffectBatch {
           currentState.mobilization + totalEffect
         ));
         
-        // Log jurisdiction-wide mobilization changes
-        console.log(`[COALITION JURISDICTION] ${coalitionId} mobilization: ${(oldMobilization * 100).toFixed(1)}% → ${(newMobilization * 100).toFixed(1)}% (${totalEffect >= 0 ? '+' : ''}${(totalEffect * 100).toFixed(1)}%)`);
+        // Removed console logging for cleaner output
         
         coalitionSoA.state.set(coalitionId, {
           ...currentState,
@@ -744,12 +742,7 @@ export const calculateEventCoalitionEffects = (event, jurisdictionType = 'city')
     return effects;
   }
   
-  console.log(`[COALITION EVENTS] Found pattern for "${event.type}" affecting ${Object.keys(eventPattern).length} coalitions:`);
-  for (const [coalitionId, effect] of Object.entries(eventPattern)) {
-    if (effect.mobilization) {
-      console.log(`[COALITION EVENTS] - ${coalitionId}: mobilization ${effect.mobilization >= 0 ? '+' : ''}${(effect.mobilization * 100).toFixed(1)}%`);
-    }
-  }
+  // Removed console logging for cleaner output
 
   // Apply magnitude scaling based on jurisdiction type
   const magnitudeScaling = {

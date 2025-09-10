@@ -10,7 +10,7 @@ import {
   calculateHealthcareMetrics,
   calculateCrimeRate,
   calculatePovertyRate,
-} from "../utils/statCalculationCore";
+} from "../utils/statCalculationEngine.js";
 import { calculateNumberOfSeats } from "../utils/electionUtils";
 import {
   initializePartyIdeologyScores,

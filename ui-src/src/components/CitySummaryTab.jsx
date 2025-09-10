@@ -98,6 +98,43 @@ const CitySummaryTab = ({ cityData }) => {
     return `${numValue.toFixed(precision)}%`;
   };
 
+  // Education quality helpers for numerical metrics
+  const getEducationQualityLevel = (stats) => {
+    const score = getEducationCompositeScore(stats);
+    if (score >= 80) return 'excellent';
+    if (score >= 65) return 'good';
+    if (score >= 45) return 'average';
+    return 'poor';
+  };
+
+  const getEducationQualityPercentage = (stats) => {
+    return getEducationCompositeScore(stats);
+  };
+
+  const getEducationCompositeScore = (stats) => {
+    // Use educationCompositeScore if available from the unified system
+    if (stats?.educationCompositeScore != null) {
+      return stats.educationCompositeScore;
+    }
+    
+    // Fallback to legacy educationQuality if available
+    if (stats?.educationQuality) {
+      const qual = stats.educationQuality.toLowerCase();
+      if (qual === 'excellent') return 90;
+      if (qual === 'good') return 75;
+      if (qual === 'average') return 50;
+      if (qual === 'poor') return 25;
+      if (qual === 'very poor') return 10;
+    }
+    
+    return 50; // Default neutral score
+  };
+
+  const getEducationDisplayValue = (stats) => {
+    const score = getEducationCompositeScore(stats);
+    return `${score}/100`;
+  };
+
   return (
     <div className="city-summary-container">
       {/* Hero Section with City Overview */}
@@ -164,14 +201,11 @@ const CitySummaryTab = ({ cityData }) => {
                   <div className="quality-bar-container">
                     <span className="quality-label">Education</span>
                     <div className="quality-bar">
-                      <div className={`quality-fill ${educationQuality?.toLowerCase()}`} 
-                           style={{width: educationQuality === 'excellent' ? '100%' : 
-                                         educationQuality === 'good' ? '75%' : 
-                                         educationQuality === 'average' ? '50%' : 
-                                         educationQuality === 'poor' ? '25%' : '10%'}}>
+                      <div className={`quality-fill ${getEducationQualityLevel(stats)}`} 
+                           style={{width: `${getEducationQualityPercentage(stats)}%`}}>
                       </div>
                     </div>
-                    <span className="quality-value">{educationQuality || "N/A"}</span>
+                    <span className="quality-value">{getEducationDisplayValue(stats)}</span>
                   </div>
                 </div>
                 <div className="quality-item">

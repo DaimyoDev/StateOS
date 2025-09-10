@@ -6,6 +6,7 @@ import AcademicPerformanceChart from "../../charts/AcademicPerformanceChart";
 import CareerPathwaysChart from "../../charts/CareerPathwaysChart";
 import PoliticianCard from "../../PoliticianCard"; // NEW: Import PoliticianCard
 import CitySummaryTab from "../../CitySummaryTab"; // NEW: Import CitySummaryTab
+import CityServicesTab from "./CityServicesTab"; // NEW: Import CityServicesTab
 import "./GovernmentSubTabStyles.css";
 import "./CityOverviewTab.css";
 
@@ -68,6 +69,39 @@ const formatLawValue = (key, value) => {
     return value.replace(/_/g, " ").replace(/^./, (str) => str.toUpperCase());
   }
   return String(value);
+};
+
+// Education quality helpers for numerical metrics (same as CitySummaryTab)
+const getEducationQualityLevel = (stats) => {
+  const score = getEducationCompositeScore(stats);
+  if (score >= 80) return 'excellent';
+  if (score >= 65) return 'good';
+  if (score >= 45) return 'average';
+  return 'poor';
+};
+
+const getEducationCompositeScore = (stats) => {
+  // Use educationCompositeScore if available from the unified system
+  if (stats?.educationCompositeScore != null) {
+    return stats.educationCompositeScore;
+  }
+  
+  // Fallback to legacy educationQuality if available
+  if (stats?.educationQuality) {
+    const qual = stats.educationQuality.toLowerCase();
+    if (qual === 'excellent') return 90;
+    if (qual === 'good') return 75;
+    if (qual === 'average') return 50;
+    if (qual === 'poor') return 25;
+    if (qual === 'very poor') return 10;
+  }
+  
+  return 50; // Default neutral score
+};
+
+const getEducationDisplayValue = (stats) => {
+  const score = getEducationCompositeScore(stats);
+  return `${score}/100`;
 };
 
 const CityOverviewTab = ({ campaignData, activeSubTab = "summary", governmentSubTab = "offices" }) => {
@@ -910,86 +944,7 @@ const CityOverviewTab = ({ campaignData, activeSubTab = "summary", governmentSub
           </section>
         );
       case "services":
-        return (
-          <section className="city-section">
-            <h4>Public Services & Infrastructure Ratings</h4>
-            <div className="city-stats-grid three-col">
-              <div className="stat-item">
-                <strong>Crime Rate:</strong>{" "}
-                <span className="stat-descriptor">
-                  {crimeRatePer1000?.toFixed(1) || "N/A"} per 1,000 residents
-                </span>
-              </div>
-              <div className="stat-item">
-                <strong>Poverty Rate:</strong>{" "}
-                <span className="stat-descriptor">
-                  {formatPercentage(povertyRate, 1)}
-                </span>
-              </div>
-              <div className="stat-item">
-                <strong>Education Quality:</strong>{" "}
-                <span
-                  className={`stat-descriptor rating-${(
-                    educationQuality || "average"
-                  )
-                    .toLowerCase()
-                    .replace(/\s+/g, "-")}`}
-                >
-                  {getRatingDescriptor(educationQuality)}
-                </span>
-              </div>
-              <div className="stat-item">
-                <strong>Infrastructure State:</strong>{" "}
-                <span
-                  className={`stat-descriptor rating-${(
-                    infrastructureState || "average"
-                  )
-                    .toLowerCase()
-                    .replace(/\s+/g, "-")}`}
-                >
-                  {getRatingDescriptor(infrastructureState)}
-                </span>
-              </div>
-              <div className="stat-item">
-                <strong>Healthcare Coverage:</strong>{" "}
-                <span className="stat-descriptor">
-                  {formatPercentage(healthcareCoverage, 1)}
-                </span>
-              </div>
-              <div className="stat-item">
-                {" "}
-                <strong>Cost Per Person (Healthcare):</strong>{" "}
-                <span className="stat-descriptor">
-                  ${healthcareCostPerPerson?.toFixed(2) || "N/A"}
-                </span>
-              </div>
-              <div className="stat-item">
-                <strong>Environment Rating:</strong>{" "}
-                <span
-                  className={`stat-descriptor rating-${(
-                    environmentRating || "average"
-                  )
-                    .toLowerCase()
-                    .replace(/\s+/g, "-")}`}
-                >
-                  {getRatingDescriptor(environmentRating)}
-                </span>
-              </div>
-              <div className="stat-item">
-                <strong>Culture & Arts Rating:</strong>{" "}
-                <span
-                  className={`stat-descriptor rating-${(
-                    cultureArtsRating || "average"
-                  )
-                    .toLowerCase()
-                    .replace(/\s+/g, "-")}`}
-                >
-                  {getRatingDescriptor(cultureArtsRating)}
-                </span>
-              </div>
-            </div>
-          </section>
-        );
+        return <CityServicesTab cityData={cityData} themeColors={currentTheme?.colors} themeFonts={currentTheme?.fonts} />;
       case "budget":
         return (
           <>

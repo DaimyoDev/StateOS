@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useCallback } from "react";
 import "./GovernmentSubTabStyles.css";
 import "./CityOverviewTab.css"; // Using shared styles
+import "./CommitteeStyles.css";
 import CouncilCompositionPieChart from "../../charts/CouncilCompositionPieChart";
 import PoliticianCard from "../../PoliticianCard";
 import StateSummaryTab from "../../StateSummaryTab"; // NEW: Import StateSummaryTab
@@ -89,6 +90,7 @@ const getLegislativeChamberMembers = (
 
 const StateOverviewTab = ({ campaignData, activeSubTab = "summary", governmentSubTab = "offices" }) => {
   const [governmentFilter, setGovernmentFilter] = useState("all");
+  const [selectedCommittee, setSelectedCommittee] = useState(null);
   
   // Subscribe to coalition system changes directly from the store
   const coalitionSystems = useGameStore((state) => state.activeCampaign?.coalitionSystems);
@@ -273,6 +275,68 @@ const StateOverviewTab = ({ campaignData, activeSubTab = "summary", governmentSu
     () => getCompositionForChamber(lowerChamberOffices),
     [lowerChamberOffices, getCompositionForChamber]
   );
+
+  // Generate committee assignments from current legislature members
+  const stateCommittees = useMemo(() => {
+    if (!committeeSystem) return {};
+    
+    const allLegislators = [...lowerChamberOffices, ...upperChamberOffices];
+    const committees = {};
+    
+    // Calculate committee sizes (roughly 15-20% of legislature for major committees)
+    const legislatureSize = allLegislators.length;
+    const majorCommitteeSize = Math.max(3, Math.floor(legislatureSize * 0.18));
+    const minorCommitteeSize = Math.max(3, Math.floor(legislatureSize * 0.12));
+    
+    // Assign members to committees
+    Object.entries(COMMITTEE_TYPES.STANDING).forEach(([key, committee], index) => {
+      const committeeSize = ['JUDICIARY', 'FINANCE', 'FOREIGN_AFFAIRS'].includes(key) ? 
+        majorCommitteeSize : minorCommitteeSize;
+      
+      // Randomly assign members (in a real system this would be more sophisticated)
+      const shuffledLegislators = [...allLegislators].sort(() => Math.random() - 0.5);
+      const members = shuffledLegislators.slice(0, committeeSize);
+      
+      // Select chair (usually from majority party)
+      const majorityParty = lowerChamberComposition.length > 0 ? 
+        lowerChamberComposition.reduce((a, b) => a.popularity > b.popularity ? a : b) : null;
+      
+      const majorityMembers = members.filter(m => {
+        const politician = getUpdatedPolitician(m.holder);
+        return politician?.partyName === majorityParty?.name;
+      });
+      
+      const chair = majorityMembers.length > 0 ? majorityMembers[0] : members[0];
+      
+      committees[key] = {
+        ...committee,
+        id: key,
+        members: members,
+        chair: chair,
+        size: members.length
+      };
+    });
+
+    // Handle Select Committees
+    Object.entries(COMMITTEE_TYPES.SELECT).forEach(([key, committee]) => {
+      const committeeSize = Math.max(3, Math.floor(legislatureSize * 0.10));
+      const shuffledLegislators = [...allLegislators].sort(() => Math.random() - 0.5);
+      const members = shuffledLegislators.slice(0, committeeSize);
+      
+      const chair = members[0];
+      
+      committees[key] = {
+        ...committee,
+        id: key,
+        members: members,
+        chair: chair,
+        size: members.length,
+        isSelect: true
+      };
+    });
+    
+    return committees;
+  }, [committeeSystem, lowerChamberOffices, upperChamberOffices, lowerChamberComposition, getUpdatedPolitician]);
   
   const filteredLowerChamberMembers = useMemo(() => {
     if (governmentFilter === "party") {
@@ -1225,12 +1289,12 @@ const StateOverviewTab = ({ campaignData, activeSubTab = "summary", governmentSu
                 )}
                 
                 {/* Committees Section */}
-                {committeeSystem && (
+                {committeeSystem && Object.keys(stateCommittees).length > 0 && (
                   <div className="legislature-committees-section">
                     <div className="committees-header">
                       <h6>Legislative Committees</h6>
                       <span className="committees-subtitle">
-                        {committeeSystem.systemName} • {Object.keys(COMMITTEE_TYPES.STANDING).length} Standing Committees
+                        {committeeSystem.systemName} • {Object.keys(stateCommittees).filter(k => !stateCommittees[k].isSelect).length} Standing, {Object.keys(stateCommittees).filter(k => stateCommittees[k].isSelect).length} Select
                       </span>
                     </div>
 
@@ -1248,87 +1312,207 @@ const StateOverviewTab = ({ campaignData, activeSubTab = "summary", governmentSu
                       </div>
                     </div>
 
-                    {/* Standing Committees Grid */}
-                    <div className="committees-grid">
-                      <div className="committees-category">
-                        <h6>Standing Committees</h6>
-                        <div className="committee-cards-grid">
-                          {Object.entries(COMMITTEE_TYPES.STANDING).map(([key, committee]) => (
-                            <div key={key} className="committee-card">
-                              <div className="committee-header">
-                                <h5 className="committee-name">{committee.name}</h5>
-                                <span className="committee-status vacant">Vacant Chair</span>
-                              </div>
-                              
-                              <div className="committee-details">
-                                <div className="jurisdiction-section">
-                                  <strong>Jurisdiction:</strong>
-                                  <div className="jurisdiction-tags">
-                                    {committee.jurisdiction.map((area) => (
-                                      <span key={area} className="jurisdiction-tag">
-                                        {area.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                                      </span>
-                                    ))}
-                                  </div>
-                                </div>
-                                
-                                <div className="powers-section">
-                                  <strong>Key Powers:</strong>
-                                  <ul className="powers-list">
-                                    {committee.keyPowers.map((power) => (
-                                      <li key={power}>
-                                        {power.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                                      </li>
-                                    ))}
-                                  </ul>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Select Committees if applicable */}
-                      {Object.keys(COMMITTEE_TYPES.SELECT).length > 0 && (
+                    {/* Committees Overview or Detail */}
+                    {!selectedCommittee ? (
+                      <div className="committees-grid">
+                        {/* Standing Committees */}
                         <div className="committees-category">
-                          <h6>Select Committees</h6>
+                          <h6>Standing Committees</h6>
                           <div className="committee-cards-grid">
-                            {Object.entries(COMMITTEE_TYPES.SELECT).map(([key, committee]) => (
-                              <div key={key} className="committee-card select-committee">
-                                <div className="committee-header">
-                                  <h5 className="committee-name">{committee.name}</h5>
-                                  <span className="committee-status vacant">Vacant Chair</span>
-                                </div>
-                                
-                                <div className="committee-details">
-                                  <div className="jurisdiction-section">
-                                    <strong>Jurisdiction:</strong>
-                                    <div className="jurisdiction-tags">
-                                      {committee.jurisdiction.map((area) => (
-                                        <span key={area} className="jurisdiction-tag">
-                                          {area.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                                        </span>
-                                      ))}
-                                    </div>
+                            {Object.entries(stateCommittees).filter(([key, committee]) => !committee.isSelect).map(([key, committee]) => {
+                              const chairPolitician = committee.chair ? getUpdatedPolitician(committee.chair.holder) : null;
+                              
+                              return (
+                                <div key={key} className="committee-card clickable" onClick={() => setSelectedCommittee(committee)}>
+                                  <div className="committee-header">
+                                    <h5 className="committee-name">{committee.name}</h5>
+                                    <span className={`committee-status ${chairPolitician ? 'active' : 'vacant'}`}>
+                                      {chairPolitician ? `Chair: ${chairPolitician.firstName} ${chairPolitician.lastName}` : 'Vacant Chair'}
+                                    </span>
                                   </div>
                                   
-                                  <div className="powers-section">
-                                    <strong>Key Powers:</strong>
-                                    <ul className="powers-list">
-                                      {committee.keyPowers.map((power) => (
-                                        <li key={power}>
-                                          {power.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                                        </li>
-                                      ))}
-                                    </ul>
+                                  <div className="committee-summary">
+                                    <div className="committee-stats">
+                                      <div className="stat-item">
+                                        <span className="stat-value">{committee.size}</span>
+                                        <span className="stat-label">Members</span>
+                                      </div>
+                                      <div className="stat-item">
+                                        <span className="stat-value">{committee.jurisdiction.length}</span>
+                                        <span className="stat-label">Areas</span>
+                                      </div>
+                                    </div>
+                                    
+                                    <div className="committee-preview">
+                                      <strong>Top Jurisdictions:</strong>
+                                      <div className="preview-tags">
+                                        {committee.jurisdiction.slice(0, 3).map((area) => (
+                                          <span key={area} className="preview-tag">
+                                            {area.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                          </span>
+                                        ))}
+                                        {committee.jurisdiction.length > 3 && (
+                                          <span className="preview-tag more">+{committee.jurisdiction.length - 3} more</span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Select Committees */}
+                        {Object.entries(stateCommittees).some(([key, committee]) => committee.isSelect) && (
+                          <div className="committees-category">
+                            <h6>Select Committees</h6>
+                            <div className="committee-cards-grid">
+                              {Object.entries(stateCommittees).filter(([key, committee]) => committee.isSelect).map(([key, committee]) => {
+                                const chairPolitician = committee.chair ? getUpdatedPolitician(committee.chair.holder) : null;
+                                
+                                return (
+                                  <div key={key} className="committee-card select-committee clickable" onClick={() => setSelectedCommittee(committee)}>
+                                    <div className="committee-header">
+                                      <h5 className="committee-name">{committee.name}</h5>
+                                      <span className={`committee-status ${chairPolitician ? 'active' : 'vacant'}`}>
+                                        {chairPolitician ? `Chair: ${chairPolitician.firstName} ${chairPolitician.lastName}` : 'Vacant Chair'}
+                                      </span>
+                                    </div>
+                                    
+                                    <div className="committee-summary">
+                                      <div className="committee-stats">
+                                        <div className="stat-item">
+                                          <span className="stat-value">{committee.size}</span>
+                                          <span className="stat-label">Members</span>
+                                        </div>
+                                        <div className="stat-item">
+                                          <span className="stat-value">Select</span>
+                                          <span className="stat-label">Type</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      /* Committee Detail View */
+                      <div className="committee-detail-view">
+                        <div className="committee-detail-header">
+                          <div className="detail-title-section">
+                            <button className="back-button" onClick={() => setSelectedCommittee(null)}>
+                              ← Back to Committees
+                            </button>
+                            <h4>{selectedCommittee.name}</h4>
+                            <span className={`committee-type-badge ${selectedCommittee.isSelect ? 'select' : 'standing'}`}>
+                              {selectedCommittee.isSelect ? 'Select Committee' : 'Standing Committee'}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="committee-detail-content">
+                          {/* Committee Leadership */}
+                          <div className="committee-leadership">
+                            <h5>Committee Leadership</h5>
+                            {selectedCommittee.chair ? (
+                              <div className="committee-chair-card">
+                                <div className="chair-info">
+                                  <div className="chair-name-section">
+                                    <h6 
+                                      className="chair-name clickable"
+                                      onClick={() => handlePoliticianClick(getUpdatedPolitician(selectedCommittee.chair.holder))}
+                                    >
+                                      {getUpdatedPolitician(selectedCommittee.chair.holder)?.firstName} {getUpdatedPolitician(selectedCommittee.chair.holder)?.lastName}
+                                    </h6>
+                                    <span className="chair-title">Committee Chair</span>
+                                    <span className="chair-party" style={{ color: getUpdatedPolitician(selectedCommittee.chair.holder)?.partyColor || "#888" }}>
+                                      {getUpdatedPolitician(selectedCommittee.chair.holder)?.partyName || "Independent"}
+                                    </span>
+                                  </div>
+                                  <div className="chair-stats">
+                                    <div className="stat-mini">
+                                      <span className="stat-label">District</span>
+                                      <span className="stat-value">
+                                        {formatOfficeTitleForDisplay(selectedCommittee.chair, stateName)}
+                                      </span>
+                                    </div>
                                   </div>
                                 </div>
                               </div>
-                            ))}
+                            ) : (
+                              <p>No chair assigned</p>
+                            )}
+                          </div>
+
+                          {/* Committee Members */}
+                          <div className="committee-members">
+                            <h5>Committee Members ({selectedCommittee.size})</h5>
+                            <div className="committee-members-grid">
+                              {selectedCommittee.members.map((member, index) => {
+                                const politician = getUpdatedPolitician(member.holder);
+                                const isChair = selectedCommittee.chair?.officeId === member.officeId;
+                                
+                                return (
+                                  <div key={member.officeId} className={`committee-member-card ${isChair ? 'chair' : ''}`}>
+                                    <div className="member-info">
+                                      <div className="member-name-section">
+                                        <p 
+                                          className="member-name clickable"
+                                          onClick={() => handlePoliticianClick(politician)}
+                                        >
+                                          {politician?.firstName} {politician?.lastName}
+                                        </p>
+                                        {isChair && <span className="chair-badge">Chair</span>}
+                                        <span className="member-district">
+                                          {formatOfficeTitleForDisplay(member, stateName)}
+                                        </span>
+                                      </div>
+                                      <div className="member-party-info">
+                                        <span 
+                                          className="member-party" 
+                                          style={{ color: politician?.partyColor || "#888" }}
+                                        >
+                                          {politician?.partyName || "Independent"}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {/* Committee Jurisdiction & Powers */}
+                          <div className="committee-details-full">
+                            <div className="jurisdiction-full">
+                              <h5>Jurisdiction</h5>
+                              <div className="jurisdiction-areas">
+                                {selectedCommittee.jurisdiction.map((area) => (
+                                  <span key={area} className="jurisdiction-area">
+                                    {area.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                            
+                            <div className="powers-full">
+                              <h5>Key Powers</h5>
+                              <ul className="powers-detailed-list">
+                                {selectedCommittee.keyPowers.map((power) => (
+                                  <li key={power}>
+                                    {power.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
                           </div>
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

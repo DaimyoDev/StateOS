@@ -5,6 +5,7 @@ import CouncilCompositionPieChart from "../../charts/CouncilCompositionPieChart"
 import { COMMITTEE_SYSTEMS, COMMITTEE_TYPES } from "../../../data/legislativeCommittees";
 import "./GovernmentSubTabStyles.css";
 import "./CityOverviewTab.css"; // Reusing styles for consistency
+import "./CommitteeStyles.css";
 
 // Helper functions can be shared from another util file
 const formatPercentage = (value, precision = 1) =>
@@ -494,27 +495,30 @@ const NationalOverviewTab = ({ campaignData, activeSubTab = "summary", governmen
                                 <span className="committee-status vacant">Vacant Chair</span>
                               </div>
                               
-                              <div className="committee-details">
-                                <div className="jurisdiction-section">
-                                  <strong>Jurisdiction:</strong>
-                                  <div className="jurisdiction-tags">
-                                    {committee.jurisdiction.map((area) => (
-                                      <span key={area} className="jurisdiction-tag">
-                                        {area.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                                      </span>
-                                    ))}
+                              <div className="committee-summary">
+                                <div className="committee-stats">
+                                  <div className="stat-item">
+                                    <span className="stat-value">~{Math.floor(Math.random() * 10 + 5)}</span>
+                                    <span className="stat-label">Members</span>
+                                  </div>
+                                  <div className="stat-item">
+                                    <span className="stat-value">{committee.jurisdiction.length}</span>
+                                    <span className="stat-label">Areas</span>
                                   </div>
                                 </div>
                                 
-                                <div className="powers-section">
-                                  <strong>Key Powers:</strong>
-                                  <ul className="powers-list">
-                                    {committee.keyPowers.map((power) => (
-                                      <li key={power}>
-                                        {power.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                                      </li>
+                                <div className="committee-preview">
+                                  <strong>Jurisdiction</strong>
+                                  <div className="preview-tags">
+                                    {committee.jurisdiction.slice(0, 3).map((area) => (
+                                      <span key={area} className="preview-tag">
+                                        {area.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                      </span>
                                     ))}
-                                  </ul>
+                                    {committee.jurisdiction.length > 3 && (
+                                      <span className="preview-tag more">+{committee.jurisdiction.length - 3} more</span>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
                             </div>
@@ -534,27 +538,30 @@ const NationalOverviewTab = ({ campaignData, activeSubTab = "summary", governmen
                                   <span className="committee-status vacant">Vacant Chair</span>
                                 </div>
                                 
-                                <div className="committee-details">
-                                  <div className="jurisdiction-section">
-                                    <strong>Jurisdiction:</strong>
-                                    <div className="jurisdiction-tags">
-                                      {committee.jurisdiction.map((area) => (
-                                        <span key={area} className="jurisdiction-tag">
-                                          {area.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                                        </span>
-                                      ))}
+                                <div className="committee-summary">
+                                  <div className="committee-stats">
+                                    <div className="stat-item">
+                                      <span className="stat-value">Select</span>
+                                      <span className="stat-label">Type</span>
+                                    </div>
+                                    <div className="stat-item">
+                                      <span className="stat-value">{committee.jurisdiction.length}</span>
+                                      <span className="stat-label">Areas</span>
                                     </div>
                                   </div>
                                   
-                                  <div className="powers-section">
-                                    <strong>Key Powers:</strong>
-                                    <ul className="powers-list">
-                                      {committee.keyPowers.map((power) => (
-                                        <li key={power}>
-                                          {power.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                                        </li>
+                                  <div className="committee-preview">
+                                    <strong>Jurisdiction</strong>
+                                    <div className="preview-tags">
+                                      {committee.jurisdiction.slice(0, 3).map((area) => (
+                                        <span key={area} className="preview-tag">
+                                          {area.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                        </span>
                                       ))}
-                                    </ul>
+                                      {committee.jurisdiction.length > 3 && (
+                                        <span className="preview-tag more">+{committee.jurisdiction.length - 3} more</span>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
                               </div>

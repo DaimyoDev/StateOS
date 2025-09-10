@@ -1,8 +1,12 @@
 // src/simulation/monthlyUpdates/statisticsUpdates.js
 
-import { getRandomInt, adjustStatLevel, getRandomElement } from "../../utils/core.js";
-import { ECONOMIC_OUTLOOK_LEVELS, RATING_LEVELS, MOOD_LEVELS } from "../../data/governmentData.js";
-import { calculateAllCityStats } from "../../utils/statCalculationCore.js";
+import { adjustStatLevel, getRandomElement } from "../../utils/core.js";
+import {
+  ECONOMIC_OUTLOOK_LEVELS,
+  RATING_LEVELS,
+  MOOD_LEVELS,
+} from "../../data/governmentData.js";
+import { calculateAllCityStats } from "../../utils/statCalculationEngine.js";
 import { generateNewsForEvent } from "../newsGenerator.js";
 
 /**
@@ -30,11 +34,15 @@ export class StatisticsUpdater {
     const newStats = { ...oldStats, ...statUpdates };
 
     // Process unemployment changes
-    const unemploymentNews = this._processUnemploymentChanges(oldStats, newStats, allOutlets, campaign);
+    const unemploymentNews = this._processUnemploymentChanges(
+      oldStats,
+      newStats,
+      allOutlets,
+      campaign
+    );
     newsItems.push(...unemploymentNews);
 
-    // Update qualitative ratings based on new stats
-    this._updateQualitativeRatings(statUpdates, newStats);
+    // No longer need qualitative ratings - all metrics are numerical
 
     // Update economic outlook
     this._updateEconomicOutlook(statUpdates, newStats, city.stats);
@@ -50,17 +58,22 @@ export class StatisticsUpdater {
    */
   _processUnemploymentChanges(oldStats, newStats, allOutlets, campaign) {
     const newsItems = [];
-    
+
     // Ensure unemployment rates are valid numbers
     const oldUnemployment = parseFloat(oldStats.unemploymentRate) || 6.0;
     const newUnemployment = parseFloat(newStats.unemploymentRate) || 6.0;
-    
+
     // Fix any NaN unemployment values
-    if (isNaN(newStats.unemploymentRate) || !isFinite(newStats.unemploymentRate)) {
-      console.warn(`[StatisticsUpdater] Fixed NaN unemployment rate, resetting to ${oldUnemployment}`);
+    if (
+      isNaN(newStats.unemploymentRate) ||
+      !isFinite(newStats.unemploymentRate)
+    ) {
+      console.warn(
+        `[StatisticsUpdater] Fixed NaN unemployment rate, resetting to ${oldUnemployment}`
+      );
       newStats.unemploymentRate = oldUnemployment;
     }
-    
+
     // Generate news for significant changes (> 0.5% change)
     if (Math.abs(newUnemployment - oldUnemployment) > 0.5) {
       const event = {
@@ -69,19 +82,20 @@ export class StatisticsUpdater {
           stat: "unemployment rate",
           oldValue: oldUnemployment.toFixed(1),
           newValue: newUnemployment.toFixed(1),
-          direction: newUnemployment < oldUnemployment ? "positive" : "negative",
+          direction:
+            newUnemployment < oldUnemployment ? "positive" : "negative",
         },
       };
-      
+
       // Generate a story from a random outlet
       if (allOutlets.length > 0) {
         const reportingOutlet = getRandomElement(allOutlets);
         const cityName = campaign.startingCity?.name || null;
         const newsStory = generateNewsForEvent(
-          event, 
-          reportingOutlet, 
-          campaign.currentDate, 
-          [], 
+          event,
+          reportingOutlet,
+          campaign.currentDate,
+          [],
           cityName
         );
         if (newsStory) {
@@ -112,7 +126,7 @@ export class StatisticsUpdater {
     let econChange = 0;
     if (cityStatsWithUpdates.unemploymentRate < 4.0) econChange++;
     if (cityStatsWithUpdates.unemploymentRate > 8.0) econChange--;
-    
+
     if (econChange !== 0) {
       const newEconOutlook = adjustStatLevel(
         originalStats.economicOutlook,
@@ -130,20 +144,21 @@ export class StatisticsUpdater {
    */
   _updateCitizenMood(statUpdates, cityStatsWithUpdates, originalStats) {
     let moodChange = 0;
-    
+
     // Economic outlook influence
-    const currentEconOutlook = statUpdates.economicOutlook || originalStats.economicOutlook;
+    const currentEconOutlook =
+      statUpdates.economicOutlook || originalStats.economicOutlook;
     if (ECONOMIC_OUTLOOK_LEVELS.indexOf(currentEconOutlook) >= 3) moodChange++; // Moderate Growth or Booming
     if (ECONOMIC_OUTLOOK_LEVELS.indexOf(currentEconOutlook) <= 1) moodChange--; // Stagnant or Recession
-    
+
     // Crime rate influence
     if (cityStatsWithUpdates.crimeRatePer1000 < 25) moodChange++;
     if (cityStatsWithUpdates.crimeRatePer1000 > 60) moodChange--;
-    
+
     // Poverty rate influence
     if (cityStatsWithUpdates.povertyRate < 10) moodChange++;
     if (cityStatsWithUpdates.povertyRate > 25) moodChange--;
-    
+
     // Healthcare coverage influence
     if (cityStatsWithUpdates.healthcareCoverage > 90) moodChange++;
 

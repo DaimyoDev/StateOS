@@ -195,8 +195,28 @@ export const COMMITTEE_MEMBERSHIP_RULES = {
   }
 };
 
-// Bills must go through different committee processes based on political system
+// Bills must go through different committee processes based on political system AND level
 export const BILL_PROGRESSION_WORKFLOWS = {
+  // City-level workflows (no committees for most US cities)
+  CITY_COUNCIL: {
+    introduction: {
+      step: "proposal_submitted",
+      requirements: ["sponsor_member"],
+      duration: { min: 1, max: 3, unit: "days" }
+    },
+    public_review: {
+      step: "public_comment_period",
+      requirements: ["public_notice"],
+      duration: { min: 7, max: 14, unit: "days" }
+    },
+    council_vote: {
+      step: "council_vote",
+      requirements: ["council_majority"],
+      duration: { min: 1, max: 7, unit: "days" }
+    }
+  },
+  
+  // State/Federal workflows with committee systems
   PRESIDENTIAL_REPUBLIC: {
     introduction: {
       step: "committee_assignment",

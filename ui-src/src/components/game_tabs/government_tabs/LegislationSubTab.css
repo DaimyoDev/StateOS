@@ -49,6 +49,189 @@
   border-bottom: 1px solid var(--border-color);
 }
 
+/* Committee Information Styles */
+.committee-info {
+  margin-top: 16px;
+  padding: 16px;
+  background: var(--highlight-bg, rgba(79, 70, 229, 0.1));
+  border-radius: var(--element-radius, 8px);
+  border-left: 3px solid var(--success-text, #10b981);
+  margin-bottom: 16px;
+}
+
+.committee-info h5 {
+  margin: 0 0 12px 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--primary-text, #1f2937);
+  font-family: var(--font-heading, system-ui);
+}
+
+.committee-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.committee-name {
+  font-size: 1.1rem;
+  color: var(--success-text, #10b981);
+  font-family: var(--font-heading, system-ui);
+}
+
+.committee-status {
+  font-size: 0.9rem;
+  color: var(--secondary-text, #6b7280);
+  font-family: var(--font-main, system-ui);
+}
+
+.committee-vote-date {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--primary-text, #1f2937);
+  padding: 8px 12px;
+  background: var(--ui-panel-bg, #ffffff);
+  border-radius: var(--element-radius, 6px);
+  border: 1px solid var(--border-color, #e5e7eb);
+  font-family: var(--font-main, system-ui);
+}
+
+.committee-jurisdiction {
+  font-size: 0.85rem;
+  color: var(--secondary-text, #6b7280);
+  font-style: italic;
+  font-family: var(--font-main, system-ui);
+}
+
+/* Bill Timeline Styles */
+.bill-timeline {
+  margin-top: 20px;
+  padding: 24px;
+  background: var(--ui-panel-bg, #ffffff);
+  border-radius: var(--element-radius, 8px);
+  border: 1px solid var(--border-color, #e5e7eb);
+  box-shadow: var(--panel-shadow, 0 1px 3px rgba(0, 0, 0, 0.1));
+}
+
+.bill-timeline h5 {
+  margin: 0 0 20px 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--primary-text, #1f2937);
+  font-family: var(--font-heading, system-ui);
+}
+
+.timeline-container {
+  position: relative;
+  padding-left: 8px;
+}
+
+.timeline-item {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 24px;
+  position: relative;
+  padding: 16px 0;
+  transition: all var(--transition-speed, 0.3s) ease;
+}
+
+.timeline-item:hover {
+  /* Remove horizontal transform that causes scrollbar */
+}
+
+.timeline-item:last-child {
+  margin-bottom: 0;
+}
+
+.timeline-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  margin-right: 20px;
+  margin-top: 6px;
+  flex-shrink: 0;
+  border: 3px solid var(--border-color, #e5e7eb);
+  background: var(--ui-panel-bg, #ffffff);
+  position: relative;
+  z-index: 2;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all var(--transition-speed, 0.3s) ease;
+}
+
+.timeline-item.passed .timeline-dot {
+  background: var(--success-text, #10b981);
+  border-color: var(--success-text, #10b981);
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.2);
+}
+
+.timeline-item.failed .timeline-dot {
+  background: var(--error-text, #ef4444);
+  border-color: var(--error-text, #ef4444);
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.2);
+}
+
+.timeline-item.in_progress .timeline-dot {
+  background: var(--accent-color, #4f46e5);
+  border-color: var(--accent-color, #4f46e5);
+  box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.2);
+}
+
+.timeline-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--ui-panel-bg, #ffffff);
+  padding: 16px 20px;
+  border-radius: var(--element-radius, 8px);
+  border: 1px solid var(--border-color, #e5e7eb);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: all var(--transition-speed, 0.3s) ease;
+}
+
+.timeline-item:hover .timeline-content {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.stage-name {
+  font-weight: 700;
+  color: var(--primary-text, #1f2937);
+  font-size: 1.1rem;
+  font-family: var(--font-heading, system-ui);
+  margin-bottom: 4px;
+}
+
+.timeline-item.passed .stage-name {
+  color: var(--success-text, #10b981);
+}
+
+.timeline-item.failed .stage-name {
+  color: var(--error-text, #ef4444);
+}
+
+.timeline-item.in_progress .stage-name {
+  color: var(--accent-color, #4f46e5);
+}
+
+.stage-date {
+  font-size: 0.9rem;
+  color: var(--secondary-text, #6b7280);
+  font-family: var(--font-main, system-ui);
+  font-weight: 500;
+}
+
+/* Timeline connector line */
+.timeline-item:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: 15px;
+  top: 32px;
+  bottom: -24px;
+  width: 2px;
+  background: var(--border-color, #e5e7eb);
+  z-index: 1;
+}
+
 .legislation-list {
   list-style: none;
   padding: 0;

@@ -8,6 +8,37 @@ import FailedBillsArchive from "../FailedBillsArchive";
 
 const EMPTY_ARRAY = [];
 
+// Map internal stage names to user-friendly display names
+const getStageDisplayName = (stageName, level) => {
+  const stageNameMap = {
+    // City stages
+    introduction: level === 'city' ? 'Under Review' : 'Introduction',
+    public_review: 'Public Comment Period',
+    council_vote: level === 'city' ? 'Council Vote' : 'Legislative Vote',
+    
+    // State/National stages
+    committee_assignment: 'Committee Assignment',
+    committee_markup: 'Committee Review',
+    committee_vote: 'Committee Vote',
+    floor_consideration: 'Floor Consideration',
+    floor_debate: 'Floor Debate',
+    floor_vote: 'Floor Vote',
+    second_chamber: 'Second Chamber Review',
+    conference_committee: 'Conference Committee',
+    presidential_signature: 'Presidential Review',
+    veto_override: 'Veto Override Attempt',
+    royal_assent: 'Royal Assent',
+    first_reading: 'First Reading',
+    committee_review: 'Committee Review',
+    report_stage: 'Report Stage',
+    third_reading: 'Third Reading',
+    automatic_assent: 'Automatic Approval',
+    federal_consultation: 'Federal Consultation'
+  };
+  
+  return stageNameMap[stageName] || stageName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+};
+
 const LegislationSubTab = ({ campaignData, currentLevel = 'city', activeTab = 'proposed' }) => {
   const proposedBills = useGameStore(
     (state) => state[currentLevel]?.proposedBills || EMPTY_ARRAY
@@ -179,6 +210,73 @@ const LegislationSubTab = ({ campaignData, currentLevel = 'city', activeTab = 'p
                         {bill.voteScheduledFor.day}/{bill.voteScheduledFor.year} (
                         {calculateDaysRemaining(bill.voteScheduledFor)})
                       </p>
+                    )}
+                    
+                    {/* Committee Information for State/National Bills */}
+                    {bill.committeeInfo && currentLevel !== 'city' && (
+                      <div className="committee-info">
+                        <h5>Committee Assignment:</h5>
+                        <div className="committee-details">
+                          <div className="committee-name">
+                            <strong>{bill.committeeInfo.committeeName}</strong>
+                          </div>
+                          <div className="committee-status">
+                            Status: {bill.committeeInfo.committeeStatus?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                          </div>
+                          {bill.committeeInfo.committeeVoteScheduled && (
+                            <div className="committee-vote-date">
+                              Committee Vote: {bill.committeeInfo.committeeVoteScheduled.month}/{bill.committeeInfo.committeeVoteScheduled.day}/{bill.committeeInfo.committeeVoteScheduled.year} ({calculateDaysRemaining(bill.committeeInfo.committeeVoteScheduled)})
+                            </div>
+                          )}
+                          <div className="committee-jurisdiction">
+                            Jurisdiction: {bill.committeeInfo.committeeJurisdiction?.join(', ') || 'General oversight'}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Bill Stage Progression Timeline */}
+                    {(bill.currentStage || bill.stageHistory) && (
+                      <div className="bill-timeline">
+                        <h5>Bill Progression:</h5>
+                        <div className="timeline-container">
+                          {bill.stageHistory && bill.stageHistory.length > 0 ? (
+                            bill.stageHistory.map((stage, index) => (
+                              <div key={index} className={`timeline-item ${stage.status}`}>
+                                <div className="timeline-dot"></div>
+                                <div className="timeline-content">
+                                  <span className="stage-name">
+                                    {getStageDisplayName(stage.stage, currentLevel)}
+                                  </span>
+                                  <span className="stage-date">
+                                    {stage.completedOn ? 
+                                      `Completed: ${stage.completedOn.month}/${stage.completedOn.day}/${stage.completedOn.year}` :
+                                      stage.enteredOn ? 
+                                      `Started: ${stage.enteredOn.month}/${stage.enteredOn.day}/${stage.enteredOn.year}` :
+                                      'In Progress'
+                                    }
+                                  </span>
+                                </div>
+                              </div>
+                            ))
+                          ) : bill.currentStage ? (
+                            <div className="timeline-item in_progress">
+                              <div className="timeline-dot"></div>
+                              <div className="timeline-content">
+                                <span className="stage-name">
+                                  {getStageDisplayName(bill.currentStage, currentLevel)}
+                                </span>
+                                <span className="stage-date">
+                                  {bill.stageScheduledFor ? 
+                                    `Due: ${bill.stageScheduledFor.month}/${bill.stageScheduledFor.day}/${bill.stageScheduledFor.year} (${calculateDaysRemaining(bill.stageScheduledFor)})` :
+                                    'In Progress'
+                                  }
+                                </span>
+                              </div>
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
                     )}
                     {(bill.status === "passed" || bill.status === "failed") && (
                       <p className="voting-info final-tally">

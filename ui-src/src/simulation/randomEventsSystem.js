@@ -403,13 +403,13 @@ export const processEventCoalitionEffects = (event, coalitionSoA, cityData = {},
   });
 
   if (!event || !coalitionSoA) {
-    console.log(`[COALITION EVENTS PROCESSOR] Missing data - event:`, !!event, 'coalitionSoA:', !!coalitionSoA);
+    // Removed console logging for cleaner output
     return { coalitionUpdates: null, performanceMetrics: null };
   }
 
   // Convert the random event to coalition system format
   const coalitionType = mapEventCategoryToCoalitionType(event.category, event.templateId);
-  console.log(`[COALITION EVENTS PROCESSOR] Mapped event "${event.templateId}" (${event.category}) to coalition type: "${coalitionType}"`);
+  // Removed console logging for cleaner output
   
   const coalitionEvent = {
     id: event.id,
@@ -429,7 +429,7 @@ export const processEventCoalitionEffects = (event, coalitionSoA, cityData = {},
       // Calculate the coalition effects for this event
       const effects = calculateEventCoalitionEffects(coalitionEvent, 'city');
       
-      console.log(`[COALITION EVENTS PROCESSOR] Calculated ${effects.size} coalition effects`);
+      // Removed console logging for cleaner output
       
       // Apply effects directly to the coalition system
       let effectsApplied = 0;
@@ -442,7 +442,7 @@ export const processEventCoalitionEffects = (event, coalitionSoA, cityData = {},
           ));
           
           if (Math.abs(effect.mobilization) > 0.001) {
-            console.log(`[COALITION EFFECT APPLY] ${coalitionId}: ${(oldMobilization * 100).toFixed(1)}% → ${(newMobilization * 100).toFixed(1)}% (${effect.mobilization >= 0 ? '+' : ''}${(effect.mobilization * 100).toFixed(1)}%)`);
+            // Removed console logging for cleaner output
             effectsApplied++;
           }
           
@@ -498,7 +498,7 @@ export const processEventCoalitionEffects = (event, coalitionSoA, cityData = {},
                   ));
                   
                   if (Math.abs(scaledEffect.mobilization) > 0.001) {
-                    console.log(`[STATE COALITION EFFECT] ${coalitionId}: ${(oldMobilization * 100).toFixed(1)}% → ${(newMobilization * 100).toFixed(1)}% (${scaledEffect.mobilization >= 0 ? '+' : ''}${(scaledEffect.mobilization * 100).toFixed(2)}%)`);
+                    // Removed console logging for cleaner output
                     stateEffectsApplied++;
                   }
                   
@@ -511,9 +511,9 @@ export const processEventCoalitionEffects = (event, coalitionSoA, cityData = {},
                 }
               }
               
-              console.log(`[COALITION EVENTS PROCESSOR] Applied ${stateEffectsApplied} state-level mobilization changes`);
+              // Removed console logging for cleaner output
             } else {
-              console.log(`[COALITION CASCADE] No state coalition data found for state: ${stateData.id}`);
+              // Removed console logging for cleaner output
             }
           }).catch(error => {
             console.error('[COALITION CASCADE] Error accessing state coalitions:', error);
