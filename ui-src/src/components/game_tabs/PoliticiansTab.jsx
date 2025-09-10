@@ -163,7 +163,7 @@ function PoliticiansTab() {
     (state) => state.favoritePoliticians || EMPTY_ARRAY
   );
   const endorsements = useGameStore((state) => state.endorsements);
-  const playerInfo = useGameStore((state) => state.playerInfo);
+  const playerInfo = useGameStore((state) => state.activeCampaign?.politician);
   const activeElection = useGameStore((state) => state.activeElection);
   const actions = useGameStore((state) => state.actions);
   const { getAllGovernmentOffices } = actions;

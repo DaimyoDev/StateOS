@@ -8,7 +8,10 @@ import { chamberTiers } from "./chamberTiers";
 import { getRandomInt, distributeValueProportionally } from "../utils/core";
 import { generateLegislativeDistrictsForCountry } from "../entities/districtGeneration";
 import { generateNationalParties } from "../entities/personnel";
-import { DEPARTMENT_LEVELS, REGIONAL_DEPARTMENT_VARIATIONS } from "./governmentDepartments";
+import {
+  DEPARTMENT_LEVELS,
+  REGIONAL_DEPARTMENT_VARIATIONS,
+} from "./governmentDepartments";
 import { japanPrefectures } from "./states/japanPrefectures";
 import { usaStates } from "./states/usaStates";
 import { usaCounties } from "./states/adminRegions2/usaCounties";
@@ -34,7 +37,6 @@ import { chileanRegions } from "./states/chileStates";
 import { colombianDepartments } from "./states/colombianStates";
 import { czechRegions } from "./states/czechStates";
 import { danishRegions } from "./states/danishStates";
-import { getDonationLawById } from "./politicalDonationLaws";
 
 export const DEFAULT_COUNTRY_POPULATION_RANGES = {
   JPN: { min: 100000000, max: 130000000 },
@@ -107,10 +109,14 @@ const baseCountriesData = [
       chamberTiers.JPN.NATIONIAL.JPN_HR_DISTRICTS_PER_PREFECTURE_TIERS,
     lowerStateHrName: "Assembly District",
     departments: {
-      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.MONARCHY.NATIONAL],
+      national: [
+        ...DEPARTMENT_LEVELS.NATIONAL,
+        ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL,
+        ...REGIONAL_DEPARTMENT_VARIATIONS.MONARCHY.NATIONAL,
+      ],
       state: DEPARTMENT_LEVELS.STATE,
       county: DEPARTMENT_LEVELS.COUNTY,
-      city: DEPARTMENT_LEVELS.CITY
+      city: DEPARTMENT_LEVELS.CITY,
     },
     donationLawId: "MODERATE_LIMITS",
   },
@@ -138,10 +144,13 @@ const baseCountriesData = [
       chamberTiers.USA.STATE.USA_STATE_UPPER_HOUSE_DISTRICT_TIERS,
     upperStateHrName: "State Senate District",
     departments: {
-      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.FEDERAL.NATIONAL],
+      national: [
+        ...DEPARTMENT_LEVELS.NATIONAL,
+        ...REGIONAL_DEPARTMENT_VARIATIONS.FEDERAL.NATIONAL,
+      ],
       state: DEPARTMENT_LEVELS.STATE,
       county: DEPARTMENT_LEVELS.COUNTY,
-      city: DEPARTMENT_LEVELS.CITY
+      city: DEPARTMENT_LEVELS.CITY,
     },
     donationLawId: "CORPORATE_FRIENDLY",
   },
@@ -155,10 +164,14 @@ const baseCountriesData = [
     regionTerm: "State",
     nationalLowerHouseDistricts: [],
     departments: {
-      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.FEDERAL.NATIONAL],
+      national: [
+        ...DEPARTMENT_LEVELS.NATIONAL,
+        ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL,
+        ...REGIONAL_DEPARTMENT_VARIATIONS.FEDERAL.NATIONAL,
+      ],
       state: DEPARTMENT_LEVELS.STATE,
       county: DEPARTMENT_LEVELS.COUNTY,
-      city: DEPARTMENT_LEVELS.CITY
+      city: DEPARTMENT_LEVELS.CITY,
     },
     donationLawId: "STRICT_LIMITS",
   },
@@ -184,7 +197,7 @@ const baseCountriesData = [
       national: DEPARTMENT_LEVELS.NATIONAL,
       state: DEPARTMENT_LEVELS.STATE,
       county: DEPARTMENT_LEVELS.COUNTY,
-      city: DEPARTMENT_LEVELS.CITY
+      city: DEPARTMENT_LEVELS.CITY,
     },
     donationLawId: "MODERATE_LIMITS",
   },
@@ -213,7 +226,7 @@ const baseCountriesData = [
       national: DEPARTMENT_LEVELS.NATIONAL,
       state: DEPARTMENT_LEVELS.STATE,
       county: DEPARTMENT_LEVELS.COUNTY,
-      city: DEPARTMENT_LEVELS.CITY
+      city: DEPARTMENT_LEVELS.CITY,
     },
     donationLawId: "MODERATE_LIMITS",
   },
@@ -231,10 +244,15 @@ const baseCountriesData = [
     lowerStateHrTiers: chamberTiers.CAN.STATE.CAN_PROVINCIAL_ASSEMBLY_TIERS,
     lowerStateHrName: "Assembly District",
     departments: {
-      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.MONARCHY.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.FEDERAL.NATIONAL],
+      national: [
+        ...DEPARTMENT_LEVELS.NATIONAL,
+        ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL,
+        ...REGIONAL_DEPARTMENT_VARIATIONS.MONARCHY.NATIONAL,
+        ...REGIONAL_DEPARTMENT_VARIATIONS.FEDERAL.NATIONAL,
+      ],
       state: DEPARTMENT_LEVELS.STATE,
       county: DEPARTMENT_LEVELS.COUNTY,
-      city: DEPARTMENT_LEVELS.CITY
+      city: DEPARTMENT_LEVELS.CITY,
     },
     donationLawId: "STRICT_LIMITS",
   },
@@ -251,10 +269,14 @@ const baseCountriesData = [
     lowerStateHrTiers: chamberTiers.AUS.STATE.AUS_PROVINCIAL_ASSEMBLY_TIERS,
     lowerStateHrName: "Assembly District",
     departments: {
-      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.MONARCHY.NATIONAL],
+      national: [
+        ...DEPARTMENT_LEVELS.NATIONAL,
+        ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL,
+        ...REGIONAL_DEPARTMENT_VARIATIONS.MONARCHY.NATIONAL,
+      ],
       state: DEPARTMENT_LEVELS.STATE,
       county: DEPARTMENT_LEVELS.COUNTY,
-      city: DEPARTMENT_LEVELS.CITY
+      city: DEPARTMENT_LEVELS.CITY,
     },
     donationLawId: "STRICT_LIMITS",
   },
@@ -267,10 +289,13 @@ const baseCountriesData = [
     regions: frenchRegions.map((p) => ({ ...p })),
     nationalLowerHouseDistricts: [],
     departments: {
-      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL],
+      national: [
+        ...DEPARTMENT_LEVELS.NATIONAL,
+        ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL,
+      ],
       state: DEPARTMENT_LEVELS.STATE,
       county: DEPARTMENT_LEVELS.COUNTY,
-      city: DEPARTMENT_LEVELS.CITY
+      city: DEPARTMENT_LEVELS.CITY,
     },
     donationLawId: "SMALL_DONOR_FOCUS",
   },
@@ -283,10 +308,14 @@ const baseCountriesData = [
     regions: greatBritainAdminRegions.map((p) => ({ ...p })),
     nationalLowerHouseDistricts: [],
     departments: {
-      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.MONARCHY.NATIONAL],
+      national: [
+        ...DEPARTMENT_LEVELS.NATIONAL,
+        ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL,
+        ...REGIONAL_DEPARTMENT_VARIATIONS.MONARCHY.NATIONAL,
+      ],
       state: DEPARTMENT_LEVELS.STATE,
       county: DEPARTMENT_LEVELS.COUNTY,
-      city: DEPARTMENT_LEVELS.CITY
+      city: DEPARTMENT_LEVELS.CITY,
     },
     donationLawId: "MODERATE_LIMITS",
   },
@@ -299,10 +328,14 @@ const baseCountriesData = [
     regions: italianRegions.map((p) => ({ ...p })),
     nationalLowerHouseDistricts: [],
     departments: {
-      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.MONARCHY.NATIONAL],
+      national: [
+        ...DEPARTMENT_LEVELS.NATIONAL,
+        ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL,
+        ...REGIONAL_DEPARTMENT_VARIATIONS.MONARCHY.NATIONAL,
+      ],
       state: DEPARTMENT_LEVELS.STATE,
       county: DEPARTMENT_LEVELS.COUNTY,
-      city: DEPARTMENT_LEVELS.CITY
+      city: DEPARTMENT_LEVELS.CITY,
     },
     donationLawId: "MODERATE_LIMITS",
   },
@@ -315,10 +348,13 @@ const baseCountriesData = [
     regions: spanishRegions.map((p) => ({ ...p })),
     nationalLowerHouseDistricts: [],
     departments: {
-      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL],
+      national: [
+        ...DEPARTMENT_LEVELS.NATIONAL,
+        ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL,
+      ],
       state: DEPARTMENT_LEVELS.STATE,
       county: DEPARTMENT_LEVELS.COUNTY,
-      city: DEPARTMENT_LEVELS.CITY
+      city: DEPARTMENT_LEVELS.CITY,
     },
     donationLawId: "SMALL_DONOR_FOCUS",
   },
@@ -331,10 +367,14 @@ const baseCountriesData = [
     regions: polishVoivodeships.map((p) => ({ ...p })),
     nationalLowerHouseDistricts: [],
     departments: {
-      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.MONARCHY.NATIONAL],
+      national: [
+        ...DEPARTMENT_LEVELS.NATIONAL,
+        ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL,
+        ...REGIONAL_DEPARTMENT_VARIATIONS.MONARCHY.NATIONAL,
+      ],
       state: DEPARTMENT_LEVELS.STATE,
       county: DEPARTMENT_LEVELS.COUNTY,
-      city: DEPARTMENT_LEVELS.CITY
+      city: DEPARTMENT_LEVELS.CITY,
     },
     donationLawId: "MODERATE_LIMITS",
   },
@@ -350,7 +390,7 @@ const baseCountriesData = [
       national: DEPARTMENT_LEVELS.NATIONAL,
       state: DEPARTMENT_LEVELS.STATE,
       county: DEPARTMENT_LEVELS.COUNTY,
-      city: DEPARTMENT_LEVELS.CITY
+      city: DEPARTMENT_LEVELS.CITY,
     },
     donationLawId: "VERY_STRICT",
   },
@@ -366,7 +406,7 @@ const baseCountriesData = [
       national: DEPARTMENT_LEVELS.NATIONAL,
       state: DEPARTMENT_LEVELS.STATE,
       county: DEPARTMENT_LEVELS.COUNTY,
-      city: DEPARTMENT_LEVELS.CITY
+      city: DEPARTMENT_LEVELS.CITY,
     },
     donationLawId: "MODERATE_LIMITS",
   },
@@ -402,7 +442,7 @@ const baseCountriesData = [
       national: DEPARTMENT_LEVELS.NATIONAL,
       state: DEPARTMENT_LEVELS.STATE,
       county: DEPARTMENT_LEVELS.COUNTY,
-      city: DEPARTMENT_LEVELS.CITY
+      city: DEPARTMENT_LEVELS.CITY,
     },
     donationLawId: "MODERATE_LIMITS",
   },
@@ -418,7 +458,7 @@ const baseCountriesData = [
       national: DEPARTMENT_LEVELS.NATIONAL,
       state: DEPARTMENT_LEVELS.STATE,
       county: DEPARTMENT_LEVELS.COUNTY,
-      city: DEPARTMENT_LEVELS.CITY
+      city: DEPARTMENT_LEVELS.CITY,
     },
     donationLawId: "MODERATE_LIMITS",
   },
@@ -436,10 +476,14 @@ const baseCountriesData = [
     regions: [],
     nationalLowerHouseDistricts: [],
     departments: {
-      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.MONARCHY.NATIONAL],
+      national: [
+        ...DEPARTMENT_LEVELS.NATIONAL,
+        ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL,
+        ...REGIONAL_DEPARTMENT_VARIATIONS.MONARCHY.NATIONAL,
+      ],
       state: DEPARTMENT_LEVELS.STATE,
       county: DEPARTMENT_LEVELS.COUNTY,
-      city: DEPARTMENT_LEVELS.CITY
+      city: DEPARTMENT_LEVELS.CITY,
     },
     donationLawId: "STRICT_LIMITS",
   },
@@ -452,10 +496,13 @@ const baseCountriesData = [
     regions: [],
     nationalLowerHouseDistricts: [],
     departments: {
-      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.FEDERAL.NATIONAL],
+      national: [
+        ...DEPARTMENT_LEVELS.NATIONAL,
+        ...REGIONAL_DEPARTMENT_VARIATIONS.FEDERAL.NATIONAL,
+      ],
       state: DEPARTMENT_LEVELS.STATE,
       county: DEPARTMENT_LEVELS.COUNTY,
-      city: DEPARTMENT_LEVELS.CITY
+      city: DEPARTMENT_LEVELS.CITY,
     },
     donationLawId: "VERY_STRICT",
   },
@@ -468,10 +515,13 @@ const baseCountriesData = [
     regions: austrianStates.map((p) => ({ ...p })),
     nationalLowerHouseDistricts: [],
     departments: {
-      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL],
+      national: [
+        ...DEPARTMENT_LEVELS.NATIONAL,
+        ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL,
+      ],
       state: DEPARTMENT_LEVELS.STATE,
       county: DEPARTMENT_LEVELS.COUNTY,
-      city: DEPARTMENT_LEVELS.CITY
+      city: DEPARTMENT_LEVELS.CITY,
     },
     donationLawId: "STRICT_LIMITS",
   },
@@ -489,10 +539,15 @@ const baseCountriesData = [
     regions: belgianRegions.map((p) => ({ ...p })),
     nationalLowerHouseDistricts: [],
     departments: {
-      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.MONARCHY.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.FEDERAL.NATIONAL],
+      national: [
+        ...DEPARTMENT_LEVELS.NATIONAL,
+        ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL,
+        ...REGIONAL_DEPARTMENT_VARIATIONS.MONARCHY.NATIONAL,
+        ...REGIONAL_DEPARTMENT_VARIATIONS.FEDERAL.NATIONAL,
+      ],
       state: DEPARTMENT_LEVELS.STATE,
       county: DEPARTMENT_LEVELS.COUNTY,
-      city: DEPARTMENT_LEVELS.CITY
+      city: DEPARTMENT_LEVELS.CITY,
     },
     donationLawId: "STRICT_LIMITS",
   },
@@ -505,10 +560,14 @@ const baseCountriesData = [
     regions: danishRegions.map((p) => ({ ...p })),
     nationalLowerHouseDistricts: [],
     departments: {
-      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.MONARCHY.NATIONAL],
+      national: [
+        ...DEPARTMENT_LEVELS.NATIONAL,
+        ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL,
+        ...REGIONAL_DEPARTMENT_VARIATIONS.MONARCHY.NATIONAL,
+      ],
       state: DEPARTMENT_LEVELS.STATE,
       county: DEPARTMENT_LEVELS.COUNTY,
-      city: DEPARTMENT_LEVELS.CITY
+      city: DEPARTMENT_LEVELS.CITY,
     },
   },
   {
@@ -520,10 +579,13 @@ const baseCountriesData = [
     regions: [],
     nationalLowerHouseDistricts: [],
     departments: {
-      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL],
+      national: [
+        ...DEPARTMENT_LEVELS.NATIONAL,
+        ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL,
+      ],
       state: DEPARTMENT_LEVELS.STATE,
       county: DEPARTMENT_LEVELS.COUNTY,
-      city: DEPARTMENT_LEVELS.CITY
+      city: DEPARTMENT_LEVELS.CITY,
     },
     donationLawId: "VERY_STRICT",
   },
@@ -536,10 +598,14 @@ const baseCountriesData = [
     regions: [],
     nationalLowerHouseDistricts: [],
     departments: {
-      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.MONARCHY.NATIONAL],
+      national: [
+        ...DEPARTMENT_LEVELS.NATIONAL,
+        ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL,
+        ...REGIONAL_DEPARTMENT_VARIATIONS.MONARCHY.NATIONAL,
+      ],
       state: DEPARTMENT_LEVELS.STATE,
       county: DEPARTMENT_LEVELS.COUNTY,
-      city: DEPARTMENT_LEVELS.CITY
+      city: DEPARTMENT_LEVELS.CITY,
     },
     donationLawId: "VERY_STRICT",
   },
@@ -552,10 +618,13 @@ const baseCountriesData = [
     regions: [],
     nationalLowerHouseDistricts: [],
     departments: {
-      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL],
+      national: [
+        ...DEPARTMENT_LEVELS.NATIONAL,
+        ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL,
+      ],
       state: DEPARTMENT_LEVELS.STATE,
       county: DEPARTMENT_LEVELS.COUNTY,
-      city: DEPARTMENT_LEVELS.CITY
+      city: DEPARTMENT_LEVELS.CITY,
     },
   },
   {
@@ -570,7 +639,7 @@ const baseCountriesData = [
       national: DEPARTMENT_LEVELS.NATIONAL,
       state: DEPARTMENT_LEVELS.STATE,
       county: DEPARTMENT_LEVELS.COUNTY,
-      city: DEPARTMENT_LEVELS.CITY
+      city: DEPARTMENT_LEVELS.CITY,
     },
   },
   {
@@ -582,10 +651,13 @@ const baseCountriesData = [
     regions: [],
     nationalLowerHouseDistricts: [],
     departments: {
-      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL],
+      national: [
+        ...DEPARTMENT_LEVELS.NATIONAL,
+        ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL,
+      ],
       state: DEPARTMENT_LEVELS.STATE,
       county: DEPARTMENT_LEVELS.COUNTY,
-      city: DEPARTMENT_LEVELS.CITY
+      city: DEPARTMENT_LEVELS.CITY,
     },
   },
   {
@@ -602,10 +674,14 @@ const baseCountriesData = [
     regions: [],
     nationalLowerHouseDistricts: [],
     departments: {
-      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.MONARCHY.NATIONAL],
+      national: [
+        ...DEPARTMENT_LEVELS.NATIONAL,
+        ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL,
+        ...REGIONAL_DEPARTMENT_VARIATIONS.MONARCHY.NATIONAL,
+      ],
       state: DEPARTMENT_LEVELS.STATE,
       county: DEPARTMENT_LEVELS.COUNTY,
-      city: DEPARTMENT_LEVELS.CITY
+      city: DEPARTMENT_LEVELS.CITY,
     },
   },
   {
@@ -625,7 +701,7 @@ const baseCountriesData = [
       national: DEPARTMENT_LEVELS.NATIONAL,
       state: DEPARTMENT_LEVELS.STATE,
       county: DEPARTMENT_LEVELS.COUNTY,
-      city: DEPARTMENT_LEVELS.CITY
+      city: DEPARTMENT_LEVELS.CITY,
     },
   },
   {
@@ -640,7 +716,7 @@ const baseCountriesData = [
       national: DEPARTMENT_LEVELS.NATIONAL,
       state: DEPARTMENT_LEVELS.STATE,
       county: DEPARTMENT_LEVELS.COUNTY,
-      city: DEPARTMENT_LEVELS.CITY
+      city: DEPARTMENT_LEVELS.CITY,
     },
   },
   {
@@ -655,7 +731,7 @@ const baseCountriesData = [
       national: DEPARTMENT_LEVELS.NATIONAL,
       state: DEPARTMENT_LEVELS.STATE,
       county: DEPARTMENT_LEVELS.COUNTY,
-      city: DEPARTMENT_LEVELS.CITY
+      city: DEPARTMENT_LEVELS.CITY,
     },
   },
   {
@@ -671,10 +747,15 @@ const baseCountriesData = [
     regions: [],
     nationalLowerHouseDistricts: [],
     departments: {
-      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.MONARCHY.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.FEDERAL.NATIONAL],
+      national: [
+        ...DEPARTMENT_LEVELS.NATIONAL,
+        ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL,
+        ...REGIONAL_DEPARTMENT_VARIATIONS.MONARCHY.NATIONAL,
+        ...REGIONAL_DEPARTMENT_VARIATIONS.FEDERAL.NATIONAL,
+      ],
       state: DEPARTMENT_LEVELS.STATE,
       county: DEPARTMENT_LEVELS.COUNTY,
-      city: DEPARTMENT_LEVELS.CITY
+      city: DEPARTMENT_LEVELS.CITY,
     },
   },
   {
@@ -686,10 +767,13 @@ const baseCountriesData = [
     regions: [],
     nationalLowerHouseDistricts: [],
     departments: {
-      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL],
+      national: [
+        ...DEPARTMENT_LEVELS.NATIONAL,
+        ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL,
+      ],
       state: DEPARTMENT_LEVELS.STATE,
       county: DEPARTMENT_LEVELS.COUNTY,
-      city: DEPARTMENT_LEVELS.CITY
+      city: DEPARTMENT_LEVELS.CITY,
     },
   },
   {
@@ -701,10 +785,14 @@ const baseCountriesData = [
     regions: [],
     nationalLowerHouseDistricts: [],
     departments: {
-      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.MONARCHY.NATIONAL],
+      national: [
+        ...DEPARTMENT_LEVELS.NATIONAL,
+        ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL,
+        ...REGIONAL_DEPARTMENT_VARIATIONS.MONARCHY.NATIONAL,
+      ],
       state: DEPARTMENT_LEVELS.STATE,
       county: DEPARTMENT_LEVELS.COUNTY,
-      city: DEPARTMENT_LEVELS.CITY
+      city: DEPARTMENT_LEVELS.CITY,
     },
   },
   {
@@ -715,10 +803,13 @@ const baseCountriesData = [
     politicalSystem: "Parliamentary Republic",
     regions: czechRegions.map((p) => ({ ...p })),
     departments: {
-      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL],
+      national: [
+        ...DEPARTMENT_LEVELS.NATIONAL,
+        ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL,
+      ],
       state: DEPARTMENT_LEVELS.STATE,
       county: DEPARTMENT_LEVELS.COUNTY,
-      city: DEPARTMENT_LEVELS.CITY
+      city: DEPARTMENT_LEVELS.CITY,
     },
   },
   {
@@ -732,7 +823,7 @@ const baseCountriesData = [
       national: DEPARTMENT_LEVELS.NATIONAL,
       state: DEPARTMENT_LEVELS.STATE,
       county: DEPARTMENT_LEVELS.COUNTY,
-      city: DEPARTMENT_LEVELS.CITY
+      city: DEPARTMENT_LEVELS.CITY,
     },
   },
   {
@@ -743,10 +834,13 @@ const baseCountriesData = [
     politicalSystem: "Parliamentary Republic",
     regions: [],
     departments: {
-      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL],
+      national: [
+        ...DEPARTMENT_LEVELS.NATIONAL,
+        ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL,
+      ],
       state: DEPARTMENT_LEVELS.STATE,
       county: DEPARTMENT_LEVELS.COUNTY,
-      city: DEPARTMENT_LEVELS.CITY
+      city: DEPARTMENT_LEVELS.CITY,
     },
   },
   {
@@ -757,10 +851,13 @@ const baseCountriesData = [
     politicalSystem: "Parliamentary Republic",
     regions: [],
     departments: {
-      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL],
+      national: [
+        ...DEPARTMENT_LEVELS.NATIONAL,
+        ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL,
+      ],
       state: DEPARTMENT_LEVELS.STATE,
       county: DEPARTMENT_LEVELS.COUNTY,
-      city: DEPARTMENT_LEVELS.CITY
+      city: DEPARTMENT_LEVELS.CITY,
     },
   },
   {
@@ -771,10 +868,13 @@ const baseCountriesData = [
     politicalSystem: "Parliamentary Republic",
     regions: [],
     departments: {
-      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL],
+      national: [
+        ...DEPARTMENT_LEVELS.NATIONAL,
+        ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL,
+      ],
       state: DEPARTMENT_LEVELS.STATE,
       county: DEPARTMENT_LEVELS.COUNTY,
-      city: DEPARTMENT_LEVELS.CITY
+      city: DEPARTMENT_LEVELS.CITY,
     },
   },
   {
@@ -788,7 +888,7 @@ const baseCountriesData = [
       national: DEPARTMENT_LEVELS.NATIONAL,
       state: DEPARTMENT_LEVELS.STATE,
       county: DEPARTMENT_LEVELS.COUNTY,
-      city: DEPARTMENT_LEVELS.CITY
+      city: DEPARTMENT_LEVELS.CITY,
     },
   },
   {
@@ -799,10 +899,13 @@ const baseCountriesData = [
     politicalSystem: "Parliamentary Republic",
     regions: [],
     departments: {
-      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL],
+      national: [
+        ...DEPARTMENT_LEVELS.NATIONAL,
+        ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL,
+      ],
       state: DEPARTMENT_LEVELS.STATE,
       county: DEPARTMENT_LEVELS.COUNTY,
-      city: DEPARTMENT_LEVELS.CITY
+      city: DEPARTMENT_LEVELS.CITY,
     },
   },
   {
@@ -813,10 +916,13 @@ const baseCountriesData = [
     politicalSystem: "Parliamentary Republic",
     regions: [],
     departments: {
-      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL],
+      national: [
+        ...DEPARTMENT_LEVELS.NATIONAL,
+        ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL,
+      ],
       state: DEPARTMENT_LEVELS.STATE,
       county: DEPARTMENT_LEVELS.COUNTY,
-      city: DEPARTMENT_LEVELS.CITY
+      city: DEPARTMENT_LEVELS.CITY,
     },
   },
   {
@@ -827,10 +933,13 @@ const baseCountriesData = [
     politicalSystem: "Parliamentary Republic",
     regions: [],
     departments: {
-      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL],
+      national: [
+        ...DEPARTMENT_LEVELS.NATIONAL,
+        ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL,
+      ],
       state: DEPARTMENT_LEVELS.STATE,
       county: DEPARTMENT_LEVELS.COUNTY,
-      city: DEPARTMENT_LEVELS.CITY
+      city: DEPARTMENT_LEVELS.CITY,
     },
   },
   {
@@ -841,10 +950,14 @@ const baseCountriesData = [
     politicalSystem: "Parliamentary Monarchy (Constitutional)",
     regions: [],
     departments: {
-      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.MONARCHY.NATIONAL],
+      national: [
+        ...DEPARTMENT_LEVELS.NATIONAL,
+        ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL,
+        ...REGIONAL_DEPARTMENT_VARIATIONS.MONARCHY.NATIONAL,
+      ],
       state: DEPARTMENT_LEVELS.STATE,
       county: DEPARTMENT_LEVELS.COUNTY,
-      city: DEPARTMENT_LEVELS.CITY
+      city: DEPARTMENT_LEVELS.CITY,
     },
   },
   {
@@ -855,10 +968,13 @@ const baseCountriesData = [
     politicalSystem: "Parliamentary Republic",
     regions: [],
     departments: {
-      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL],
+      national: [
+        ...DEPARTMENT_LEVELS.NATIONAL,
+        ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL,
+      ],
       state: DEPARTMENT_LEVELS.STATE,
       county: DEPARTMENT_LEVELS.COUNTY,
-      city: DEPARTMENT_LEVELS.CITY
+      city: DEPARTMENT_LEVELS.CITY,
     },
   },
   {
@@ -872,7 +988,7 @@ const baseCountriesData = [
       national: DEPARTMENT_LEVELS.NATIONAL,
       state: DEPARTMENT_LEVELS.STATE,
       county: DEPARTMENT_LEVELS.COUNTY,
-      city: DEPARTMENT_LEVELS.CITY
+      city: DEPARTMENT_LEVELS.CITY,
     },
   },
   {
@@ -886,7 +1002,7 @@ const baseCountriesData = [
       national: DEPARTMENT_LEVELS.NATIONAL,
       state: DEPARTMENT_LEVELS.STATE,
       county: DEPARTMENT_LEVELS.COUNTY,
-      city: DEPARTMENT_LEVELS.CITY
+      city: DEPARTMENT_LEVELS.CITY,
     },
   },
   {
@@ -901,10 +1017,13 @@ const baseCountriesData = [
     politicalSystem: "Parliamentary Republic",
     regions: [],
     departments: {
-      national: [...DEPARTMENT_LEVELS.NATIONAL, ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL],
+      national: [
+        ...DEPARTMENT_LEVELS.NATIONAL,
+        ...REGIONAL_DEPARTMENT_VARIATIONS.PARLIAMENTARY.NATIONAL,
+      ],
       state: DEPARTMENT_LEVELS.STATE,
       county: DEPARTMENT_LEVELS.COUNTY,
-      city: DEPARTMENT_LEVELS.CITY
+      city: DEPARTMENT_LEVELS.CITY,
     },
     donationLawId: "VERY_STRICT",
   },
@@ -914,19 +1033,28 @@ export const BASE_COUNTRIES_DATA = baseCountriesData;
 
 export const generateDetailedCountryData = (countryToProcess) => {
   if (!countryToProcess) return null;
-  
-  console.log(`[DEBUG-GENERATE] Starting generateDetailedCountryData for ${countryToProcess.name}`);
-  console.log(`[DEBUG-GENERATE] Input secondAdminRegions length:`, countryToProcess.secondAdminRegions?.length || 0);
-  
+
+  console.log(
+    `[DEBUG-GENERATE] Starting generateDetailedCountryData for ${countryToProcess.name}`
+  );
+  console.log(
+    `[DEBUG-GENERATE] Input secondAdminRegions length:`,
+    countryToProcess.secondAdminRegions?.length || 0
+  );
+
   // Create a deep copy to avoid modifying the original country data
   const countryForProcessing = {
     ...countryToProcess,
-    regions: countryToProcess.regions?.map(r => ({ ...r })) || [],
-    secondAdminRegions: countryToProcess.secondAdminRegions?.map(c => ({ ...c })) || []
+    regions: countryToProcess.regions?.map((r) => ({ ...r })) || [],
+    secondAdminRegions:
+      countryToProcess.secondAdminRegions?.map((c) => ({ ...c })) || [],
   };
-  
-  console.log(`[DEBUG-GENERATE] After deep copy, secondAdminRegions length:`, countryForProcessing.secondAdminRegions?.length || 0);
-  
+
+  console.log(
+    `[DEBUG-GENERATE] After deep copy, secondAdminRegions length:`,
+    countryForProcessing.secondAdminRegions?.length || 0
+  );
+
   // 1. Generate legislative districts by calling our new, focused function
   let processedCountry =
     generateLegislativeDistrictsForCountry(countryForProcessing);
@@ -959,13 +1087,18 @@ export const generateDetailedCountryData = (countryToProcess) => {
     });
   }
 
-  console.log(`[DEBUG-GENERATE] After regions processing, secondAdminRegions length:`, processedCountry.secondAdminRegions?.length || 0);
-  
+  console.log(
+    `[DEBUG-GENERATE] After regions processing, secondAdminRegions length:`,
+    processedCountry.secondAdminRegions?.length || 0
+  );
+
   if (
     processedCountry.secondAdminRegions &&
     Array.isArray(processedCountry.secondAdminRegions)
   ) {
-    console.log(`[DEBUG-GENERATE] Processing ${processedCountry.secondAdminRegions.length} counties`);
+    console.log(
+      `[DEBUG-GENERATE] Processing ${processedCountry.secondAdminRegions.length} counties`
+    );
     processedCountry.secondAdminRegions =
       processedCountry.secondAdminRegions.map((staticSecondAdmin) => {
         // Find the parent state/region to provide context
@@ -993,9 +1126,12 @@ export const generateDetailedCountryData = (countryToProcess) => {
         stateCounties.forEach((county, index) => {
           county.population = distributedPopulations[index] || 5000;
           // Update the county in the main array
-          const countyIndex = processedCountry.secondAdminRegions.findIndex(c => c.id === county.id);
+          const countyIndex = processedCountry.secondAdminRegions.findIndex(
+            (c) => c.id === county.id
+          );
           if (countyIndex !== -1) {
-            processedCountry.secondAdminRegions[countyIndex].population = county.population;
+            processedCountry.secondAdminRegions[countyIndex].population =
+              county.population;
           }
         });
       }
@@ -1037,62 +1173,82 @@ export const generateDetailedCountryData = (countryToProcess) => {
   processedCountry.stats = generateInitialNationalStats(processedCountry);
 
   // Calculate national party popularity by aggregating from all states
-  if (processedCountry.regions && processedCountry.regions.length > 0 && processedCountry.nationalParties) {
+  if (
+    processedCountry.regions &&
+    processedCountry.regions.length > 0 &&
+    processedCountry.nationalParties
+  ) {
     const partyPopularityTotals = new Map();
     let totalRegionPopulation = 0;
 
     // Aggregate popularity weighted by region population
-    processedCountry.regions.forEach(region => {
+    processedCountry.regions.forEach((region) => {
       if (region.politicalLandscape && region.population) {
         const regionPop = region.population;
         totalRegionPopulation += regionPop;
-        
-        region.politicalLandscape.forEach(party => {
+
+        region.politicalLandscape.forEach((party) => {
           const currentTotal = partyPopularityTotals.get(party.id) || 0;
-          partyPopularityTotals.set(party.id, currentTotal + (party.popularity * regionPop));
+          partyPopularityTotals.set(
+            party.id,
+            currentTotal + party.popularity * regionPop
+          );
         });
       }
     });
 
     // Calculate weighted average popularity and update parties
     if (totalRegionPopulation > 0) {
-      processedCountry.nationalParties = processedCountry.nationalParties.map(party => {
-        const weightedTotal = partyPopularityTotals.get(party.id) || 0;
-        const nationalPopularity = Math.round(weightedTotal / totalRegionPopulation);
-        
-        // Update party finances based on actual national popularity
-        const updatedFinances = { ...party.finances };
-        
-        // Recalculate income based on actual popularity
-        const baseMonthlyIncome = Math.round(nationalPopularity * 500 + getRandomInt(10000, 30000));
-        updatedFinances.monthlyIncome = baseMonthlyIncome;
-        
-        // Update income sources that scale with popularity
-        if (updatedFinances.incomeSources) {
-          updatedFinances.incomeSources.membershipDues = Math.round(nationalPopularity * 100 + getRandomInt(2000, 8000));
-          updatedFinances.incomeSources.publicFunding = nationalPopularity > 60 ? getRandomInt(5000, 15000) : 0;
-          
-          // Recalculate total monthly income
-          const totalIncome = Object.values(updatedFinances.incomeSources).reduce((sum, val) => sum + val, 0);
-          updatedFinances.monthlyIncome = totalIncome;
+      processedCountry.nationalParties = processedCountry.nationalParties.map(
+        (party) => {
+          const weightedTotal = partyPopularityTotals.get(party.id) || 0;
+          const nationalPopularity = Math.round(
+            weightedTotal / totalRegionPopulation
+          );
+
+          // Update party finances based on actual national popularity
+          const updatedFinances = { ...party.finances };
+
+          // Recalculate income based on actual popularity
+          const baseMonthlyIncome = Math.round(
+            nationalPopularity * 500 + getRandomInt(10000, 30000)
+          );
+          updatedFinances.monthlyIncome = baseMonthlyIncome;
+
+          // Update income sources that scale with popularity
+          if (updatedFinances.incomeSources) {
+            updatedFinances.incomeSources.membershipDues = Math.round(
+              nationalPopularity * 100 + getRandomInt(2000, 8000)
+            );
+            updatedFinances.incomeSources.publicFunding =
+              nationalPopularity > 60 ? getRandomInt(5000, 15000) : 0;
+
+            // Recalculate total monthly income
+            const totalIncome = Object.values(
+              updatedFinances.incomeSources
+            ).reduce((sum, val) => sum + val, 0);
+            updatedFinances.monthlyIncome = totalIncome;
+          }
+
+          return {
+            ...party,
+            popularity: nationalPopularity,
+            finances: updatedFinances,
+          };
         }
-        
-        return {
-          ...party,
-          popularity: nationalPopularity,
-          finances: updatedFinances
-        };
-      });
+      );
     }
 
     // Create national political landscape
-    processedCountry.politicalLandscape = processedCountry.nationalParties.map(party => ({
-      id: party.id,
-      name: party.name,
-      popularity: party.popularity,
-      color: party.color,
-      ideology: party.ideology
-    }));
+    processedCountry.politicalLandscape = processedCountry.nationalParties.map(
+      (party) => ({
+        id: party.id,
+        name: party.name,
+        popularity: party.popularity,
+        color: party.color,
+        ideology: party.ideology,
+      })
+    );
   }
 
   return processedCountry; // Return the fully processed country

@@ -190,6 +190,164 @@ export const getDepartmentHeadTitle = (departmentId, level) => {
 };
 
 /**
+ * Maps city budget expense allocations to department budgets
+ * @param {object} cityBudget - The city's budget with expense allocations
+ * @returns {object} Object mapping department IDs to their budget allocations
+ */
+export const mapCityBudgetToDepartments = (cityBudget) => {
+  if (!cityBudget?.expenseAllocations) return {};
+  
+  const { expenseAllocations } = cityBudget;
+  
+  // Map budget categories to department IDs
+  const budgetMapping = {
+    // Public Safety
+    "police": expenseAllocations.policeDepartment || 0,
+    "fire_emergency": expenseAllocations.fireDepartment + (expenseAllocations.emergencyServices || 0),
+    
+    // Infrastructure & Transportation
+    "public_works": expenseAllocations.roadInfrastructure || 0,
+    "transportation": expenseAllocations.publicTransit || 0,
+    "water_utilities": expenseAllocations.waterAndSewer || 0,
+    "sanitation_waste": expenseAllocations.wasteManagement || 0,
+    
+    // Education & Social Services
+    "education": expenseAllocations.publicEducation || 0,
+    "public_health": expenseAllocations.publicHealthServices || 0,
+    "social_services": expenseAllocations.socialWelfarePrograms || 0,
+    
+    // Community Services
+    "parks_recreation": expenseAllocations.parksAndRecreation || 0,
+    "libraries": expenseAllocations.librariesAndCulture || 0,
+    
+    // Administration & Planning  
+    "planning_zoning": expenseAllocations.cityPlanningAndDevelopment || 0,
+    "finance_budget": expenseAllocations.generalAdministration || 0, // Remaining general admin
+    
+    // Direct budget allocations for new departments
+    "human_resources": expenseAllocations.humanResources || 0,
+    "legal_affairs": expenseAllocations.legalAffairs || 0,
+    "information_technology": expenseAllocations.informationTechnology || 0,
+    "code_enforcement": expenseAllocations.codeEnforcement || 0,
+    "permits_licensing": expenseAllocations.permitsLicensing || 0,
+    "housing_development": expenseAllocations.housingDevelopment || 0,
+    "economic_development": expenseAllocations.economicDevelopment || 0,
+    "environmental_services": expenseAllocations.environmentalServices || 0,
+  };
+  
+  return budgetMapping;
+};
+
+/**
+ * Calculates realistic employee count based on department type, budget, and context
+ * @param {string} departmentId - The department identifier
+ * @param {string} level - The government level
+ * @param {number} budget - Department budget
+ * @param {object} context - Additional context (city population, student count, etc.)
+ * @returns {number} Realistic employee count
+ */
+export const calculateRealisticEmployeeCount = (departmentId, level, budget, context = {}) => {
+  // Average salary estimates by department type and level
+  const averageSalaries = {
+    education: {
+      city: 65000,    // Teachers, administrators
+      county: 68000,
+      state: 75000,
+      national: 85000
+    },
+    police: {
+      city: 70000,    // Police officers, detectives, support
+      county: 72000,
+      state: 78000,
+      national: 90000
+    },
+    fire_emergency: {
+      city: 68000,    // Firefighters, paramedics
+      county: 70000,
+      state: 76000,
+      national: 88000
+    },
+    public_health: {
+      city: 60000,    // Health inspectors, nurses
+      county: 62000,
+      state: 68000,
+      national: 80000
+    },
+    public_works: {
+      city: 55000,    // Engineers, maintenance crew
+      county: 57000,
+      state: 65000,
+      national: 75000
+    },
+    transportation: {
+      city: 58000,    // Transit operators, planners
+      county: 60000,
+      state: 68000,
+      national: 78000
+    },
+    default: {
+      city: 55000,    // General administrative
+      county: 57000,
+      state: 65000,
+      national: 75000
+    }
+  };
+
+  // Get average salary for this department and level
+  const avgSalary = averageSalaries[departmentId]?.[level] || averageSalaries.default[level];
+  
+  // Personnel costs typically represent 70-80% of government department budgets
+  const personnelBudgetRatio = 0.75;
+  const availableForSalaries = budget * personnelBudgetRatio;
+  
+  // Calculate base employee count from budget
+  let employeeCount = Math.max(1, Math.round(availableForSalaries / avgSalary));
+
+  // Apply department-specific adjustments based on workload
+  if (departmentId === 'education' && context.studentCount) {
+    // Education: Need proper teacher-to-student ratios
+    const targetTeacherRatio = 20; // 20:1 student-teacher ratio
+    const neededTeachers = Math.ceil(context.studentCount / targetTeacherRatio);
+    // Add 25% for administrators, support staff, etc.
+    const totalEducationStaff = Math.ceil(neededTeachers * 1.25);
+    
+    // Use the higher of budget-based or ratio-based calculation
+    employeeCount = Math.max(employeeCount, totalEducationStaff);
+  }
+  
+  if (departmentId === 'police' && context.cityPopulation) {
+    // Police: Typical ratio is 2-3 officers per 1000 residents
+    const targetRatio = 2.5 / 1000;
+    const neededOfficers = Math.ceil(context.cityPopulation * targetRatio);
+    // Add 40% for detectives, administration, support
+    const totalPoliceStaff = Math.ceil(neededOfficers * 1.4);
+    
+    employeeCount = Math.max(employeeCount, totalPoliceStaff);
+  }
+  
+  if (departmentId === 'fire_emergency' && context.cityPopulation) {
+    // Fire: Typical ratio is 1-1.5 firefighters per 1000 residents
+    const targetRatio = 1.2 / 1000;
+    const neededFirefighters = Math.ceil(context.cityPopulation * targetRatio);
+    // Add 30% for paramedics, administration, support
+    const totalFireStaff = Math.ceil(neededFirefighters * 1.3);
+    
+    employeeCount = Math.max(employeeCount, totalFireStaff);
+  }
+
+  // Apply level-based minimums and maximums
+  const levelLimits = {
+    city: { min: 5, max: 15000 },
+    county: { min: 15, max: 25000 },
+    state: { min: 50, max: 100000 },
+    national: { min: 200, max: 500000 }
+  };
+  
+  const limits = levelLimits[level] || levelLimits.city;
+  return Math.min(Math.max(employeeCount, limits.min), limits.max);
+};
+
+/**
  * Gets appropriate department responsibilities based on department type and level
  * @param {string} departmentId - The department identifier
  * @param {string} level - The government level
@@ -248,6 +406,7 @@ export const getDepartmentResponsibilities = (departmentId, level) => {
  * @param {string} params.countryId - Country ID for context
  * @param {Array} params.availableParties - Available political parties
  * @param {object} params.countryData - Country data for context
+ * @param {object} params.cityBudget - City budget for budget-based department allocations (city level only)
  * @returns {Array<object>} Array of department objects with heads
  */
 export const generateDepartmentsForGovernmentLevel = ({
@@ -257,6 +416,8 @@ export const generateDepartmentsForGovernmentLevel = ({
   countryId,
   availableParties = [],
   countryData = null,
+  cityBudget = null,
+  contextData = {},
 }) => {
   const departments = [];
   
@@ -329,28 +490,44 @@ export const generateDepartmentsForGovernmentLevel = ({
     }
 
     // Determine budget based on level and department type
-    let budgetRange = { min: 100000, max: 1000000 };
+    let departmentBudget = 0;
     
-    switch (level) {
-      case "city":
-        budgetRange = { min: 500000, max: 10000000 };
-        break;
-      case "county": 
-        budgetRange = { min: 1000000, max: 50000000 };
-        break;
-      case "state":
-        budgetRange = { min: 50000000, max: 1000000000 };
-        break;
-      case "national":
-        budgetRange = { min: 1000000000, max: 100000000000 };
-        break;
-    }
-    
-    // Adjust for department importance
-    const importantDepts = ["education", "health_human_services", "transportation", "public_safety", "defense"];
-    if (importantDepts.includes(departmentId)) {
-      budgetRange.min *= 2;
-      budgetRange.max *= 3;
+    if (level === "city" && cityBudget) {
+      // Use city budget allocations for city departments
+      const budgetMapping = mapCityBudgetToDepartments(cityBudget);
+      departmentBudget = Math.floor(budgetMapping[departmentId] || 0);
+      
+      // If no specific mapping exists, use a small portion of general administration
+      if (departmentBudget === 0 && cityBudget.expenseAllocations?.generalAdministration) {
+        departmentBudget = Math.floor(cityBudget.expenseAllocations.generalAdministration * 0.05);
+      }
+    } else {
+      // Fall back to random budget ranges for non-city levels or when no budget provided
+      let budgetRange = { min: 100000, max: 1000000 };
+      
+      switch (level) {
+        case "city":
+          budgetRange = { min: 500000, max: 10000000 };
+          break;
+        case "county": 
+          budgetRange = { min: 1000000, max: 50000000 };
+          break;
+        case "state":
+          budgetRange = { min: 50000000, max: 1000000000 };
+          break;
+        case "national":
+          budgetRange = { min: 1000000000, max: 100000000000 };
+          break;
+      }
+      
+      // Adjust for department importance
+      const importantDepts = ["education", "health_human_services", "transportation", "public_safety", "defense"];
+      if (importantDepts.includes(departmentId)) {
+        budgetRange.min *= 2;
+        budgetRange.max *= 3;
+      }
+      
+      departmentBudget = getRandomInt(budgetRange.min, budgetRange.max);
     }
 
     const department = createDepartmentObject({
@@ -360,11 +537,8 @@ export const generateDepartmentsForGovernmentLevel = ({
       governmentEntityId: governmentEntityId,
       head: departmentHead,
       description: `Responsible for ${responsibilities.join(", ").toLowerCase()}`,
-      budget: getRandomInt(budgetRange.min, budgetRange.max),
-      employees: getRandomInt(
-        level === "city" ? 10 : level === "county" ? 25 : level === "state" ? 100 : 500,
-        level === "city" ? 200 : level === "county" ? 500 : level === "state" ? 5000 : 50000
-      ),
+      budget: departmentBudget,
+      employees: calculateRealisticEmployeeCount(departmentId, level, departmentBudget, contextData),
       responsibilities: responsibilities,
       createdYear: getRandomInt(1950, 2020),
     });
@@ -383,6 +557,7 @@ export const generateDepartmentsForGovernmentLevel = ({
  * @param {Array} params.availableParties - Available political parties
  * @param {string} params.selectedRegionId - Selected state/region ID
  * @param {string} params.selectedCityId - Selected city ID
+ * @param {object} params.cityBudget - City budget for department allocation
  * @returns {object} Object containing all generated departments by level
  */
 export const generateAllGovernmentDepartments = ({
@@ -391,6 +566,7 @@ export const generateAllGovernmentDepartments = ({
   availableParties = [],
   selectedRegionId,
   selectedCityId,
+  cityBudget = null,
 }) => {
   const allDepartments = {
     national: [],
@@ -449,6 +625,12 @@ export const generateAllGovernmentDepartments = ({
     const selectedCity = selectedRegion?.cities?.find(c => c.id === selectedCityId);
     
     if (selectedCity) {
+      // Prepare context data for realistic employee calculations
+      const contextData = {
+        cityPopulation: selectedCity.population || selectedCity.stats?.population || 100000, // Default if not available
+        studentCount: selectedCity.schoolDistrict?.totalStudents || 0,
+      };
+      
       allDepartments.city = generateDepartmentsForGovernmentLevel({
         level: "city",
         governmentEntityId: selectedCityId,
@@ -456,6 +638,8 @@ export const generateAllGovernmentDepartments = ({
         countryId,
         availableParties,
         countryData,
+        cityBudget,
+        contextData,
       });
     }
   }

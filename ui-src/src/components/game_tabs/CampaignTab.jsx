@@ -84,15 +84,20 @@ const RecentPollingSection = React.memo(({ electionId, recentPolls, partiesMap }
   );
 });
 
+// Stable selector functions to prevent infinite loops
+const selectRecentPolls = (state) => state.recentPollsByElection;
+const selectEndorsements = (state) => state.endorsements;
+const selectPlayerInfo = (state) => state.activeCampaign?.politician;
+
 const CampaignOverviewSubTab = ({
   politician,
   campaignData,
   openViewPoliticianModal,
   partiesMap,
 }) => {
-  const recentPollsByElection = useGameStore((state) => state.recentPollsByElection || new Map());
-  const endorsements = useGameStore((state) => state.endorsements || {});
-  const playerInfo = useGameStore((state) => state.playerInfo);
+  const recentPollsByElection = useGameStore(selectRecentPolls) || new Map();
+  const endorsements = useGameStore(selectEndorsements) || {};
+  const playerInfo = useGameStore(selectPlayerInfo);
   const startingCity = campaignData.startingCity || {};
   const playerActiveElection = campaignData.elections?.find(
     (election) =>
@@ -292,10 +297,14 @@ const CampaignOverviewSubTab = ({
     </div>
   );
 };
+// Stable selectors for StaffSubTab
+const selectHiredStaff = (state) => state.hiredStaff;
+const selectActions = (state) => state.actions;
+
 const StaffSubTab = () => {
   // Read staff from personnel slice (where they're actually stored)
-  const hiredStaff = useGameStore((state) => state.hiredStaff || []);
-  const { setStaffDelegatedTask } = useGameStore((state) => state.actions);
+  const hiredStaff = useGameStore(selectHiredStaff) || [];
+  const { setStaffDelegatedTask } = useGameStore(selectActions);
 
   const getTaskOptionsForRole = (roleId) => {
     return STAFF_TASK_OPTIONS[roleId] || [
@@ -1045,15 +1054,118 @@ const FundraisingSubTab = ({ politician, _campaignData, actions }) => {
   const campaignHoursRemainingToday =
     politician.campaignHoursRemainingToday || 0;
   const [fundraisingHours, setFundraisingHours] = useState(2);
+  const [donationFilter, setDonationFilter] = useState('all');
+  const [donationSort, setDonationSort] = useState('amount');
+
+  // Get campaign finances data - simplified to prevent infinite loops
+  const campaignFinances = politician.campaignFinances || {};
+  const donations = campaignFinances.donations || [];
+  const totalFunds = campaignFinances.totalFunds || politician.campaignFunds || 0;
+  const donorCount = campaignFinances.donorCount || 0;
+  const averageDonation = campaignFinances.averageDonation || 0;
+  const largestDonation = campaignFinances.largestDonation || 0;
+
+  // Filter and sort donations - memoized to prevent re-computation on every render
+  const filteredDonations = useMemo(() => donations.filter(donation => {
+    if (donationFilter === 'all') return true;
+    if (donationFilter === 'disclosed') return donation.requiresDisclosure;
+    if (donationFilter === 'anonymous') return donation.isAnonymous;
+    const donorType = donation.donorType || donation.type;
+    return donorType === donationFilter;
+  }), [donations, donationFilter]);
+
+  const sortedDonations = useMemo(() => [...filteredDonations].sort((a, b) => {
+    if (donationSort === 'amount') return b.amount - a.amount;
+    if (donationSort === 'date') return new Date(b.date) - new Date(a.date);
+    if (donationSort === 'name') return a.donorName.localeCompare(b.donorName);
+    return 0;
+  }), [filteredDonations, donationSort]);
+
+  const formatCurrency = useCallback((amount) => {
+    if (amount == null) return "$0";
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  }, []);
+
+  const formatDate = useCallback((date) => {
+    if (!date) return "N/A";
+    const d = new Date(date);
+    return d.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      year: 'numeric' 
+    });
+  }, []);
 
   return (
     <div className="sub-tab-content">
       <section className="info-card">
-        <h3>Fundraising Operations</h3>
-        <p>
-          <strong>Current Campaign Funds:</strong> $
-          {politician.campaignFunds?.toLocaleString() || 0}
-        </p>
+        <h3>Campaign Finance Overview</h3>
+        <div className="campaign-finance-summary">
+          <div className="finance-metric">
+            <span className="metric-label">Total Funds:</span>
+            <span className="metric-value">{formatCurrency(totalFunds)}</span>
+          </div>
+          <div className="finance-metric">
+            <span className="metric-label">Total Donors:</span>
+            <span className="metric-value">{donorCount}</span>
+          </div>
+          <div className="finance-metric">
+            <span className="metric-label">Average Donation:</span>
+            <span className="metric-value">{formatCurrency(averageDonation)}</span>
+          </div>
+          <div className="finance-metric">
+            <span className="metric-label">Largest Donation:</span>
+            <span className="metric-value">{formatCurrency(largestDonation)}</span>
+          </div>
+        </div>
+
+        {/* Donation Sources Breakdown */}
+        {campaignFinances.byType && (
+          <div className="donation-sources-breakdown">
+            <h4>Funding Sources</h4>
+            <div className="sources-grid">
+              <div className="source-item">
+                <div className="source-header">
+                  <span className="source-label">Individual Donors</span>
+                  <span className="source-count">({campaignFinances.byType.individual?.count || 0})</span>
+                </div>
+                <div className="source-amount">{formatCurrency(campaignFinances.byType.individual?.amount || 0)}</div>
+                <div className="source-percentage">
+                  {totalFunds > 0 ? `${Math.round((campaignFinances.byType.individual?.amount || 0) / totalFunds * 100)}%` : '0%'}
+                </div>
+              </div>
+              <div className="source-item">
+                <div className="source-header">
+                  <span className="source-label">Corporate Donors</span>
+                  <span className="source-count">({campaignFinances.byType.corporate?.count || 0})</span>
+                </div>
+                <div className="source-amount">{formatCurrency(campaignFinances.byType.corporate?.amount || 0)}</div>
+                <div className="source-percentage">
+                  {totalFunds > 0 ? `${Math.round((campaignFinances.byType.corporate?.amount || 0) / totalFunds * 100)}%` : '0%'}
+                </div>
+              </div>
+              <div className="source-item">
+                <div className="source-header">
+                  <span className="source-label">Union Donors</span>
+                  <span className="source-count">({campaignFinances.byType.union?.count || 0})</span>
+                </div>
+                <div className="source-amount">{formatCurrency(campaignFinances.byType.union?.amount || 0)}</div>
+                <div className="source-percentage">
+                  {totalFunds > 0 ? `${Math.round((campaignFinances.byType.union?.amount || 0) / totalFunds * 100)}%` : '0%'}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </section>
+
+      <section className="info-card">
+        <h3>Active Fundraising</h3>
         <div className="action-item-block">
           <h4>Personal Fundraising Drive</h4>
           <div className="action-controls">
@@ -1098,6 +1210,68 @@ const FundraisingSubTab = ({ politician, _campaignData, actions }) => {
           </div>
         </div>
       </section>
+
+      {/* Individual Donations List */}
+      {donations.length > 0 && (
+        <section className="info-card">
+          <h3>Individual Donations</h3>
+          
+          <div className="donation-controls">
+            <div className="filter-group">
+              <label>Filter:</label>
+              <select value={donationFilter} onChange={(e) => setDonationFilter(e.target.value)}>
+                <option value="all">All Donations ({donations.length})</option>
+                <option value="individual">Individual ({donations.filter(d => (d.donorType || d.type) === 'individual').length})</option>
+                <option value="corporate">Corporate ({donations.filter(d => (d.donorType || d.type) === 'corporate').length})</option>
+                <option value="union">Union ({donations.filter(d => (d.donorType || d.type) === 'union').length})</option>
+                <option value="disclosed">Disclosed ({donations.filter(d => d.requiresDisclosure).length})</option>
+                <option value="anonymous">Anonymous ({donations.filter(d => d.isAnonymous).length})</option>
+              </select>
+            </div>
+            <div className="sort-group">
+              <label>Sort by:</label>
+              <select value={donationSort} onChange={(e) => setDonationSort(e.target.value)}>
+                <option value="amount">Amount</option>
+                <option value="date">Date</option>
+                <option value="name">Name</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="donations-list">
+            {sortedDonations.slice(0, 20).map(donation => {
+              const donorType = donation.donorType || donation.type;
+              const displayName = donation.isAnonymous ? 'Anonymous Donor' : donation.donorName;
+              
+              return (
+                <div key={donation.id} className={`donation-item ${donorType}`}>
+                  <div className="donor-info">
+                    <span className="donor-name">{displayName}</span>
+                    {donation.industry && <span className="industry">({donation.industry})</span>}
+                    {donation.occupation && <span className="occupation">({donation.occupation})</span>}
+                    {donation.requiresDisclosure && <span className="disclosure-badge">Public</span>}
+                    {donation.isAnonymous && <span className="anonymous-badge">Anonymous</span>}
+                  </div>
+                  <div className="donation-details">
+                    <span className="amount">{formatCurrency(donation.amount)}</span>
+                    <span className="date">{formatDate(donation.date)}</span>
+                    <span className={`type-badge ${donorType}`}>
+                      {donorType === 'individual' ? 'Individual' : 
+                       donorType === 'corporate' ? 'Corporate' :
+                       donorType === 'union' ? 'Union' : 'Organization'}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+            {sortedDonations.length > 20 && (
+              <div className="more-donations-note">
+                Showing 20 of {sortedDonations.length} donations matching filter.
+              </div>
+            )}
+          </div>
+        </section>
+      )}
     </div>
   );
 };

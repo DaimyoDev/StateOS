@@ -1,6 +1,8 @@
 // src/stores/campaignSlice.js
 import { pollingOptimizer } from "../General Scripts/OptimizedPollingFunctions.js";
 import { getRandomInt, calculateAdultPopulation } from "../utils/core.js";
+import { calculateCandidateDonations } from "../entities/donationSystem.js";
+import { getDonationLawById } from "../data/politicalDonationLaws.js";
 
 /**
  * Helper function to find and update a specific politician (player or AI) within the activeCampaign state.
@@ -114,15 +116,87 @@ export const createCampaignSlice = (set, get) => ({
           return state;
         }
 
-        let baseFundsRaised = Math.round(
-          getRandomInt(500, 1500) *
+        // Get current player data for donation system
+        const playerCandidate = {
+          id: playerPoliticianId,
+          isPlayer: true,
+          attributes: attributesData,
+          partyId: 'democrat', // Default for now - will get from proper data later
+          nameRecognition: campaignData?.nameRecognition || 20,
+          campaignFinances: financesData?.campaignFinances || { 
+            totalFunds: politician?.campaignFunds || 0, 
+            donations: [], 
+            donors: [] 
+          }
+        };
+
+        // Find player's active election
+        const playerActiveElection = activeCampaign.elections?.find(
+          (election) => election.playerIsCandidate && election.outcome?.status === "upcoming"
+        );
+
+        // Get donation law for the jurisdiction
+        const donationLawId = activeCampaign.country?.laws?.donationLawId || 'MODERATE_LIMITS';
+        const donationLaw = getDonationLawById(donationLawId);
+
+        // Base fundraising calculation (reduced since we're generating individual donations)
+        let baseFundsTarget = Math.round(
+          getRandomInt(200, 600) * // Reduced base amount
             hoursToSpend *
             ((attributesData.fundraising || 5) / 4)
         );
 
-        // Apply staff boosts
-        const staffBoosts = get().actions.calculateStaffBoosts?.("personalFundraisingActivity", { fundsRaised: baseFundsRaised });
-        const fundsRaised = staffBoosts?.boostedEffects?.fundsRaised || baseFundsRaised;
+        // Apply staff boosts to target amount
+        const staffBoosts = get().actions.calculateStaffBoosts?.("personalFundraisingActivity", { fundsRaised: baseFundsTarget });
+        const targetFunds = staffBoosts?.boostedEffects?.fundsRaised || baseFundsTarget;
+
+        // Generate new donations using the donation system
+        // Create a mock campaign candidate for donation generation
+        const mockCandidate = {
+          ...playerCandidate,
+          campaignFinances: {
+            ...playerCandidate.campaignFinances,
+            totalFunds: targetFunds // Set target amount for generation
+          }
+        };
+
+        // Generate donations with LOD 2 (full detail)
+        const newDonationData = calculateCandidateDonations(mockCandidate, playerActiveElection, donationLaw, 2);
+        const actualFundsRaised = newDonationData.totalFunds;
+
+        // Merge new donations with existing ones
+        const existingFinances = financesData?.campaignFinances || { 
+          totalFunds: politician?.campaignFunds || 0, 
+          donations: [], 
+          donors: [] 
+        };
+        const updatedFinances = {
+          totalFunds: (existingFinances.totalFunds || 0) + actualFundsRaised,
+          donorCount: (existingFinances.donorCount || 0) + newDonationData.donorCount,
+          donations: [...(existingFinances.donations || []), ...newDonationData.donations],
+          donors: [...(existingFinances.donors || []), ...newDonationData.donors],
+          byType: {
+            individual: {
+              amount: (existingFinances.byType?.individual?.amount || 0) + (newDonationData.byType?.individual?.amount || 0),
+              count: (existingFinances.byType?.individual?.count || 0) + (newDonationData.byType?.individual?.count || 0)
+            },
+            corporate: {
+              amount: (existingFinances.byType?.corporate?.amount || 0) + (newDonationData.byType?.corporate?.amount || 0),
+              count: (existingFinances.byType?.corporate?.count || 0) + (newDonationData.byType?.corporate?.count || 0)
+            },
+            union: {
+              amount: (existingFinances.byType?.union?.amount || 0) + (newDonationData.byType?.union?.amount || 0),
+              count: (existingFinances.byType?.union?.count || 0) + (newDonationData.byType?.union?.count || 0)
+            }
+          },
+          averageDonation: Math.round(((existingFinances.totalFunds || 0) + actualFundsRaised) / ((existingFinances.donorCount || 0) + newDonationData.donorCount)),
+          largestDonation: Math.max(existingFinances.largestDonation || 0, newDonationData.largestDonation || 0),
+          topDonors: [...(existingFinances.donations || []), ...newDonationData.donations]
+            .sort((a, b) => b.amount - a.amount)
+            .slice(0, 10)
+            .map(d => ({ name: d.donorName, amount: d.amount, type: d.donorType || d.type })),
+          lastUpdated: new Date()
+        };
         
         // Show staff contributions if any
         if (staffBoosts?.contributions?.length > 0) {
@@ -145,7 +219,8 @@ export const createCampaignSlice = (set, get) => ({
         const newFinancesMap = new Map(politicians.finances);
         newFinancesMap.set(playerPoliticianId, {
           ...financesData,
-          campaignFunds: (financesData.campaignFunds || 0) + fundsRaised,
+          campaignFunds: updatedFinances.totalFunds,
+          campaignFinances: updatedFinances
         });
 
         const newDirtyList = new Set(
@@ -154,7 +229,7 @@ export const createCampaignSlice = (set, get) => ({
         newDirtyList.add(playerPoliticianId);
 
         get().actions.addNotification?.({
-          message: `Spent ${hoursToSpend}hr(s) fundraising. Raised $${fundsRaised.toLocaleString()}!`,
+          message: `Spent ${hoursToSpend}hr(s) fundraising. Raised $${actualFundsRaised.toLocaleString()} from ${newDonationData.donorCount} new donors!`,
           type: "success",
           category: 'Campaign'
         });

@@ -1,17 +1,21 @@
 // ui-src/src/components/game_tabs/GovernmentTab.jsx
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import "./TabStyles.css"; // Or your common tab styles
 import SubtabDropdown from "../ui/SubtabDropdown";
 import CityOverviewTab from "./government_tabs/CityOverviewTab"; // NEW component
 import LegislationSubTab from "./government_tabs/LegislationSubTab";
 import StateOverviewTab from "./government_tabs/StateOverviewTab";
 import NationalOverviewTab from "./government_tabs/NationalOverviewTab";
+import useGameStore from "../../store";
 // import FederalOverviewTab from './government_tabs/FederalOverviewTab'; // Future
 
 const GovernmentTab = ({ campaignData }) => {
   const [activeGovSubTab, setActiveGovSubTab] = useState("city"); // Default to city
   const [activeSubSection, setActiveSubSection] = useState("summary");
   const [activeGovernmentSubTab, setActiveGovernmentSubTab] = useState("offices"); // For government offices vs departments
+  
+  // Get government departments for dynamic dropdown options
+  const governmentDepartments = useGameStore((state) => state.activeCampaign?.governmentDepartments);
   
   // Legislation-specific states
   const [legislationLevel, setLegislationLevel] = useState("city");
@@ -34,10 +38,34 @@ const GovernmentTab = ({ campaignData }) => {
     { id: "coalitions", label: "Coalitions" }
   ];
 
-  const governmentSubtabs = [
-    { id: "offices", label: "Government Offices" },
-    { id: "departments", label: "Department Heads" }
-  ];
+  // Generate government subtabs dynamically based on available departments
+  const governmentSubtabs = useMemo(() => {
+    const baseTabs = [
+      { id: "offices", label: "Government Offices" },
+      { id: "departments", label: "Department Heads" }
+    ];
+    
+    // Add department-specific tabs based on current government level
+    let departmentsToAdd = [];
+    
+    if (activeGovSubTab === "city" && governmentDepartments?.city?.length > 0) {
+      departmentsToAdd = governmentDepartments.city;
+    } else if (activeGovSubTab === "state" && governmentDepartments?.state?.length > 0) {
+      departmentsToAdd = governmentDepartments.state;
+    } else if (activeGovSubTab === "federal" && governmentDepartments?.national?.length > 0) {
+      departmentsToAdd = governmentDepartments.national;
+    }
+    
+    if (departmentsToAdd.length > 0) {
+      const departmentTabs = departmentsToAdd.map(dept => ({
+        id: dept.id || dept.name.toLowerCase().replace(/\s+/g, '-'),
+        label: dept.name.toLowerCase().includes('department') ? dept.name : `${dept.name} Department`
+      }));
+      return [...baseTabs, ...departmentTabs];
+    }
+    
+    return baseTabs;
+  }, [governmentDepartments, activeGovSubTab]);
 
   const legislationLevelTabs = [
     { id: "city", label: "City" },

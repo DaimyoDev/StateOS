@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from "react";
 import "./DetailedCandidateView.css";
+import SubtabDropdown from "../ui/SubtabDropdown";
 import { getRandomElement, getRandomInt, generateId } from "../../utils/core";
 
 // On-demand donation generation functions
@@ -89,18 +90,27 @@ const formatCurrency = (amount) => {
 const DonationItem = ({ donation }) => {
   const displayName = donation.isAnonymous ? 'Anonymous Donor' : donation.donorName;
   
+  // Handle both old format (type: 'organization') and new format (donorType: 'corporate')
+  const donorType = donation.donorType || donation.type;
+  const typeDisplay = donorType === 'individual' ? 'Individual' : 
+                     donorType === 'corporate' ? 'Corporate' :
+                     donorType === 'union' ? 'Union' :
+                     donorType === 'organization' ? 'Organization' : 
+                     'Unknown';
+  
   return (
-    <div className={`donation-item ${donation.type}`}>
+    <div className={`donation-item ${donorType}`}>
       <div className="donor-info">
         <span className="donor-name">{displayName}</span>
         {donation.industry && <span className="industry">({donation.industry})</span>}
+        {donation.occupation && <span className="occupation">({donation.occupation})</span>}
         {donation.requiresDisclosure && <span className="disclosure-badge">Public</span>}
         {donation.isAnonymous && <span className="anonymous-badge">Anonymous</span>}
       </div>
       <div className="donation-details">
         <span className="amount">{formatCurrency(donation.amount)}</span>
         <span className="date">{formatDate(donation.date)}</span>
-        <span className="type-badge">{donation.type === 'individual' ? 'Individual' : 'Organization'}</span>
+        <span className="type-badge">{typeDisplay}</span>
       </div>
     </div>
   );
@@ -114,8 +124,14 @@ const DonationTracker = ({ donations = [] }) => {
     if (filter === 'all') return true;
     if (filter === 'disclosed') return donation.requiresDisclosure;
     if (filter === 'anonymous') return donation.isAnonymous;
-    if (filter === 'organization') return donation.type === 'organization';
-    if (filter === 'individual') return donation.type === 'individual';
+    
+    // Handle both old and new donation type formats
+    const donorType = donation.donorType || donation.type;
+    if (filter === 'individual') return donorType === 'individual';
+    if (filter === 'corporate') return donorType === 'corporate';
+    if (filter === 'union') return donorType === 'union';
+    if (filter === 'organization') return donorType === 'organization' || donorType === 'corporate';
+    
     return true;
   });
   
@@ -161,8 +177,13 @@ const DonationTracker = ({ donations = [] }) => {
             <option value="all">All Donations ({donations.length})</option>
             <option value="disclosed">Disclosed Only ({donations.filter(d => d.requiresDisclosure).length})</option>
             <option value="anonymous">Anonymous ({donations.filter(d => d.isAnonymous).length})</option>
-            <option value="individual">Individual ({donations.filter(d => d.type === 'individual').length})</option>
-            <option value="organization">Organization ({donations.filter(d => d.type === 'organization').length})</option>
+            <option value="individual">Individual ({donations.filter(d => (d.donorType || d.type) === 'individual').length})</option>
+            <option value="corporate">Corporate ({donations.filter(d => (d.donorType || d.type) === 'corporate').length})</option>
+            <option value="union">Union ({donations.filter(d => (d.donorType || d.type) === 'union').length})</option>
+            <option value="organization">Organization ({donations.filter(d => {
+              const type = d.donorType || d.type;
+              return type === 'organization' || type === 'corporate';
+            }).length})</option>
           </select>
         </div>
         <div className="sort-group">
@@ -192,6 +213,12 @@ const DonationTracker = ({ donations = [] }) => {
 
 const DetailedCandidateView = ({ candidate, onBack, electionInfo }) => {
   const [activeTab, setActiveTab] = useState('overview');
+  
+  // Define the subtabs for the dropdown
+  const subtabs = [
+    { id: 'overview', label: 'Overview' },
+    { id: 'finances', label: 'Campaign Finances' },
+  ];
   
   if (!candidate) {
     return (
@@ -231,16 +258,21 @@ const DetailedCandidateView = ({ candidate, onBack, electionInfo }) => {
     };
   }, [candidate, electionInfo]);
 
-  // Generate donations on-demand using useMemo to cache during this view session
+  // Use real donations from campaign finances, or generate on-demand for detailed view
   const donations = useMemo(() => {
+    // First check for real donations in campaign finances (LOD 2 candidates)
     const existingDonations = updatedCandidate.campaignFinances?.donations;
     if (existingDonations && existingDonations.length > 0) {
       return existingDonations;
     }
     
-    // Generate donations on-demand based on total funds
+    // Generate realistic donations for detailed viewing regardless of LOD level
     const totalFunds = updatedCandidate.campaignFinances?.totalFunds || updatedCandidate.campaignFunds || 0;
-    return totalFunds > 0 ? generateDonationsOnDemand(totalFunds) : [];
+    if (totalFunds > 0) {
+      return generateDonationsOnDemand(totalFunds);
+    }
+    
+    return [];
   }, [updatedCandidate.campaignFinances?.donations, updatedCandidate.campaignFinances?.totalFunds, updatedCandidate.campaignFunds]);
 
   // Update campaign finances with calculated donor count
@@ -275,19 +307,13 @@ const DetailedCandidateView = ({ candidate, onBack, electionInfo }) => {
         </div>
       </div>
       
-      <div className="candidate-tabs">
-        <button 
-          className={`tab-button ${activeTab === 'overview' ? 'active' : ''}`}
-          onClick={() => setActiveTab('overview')}
-        >
-          Overview
-        </button>
-        <button 
-          className={`tab-button ${activeTab === 'finances' ? 'active' : ''}`}
-          onClick={() => setActiveTab('finances')}
-        >
-          Campaign Finances
-        </button>
+      <div className="candidate-subtab-section">
+        <SubtabDropdown 
+          tabs={subtabs}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          label="Select View"
+        />
       </div>
       
       <div className="candidate-content">
@@ -347,15 +373,17 @@ const DetailedCandidateView = ({ candidate, onBack, electionInfo }) => {
                   </div>
                   <div className="metric">
                     <span className="label">Total Donors:</span>
-                    <span className="value">{updatedCampaignFinances?.totalDonationCount || 0}</span>
+                    <span className="value">{updatedCampaignFinances?.donorCount || updatedCampaignFinances?.totalDonationCount || donations.length || 0}</span>
                   </div>
                   <div className="metric">
-                    <span className="label">Fundraising Target:</span>
-                    <span className="value">{formatCurrency(updatedCampaignFinances?.monthlyFundraisingTarget || 0)}/month</span>
+                    <span className="label">Average Donation:</span>
+                    <span className="value">{formatCurrency(updatedCampaignFinances?.averageDonation || 
+                      (donations.length > 0 ? donations.reduce((sum, d) => sum + d.amount, 0) / donations.length : 0))}</span>
                   </div>
                   <div className="metric">
-                    <span className="label">Last Donation:</span>
-                    <span className="value">{formatDate(updatedCampaignFinances?.lastDonationDate)}</span>
+                    <span className="label">Largest Donation:</span>
+                    <span className="value">{formatCurrency(updatedCampaignFinances?.largestDonation || 
+                      (donations.length > 0 ? Math.max(...donations.map(d => d.amount)) : 0))}</span>
                   </div>
                 </div>
               </div>
@@ -378,6 +406,76 @@ const DetailedCandidateView = ({ candidate, onBack, electionInfo }) => {
         
         {activeTab === 'finances' && (
           <div className="candidate-finances">
+            {/* Show donation breakdown by type if available */}
+            {updatedCampaignFinances?.byType && (
+              <div className="donation-breakdown">
+                <h4>Donation Sources</h4>
+                <div className="breakdown-grid">
+                  <div className="breakdown-item">
+                    <div className="breakdown-header">
+                      <span className="breakdown-label">Individual Donors</span>
+                      <span className="breakdown-count">({updatedCampaignFinances.byType.individual?.count || 0})</span>
+                    </div>
+                    <div className="breakdown-value">
+                      {formatCurrency(updatedCampaignFinances.byType.individual?.amount || 0)}
+                    </div>
+                    <div className="breakdown-percentage">
+                      {updatedCampaignFinances.totalFunds > 0 ? 
+                        `${Math.round((updatedCampaignFinances.byType.individual?.amount || 0) / updatedCampaignFinances.totalFunds * 100)}%` : 
+                        '0%'}
+                    </div>
+                  </div>
+                  
+                  <div className="breakdown-item">
+                    <div className="breakdown-header">
+                      <span className="breakdown-label">Corporate Donors</span>
+                      <span className="breakdown-count">({updatedCampaignFinances.byType.corporate?.count || 0})</span>
+                    </div>
+                    <div className="breakdown-value">
+                      {formatCurrency(updatedCampaignFinances.byType.corporate?.amount || 0)}
+                    </div>
+                    <div className="breakdown-percentage">
+                      {updatedCampaignFinances.totalFunds > 0 ? 
+                        `${Math.round((updatedCampaignFinances.byType.corporate?.amount || 0) / updatedCampaignFinances.totalFunds * 100)}%` : 
+                        '0%'}
+                    </div>
+                  </div>
+                  
+                  <div className="breakdown-item">
+                    <div className="breakdown-header">
+                      <span className="breakdown-label">Union Donors</span>
+                      <span className="breakdown-count">({updatedCampaignFinances.byType.union?.count || 0})</span>
+                    </div>
+                    <div className="breakdown-value">
+                      {formatCurrency(updatedCampaignFinances.byType.union?.amount || 0)}
+                    </div>
+                    <div className="breakdown-percentage">
+                      {updatedCampaignFinances.totalFunds > 0 ? 
+                        `${Math.round((updatedCampaignFinances.byType.union?.amount || 0) / updatedCampaignFinances.totalFunds * 100)}%` : 
+                        '0%'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {/* Show top donors if available */}
+            {updatedCampaignFinances?.topDonors && updatedCampaignFinances.topDonors.length > 0 && (
+              <div className="top-donors-section">
+                <h4>Top Donors</h4>
+                <div className="top-donors-list">
+                  {updatedCampaignFinances.topDonors.map((donor, index) => (
+                    <div key={index} className="top-donor-item">
+                      <span className="donor-rank">#{index + 1}</span>
+                      <span className="donor-name">{donor.name}</span>
+                      <span className="donor-type">({donor.type})</span>
+                      <span className="donor-amount">{formatCurrency(donor.amount)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
             <DonationTracker donations={donations} />
           </div>
         )}

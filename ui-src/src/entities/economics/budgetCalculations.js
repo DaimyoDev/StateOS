@@ -4,6 +4,91 @@
 import { getRandomInt, getRandomElement } from "../../utils/core";
 
 /**
+ * Calculates state education funding distribution to local districts
+ * @param {number} totalStateEducationFunding - Total state budget for local education funding
+ * @param {Array} cities - Array of city objects with population and student data
+ * @param {string} fundingFormula - Type of funding formula ('per_student', 'needs_based', 'hybrid')
+ * @returns {Object} Mapping of cityId to funding amount
+ */
+export const calculateStateEducationDistribution = (
+  totalStateEducationFunding,
+  cities = [],
+  fundingFormula = 'hybrid'
+) => {
+  if (!cities || cities.length === 0) return {};
+  
+  const distribution = {};
+  let totalStudents = 0;
+  let totalWeightedNeed = 0;
+  
+  // First pass: calculate totals for distribution formulas
+  cities.forEach(city => {
+    const students = city.schoolDistrict?.totalStudents || Math.floor(city.population * 0.18);
+    const needsMultiplier = calculateNeedsMultiplier(city);
+    
+    totalStudents += students;
+    totalWeightedNeed += students * needsMultiplier;
+  });
+  
+  // Second pass: distribute funding
+  cities.forEach(city => {
+    const students = city.schoolDistrict?.totalStudents || Math.floor(city.population * 0.18);
+    const needsMultiplier = calculateNeedsMultiplier(city);
+    
+    let cityFunding = 0;
+    
+    switch (fundingFormula) {
+      case 'per_student':
+        // Simple per-student allocation
+        cityFunding = (students / totalStudents) * totalStateEducationFunding;
+        break;
+        
+      case 'needs_based':
+        // Weighted by economic need
+        const weightedStudents = students * needsMultiplier;
+        cityFunding = (weightedStudents / totalWeightedNeed) * totalStateEducationFunding;
+        break;
+        
+      case 'hybrid':
+      default:
+        // 60% per-student, 40% needs-based
+        const perStudentPortion = ((students / totalStudents) * totalStateEducationFunding) * 0.6;
+        const needsBasedPortion = ((students * needsMultiplier / totalWeightedNeed) * totalStateEducationFunding) * 0.4;
+        cityFunding = perStudentPortion + needsBasedPortion;
+        break;
+    }
+    
+    distribution[city.id] = Math.floor(cityFunding);
+  });
+  
+  return distribution;
+};
+
+/**
+ * Calculates needs-based multiplier for education funding
+ * @param {Object} city - City object with demographics and economic data
+ * @returns {number} Multiplier based on economic need (1.0 = baseline, higher = more need)
+ */
+const calculateNeedsMultiplier = (city) => {
+  let multiplier = 1.0;
+  
+  // GDP per capita adjustment
+  const gdpPerCapita = city.economicProfile?.gdpPerCapita || 40000;
+  if (gdpPerCapita < 30000) multiplier += 0.4;
+  else if (gdpPerCapita < 40000) multiplier += 0.2;
+  else if (gdpPerCapita > 60000) multiplier -= 0.1;
+  
+  // Poverty rate adjustment
+  const povertyRate = city.stats?.povertyRate || 15;
+  if (povertyRate > 20) multiplier += 0.3;
+  else if (povertyRate > 15) multiplier += 0.15;
+  else if (povertyRate < 10) multiplier -= 0.1;
+  
+  // Ensure multiplier stays within reasonable bounds
+  return Math.max(0.7, Math.min(2.0, multiplier));
+};
+
+/**
  * Calculates detailed income sources for city budgets
  * @param {number} population - City population
  * @param {number} gdpPerCapita - GDP per capita
@@ -11,6 +96,7 @@ import { getRandomInt, getRandomElement } from "../../utils/core";
  * @param {string} cityType - Type of city (Village/Town, City, Metropolis)
  * @param {Array} dominantIndustries - Main industries in the city
  * @param {Object} cityLaws - City laws affecting revenue (e.g., minimum wage)
+ * @param {Object} stateEducationFunding - State funding for local education (optional)
  * @returns {Object} Detailed breakdown of income sources
  */
 export const calculateDetailedIncomeSources = (
@@ -19,7 +105,8 @@ export const calculateDetailedIncomeSources = (
   taxRates,
   cityType,
   dominantIndustries,
-  cityLaws = {}
+  cityLaws = {},
+  stateEducationFunding = null
 ) => {
   const incomeSources = {
     propertyTaxRevenue: 0,
@@ -28,6 +115,7 @@ export const calculateDetailedIncomeSources = (
     feesAndPermits: 0,
     utilityRevenue: 0,
     grantsAndSubsidies: 0,
+    stateEducationFunding: 0,
     investmentIncome: 0,
     otherRevenue: 0,
   };
@@ -92,6 +180,20 @@ export const calculateDetailedIncomeSources = (
     population * getRandomInt(10, 30) +
       (gdpPerCapita < 35000 ? population * 15 : 0)
   );
+
+  // State education funding (significant portion of local school budgets)
+  if (stateEducationFunding && stateEducationFunding.perStudentAllocation) {
+    // Calculate based on estimated student population (roughly 18% of total population)
+    const estimatedStudents = Math.floor(population * 0.18);
+    incomeSources.stateEducationFunding = Math.floor(
+      estimatedStudents * stateEducationFunding.perStudentAllocation
+    );
+  } else {
+    // Default state education funding formula if no specific allocation provided
+    // States typically provide 40-50% of local education funding
+    const estimatedEducationBudget = population * getRandomInt(800, 1200); // Rough per-capita education spending
+    incomeSources.stateEducationFunding = Math.floor(estimatedEducationBudget * (getRandomInt(40, 50) / 100));
+  }
 
   // Investment income (based on existing revenue)
   incomeSources.investmentIncome = Math.floor(
@@ -228,6 +330,16 @@ export const generateInitialBudget = (
     librariesAndCulture: 0,
     cityPlanningAndDevelopment: 0,
     generalAdministration: 0,
+    // New department-specific allocations
+    housingDevelopment: 0,
+    economicDevelopment: 0,
+    codeEnforcement: 0,
+    permitsLicensing: 0,
+    environmentalServices: 0,
+    informationTechnology: 0,
+    humanResources: 0,
+    legalAffairs: 0,
+    // Existing
     debtServicing: 0,
     miscellaneousExpenses: 0,
   };
@@ -240,6 +352,40 @@ export const generateInitialBudget = (
       );
       sumOfAllocatedExpenses += expenseAllocations[key];
     }
+  }
+
+  // Allocate budget to new department categories from general administration
+  const adminBudget = expenseAllocations.generalAdministration;
+  if (adminBudget > 0) {
+    // Distribute portions of general administration to specific departments
+    expenseAllocations.informationTechnology = Math.floor(adminBudget * 0.15);
+    expenseAllocations.humanResources = Math.floor(adminBudget * 0.12);
+    expenseAllocations.legalAffairs = Math.floor(adminBudget * 0.08);
+    expenseAllocations.permitsLicensing = Math.floor(adminBudget * 0.10);
+    expenseAllocations.codeEnforcement = Math.floor(adminBudget * 0.05);
+    
+    // Reduce general administration by the amount distributed
+    const distributedAmount = expenseAllocations.informationTechnology + 
+                             expenseAllocations.humanResources + 
+                             expenseAllocations.legalAffairs + 
+                             expenseAllocations.permitsLicensing + 
+                             expenseAllocations.codeEnforcement;
+    expenseAllocations.generalAdministration -= distributedAmount;
+  }
+
+  // Allocate budget to development departments from planning and social programs
+  const planningBudget = expenseAllocations.cityPlanningAndDevelopment;
+  const socialBudget = expenseAllocations.socialWelfarePrograms;
+  
+  if (planningBudget > 0) {
+    expenseAllocations.economicDevelopment = Math.floor(planningBudget * 0.25);
+    expenseAllocations.environmentalServices = Math.floor(planningBudget * 0.15);
+    expenseAllocations.cityPlanningAndDevelopment -= (expenseAllocations.economicDevelopment + expenseAllocations.environmentalServices);
+  }
+  
+  if (socialBudget > 0) {
+    expenseAllocations.housingDevelopment = Math.floor(socialBudget * 0.20);
+    expenseAllocations.socialWelfarePrograms -= expenseAllocations.housingDevelopment;
   }
 
   // Handle debt
@@ -325,13 +471,14 @@ export const generateStateBudget = ({
   const adjustedBudgetBase = totalAnnualIncome * budgetImbalanceFactor;
 
   const expenseAllocations = {
-    publicEducation: Math.floor(adjustedBudgetBase * 0.35), // 35% of budget
+    publicEducation: Math.floor(adjustedBudgetBase * 0.25), // 25% of budget (reduced from 35%)
+    localEducationFunding: Math.floor(adjustedBudgetBase * 0.15), // 15% - NEW: Funding for local school districts
     publicHealthServices: Math.floor(adjustedBudgetBase * 0.2), // 20% of budget
     transportationInfrastructure: Math.floor(adjustedBudgetBase * 0.15), // 15% of budget
     socialWelfarePrograms: Math.floor(adjustedBudgetBase * 0.12), // 12% of budget
     publicSafety: Math.floor(adjustedBudgetBase * 0.08), // 8% of budget
     environmentalProtection: Math.floor(adjustedBudgetBase * 0.05), // 5% of budget
-    generalAdministration: Math.floor(adjustedBudgetBase * 0.05), // 5% of budget
+    generalAdministration: Math.floor(adjustedBudgetBase * 0.05), // 5% of budget (totals 110% for flexibility)
   };
 
   const totalAnnualExpenses = Object.values(expenseAllocations).reduce(

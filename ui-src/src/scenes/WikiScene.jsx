@@ -472,6 +472,150 @@ const sections = [
     )
   },
   {
+    id: 'education-system',
+    title: 'Education System',
+    content: (
+      <>
+        <p>
+          The education system manages public schools, student populations, academic performance, 
+          and career pathways. It integrates with government departments, budgets, and political 
+          decision-making to create a realistic educational environment.
+        </p>
+
+        <h3>School District Organization</h3>
+        <h4>District Structure</h4>
+        <ul>
+          <li><strong>City School Districts</strong>: Each city manages its own public education system</li>
+          <li><strong>Student Populations</strong>: Districts serve thousands to hundreds of thousands of students</li>
+          <li><strong>Geographic Coverage</strong>: Districts encompass multiple neighborhoods and demographics</li>
+          <li><strong>Administrative Oversight</strong>: Education departments manage district operations and budgets</li>
+        </ul>
+
+        <h4>Student Demographics</h4>
+        <p>Students are organized into coalition groups representing different community segments:</p>
+        <ul>
+          <li><strong>Demographic Variety</strong>: Students from various backgrounds, ages, and socioeconomic levels</li>
+          <li><strong>Coalition Representation</strong>: Student populations mirror broader community demographics</li>
+          <li><strong>Geographic Distribution</strong>: Students from different areas of the city with varying characteristics</li>
+          <li><strong>Population Tracking</strong>: Detailed counts for each demographic group within the district</li>
+        </ul>
+
+        <h3>Academic Performance System</h3>
+        <h4>Performance Metrics</h4>
+        <ul>
+          <li><strong>Academic Scores</strong>: Standardized performance ratings by demographic group</li>
+          <li><strong>Achievement Levels</strong>: Color-coded performance indicators (red=struggling, yellow=average, green=excelling)</li>
+          <li><strong>Demographic Analysis</strong>: Performance tracking across different student populations</li>
+          <li><strong>Trend Monitoring</strong>: Historical performance data and improvement tracking</li>
+        </ul>
+
+        <h4>Performance Factors</h4>
+        <ul>
+          <li><strong>Funding Levels</strong>: Education budget directly impacts academic outcomes</li>
+          <li><strong>Teacher Ratios</strong>: Student-teacher ratios affect classroom effectiveness</li>
+          <li><strong>Resource Availability</strong>: School facilities, technology, and materials</li>
+          <li><strong>Community Support</strong>: Socioeconomic factors and family engagement</li>
+        </ul>
+
+        <h3>Career Pathways System</h3>
+        <h4>Post-Graduation Tracking</h4>
+        <p>The system tracks what happens to students after graduation:</p>
+        <ul>
+          <li><strong>College-Bound</strong>: Students pursuing higher education (typically 30-50%)</li>
+          <li><strong>Trade Schools</strong>: Students entering vocational training programs (typically 15-25%)</li>
+          <li><strong>Employment</strong>: Students joining the workforce directly (typically 20-35%)</li>
+          <li><strong>Other Outcomes</strong>: Students with alternative paths or challenges (typically 5-15%)</li>
+        </ul>
+
+        <h4>Career Preparation</h4>
+        <ul>
+          <li><strong>Academic Tracks</strong>: College preparatory programs and advanced placement courses</li>
+          <li><strong>Vocational Training</strong>: Technical education and trade skill development</li>
+          <li><strong>Career Counseling</strong>: Guidance programs helping students choose appropriate paths</li>
+          <li><strong>Industry Partnerships</strong>: Connections with local businesses for internships and job placement</li>
+        </ul>
+
+        <h3>Budget Integration</h3>
+        <h4>Education Department Funding</h4>
+        <ul>
+          <li><strong>Budget Allocation</strong>: Education departments receive major portion of city budgets</li>
+          <li><strong>Per-Student Spending</strong>: Budget divided by student population for spending analysis</li>
+          <li><strong>Staff Compensation</strong>: Teacher salaries and benefits consume majority of education budget</li>
+          <li><strong>Infrastructure Costs</strong>: School building maintenance, technology, and transportation</li>
+        </ul>
+
+        <h4>Staffing Requirements</h4>
+        <ul>
+          <li><strong>Teacher Employment</strong>: Calculated based on student-teacher ratios (typically 20:1)</li>
+          <li><strong>Administrative Staff</strong>: Principals, counselors, and district administrators (typically 25% of total staff)</li>
+          <li><strong>Support Personnel</strong>: Custodians, food service, transportation, and paraprofessionals</li>
+          <li><strong>Realistic Headcounts</strong>: Employee counts match actual educational requirements</li>
+        </ul>
+
+        <h3>Data Visualization</h3>
+        <h4>Student Coalition Charts</h4>
+        <ul>
+          <li><strong>Demographic Breakdown</strong>: Pie charts showing student population distribution</li>
+          <li><strong>Performance Analysis</strong>: Bar charts displaying academic scores by demographic</li>
+          <li><strong>Career Pathways</strong>: Visualization of post-graduation outcomes</li>
+          <li><strong>Trend Tracking</strong>: Historical data showing changes over time</li>
+        </ul>
+
+        <h4>Budget Analytics</h4>
+        <ul>
+          <li><strong>Per-Student Metrics</strong>: Cost analysis and spending efficiency</li>
+          <li><strong>Department Comparisons</strong>: Education spending versus other city services</li>
+          <li><strong>Resource Allocation</strong>: Breakdown of where education dollars are spent</li>
+          <li><strong>Performance ROI</strong>: Correlation between spending and academic outcomes</li>
+        </ul>
+
+        <h3>Policy Integration</h3>
+        <h4>Education Policies</h4>
+        <ul>
+          <li><strong>Funding Policies</strong>: Legislation affecting education budget allocations</li>
+          <li><strong>Academic Standards</strong>: Policies setting curriculum and performance requirements</li>
+          <li><strong>Teacher Policies</strong>: Certification, compensation, and working condition regulations</li>
+          <li><strong>School Choice</strong>: Charter schools, vouchers, and district transfer policies</li>
+        </ul>
+
+        <h4>Government Oversight</h4>
+        <ul>
+          <li><strong>City Level</strong>: Local school boards and education department management</li>
+          <li><strong>State Level</strong>: State education standards and funding formulas</li>
+          <li><strong>Federal Level</strong>: National education policy and federal funding programs</li>
+          <li><strong>Regulatory Compliance</strong>: Meeting standards and reporting requirements</li>
+        </ul>
+
+        <h3>Community Impact</h3>
+        <h4>Economic Effects</h4>
+        <ul>
+          <li><strong>Workforce Development</strong>: Educated graduates support local economic growth</li>
+          <li><strong>Property Values</strong>: Good schools increase neighborhood desirability</li>
+          <li><strong>Business Attraction</strong>: Companies prefer locations with strong school systems</li>
+          <li><strong>Long-term Investment</strong>: Education spending pays dividends over decades</li>
+        </ul>
+
+        <h4>Social Outcomes</h4>
+        <ul>
+          <li><strong>Social Mobility</strong>: Education provides pathways out of poverty</li>
+          <li><strong>Civic Engagement</strong>: Educated citizens participate more in democracy</li>
+          <li><strong>Crime Reduction</strong>: Better education correlates with lower crime rates</li>
+          <li><strong>Community Cohesion</strong>: Schools serve as neighborhood anchors and gathering places</li>
+        </ul>
+
+        <h3>Strategic Considerations</h3>
+        <ul>
+          <li><strong>Budget Priorities</strong>: Balance education funding with other essential services</li>
+          <li><strong>Performance Monitoring</strong>: Track academic outcomes to guide policy decisions</li>
+          <li><strong>Equity Concerns</strong>: Ensure all demographic groups receive quality education</li>
+          <li><strong>Future Planning</strong>: Anticipate enrollment changes and infrastructure needs</li>
+          <li><strong>Community Engagement</strong>: Involve parents and stakeholders in educational decisions</li>
+          <li><strong>Teacher Retention</strong>: Competitive compensation and working conditions to attract quality educators</li>
+        </ul>
+      </>
+    )
+  },
+  {
     id: 'news-media-system',
     title: 'News & Media System',
     content: (

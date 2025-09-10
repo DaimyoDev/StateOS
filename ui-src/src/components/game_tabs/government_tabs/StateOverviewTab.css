@@ -1,0 +1,816 @@
+/* ui-src/src/components/game_tabs/government_tabs/StateOverviewTab.css */
+/* Inherits most styles from CityOverviewTab.css but adds state-specific variations */
+
+@import './CityOverviewTab.css';
+
+/* State-specific overrides and additions */
+.state-overview-tab {
+  padding: 0px 10px 10px 10px;
+}
+
+.state-main-title {
+  color: var(--accent-color);
+  margin-top: 0;
+  margin-bottom: 25px;
+  border-bottom: 2px solid var(--border-color);
+  padding-bottom: 12px;
+  font-size: 1.6em;
+  text-align: center;
+}
+
+/* Sub-tab navigation for states */
+.state-overview-tab .sub-tab-navigation {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-color, #ddd);
+}
+
+.state-overview-tab .sub-tab-navigation button {
+  padding: 8px 15px;
+  font-size: 0.95em;
+  font-family: var(--font-main);
+  cursor: pointer;
+  background-color: var(--button-bg, #f0f0f0);
+  color: var(--button-text, #333);
+  border: 1px solid var(--border-color, #ccc);
+  border-bottom: none;
+  border-radius: var(--element-radius, 6px) var(--element-radius, 6px) 0 0;
+  transition: background-color 0.2s ease, color 0.2s ease;
+  margin-right: 2px;
+}
+
+.state-overview-tab .sub-tab-navigation button:hover {
+  background-color: var(--accent-color, #e0e0e0);
+  color: var(--accent-text, #111);
+  opacity: 1;
+}
+
+.state-overview-tab .sub-tab-navigation button.active {
+  background-color: var(--accent-color, #007bff);
+  color: var(--accent-text, #ffffff);
+  border-color: var(--accent-border-color, var(--accent-bg, #007bff));
+  border-bottom: 1px solid var(--accent-bg);
+  opacity: 1;
+  font-weight: bold;
+}
+
+.state-overview-tab .sub-tab-content-area {
+  padding-top: 15px;
+}
+
+/* State Education Funding Section */
+.state-education-section {
+  margin-bottom: 30px;
+  padding: 20px;
+  background: linear-gradient(135deg, #e3f2fd, #f3e5f5);
+  border-radius: var(--element-radius, 8px);
+  border-left: 4px solid var(--accent-color, #007bff);
+}
+
+.state-education-section h4 {
+  margin-bottom: 15px;
+  color: var(--primary-text, #333);
+  border-bottom: 1px solid var(--border-color, #dee2e6);
+  padding-bottom: 8px;
+  font-size: 1.25em;
+}
+
+.education-funding-section {
+  background: var(--ui-panel-bg, #ffffff);
+  border-radius: var(--element-radius, 6px);
+  padding: 16px;
+  border: 1px solid var(--border-color, #dee2e6);
+}
+
+.education-funding-section h5 {
+  margin: 0 0 12px 0;
+  color: var(--accent-color, #007bff);
+  font-size: 1.1em;
+  font-weight: 600;
+}
+
+.funding-summary {
+  display: flex;
+  justify-content: space-around;
+  gap: 20px;
+  margin-top: 16px;
+}
+
+.funding-metric {
+  text-align: center;
+  padding: 12px 16px;
+  background: var(--secondary-bg, #f8f9fa);
+  border-radius: var(--element-radius, 6px);
+  border: 1px solid var(--border-color, #dee2e6);
+  min-width: 120px;
+}
+
+.funding-metric .metric-value {
+  display: block;
+  font-size: 1.4em;
+  font-weight: 700;
+  color: var(--success-text, #28a745);
+  margin-bottom: 4px;
+}
+
+.funding-metric .metric-label {
+  display: block;
+  font-size: 0.8em;
+  color: var(--secondary-text, #666);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 500;
+}
+
+/* ===== STATE DEPARTMENTS SECTION STYLES ===== */
+.state-overview-tab .departments-modern-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* State Executive Summary Card */
+.state-overview-tab .exec-summary-card {
+  background: var(--ui-panel-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--element-radius);
+  padding: 20px;
+  margin-bottom: 16px;
+  box-shadow: var(--panel-shadow);
+}
+
+.state-overview-tab .summary-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.state-overview-tab .summary-title-group h3 {
+  margin: 0 0 4px 0;
+  color: var(--primary-text);
+  font-size: 1.4em;
+  font-weight: 600;
+  font-family: var(--font-heading);
+}
+
+.state-overview-tab .summary-subtitle {
+  color: var(--secondary-text);
+  font-size: 0.9em;
+  margin: 0;
+}
+
+.state-overview-tab .summary-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  min-width: 280px;
+}
+
+@media (max-width: 768px) {
+  .state-overview-tab .summary-header {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .state-overview-tab .summary-metrics {
+    grid-template-columns: repeat(2, 1fr);
+    min-width: unset;
+    width: 100%;
+  }
+}
+
+.state-overview-tab .summary-metric {
+  text-align: center;
+  padding: 12px 8px;
+  background: var(--secondary-bg);
+  border-radius: var(--element-radius);
+  border: 1px solid var(--border-color);
+}
+
+.state-overview-tab .metric-number {
+  display: block;
+  font-size: 1.5em;
+  font-weight: 700;
+  color: var(--accent-color);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.state-overview-tab .metric-label {
+  display: block;
+  font-size: 0.75em;
+  color: var(--secondary-text);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 500;
+}
+
+/* State Departments Grid Container */
+.state-overview-tab .departments-grid-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+  gap: 20px;
+}
+
+@media (max-width: 480px) {
+  .state-overview-tab .departments-grid-container {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* State Department Cards */
+.state-overview-tab .dept-card {
+  background: var(--ui-panel-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--element-radius);
+  padding: 16px;
+  transition: all var(--transition-speed);
+  box-shadow: var(--panel-shadow);
+  border-left: 4px solid transparent;
+}
+
+.state-overview-tab .dept-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+  border-color: var(--accent-color);
+}
+
+.state-overview-tab .dept-card.active {
+  border-left-color: var(--accent-color, #007bff);
+}
+
+.state-overview-tab .dept-card.vacant {
+  border-left-color: var(--error-text, #dc3545);
+}
+
+/* State Department Card Header */
+.state-overview-tab .dept-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+  gap: 16px;
+}
+
+.state-overview-tab .dept-info h4.dept-title {
+  margin: 0 0 8px 0;
+  color: var(--primary-text);
+  font-size: 1.2em;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.state-overview-tab .dept-status-badge {
+  padding: 4px 8px;
+  border-radius: var(--element-radius);
+  font-size: 0.7em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.state-overview-tab .dept-status-badge.active {
+  background: var(--success-text);
+  color: white;
+}
+
+.state-overview-tab .dept-status-badge.vacant {
+  background: var(--error-text);
+  color: white;
+}
+
+.state-overview-tab .dept-metrics-compact {
+  display: flex;
+  gap: 16px;
+}
+
+.state-overview-tab .compact-metric {
+  text-align: right;
+}
+
+.state-overview-tab .compact-metric .value {
+  display: block;
+  font-size: 1.1em;
+  font-weight: 700;
+  color: var(--accent-color);
+  line-height: 1;
+}
+
+.state-overview-tab .compact-metric .label {
+  display: block;
+  font-size: 0.75em;
+  color: var(--secondary-text);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-top: 2px;
+}
+
+/* State Department Leadership Section */
+.state-overview-tab .dept-leadership {
+  padding: 12px;
+  background: var(--secondary-bg);
+  border-radius: var(--element-radius);
+  border: 1px solid var(--border-color);
+  margin-bottom: 12px;
+}
+
+.state-overview-tab .leader-profile {
+  margin-bottom: 10px;
+}
+
+.state-overview-tab .leader-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.state-overview-tab .leader-name {
+  margin: 0 0 2px 0;
+  font-size: 1.05em;
+  font-weight: 600;
+  color: var(--primary-text);
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.state-overview-tab .leader-name:hover {
+  color: var(--accent-color);
+}
+
+.state-overview-tab .leader-title {
+  margin: 0 0 4px 0;
+  font-size: 0.85em;
+  color: var(--secondary-text);
+  font-style: italic;
+}
+
+.state-overview-tab .leader-party {
+  font-size: 0.8em;
+  font-weight: 500;
+}
+
+.state-overview-tab .performance-indicators {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.state-overview-tab .performance-item {
+  text-align: center;
+  padding: 6px 8px;
+  background: var(--ui-panel-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--element-radius);
+  min-width: 50px;
+}
+
+.state-overview-tab .performance-item .perf-value {
+  display: block;
+  font-size: 0.9em;
+  font-weight: 600;
+  color: var(--primary-text);
+  line-height: 1;
+}
+
+.state-overview-tab .performance-item .perf-label {
+  display: block;
+  font-size: 0.65em;
+  color: var(--secondary-text);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-top: 2px;
+}
+
+/* State Department Vacancy Section */
+.state-overview-tab .dept-vacancy {
+  padding: 16px;
+  background: var(--secondary-bg);
+  border: 1px dashed var(--error-text);
+  border-radius: var(--element-radius);
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.state-overview-tab .vacancy-content .vacancy-title {
+  margin: 0 0 4px 0;
+  font-size: 0.9em;
+  font-weight: 600;
+  color: var(--error-text);
+}
+
+.state-overview-tab .vacancy-description {
+  margin: 0 0 10px 0;
+  font-size: 0.8em;
+  color: var(--secondary-text);
+}
+
+.state-overview-tab .vacancy-action {
+  background: var(--button-action-bg);
+  color: var(--button-action-text);
+  border: none;
+  padding: 6px 12px;
+  border-radius: var(--element-radius);
+  font-size: 0.75em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-speed);
+}
+
+.state-overview-tab .vacancy-action:hover {
+  background: var(--button-action-hover-bg);
+}
+
+/* State Department Functions */
+.state-overview-tab .dept-functions {
+  margin-top: 16px;
+}
+
+.state-overview-tab .dept-functions h5 {
+  margin: 0 0 8px 0;
+  font-size: 0.9em;
+  color: var(--secondary-text);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+.state-overview-tab .functions-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.state-overview-tab .function-tag {
+  background: var(--highlight-bg);
+  color: var(--primary-text);
+  padding: 3px 8px;
+  border-radius: var(--element-radius);
+  font-size: 0.7em;
+  font-weight: 500;
+  border: 1px solid var(--border-color);
+  transition: all var(--transition-speed);
+}
+
+.state-overview-tab .function-tag:hover {
+  background: var(--accent-color);
+  color: var(--accent-text);
+}
+
+.state-overview-tab .function-tag.more {
+  background: var(--secondary-text);
+  color: white;
+  font-style: italic;
+}
+
+/* State legislature chamber styling */
+.legislature-chamber-section {
+  margin-bottom: 32px;
+  padding: 24px;
+  background: var(--ui-panel-bg);
+  border-radius: var(--element-radius);
+  border: 1px solid var(--border-color);
+  position: relative;
+}
+
+.legislature-chamber-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--accent-color), var(--success-color, #28a745));
+  border-radius: var(--element-radius) var(--element-radius) 0 0;
+}
+
+.chamber-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--border-color);
+}
+
+.chamber-header h6 {
+  margin: 0;
+  color: var(--primary-text);
+  font-size: 1.2em;
+  font-weight: 600;
+  font-family: var(--font-heading);
+}
+
+.chamber-subtitle {
+  color: var(--secondary-text);
+  font-size: 0.9em;
+  font-style: italic;
+  font-weight: 500;
+}
+
+/* State-specific council composition */
+.state-overview-tab .council-composition-stats {
+  background: linear-gradient(135deg, var(--ui-panel-bg), var(--secondary-bg));
+  border: 2px solid var(--border-color);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* Governor and Lt. Governor styling */
+.state-overview-tab .mayor-card,
+.state-overview-tab .vice-mayor-card {
+  background: linear-gradient(135deg, var(--ui-panel-bg), var(--secondary-bg));
+  border: 2px solid var(--accent-color);
+  position: relative;
+  overflow: hidden;
+}
+
+.state-overview-tab .mayor-card::before,
+.state-overview-tab .vice-mayor-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent-color), var(--success-color, #28a745));
+}
+
+/* State budget overview enhancements */
+.state-overview-tab .budget-details-container {
+  background: var(--secondary-bg, #f8f9fa);
+  border-radius: var(--element-radius, 8px);
+  padding: 20px;
+  margin-top: 20px;
+  border: 1px solid var(--border-color, #dee2e6);
+}
+
+.state-overview-tab .budget-column h5 {
+  color: var(--accent-color, #007bff);
+  font-size: 1.1em;
+  font-weight: 600;
+  margin-bottom: 12px;
+  padding-bottom: 6px;
+  border-bottom: 2px solid var(--border-color, #dee2e6);
+}
+
+/* Enhanced state department cards */
+.state-overview-tab .dept-title {
+  color: var(--primary-text);
+  font-size: 1.2em;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.state-overview-tab .leader-name {
+  color: var(--accent-color, #007bff);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.state-overview-tab .leader-name:hover {
+  color: var(--accent-hover, #0056b3);
+  text-decoration: underline;
+}
+
+.state-overview-tab .leader-title {
+  font-style: italic;
+  color: var(--secondary-text);
+  margin-bottom: 4px;
+}
+
+/* State-specific responsive design */
+@media (max-width: 1024px) {
+  .funding-summary {
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+  
+  .funding-metric {
+    width: 100%;
+    max-width: 200px;
+  }
+}
+
+@media (max-width: 768px) {
+  .state-overview-tab .chamber-header {
+    flex-direction: column;
+    gap: 8px;
+    text-align: center;
+  }
+  
+  .state-overview-tab .dept-metrics-compact {
+    flex-direction: column;
+    gap: 8px;
+    text-align: center;
+  }
+  
+  .state-overview-tab .performance-indicators {
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
+/* State coalitions styling */
+.state-overview-tab .coalition-card {
+  background: linear-gradient(135deg, var(--secondary-bg), var(--highlight-bg, #e9ecef));
+  border-left: 4px solid var(--accent-color);
+}
+
+.state-overview-tab .coalition-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+  border-left-color: var(--accent-hover, #0056b3);
+}
+
+/* Department Detail Views */
+.state-overview-tab .department-detail-container {
+  padding: 20px 0;
+}
+
+.state-overview-tab .department-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 30px;
+  padding: 20px;
+  background: var(--ui-panel-bg, #ffffff);
+  border-radius: var(--element-radius, 8px);
+  border: 1px solid var(--border-color, #dee2e6);
+}
+
+.state-overview-tab .dept-title-section h3 {
+  margin: 0 0 8px 0;
+  color: var(--primary-text, #333);
+  font-size: 1.5em;
+}
+
+.state-overview-tab .dept-status {
+  padding: 4px 12px;
+  border-radius: var(--element-radius, 6px);
+  font-size: 0.85em;
+  font-weight: 500;
+  background-color: var(--success-bg, #d4edda);
+  color: var(--success-text, #155724);
+}
+
+.state-overview-tab .dept-key-metrics {
+  display: flex;
+  gap: 20px;
+}
+
+.state-overview-tab .metric-card {
+  text-align: center;
+  padding: 16px;
+  background: var(--secondary-bg, #f8f9fa);
+  border-radius: var(--element-radius, 6px);
+  min-width: 100px;
+}
+
+.state-overview-tab .metric-card .metric-value {
+  display: block;
+  font-size: 1em;
+  font-weight: 600;
+  color: var(--accent-color, #007bff);
+  margin-bottom: 4px;
+}
+
+.state-overview-tab .metric-label {
+  display: block;
+  font-size: 0.85em;
+  color: var(--secondary-text, #666);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* State Department Leadership Detail Section */
+.state-overview-tab .department-leadership-section {
+  margin-bottom: 30px;
+}
+
+.state-overview-tab .department-leadership-section h4 {
+  margin-bottom: 15px;
+  color: var(--primary-text, #333);
+  border-bottom: 1px solid var(--border-color, #dee2e6);
+  padding-bottom: 8px;
+}
+
+.state-overview-tab .current-leader-card {
+  padding: 20px;
+  background: var(--ui-panel-bg, #ffffff);
+  border-radius: var(--element-radius, 8px);
+  border: 1px solid var(--border-color, #dee2e6);
+}
+
+.state-overview-tab .leader-profile {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 30px;
+}
+
+.state-overview-tab .leader-basic-info {
+  flex: 1;
+}
+
+.state-overview-tab .leader-stats {
+  display: flex;
+  gap: 25px;
+  align-items: center;
+}
+
+.state-overview-tab .leader-stats .stat-item {
+  text-align: center;
+}
+
+.state-overview-tab .leader-stats .stat-label {
+  display: block;
+  font-size: 0.8em;
+  color: var(--secondary-text, #666);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.state-overview-tab .leader-stats .stat-value {
+  display: block;
+  font-size: 1.1em;
+  font-weight: 600;
+  color: var(--primary-text, #333);
+}
+
+.state-overview-tab .vacant-position-card {
+  padding: 30px;
+  text-align: center;
+  background: var(--warning-bg, #fff3cd);
+  border: 1px solid var(--warning-border, #ffeaa7);
+  border-radius: var(--element-radius, 8px);
+}
+
+.state-overview-tab .vacant-message {
+  margin: 0 0 15px 0;
+  color: var(--warning-text, #856404);
+  font-weight: 500;
+}
+
+.state-overview-tab .appoint-button {
+  padding: 10px 20px;
+  background-color: var(--accent-color, #007bff);
+  color: var(--accent-text, white);
+  border: none;
+  border-radius: var(--element-radius, 6px);
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+}
+
+.state-overview-tab .appoint-button:hover {
+  background-color: var(--accent-hover, #0056b3);
+}
+
+/* State Department Functions Detail */
+.state-overview-tab .department-functions-section {
+  margin-bottom: 30px;
+}
+
+.state-overview-tab .department-functions-section h4 {
+  margin-bottom: 15px;
+  color: var(--primary-text, #333);
+  border-bottom: 1px solid var(--border-color, #dee2e6);
+  padding-bottom: 8px;
+}
+
+.state-overview-tab .functions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 12px;
+}
+
+.state-overview-tab .function-card {
+  padding: 12px 16px;
+  background: var(--secondary-bg, #f8f9fa);
+  border-radius: var(--element-radius, 6px);
+  border-left: 4px solid var(--accent-color, #007bff);
+}
+
+.state-overview-tab .function-text {
+  font-size: 0.9em;
+  color: var(--primary-text, #333);
+  line-height: 1.4;
+}
+
+/* State laws section */
+.state-overview-tab .law-item {
+  background: linear-gradient(135deg, var(--ui-panel-bg), var(--secondary-bg));
+  border-left: 3px solid var(--accent-color);
+  transition: all 0.2s ease;
+}
+
+.state-overview-tab .law-item:hover {
+  transform: translateX(4px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}

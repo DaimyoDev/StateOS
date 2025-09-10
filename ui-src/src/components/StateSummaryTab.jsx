@@ -1,18 +1,19 @@
 import React from "react";
-import "./CitySummaryTab.css";
+import "./CitySummaryTab.css"; // Using shared styles
+import "./StateSummaryTab.css"; // State-specific customizations
 
-const CitySummaryTab = ({ cityData }) => {
+const StateSummaryTab = ({ stateData }) => {
   const {
-    name: cityName,
+    name: stateName,
     population,
     demographics,
     economicProfile,
     stats,
-  } = cityData || {};
+    type: regionType,
+    capital,
+  } = stateData || {};
 
   const {
-    type,
-    wealth,
     mainIssues = [],
     economicOutlook,
     educationQuality,
@@ -25,10 +26,12 @@ const CitySummaryTab = ({ cityData }) => {
     environmentRating,
     cultureArtsRating,
     healthcareCoverage,
+    healthcareQuality,
     healthcareCostPerPerson,
+    publicSafetyRating,
   } = stats || {};
 
-  const { dominantIndustries, gdpPerCapita } = economicProfile || {};
+  const { dominantIndustries, gdpPerCapita, keyIssues: economicKeyIssues = [] } = economicProfile || {};
 
   // Helper functions for status indicators
   const getStatusColor = (value, thresholds) => {
@@ -98,16 +101,25 @@ const CitySummaryTab = ({ cityData }) => {
     return `${numValue.toFixed(precision)}%`;
   };
 
+  const getRegionTypeLabel = (type) => {
+    if (!type) return "Region";
+    const lowerType = type.toLowerCase();
+    if (lowerType === "state") return "State";
+    if (lowerType === "prefecture") return "Prefecture";
+    if (lowerType === "province") return "Province";
+    return type;
+  };
+
   return (
-    <div className="city-summary-container">
-      {/* Hero Section with City Overview */}
-      <div className="info-card city-hero-section">
+    <div className="city-summary-container state-summary-container">
+      {/* Hero Section with State Overview */}
+      <div className="info-card city-hero-section state-hero-section">
         <div className="city-hero-content">
           <div className="city-title-block">
             <div className="city-tags">
-              <span className="city-tag type-tag">{type || "Unknown Type"}</span>
-              <span className="city-tag wealth-tag">{wealth || "Unknown"} Wealth</span>
-              <span className="city-tag population-tag">{formatNumber(population)} citizens</span>
+              <span className="city-tag type-tag">{getRegionTypeLabel(regionType)}</span>
+              <span className="city-tag population-tag">{formatNumber(population)} residents</span>
+              {capital && <span className="city-tag capital-tag">Capital: {capital}</span>}
             </div>
           </div>
           
@@ -226,22 +238,43 @@ const CitySummaryTab = ({ cityData }) => {
               <h3>Safety & Health</h3>
             </div>
             <div className="metric-content">
-              <div className="metric-row">
-                <span className="metric-label">Crime Rate: </span>
-                <span className={`metric-value ${(typeof crimeRatePer1000 === 'number' && crimeRatePer1000 > 10) || (typeof crimeRatePer1000 === 'string' && parseFloat(crimeRatePer1000) > 10) ? 'warning' : (typeof crimeRatePer1000 === 'number' && crimeRatePer1000 > 5) || (typeof crimeRatePer1000 === 'string' && parseFloat(crimeRatePer1000) > 5) ? 'caution' : 'good'}`}>
-                  {typeof crimeRatePer1000 === 'number' ? crimeRatePer1000.toFixed(1) : typeof crimeRatePer1000 === 'string' && !isNaN(parseFloat(crimeRatePer1000)) ? parseFloat(crimeRatePer1000).toFixed(1) : "N/A"}/1000
-                </span>
-              </div>
-              <div className="metric-row">
-                <span className="metric-label">Healthcare Coverage: </span>
-                <span className={`metric-value ${(typeof healthcareCoverage === 'number' && healthcareCoverage < 70) || (typeof healthcareCoverage === 'string' && parseFloat(healthcareCoverage) < 70) ? 'warning' : (typeof healthcareCoverage === 'number' && healthcareCoverage < 85) || (typeof healthcareCoverage === 'string' && parseFloat(healthcareCoverage) < 85) ? 'caution' : 'good'}`}>
-                  {formatPercentage(healthcareCoverage)}
-                </span>
-              </div>
-              <div className="metric-row">
-                <span className="metric-label">Healthcare Cost/Person: </span>
-                <span className="metric-value">${typeof healthcareCostPerPerson === 'number' ? healthcareCostPerPerson.toFixed(0) : "N/A"}</span>
-              </div>
+              {crimeRatePer1000 != null ? (
+                <div className="metric-row">
+                  <span className="metric-label">Crime Rate: </span>
+                  <span className={`metric-value ${(typeof crimeRatePer1000 === 'number' && crimeRatePer1000 > 10) || (typeof crimeRatePer1000 === 'string' && parseFloat(crimeRatePer1000) > 10) ? 'warning' : (typeof crimeRatePer1000 === 'number' && crimeRatePer1000 > 5) || (typeof crimeRatePer1000 === 'string' && parseFloat(crimeRatePer1000) > 5) ? 'caution' : 'good'}`}>
+                    {typeof crimeRatePer1000 === 'number' ? crimeRatePer1000.toFixed(1) : typeof crimeRatePer1000 === 'string' && !isNaN(parseFloat(crimeRatePer1000)) ? parseFloat(crimeRatePer1000).toFixed(1) : "N/A"}/1000
+                  </span>
+                </div>
+              ) : (
+                <div className="metric-row">
+                  <span className="metric-label">Public Safety: </span>
+                  <span className={`metric-value rating-${(publicSafetyRating || "average").toLowerCase().replace(/\s+/g, "-")}`}>
+                    {publicSafetyRating || "N/A"}
+                  </span>
+                </div>
+              )}
+              
+              {healthcareCoverage != null || healthcareCostPerPerson != null ? (
+                <>
+                  <div className="metric-row">
+                    <span className="metric-label">Healthcare Coverage: </span>
+                    <span className={`metric-value ${(typeof healthcareCoverage === 'number' && healthcareCoverage < 70) || (typeof healthcareCoverage === 'string' && parseFloat(healthcareCoverage) < 70) ? 'warning' : (typeof healthcareCoverage === 'number' && healthcareCoverage < 85) || (typeof healthcareCoverage === 'string' && parseFloat(healthcareCoverage) < 85) ? 'caution' : 'good'}`}>
+                      {formatPercentage(healthcareCoverage)}
+                    </span>
+                  </div>
+                  <div className="metric-row">
+                    <span className="metric-label">Healthcare Cost/Person: </span>
+                    <span className="metric-value">${typeof healthcareCostPerPerson === 'number' ? healthcareCostPerPerson.toFixed(0) : "N/A"}</span>
+                  </div>
+                </>
+              ) : (
+                <div className="metric-row">
+                  <span className="metric-label">Healthcare Quality: </span>
+                  <span className={`metric-value rating-${(healthcareQuality || "average").toLowerCase().replace(/\s+/g, "-")}`}>
+                    {healthcareQuality || "N/A"}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -267,14 +300,23 @@ const CitySummaryTab = ({ cityData }) => {
         </div>
       </div>
 
-      {/* Key Issues Section */}
-      {mainIssues && mainIssues.length > 0 && (
+      {/* Key Issues Section - Combined regional and economic issues */}
+      {((mainIssues && mainIssues.length > 0) || (economicKeyIssues && economicKeyIssues.length > 0)) && (
         <div className="info-card key-issues-section">
-          <h3 className="section-title">Key Local Issues</h3>
+          <h3 className="section-title">Key Regional Issues</h3>
           <div className="issues-container">
-            {mainIssues.map((issue, index) => (
-              <div key={index} className="issue-card">
+            {/* Main regional issues */}
+            {mainIssues && mainIssues.map((issue, index) => (
+              <div key={`main-${index}`} className="issue-card">
                 <span className="issue-number">{index + 1}</span>
+                <span className="issue-text">{issue}</span>
+              </div>
+            ))}
+            
+            {/* Economic issues */}
+            {economicKeyIssues && economicKeyIssues.map((issue, index) => (
+              <div key={`economic-${index}`} className="issue-card economic-issue">
+                <span className="issue-number">E{index + 1}</span>
                 <span className="issue-text">{issue}</span>
               </div>
             ))}
@@ -285,7 +327,7 @@ const CitySummaryTab = ({ cityData }) => {
       {/* Budget Overview Mini Section */}
       {budget && (
         <div className="info-card budget-overview-section">
-          <h3 className="section-title">Budget Snapshot</h3>
+          <h3 className="section-title">{getRegionTypeLabel(regionType)} Budget Snapshot</h3>
           <div className="budget-summary-grid">
             <div className="budget-item income">
               <span className="budget-label">Annual Income</span>
@@ -301,6 +343,24 @@ const CitySummaryTab = ({ cityData }) => {
                 {budget.balance >= 0 ? '+' : '-'}${formatNumber(Math.abs(budget.balance))}
               </span>
             </div>
+            
+            {/* State-specific budget highlights */}
+            {budget.expenseAllocations && (
+              <>
+                <div className="budget-item education special">
+                  <span className="budget-label">Education Budget</span>
+                  <span className="budget-value">
+                    ${formatNumber((budget.expenseAllocations.publicEducation || 0) + (budget.expenseAllocations.localEducationFunding || 0))}
+                  </span>
+                </div>
+                {budget.expenseAllocations.localEducationFunding && (
+                  <div className="budget-item education-funding special">
+                    <span className="budget-label">Local School Funding</span>
+                    <span className="budget-value">${formatNumber(budget.expenseAllocations.localEducationFunding)}</span>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </div>
       )}
@@ -308,4 +368,4 @@ const CitySummaryTab = ({ cityData }) => {
   );
 };
 
-export default CitySummaryTab;
+export default StateSummaryTab;

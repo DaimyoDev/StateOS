@@ -5,6 +5,8 @@ import { getRandomElement, getRandomInt, generateId } from "../utils/core.js";
 import { calculateIdeologyDistance, calculateIdeologyFromStances, generateFullAIPolitician } from "../entities/personnel.js";
 import useGameStore from "../store.js";
 import {POLICY_QUESTIONS} from "../data/policyData.js";
+import { calculateCandidateDonations } from "../entities/donationSystem.js";
+import { getDonationLawById } from "../data/politicalDonationLaws.js";
 
 // Base campaign fund amounts by office level
 const BASE_CAMPAIGN_FUNDS = {
@@ -31,17 +33,27 @@ const PARTY_FUNDRAISING_STRENGTH = {
 };
 
 /**
- * Calculate realistic campaign funds based on office level and party
- * This is the core realistic model - everything else is just UI fluff
+ * Calculate realistic campaign funds based on office level, party, and donation laws
+ * Now uses the donation system with LOD for performance
  */
-const calculateCampaignFunds = (politician, election) => {
-  const baseAmount = BASE_CAMPAIGN_FUNDS[election.level] || 10000;
-  const partyMultiplier = PARTY_FUNDRAISING_STRENGTH[politician.partyId] || 0.7;
+const calculateCampaignFunds = (politician, election, countryId) => {
+  // Get the country's donation law
+  const country = useGameStore.getState().entities.find(e => e.id === countryId);
+  const donationLawId = country?.laws?.donationLawId || 'MODERATE_LIMITS';
+  const donationLaw = getDonationLawById(donationLawId);
   
-  // Add variation (±30%) to prevent identical amounts
-  const randomVariation = 0.7 + (Math.random() * 0.6);
+  // Determine LOD based on candidate importance
+  const lodLevel = politician.isPlayer ? 2 : 
+                   politician.isImportant ? 1 : 0;
   
-  return Math.floor(baseAmount * partyMultiplier * randomVariation);
+  // Calculate donations using the donation system
+  const donationData = calculateCandidateDonations(politician, election, donationLaw, lodLevel);
+  
+  // Store the campaign finance data on the politician
+  politician.campaignFinances = donationData;
+  
+  // Return total funds for backward compatibility
+  return donationData.totalFunds;
 };
 
 /**
@@ -321,20 +333,19 @@ class OptimizedPoliticianGenerator {
       
       // Calculate realistic campaign funds based on office level and party
       if (election) {
-        politician.campaignFunds = calculateCampaignFunds(politician, election);
+        politician.campaignFunds = calculateCampaignFunds(politician, election, countryId);
+        // campaignFinances is already set by calculateCampaignFunds with donation data
       } else {
         // Fallback for compatibility if no election context
         politician.campaignFunds = getRandomInt(10000, 100000);
+        // Set basic campaign finances for fallback
+        politician.campaignFinances = {
+          totalFunds: politician.campaignFunds,
+          donorCount: getRandomInt(10, 100),
+          monthlyFundraisingTarget: Math.floor(politician.campaignFunds * 0.15),
+          lastUpdated: new Date()
+        };
       }
-      
-      // Simplified campaign finance structure - no donations generated here
-      politician.campaignFinances = {
-        totalFunds: politician.campaignFunds,
-        monthlyFundraisingTarget: Math.floor(politician.campaignFunds * 0.15), // 15% of total per month
-        totalDonationCount: null, // Will be calculated on-demand
-        lastDonationDate: null,   // Will be calculated on-demand
-        donations: null // Generated on-demand when viewed
-      };
       
       // Campaign data
       politician.isInCampaign = false;

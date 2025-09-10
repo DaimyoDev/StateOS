@@ -562,7 +562,7 @@ export const createPersonnelSlice = (set, get) => ({
 
         if (!targetPolitician) return state;
 
-        const playerInfo = state.playerInfo;
+        const playerInfo = state.activeCampaign?.politician;
         const relationship = state.politicianRelationships[politicianId]?.relationship || 0;
 
         // Check if same party

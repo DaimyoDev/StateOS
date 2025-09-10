@@ -3,6 +3,7 @@ import "./GovernmentSubTabStyles.css";
 import "./CityOverviewTab.css"; // Using shared styles
 import CouncilCompositionPieChart from "../../charts/CouncilCompositionPieChart";
 import PoliticianCard from "../../PoliticianCard";
+import StateSummaryTab from "../../StateSummaryTab"; // NEW: Import StateSummaryTab
 import { BASE_COUNTRIES_DATA } from "../../../data/countriesData";
 import useGameStore from "../../../store";
 
@@ -100,6 +101,14 @@ const StateOverviewTab = ({ campaignData, activeSubTab = "summary", governmentSu
     (state) => state.availableThemes[state.activeThemeName]
   );
   const politiciansSoA = useGameStore((state) => state.activeCampaign?.politicians);
+
+  // Helper to get current department if governmentSubTab matches a department ID
+  const currentDepartment = useMemo(() => {
+    if (!governmentDepartments?.state) return null;
+    return governmentDepartments.state.find(dept => 
+      (dept.id || dept.name.toLowerCase().replace(/\s+/g, '-')) === governmentSubTab
+    );
+  }, [governmentDepartments, governmentSubTab]);
 
   // Helper function to get updated politician data from SoA store or use existing data
   const getUpdatedPolitician = useCallback((politicianRef) => {
@@ -369,6 +378,137 @@ const StateOverviewTab = ({ campaignData, activeSubTab = "summary", governmentSu
     },
     [openViewPoliticianModal]
   );
+
+  // Render individual department detail view
+  const renderDepartmentDetail = (department) => {
+    if (!department) return <p>Department not found.</p>;
+    
+    const departmentHead = getUpdatedPolitician(department.head);
+    const budgetInMillions = (department.budget || 0) / 1000000;
+    const employeeCount = department.employees || 0;
+    
+    return (
+      <div className="department-detail-container">
+        {/* Department Header */}
+        <div className="department-detail-header">
+          <div className="dept-title-section">
+            <h3>{department.name} Department</h3>
+            <span className="dept-status">
+              {departmentHead ? 'Active Leadership' : 'Vacant Position'}
+            </span>
+          </div>
+          <div className="dept-key-metrics">
+            <div className="metric-card">
+              <span className="metric-value">${budgetInMillions.toFixed(1)}M</span>
+              <span className="metric-label">Annual Budget</span>
+            </div>
+            <div className="metric-card">
+              <span className="metric-value">{employeeCount.toLocaleString()}</span>
+              <span className="metric-label">Employees</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Current Leadership */}
+        <div className="department-leadership-section">
+          <h4>Current Leadership</h4>
+          {departmentHead ? (
+            <div className="current-leader-card">
+              <div className="leader-profile">
+                <div className="leader-basic-info">
+                  <h5 
+                    className="leader-name clickable"
+                    onClick={() => handlePoliticianClick(departmentHead)}
+                  >
+                    {departmentHead.firstName} {departmentHead.lastName}
+                  </h5>
+                  <p className="leader-title">{departmentHead.currentOffice?.title || 'Department Secretary'}</p>
+                  <span className="leader-party" style={{ color: departmentHead.partyColor || "var(--secondary-text)" }}>
+                    {departmentHead.partyName || "Independent"}
+                  </span>
+                </div>
+                <div className="leader-stats">
+                  <div className="stat-item">
+                    <span className="stat-label">Approval Rating</span>
+                    <span className="stat-value">{departmentHead.approvalRating || "N/A"}%</span>
+                  </div>
+                  <div className="stat-item">
+                    <span className="stat-label">Experience</span>
+                    <span className="stat-value">{departmentHead.yearsOfExperience || "N/A"} years</span>
+                  </div>
+                  <div className="stat-item">
+                    <span className="stat-label">Appointed</span>
+                    <span className="stat-value">{departmentHead.startDate || "N/A"}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="vacant-position-card">
+              <p className="vacant-message">No department secretary currently appointed</p>
+              <button className="appoint-button">Appoint New Secretary</button>
+            </div>
+          )}
+        </div>
+
+        {/* Department Functions */}
+        {department.responsibilities && department.responsibilities.length > 0 && (
+          <div className="department-functions-section">
+            <h4>Core Functions & Responsibilities</h4>
+            <div className="functions-grid">
+              {department.responsibilities.map((responsibility, index) => (
+                <div key={index} className="function-card">
+                  <span className="function-text">{responsibility}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        
+        {/* Special sections for state education department */}
+        {department.name.toLowerCase().includes('education') && (
+          <div className="state-education-section">
+            <h4>State Education Oversight</h4>
+            {budget?.expenseAllocations?.localEducationFunding && (
+              <div className="education-funding-section">
+                <h5>Local District Funding</h5>
+                <div className="funding-summary">
+                  <div className="funding-metric">
+                    <span className="metric-value">${(budget.expenseAllocations.localEducationFunding / 1000000).toFixed(1)}M</span>
+                    <span className="metric-label">Distributed to Districts</span>
+                  </div>
+                  <div className="funding-metric">
+                    <span className="metric-value">${Math.round(budget.expenseAllocations.localEducationFunding / (activeState?.population * 0.18 || 100000))}</span>
+                    <span className="metric-label">Per Student</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+        
+        {/* Leadership History */}
+        <div className="leadership-history-section">
+          <h4>Leadership History</h4>
+          {department.leadershipHistory && department.leadershipHistory.length > 0 ? (
+            <div className="history-timeline">
+              {department.leadershipHistory.map((leader, index) => (
+                <div key={index} className="history-entry">
+                  <div className="history-date">{leader.startDate} - {leader.endDate || 'Present'}</div>
+                  <div className="history-leader">
+                    <span className="history-name">{leader.name}</span>
+                    <span className="history-party">({leader.party || 'Independent'})</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="no-history">No leadership history available.</p>
+          )}
+        </div>
+      </div>
+    );
+  };
   const formatOfficeTitleForDisplay = useCallback(
     (office, currentRegionNameForDisplay) => {
       if (!office || !office.officeName) return "Office";
@@ -443,116 +583,7 @@ const StateOverviewTab = ({ campaignData, activeSubTab = "summary", governmentSu
     switch (activeSubTab) {
       // ... all other cases (summary, demographics, etc.) remain the same
       case "summary":
-        return (
-          <>
-            <section className="city-section">
-              {" "}
-              {/* Using city-section class */}
-              <h4>Core Vitals & Profile</h4>
-              <div className="city-stats-grid three-col">
-                {" "}
-                {/* Using city-stats-grid */}
-                <div className="stat-item">
-                  <strong>Type:</strong>{" "}
-                  <span>
-                    {regionType?.toLowerCase() === "state"
-                      ? "State"
-                      : regionType?.toLowerCase() === "prefecture"
-                      ? "Prefecture"
-                      : regionType?.toLowerCase() === "province"
-                      ? "Province"
-                      : "N/A"}
-                  </span>
-                </div>
-                <div className="stat-item">
-                  <strong>Population:</strong>{" "}
-                  <span>{population?.toLocaleString() || "N/A"}</span>
-                </div>
-                <div className="stat-item">
-                  <strong>Capital:</strong> <span>{capital || "N/A"}</span>
-                </div>
-                <div className="stat-item">
-                  <strong>Economic Outlook:</strong>
-                  <span
-                    className={`stat-descriptor ${getEconomicOutlookClass(
-                      economicOutlook
-                    )}`}
-                  >
-                    {economicOutlook || "N/A"}
-                  </span>
-                </div>
-                <div className="stat-item">
-                  <strong>Unemployment:</strong>
-                  <span>
-                    {unemploymentRate != null
-                      ? `${parseFloat(unemploymentRate).toFixed(1)}% `
-                      : "N/A"}
-                  </span>
-                  <span
-                    className={`stat-descriptor mood-${getUnemploymentDescriptor(
-                      parseFloat(unemploymentRate)
-                    )
-                      ?.toLowerCase()
-                      .replace(/\s+/g, "-")}`}
-                  >
-                    ({getUnemploymentDescriptor(parseFloat(unemploymentRate))})
-                  </span>
-                </div>
-                <div className="stat-item">
-                  <strong>GDP per Capita:</strong>{" "}
-                  <span>${gdpPerCapita?.toLocaleString() || "N/A"}</span>
-                </div>
-                <div className="stat-item">
-                  <strong>Dominant Industries:</strong>{" "}
-                  <span>{dominantIndustries?.join(", ") || "N/A"}</span>
-                </div>
-              </div>
-            </section>
-            <section className="city-section">
-              {" "}
-              {/* Using city-section class */}
-              <h4>Citizen Wellbeing & Concerns</h4>
-              <div className="city-stats-grid one-col">
-                {" "}
-                {/* Using city-stats-grid */}
-                <div className="stat-item">
-                  <strong>Overall Citizen Mood:</strong>
-                  <span
-                    className={`stat-descriptor ${getMoodClass(
-                      overallCitizenMood
-                    )}`}
-                  >
-                    {overallCitizenMood || "N/A"}
-                  </span>
-                </div>
-                <div className="stat-item">
-                  <strong>Key Regional Issues:</strong>
-                  {mainIssues.length > 0 ? (
-                    <ul className="key-issues-list">
-                      {mainIssues.map((issue, index) => (
-                        <li key={index}>{issue}</li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <span>None Specified</span>
-                  )}
-                </div>
-                <div className="stat-item">
-                  <strong>Economic Key Issues:</strong>
-                  {economicKeyIssues?.length > 0 ? (
-                    <ul className="key-issues-list">
-                      {economicKeyIssues.map((issue, index) => (
-                        <li key={index}>{issue}</li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <span>None Specified</span>
-                  )}
-                </div>
-              </div>
-            </section>
-          </>
-        );
+        return <StateSummaryTab stateData={activeState} />;
       case "demographics":
         return (
           <section className="city-section">
@@ -1187,63 +1218,139 @@ const StateOverviewTab = ({ campaignData, activeSubTab = "summary", governmentSu
             )}
 
             {governmentSubTab === "departments" && (
-              <>
-                {/* Departments Section */}
-            <div className="government-branch-section departments-branch">
-              <div className="branch-header">
-                <h5>Government Departments</h5>
-                <span className="branch-subtitle">{regionType} Department Heads • {governmentDepartments?.state?.length || 0} Departments</span>
-              </div>
-              
-              <div className="departments-grid">
-                {governmentDepartments?.state?.length > 0 ? (
-                  governmentDepartments.state.map((department) => {
-                    const departmentHead = getUpdatedPolitician(department.head);
-                    return (
-                      <div key={department.id} className="department-card">
-                        <div className="department-header">
-                          <h6 className="department-name">{department.name}</h6>
-                          <span className="department-budget">
-                            ${(department.budget / 1000000).toFixed(1)}M budget
-                          </span>
-                        </div>
-                        <div className="department-info">
-                          {departmentHead ? (
-                            <>
-                              <div className="department-head-info">
-                                <span className="head-title">{departmentHead.currentOffice?.title || 'Director'}</span>
-                                <p className="head-name"
-                                   onClick={() => handlePoliticianClick(departmentHead)}>
-                                  {departmentHead.firstName} {departmentHead.lastName}
-                                </p>
-                                <p className="head-party" style={{ color: departmentHead.partyColor || "#888" }}>
-                                  {departmentHead.partyName || "Independent"}
-                                </p>
-                              </div>
-                              <div className="department-stats">
-                                <div className="stat-mini">
-                                  <span className="stat-label">Employees</span>
-                                  <span className="stat-value">{department.employees?.toLocaleString() || "N/A"}</span>
-                                </div>
-                                <div className="stat-mini">
-                                  <span className="stat-label">Est.</span>
-                                  <span className="stat-value">{department.createdYear || "N/A"}</span>
-                                </div>
-                              </div>
-                            </>
-                          ) : (
-                            <p className="no-head-message">No department head assigned</p>
-                          )}
-                        </div>
+              <div className="departments-modern-layout">
+                {/* Executive Summary */}
+                <div className="info-card exec-summary-card">
+                  <div className="summary-header">
+                    <div className="summary-title-group">
+                      <h3>{regionType} Departments</h3>
+                      <span className="summary-subtitle">Administrative Structure & Leadership</span>
+                    </div>
+                    <div className="summary-metrics">
+                      <div className="summary-metric">
+                        <span className="metric-number">{governmentDepartments?.state?.length || 0}</span>
+                        <span className="metric-label">Departments</span>
                       </div>
-                    );
-                  })
-                ) : (
-                  <p className="no-departments-message">No state departments available</p>
-                )}
+                      <div className="summary-metric">
+                        <span className="metric-number">
+                          {(governmentDepartments?.state || []).filter(dept => dept.head).length}
+                        </span>
+                        <span className="metric-label">Filled</span>
+                      </div>
+                      <div className="summary-metric">
+                        <span className="metric-number">
+                          ${((governmentDepartments?.state || []).reduce((sum, dept) => sum + (dept.budget || 0), 0) / 1000000).toFixed(1)}M
+                        </span>
+                        <span className="metric-label">Budget</span>
+                      </div>
+                      <div className="summary-metric">
+                        <span className="metric-number">
+                          {(governmentDepartments?.state || []).reduce((sum, dept) => sum + (dept.employees || 0), 0).toLocaleString()}
+                        </span>
+                        <span className="metric-label">Staff</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Departments Grid */}
+                <div className="departments-grid-container">
+                    {governmentDepartments?.state?.length > 0 ? (
+                      governmentDepartments.state.map((department) => {
+                        const departmentHead = getUpdatedPolitician(department.head);
+                        const budgetInMillions = (department.budget || 0) / 1000000;
+                        const employeeCount = department.employees || 0;
+                        
+                        return (
+                          <div key={department.id} className={`dept-card ${departmentHead ? 'active' : 'vacant'}`}>
+                            {/* Card Header */}
+                            <div className="dept-card-header">
+                              <div className="dept-info">
+                                <h4 className="dept-title">{department.name}</h4>
+                                <span className={`dept-status-badge ${departmentHead ? 'active' : 'vacant'}`}>
+                                  {departmentHead ? 'Active' : 'Vacant Position'}
+                                </span>
+                              </div>
+                              <div className="dept-metrics-compact">
+                                <div className="compact-metric">
+                                  <span className="value">${budgetInMillions.toFixed(1)}M</span>
+                                  <span className="label">Budget</span>
+                                </div>
+                                <div className="compact-metric">
+                                  <span className="value">{employeeCount.toLocaleString()}</span>
+                                  <span className="label">Staff</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Department Head Section */}
+                            {departmentHead ? (
+                              <div className="dept-leadership">
+                                <div className="leader-profile">
+                                  <div className="leader-info">
+                                    <p className="leader-name" onClick={() => handlePoliticianClick(departmentHead)}>
+                                      {departmentHead.firstName} {departmentHead.lastName}
+                                    </p>
+                                    <p className="leader-title">{departmentHead.currentOffice?.title || 'Secretary'}</p>
+                                    <span className="leader-party" style={{ color: departmentHead.partyColor || "var(--secondary-text)" }}>
+                                      {departmentHead.partyName || "Independent"}
+                                    </span>
+                                  </div>
+                                </div>
+                                
+                                <div className="performance-indicators">
+                                  <div className="performance-item">
+                                    <span className="perf-value">{departmentHead.approvalRating || "N/A"}%</span>
+                                    <span className="perf-label">Approval</span>
+                                  </div>
+                                  <div className="performance-item">
+                                    <span className="perf-value">{departmentHead.yearsOfExperience || "N/A"}</span>
+                                    <span className="perf-label">Yrs Exp</span>
+                                  </div>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="dept-vacancy">
+                                <div className="vacancy-content">
+                                  <p className="vacancy-title">Position Open</p>
+                                  <p className="vacancy-description">Department secretary appointment required</p>
+                                  <button className="vacancy-action">Appoint Secretary</button>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Department Functions */}
+                            {department.responsibilities && department.responsibilities.length > 0 && (
+                              <div className="dept-functions">
+                                <h5>Core Functions</h5>
+                                <div className="functions-list">
+                                  {department.responsibilities.map((responsibility, index) => (
+                                    <span key={index} className="function-tag">
+                                      {responsibility}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })
+                  ) : (
+                    <div className="no-departments-state">
+                      <div className="empty-state-icon">🏛️</div>
+                      <h4>No Departments Available</h4>
+                      <p>Department structure not configured for this {regionType?.toLowerCase() || 'region'}</p>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-              </>
+            )}
+            
+            {/* Individual Department Views */}
+            {currentDepartment && (
+              <div className="department-detail-view">
+                {renderDepartmentDetail(currentDepartment)}
+              </div>
             )}
           </section>
         );

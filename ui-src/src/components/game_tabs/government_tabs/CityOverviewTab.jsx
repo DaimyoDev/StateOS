@@ -1,6 +1,9 @@
 import React, { useState, useMemo, useCallback } from "react";
 import useGameStore from "../../../store";
 import CouncilCompositionPieChart from "../../charts/CouncilCompositionPieChart";
+import StudentCoalitionPieChart from "../../charts/StudentCoalitionPieChart";
+import AcademicPerformanceChart from "../../charts/AcademicPerformanceChart";
+import CareerPathwaysChart from "../../charts/CareerPathwaysChart";
 import PoliticianCard from "../../PoliticianCard"; // NEW: Import PoliticianCard
 import CitySummaryTab from "../../CitySummaryTab"; // NEW: Import CitySummaryTab
 import "./GovernmentSubTabStyles.css";
@@ -69,6 +72,7 @@ const formatLawValue = (key, value) => {
 
 const CityOverviewTab = ({ campaignData, activeSubTab = "summary", governmentSubTab = "offices" }) => {
   const [governmentFilter, setGovernmentFilter] = useState("all");
+  // Remove the separate state - use the prop directly
 
   const SUBTABS = [
     { id: "summary", label: "Summary" },
@@ -84,6 +88,14 @@ const CityOverviewTab = ({ campaignData, activeSubTab = "summary", governmentSub
   const { openViewPoliticianModal, getCoalitionsForCity, openSeatHistoryModal } = useGameStore((state) => state.actions);
   const governmentOffices = useGameStore((state) => state.activeCampaign?.governmentOffices);
   const governmentDepartments = useGameStore((state) => state.activeCampaign?.governmentDepartments);
+  
+  // Helper to get current department if governmentSubTab matches a department ID
+  const currentDepartment = useMemo(() => {
+    if (!governmentDepartments?.city) return null;
+    return governmentDepartments.city.find(dept => 
+      (dept.id || dept.name.toLowerCase().replace(/\s+/g, '-')) === governmentSubTab
+    );
+  }, [governmentDepartments, governmentSubTab]);
   const currentTheme = useGameStore(
     (state) => state.availableThemes[state.activeThemeName]
   );
@@ -557,6 +569,287 @@ const CityOverviewTab = ({ campaignData, activeSubTab = "summary", governmentSub
     }
     return councilOffices;
   }, [councilOffices, governmentFilter, getUpdatedPolitician]);
+
+  // Render individual department detail view
+  const renderDepartmentDetail = (department) => {
+    if (!department) return <p>Department not found.</p>;
+    
+    const departmentHead = getUpdatedPolitician(department.head);
+    const budgetInMillions = (department.budget || 0) / 1000000;
+    const employeeCount = department.employees || 0;
+    
+    return (
+      <div className="department-detail-container">
+        {/* Department Header */}
+        <div className="department-detail-header">
+          <div className="dept-title-section">
+            <h3>{department.name} Department</h3>
+            <span className="dept-status">
+              {departmentHead ? 'Active Leadership' : 'Vacant Position'}
+            </span>
+          </div>
+          <div className="dept-key-metrics">
+            <div className="metric-card">
+              <span className="metric-value">${budgetInMillions.toFixed(1)}M</span>
+              <span className="metric-label">Annual Budget</span>
+            </div>
+            <div className="metric-card">
+              <span className="metric-value">{employeeCount.toLocaleString()}</span>
+              <span className="metric-label">Employees</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Current Leadership */}
+        <div className="department-leadership-section">
+          <h4>Current Leadership</h4>
+          {departmentHead ? (
+            <div className="current-leader-card">
+              <div className="leader-profile">
+                <div className="leader-basic-info">
+                  <h5 
+                    className="leader-name clickable"
+                    onClick={() => handlePoliticianClick(departmentHead)}
+                  >
+                    {departmentHead.firstName} {departmentHead.lastName}
+                  </h5>
+                  <p className="leader-title">{departmentHead.currentOffice?.title || 'Department Director'}</p>
+                  <span className="leader-party" style={{ color: departmentHead.partyColor || "var(--secondary-text)" }}>
+                    {departmentHead.partyName || "Independent"}
+                  </span>
+                </div>
+                <div className="leader-stats">
+                  <div className="stat-item">
+                    <span className="stat-label">Approval Rating</span>
+                    <span className="stat-value">{departmentHead.approvalRating || "N/A"}%</span>
+                  </div>
+                  <div className="stat-item">
+                    <span className="stat-label">Experience</span>
+                    <span className="stat-value">{departmentHead.yearsOfExperience || "N/A"} years</span>
+                  </div>
+                  <div className="stat-item">
+                    <span className="stat-label">Appointed</span>
+                    <span className="stat-value">{departmentHead.startDate || "N/A"}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="vacant-position-card">
+              <p className="vacant-message">No department head currently appointed</p>
+              <button className="appoint-button">Appoint New Director</button>
+            </div>
+          )}
+        </div>
+
+        {/* Department Functions */}
+        {department.responsibilities && department.responsibilities.length > 0 && (
+          <div className="department-functions-section">
+            <h4>Core Functions & Responsibilities</h4>
+            <div className="functions-grid">
+              {department.responsibilities.map((responsibility, index) => (
+                <div key={index} className="function-card">
+                  <span className="function-text">{responsibility}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        
+        {/* Special sections for specific departments */}
+        {department.name.toLowerCase().includes('education') && (
+          <div className="education-districts-section">
+            <h4>School Districts</h4>
+            {renderEducationDistricts()}
+            
+            {/* Education Charts */}
+            {startingCity?.schoolDistrict?.studentCoalitions && (
+              <div className="education-charts-section">
+                <h4>Education Analytics</h4>
+                <div className="charts-grid">
+                  <StudentCoalitionPieChart 
+                    studentCoalitions={startingCity.schoolDistrict.studentCoalitions}
+                    themeColors={currentTheme?.colors}
+                    themeFonts={currentTheme?.fonts}
+                  />
+                  <AcademicPerformanceChart 
+                    studentCoalitions={startingCity.schoolDistrict.studentCoalitions}
+                    themeColors={currentTheme?.colors}
+                    themeFonts={currentTheme?.fonts}
+                  />
+                  <CareerPathwaysChart 
+                    studentCoalitions={startingCity.schoolDistrict.studentCoalitions}
+                    themeColors={currentTheme?.colors}
+                    themeFonts={currentTheme?.fonts}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+        
+        {/* Leadership History */}
+        <div className="leadership-history-section">
+          <h4>Leadership History</h4>
+          {department.leadershipHistory && department.leadershipHistory.length > 0 ? (
+            <div className="history-timeline">
+              {department.leadershipHistory.map((leader, index) => (
+                <div key={index} className="history-entry">
+                  <div className="history-date">{leader.startDate} - {leader.endDate || 'Present'}</div>
+                  <div className="history-leader">
+                    <span className="history-name">{leader.name}</span>
+                    <span className="history-party">({leader.party || 'Independent'})</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="no-history">No leadership history available.</p>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // Render education districts for the current city
+  const renderEducationDistricts = () => {
+    if (!startingCity?.schoolDistrict) {
+      return (
+        <div className="no-education-data">
+          <p>No school district data available for this city.</p>
+          <small>School districts are generated automatically for new campaigns.</small>
+        </div>
+      );
+    }
+
+    const district = startingCity.schoolDistrict;
+    const coalitions = district.studentCoalitions;
+
+    return (
+      <div className="education-district-container">
+        {/* District Overview */}
+        <div className="district-overview-card">
+          <div className="district-header">
+            <h5>{district.name}</h5>
+            <div className="district-basic-stats">
+              <div className="basic-stat">
+                <span className="stat-number">{district.totalStudents?.toLocaleString() || 'N/A'}</span>
+                <span className="stat-label">Total Students</span>
+              </div>
+              <div className="basic-stat">
+                <span className="stat-number">{district.schools || 'N/A'}</span>
+                <span className="stat-label">Schools</span>
+              </div>
+              <div className="basic-stat">
+                <span className="stat-number">${district.funding?.perStudent?.toLocaleString() || 'N/A'}</span>
+                <span className="stat-label">Per Student</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Student Coalitions */}
+        <div className="student-coalitions-section">
+          <h6>Student Population by Demographics</h6>
+          {coalitions && coalitions.size > 0 ? (
+            <div className="coalitions-grid">
+              {Array.from(coalitions.values()).map(coalition => {
+                const percentage = district.totalStudents > 0 ? 
+                  (coalition.studentCount / district.totalStudents * 100).toFixed(1) : 0;
+                
+                return (
+                  <div key={coalition.id} className="coalition-card">
+                    <div className="coalition-header">
+                      <h6 className="coalition-name">{coalition.name}</h6>
+                      <span className="coalition-percentage">{percentage}%</span>
+                    </div>
+                    <div className="coalition-stats">
+                      <div className="coalition-stat">
+                        <span className="stat-label">Students</span>
+                        <span className="stat-value">{coalition.studentCount?.toLocaleString()}</span>
+                      </div>
+                      <div className="coalition-stat">
+                        <span className="stat-label">Academic Score</span>
+                        <span className="stat-value">{coalition.currentAcademicScore || 'N/A'}/100</span>
+                      </div>
+                      <div className="coalition-stat">
+                        <span className="stat-label">College Aspiration</span>
+                        <span className="stat-value">{((coalition.collegeAspiration || 0) * 100).toFixed(0)}%</span>
+                      </div>
+                      <div className="coalition-stat">
+                        <span className="stat-label">Trade Interest</span>
+                        <span className="stat-value">{((coalition.tradeInterest || 0) * 100).toFixed(0)}%</span>
+                      </div>
+                      <div className="coalition-stat">
+                        <span className="stat-label">Dropout Risk</span>
+                        <span className="stat-value risk-indicator">{((coalition.dropoutRisk || 0) * 100).toFixed(1)}%</span>
+                      </div>
+                    </div>
+                    <div className="coalition-details">
+                      <div className="detail-row">
+                        <span className="detail-label">Socioeconomic Status:</span>
+                        <span className="detail-value ses-{coalition.ses}">{coalition.ses?.replace('_', ' ') || 'N/A'}</span>
+                      </div>
+                      <div className="detail-row">
+                        <span className="detail-label">Cultural Background:</span>
+                        <span className="detail-value">{coalition.culture?.replace('_', ' ') || 'N/A'}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="no-coalitions">No student coalition data available.</p>
+          )}
+        </div>
+
+        {/* District Quality Metrics */}
+        <div className="district-metrics-section">
+          <h6>District Quality Metrics</h6>
+          <div className="metrics-grid">
+            <div className="metric-item">
+              <span className="metric-label">Student-Teacher Ratio</span>
+              <span className="metric-value">{district.metrics?.teacherStudentRatio || 'N/A'}:1</span>
+            </div>
+            <div className="metric-item">
+              <span className="metric-label">Teacher Quality Index</span>
+              <span className="metric-value">{district.metrics?.teacherQualityIndex || 'N/A'}/100</span>
+            </div>
+            <div className="metric-item">
+              <span className="metric-label">Technology Access</span>
+              <span className="metric-value">{district.metrics?.technologyAccess || 'N/A'}/100</span>
+            </div>
+            <div className="metric-item">
+              <span className="metric-label">Infrastructure Score</span>
+              <span className="metric-value">{district.metrics?.infrastructureScore || 'N/A'}/100</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Funding Breakdown */}
+        {district.funding && (
+          <div className="funding-breakdown-section">
+            <h6>Funding Sources</h6>
+            <div className="funding-grid">
+              <div className="funding-item">
+                <span className="funding-label">Federal</span>
+                <span className="funding-value">{(district.funding.federal * 100).toFixed(0)}%</span>
+              </div>
+              <div className="funding-item">
+                <span className="funding-label">State</span>
+                <span className="funding-value">{(district.funding.state * 100).toFixed(0)}%</span>
+              </div>
+              <div className="funding-item">
+                <span className="funding-label">Local</span>
+                <span className="funding-value">{(district.funding.local * 100).toFixed(0)}%</span>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const renderSubTabContent = () => {
     switch (activeSubTab) {
@@ -1176,6 +1469,13 @@ const CityOverviewTab = ({ campaignData, activeSubTab = "summary", governmentSub
                     </div>
                   )}
                 </div>
+              </div>
+            )}
+            
+            {/* Individual Department Views */}
+            {currentDepartment && (
+              <div className="department-detail-view">
+                {renderDepartmentDetail(currentDepartment)}
               </div>
             )}
           </section>

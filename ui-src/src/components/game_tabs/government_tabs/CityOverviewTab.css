@@ -1,5 +1,565 @@
 /* ui-src/src/components/game_tabs/government_tabs/CityOverviewTab.css */
 
+/* Education Charts Section */
+.education-charts-section {
+  margin-top: 30px;
+  padding: 20px 0;
+  border-top: 1px solid var(--border-color, #dee2e6);
+}
+
+.education-charts-section h4 {
+  margin-bottom: 20px;
+  color: var(--primary-text, #333);
+  text-align: center;
+}
+
+.charts-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+  margin-top: 20px;
+}
+
+/* Ensure chart titles are properly sized */
+.charts-grid .chart-container {
+  position: relative;
+}
+
+/* Department Detail Views */
+.department-detail-container {
+  padding: 20px 0;
+}
+
+.department-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 30px;
+  padding: 20px;
+  background: var(--ui-panel-bg, #ffffff);
+  border-radius: var(--element-radius, 8px);
+  border: 1px solid var(--border-color, #dee2e6);
+}
+
+.dept-title-section h3 {
+  margin: 0 0 8px 0;
+  color: var(--primary-text, #333);
+  font-size: 1.5em;
+}
+
+.dept-status {
+  padding: 4px 12px;
+  border-radius: var(--element-radius, 6px);
+  font-size: 0.85em;
+  font-weight: 500;
+  background-color: var(--success-bg, #d4edda);
+  color: var(--success-text, #155724);
+}
+
+.dept-key-metrics {
+  display: flex;
+  gap: 20px;
+}
+
+.metric-card {
+  text-align: center;
+  padding: 16px;
+  background: var(--secondary-bg, #f8f9fa);
+  border-radius: var(--element-radius, 6px);
+  min-width: 100px;
+}
+
+.metric-card .metric-value {
+  display: block;
+  font-size: 1em;
+  font-weight: 600;
+  color: var(--accent-color, #007bff);
+  margin-bottom: 4px;
+}
+
+.metric-label {
+  display: block;
+  font-size: 0.85em;
+  color: var(--secondary-text, #666);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Leadership Section */
+.department-leadership-section {
+  margin-bottom: 30px;
+}
+
+.department-leadership-section h4 {
+  margin-bottom: 15px;
+  color: var(--primary-text, #333);
+  border-bottom: 1px solid var(--border-color, #dee2e6);
+  padding-bottom: 8px;
+}
+
+.current-leader-card {
+  padding: 20px;
+  background: var(--ui-panel-bg, #ffffff);
+  border-radius: var(--element-radius, 8px);
+  border: 1px solid var(--border-color, #dee2e6);
+}
+
+.leader-profile {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 30px;
+}
+
+.leader-basic-info {
+  flex: 1;
+}
+
+.leader-name {
+  margin: 0 0 8px 0;
+  color: var(--accent-color, #007bff);
+  font-size: 1.2em;
+  font-weight: 600;
+}
+
+.leader-name.clickable {
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.leader-name.clickable:hover {
+  text-decoration: underline;
+}
+
+.leader-title {
+  margin: 0 0 8px 0;
+  font-weight: 500;
+  color: var(--primary-text, #333);
+}
+
+.leader-party {
+  font-size: 0.9em;
+  font-weight: 500;
+}
+
+.leader-stats {
+  display: flex;
+  gap: 25px;
+  align-items: center;
+}
+
+.leader-stats .stat-item {
+  text-align: center;
+}
+
+.leader-stats .stat-label {
+  display: block;
+  font-size: 0.8em;
+  color: var(--secondary-text, #666);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.leader-stats .stat-value {
+  display: block;
+  font-size: 1.1em;
+  font-weight: 600;
+  color: var(--primary-text, #333);
+}
+
+.vacant-position-card {
+  padding: 30px;
+  text-align: center;
+  background: var(--warning-bg, #fff3cd);
+  border: 1px solid var(--warning-border, #ffeaa7);
+  border-radius: var(--element-radius, 8px);
+}
+
+.vacant-message {
+  margin: 0 0 15px 0;
+  color: var(--warning-text, #856404);
+  font-weight: 500;
+}
+
+.appoint-button {
+  padding: 10px 20px;
+  background-color: var(--accent-color, #007bff);
+  color: var(--accent-text, white);
+  border: none;
+  border-radius: var(--element-radius, 6px);
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+}
+
+.appoint-button:hover {
+  background-color: var(--accent-hover, #0056b3);
+}
+
+/* Department Functions */
+.department-functions-section {
+  margin-bottom: 30px;
+}
+
+.department-functions-section h4 {
+  margin-bottom: 15px;
+  color: var(--primary-text, #333);
+  border-bottom: 1px solid var(--border-color, #dee2e6);
+  padding-bottom: 8px;
+}
+
+.functions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 12px;
+}
+
+.function-card {
+  padding: 12px 16px;
+  background: var(--secondary-bg, #f8f9fa);
+  border-radius: var(--element-radius, 6px);
+  border-left: 4px solid var(--accent-color, #007bff);
+}
+
+.function-text {
+  font-size: 0.9em;
+  color: var(--primary-text, #333);
+  line-height: 1.4;
+}
+
+/* Education Districts Section */
+.education-districts-section {
+  margin-bottom: 30px;
+}
+
+.education-districts-section h4 {
+  margin-bottom: 15px;
+  color: var(--primary-text, #333);
+  border-bottom: 1px solid var(--border-color, #dee2e6);
+  padding-bottom: 8px;
+}
+
+.coming-soon {
+  padding: 20px;
+  text-align: center;
+  background: var(--info-bg, #d1ecf1);
+  color: var(--info-text, #0c5460);
+  border-radius: var(--element-radius, 6px);
+  font-style: italic;
+}
+
+/* Leadership History */
+.leadership-history-section h4 {
+  margin-bottom: 15px;
+  color: var(--primary-text, #333);
+  border-bottom: 1px solid var(--border-color, #dee2e6);
+  padding-bottom: 8px;
+}
+
+.history-timeline {
+  max-height: 300px;
+  overflow-y: auto;
+  padding-right: 10px;
+}
+
+.history-entry {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 12px 16px;
+  background: var(--ui-panel-bg, #ffffff);
+  border: 1px solid var(--border-color, #dee2e6);
+  border-radius: var(--element-radius, 6px);
+  margin-bottom: 8px;
+}
+
+.history-date {
+  font-size: 0.85em;
+  color: var(--secondary-text, #666);
+  font-weight: 500;
+  min-width: 120px;
+}
+
+.history-leader {
+  flex: 1;
+}
+
+.history-name {
+  font-weight: 500;
+  color: var(--primary-text, #333);
+  margin-right: 8px;
+}
+
+.history-party {
+  font-size: 0.9em;
+  color: var(--secondary-text, #666);
+}
+
+.no-history {
+  padding: 20px;
+  text-align: center;
+  color: var(--secondary-text, #666);
+  font-style: italic;
+  background: var(--secondary-bg, #f8f9fa);
+  border-radius: var(--element-radius, 6px);
+}
+
+/* Education Districts Styles */
+.education-district-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.no-education-data {
+  padding: 30px;
+  text-align: center;
+  background: var(--warning-bg, #fff3cd);
+  border: 1px solid var(--warning-border, #ffeaa7);
+  border-radius: var(--element-radius, 8px);
+  color: var(--warning-text, #856404);
+}
+
+.no-education-data small {
+  display: block;
+  margin-top: 8px;
+  font-size: 0.85em;
+  opacity: 0.8;
+}
+
+.district-overview-card {
+  background: var(--ui-panel-bg, #ffffff);
+  border: 1px solid var(--border-color, #dee2e6);
+  border-radius: var(--element-radius, 8px);
+  padding: 20px;
+}
+
+.district-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.district-header h5 {
+  margin: 0;
+  color: var(--accent-color, #007bff);
+  font-size: 1.3em;
+}
+
+.district-basic-stats {
+  display: flex;
+  gap: 20px;
+}
+
+.basic-stat {
+  text-align: center;
+  min-width: 80px;
+}
+
+.basic-stat .stat-number {
+  display: block;
+  font-size: 1.4em;
+  font-weight: 600;
+  color: var(--accent-color, #007bff);
+  margin-bottom: 4px;
+}
+
+.basic-stat .stat-label {
+  display: block;
+  font-size: 0.8em;
+  color: var(--secondary-text, #666);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Student Coalitions */
+.student-coalitions-section h6,
+.district-metrics-section h6,
+.funding-breakdown-section h6 {
+  margin: 0 0 16px 0;
+  color: var(--primary-text, #333);
+  font-size: 1.1em;
+  border-bottom: 2px solid var(--border-color, #dee2e6);
+  padding-bottom: 8px;
+}
+
+.coalitions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+.coalition-card {
+  background: var(--secondary-bg, #f8f9fa);
+  border: 1px solid var(--border-color, #dee2e6);
+  border-radius: var(--element-radius, 6px);
+  padding: 16px;
+  transition: all 0.2s ease;
+}
+
+.coalition-card:hover {
+  background: var(--highlight-bg, #e9ecef);
+  border-color: var(--accent-color, #007bff);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.coalition-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.coalition-name {
+  margin: 0;
+  font-size: 1em;
+  color: var(--primary-text, #333);
+}
+
+.coalition-percentage {
+  font-size: 1.1em;
+  font-weight: 600;
+  color: var(--accent-color, #007bff);
+  background: var(--ui-panel-bg, #ffffff);
+  padding: 4px 8px;
+  border-radius: var(--element-radius, 4px);
+}
+
+.coalition-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.coalition-stat {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border-color-light, #f0f0f0);
+}
+
+.coalition-stat .stat-label {
+  font-size: 0.85em;
+  color: var(--secondary-text, #666);
+}
+
+.coalition-stat .stat-value {
+  font-weight: 500;
+  color: var(--primary-text, #333);
+}
+
+.coalition-stat .stat-value.risk-indicator {
+  color: var(--error-text, #dc3545);
+  font-weight: 600;
+}
+
+.coalition-details {
+  border-top: 1px solid var(--border-color, #dee2e6);
+  padding-top: 12px;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.detail-label {
+  font-size: 0.85em;
+  color: var(--secondary-text, #666);
+}
+
+.detail-value {
+  font-weight: 500;
+  color: var(--primary-text, #333);
+  text-transform: capitalize;
+}
+
+.detail-value.ses-high {
+  color: var(--success-text, #28a745);
+}
+
+.detail-value.ses-middle {
+  color: var(--warning-text, #ffc107);
+}
+
+.detail-value.ses-low,
+.detail-value.ses-very_low {
+  color: var(--error-text, #dc3545);
+}
+
+.no-coalitions {
+  padding: 20px;
+  text-align: center;
+  color: var(--secondary-text, #666);
+  font-style: italic;
+  background: var(--secondary-bg, #f8f9fa);
+  border-radius: var(--element-radius, 6px);
+}
+
+/* District Metrics */
+.metrics-grid,
+.funding-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.metric-item,
+.funding-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--ui-panel-bg, #ffffff);
+  border: 1px solid var(--border-color, #dee2e6);
+  border-radius: var(--element-radius, 6px);
+}
+
+.metric-label,
+.funding-label {
+  font-size: 0.9em;
+  color: var(--secondary-text, #666);
+}
+
+.education-district-container .metric-value,
+.education-district-container .funding-value {
+  font-weight: 600;
+  color: var(--accent-color, #007bff);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .district-header {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .district-basic-stats {
+    justify-content: space-around;
+    width: 100%;
+  }
+
+  .coalitions-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .coalition-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .metrics-grid,
+  .funding-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .city-overview-tab {
   /* Overall container for this specific tab content */
   padding: 0px 10px 10px 10px; /* Reduce top padding if GovernmentTab adds its own title */
@@ -543,7 +1103,7 @@
     gap: 20px;
     min-height: auto;
   }
-  
+
   .composition-chart {
     min-height: 250px;
   }
@@ -969,7 +1529,7 @@
     align-items: center;
     text-align: center;
   }
-  
+
   .summary-metrics {
     grid-template-columns: repeat(2, 1fr);
     min-width: unset;
@@ -1178,7 +1738,6 @@
   text-align: center;
   margin-bottom: 12px;
 }
-
 
 .vacancy-content .vacancy-title {
   margin: 0 0 4px 0;

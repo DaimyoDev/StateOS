@@ -1170,6 +1170,7 @@ export const createElectionSlice = (set, get) => ({
         });
 
         let updatedPoliticiansSoA = politiciansSoA;
+        let updatedPolitician = politician;
 
         // If candidacy was successful, we need to update the SoA store.
         if (successfullyDeclared) {
@@ -1186,6 +1187,40 @@ export const createElectionSlice = (set, get) => ({
             ...politiciansSoA,
             campaign: newCampaignMap,
           };
+
+          // Update politician with party information from successful candidacy
+          let partyDetails = {
+            partyId: "player_independent",
+            partyName: "Independent",
+            partyColor: "#888888",
+          };
+          if (partyInfo?.type === "join_generated") {
+            const party = generatedPartiesSnapshot.find(
+              (p) => p.id === partyInfo.id
+            );
+            if (party)
+              partyDetails = {
+                partyId: party.id,
+                partyName: party.name,
+                partyColor: party.color,
+              };
+          } else if (partyInfo?.type === "use_custom") {
+            const party = customPartiesSnapshot.find(
+              (p) => p.id === partyInfo.id
+            );
+            if (party)
+              partyDetails = {
+                partyId: party.id,
+                partyName: party.name,
+                partyColor: party.color,
+              };
+          }
+
+          updatedPolitician = {
+            ...politician,
+            isInCampaign: true,
+            ...partyDetails,
+          };
         }
 
         return {
@@ -1193,10 +1228,7 @@ export const createElectionSlice = (set, get) => ({
             ...state.activeCampaign,
             elections: updatedElections,
             politicians: updatedPoliticiansSoA,
-            politician: {
-              ...politician,
-              isInCampaign: successfullyDeclared || politician.isInCampaign,
-            },
+            politician: updatedPolitician,
           },
         };
       });

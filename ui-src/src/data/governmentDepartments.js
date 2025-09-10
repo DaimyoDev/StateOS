@@ -6,6 +6,7 @@
  */
 
 export const CITY_DEPARTMENTS = [
+  "education",
   "parks_recreation",
   "public_works", 
   "police",

@@ -171,6 +171,7 @@ export const createCampaignSetupSlice = (set, get) => {
           availableParties: setupState.generatedPartiesInCountry,
           selectedRegionId: setupState.selectedRegionId,
           selectedCityId: selectedCityObject.id,
+          cityBudget: selectedCityObject.stats?.budget,
         });
 
         // Add department heads to the politician store

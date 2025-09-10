@@ -1,0 +1,137 @@
+/* Career Pathways Chart Styles */
+.career-pathways-chart {
+  background: var(--ui-panel-bg, #ffffff);
+  border: 1px solid var(--border-color, #dee2e6);
+  border-radius: var(--element-radius, 8px);
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.chart-container {
+  height: 400px;
+  margin-bottom: 20px;
+  position: relative;
+}
+
+.no-chart-data {
+  text-align: center;
+  padding: 40px;
+  color: var(--secondary-text, #666);
+  font-style: italic;
+  background: var(--secondary-bg, #f8f9fa);
+  border-radius: var(--element-radius, 6px);
+}
+
+.pathways-summary {
+  border-top: 1px solid var(--border-color, #dee2e6);
+  padding-top: 16px;
+}
+
+.district-overview h6 {
+  margin: 0 0 16px 0;
+  font-size: 1em;
+  font-weight: 600;
+  color: var(--primary-text, #333);
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.district-pathways {
+  display: flex;
+  justify-content: space-around;
+  gap: 20px;
+}
+
+.pathway-stat {
+  text-align: center;
+  flex: 1;
+  padding: 12px 8px;
+  border-radius: var(--element-radius, 6px);
+  background: var(--secondary-bg, #f8f9fa);
+  border: 1px solid var(--border-color-light, #f0f0f0);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.pathway-stat:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.pathway-percentage {
+  display: block;
+  font-size: 1.4em;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.pathway-stat.college .pathway-percentage {
+  color: var(--success-text, #28a745);
+}
+
+.pathway-stat.trade .pathway-percentage {
+  color: var(--accent-color, #17a2b8);
+}
+
+.pathway-stat.employment .pathway-percentage {
+  color: var(--button-bg, #ffc107);
+}
+
+.pathway-stat.dropout .pathway-percentage {
+  color: var(--error-text, #dc3545);
+}
+
+.pathway-label {
+  display: block;
+  font-size: 0.85em;
+  color: var(--secondary-text, #666);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+.pathway-count {
+  display: block;
+  font-size: 0.8em;
+  color: var(--secondary-text, #666);
+  font-style: italic;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .chart-container {
+    height: 300px;
+  }
+  
+  .district-pathways {
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .pathway-stat {
+    padding: 16px 12px;
+  }
+  
+  .pathway-percentage {
+    font-size: 1.6em;
+  }
+}
+
+@media (max-width: 480px) {
+  .career-pathways-chart {
+    padding: 16px;
+  }
+  
+  .chart-container {
+    height: 250px;
+  }
+  
+  .pathway-stat {
+    padding: 12px 8px;
+  }
+  
+  .pathway-percentage {
+    font-size: 1.4em;
+  }
+}

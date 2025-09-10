@@ -77,6 +77,7 @@ import luxCityParts from "../data/cityNames/lux_city_parts.json";
 import islCityParts from "../data/cityNames/isl_city_parts.json";
 import mltCityParts from "../data/cityNames/mlt_city_parts.json";
 import { NAMES_BY_COUNTRY } from "../data/namesData";
+import { createSchoolDistrict, generateStudentCoalitions, educationOptimizer } from "../education/educationSystem.js";
 
 const cityNamesByCountry = {
   USA: usaCityParts,
@@ -143,6 +144,7 @@ export const createCityObject = (params = {}) => ({
   cityLaws: params.cityLaws || {},
   politicalLandscape: params.politicalLandscape || [],
   isCapital: params.isCapital || false,
+  schoolDistrict: params.schoolDistrict || null,
 });
 
 // --- State Data Structure Definition ---
@@ -610,6 +612,15 @@ export const generateFullCityData = (params = {}) => {
     economicProfile
   );
 
+  // Generate school district for this city
+  const cityData = { id, name, population, demographics, stats };
+  const schoolDistrict = createSchoolDistrict(cityData);
+  const studentCoalitions = educationOptimizer.generateOptimizedCoalitions(
+    schoolDistrict, 
+    demographics
+  );
+  schoolDistrict.studentCoalitions = studentCoalitions;
+
   const cityLaws = generateInitialCityLaws({
     countryId: params.countryId,
     wealthLevel: stats.wealth,
@@ -645,6 +656,7 @@ export const generateFullCityData = (params = {}) => {
     cityLaws,
     politicalLandscape: normalizedLandscape,
     isCapital: params.isCapital || false,
+    schoolDistrict: schoolDistrict,
   });
 };
 

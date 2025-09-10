@@ -1,0 +1,95 @@
+/* State-specific styling overrides for StateSummaryTab */
+
+.state-summary-container {
+  /* Inherits most styles from CitySummaryTab.css but adds state-specific variations */
+}
+
+.state-hero-section {
+  border-left: 4px solid var(--accent-color, #007bff);
+}
+
+.state-hero-section .city-tags .capital-tag {
+  background: var(--accent-color, #007bff);
+  color: var(--accent-text, white);
+  font-weight: 600;
+}
+
+/* State-specific budget items */
+.budget-item.education.special {
+  background: var(--highlight-bg);
+  border-left: 3px solid var(--accent-color);
+}
+
+.budget-item.education-funding.special {
+  background: var(--highlight-bg);
+  border-left: 3px solid var(--success-text);
+}
+
+.budget-item.education.special .budget-label,
+.budget-item.education-funding.special .budget-label {
+  color: var(--primary-text);
+  font-weight: 600;
+}
+
+/* Economic issues styling */
+.issue-card.economic-issue {
+  background: var(--highlight-bg);
+  border-left: 3px solid var(--secondary-text);
+}
+
+.issue-card.economic-issue .issue-number {
+  background: var(--secondary-text);
+  color: var(--accent-text, white);
+}
+
+/* State-specific metric indicators */
+.state-summary-container .quality-item .quality-label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--secondary-text, #666);
+}
+
+.state-summary-container .metric-card {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  transition: box-shadow 0.2s ease;
+}
+
+.state-summary-container .metric-card:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+}
+
+/* Enhanced mood indicator for states */
+.state-summary-container .city-mood-indicator {
+  background: var(--secondary-bg);
+  border: var(--border-width) solid var(--border-color);
+}
+
+.state-summary-container .mood-status-dot {
+  width: 16px;
+  height: 16px;
+}
+
+/* State budget overview styling */
+.state-summary-container .budget-overview-section .section-title {
+  color: var(--accent-color, #007bff);
+  font-weight: 600;
+}
+
+/* Responsive adjustments for state view */
+@media (max-width: 768px) {
+  .state-summary-container .metrics-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .state-hero-section .city-tags {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  
+  .state-hero-section .city-tags .city-tag {
+    font-size: 0.8rem;
+    padding: 0.3rem 0.6rem;
+  }
+}

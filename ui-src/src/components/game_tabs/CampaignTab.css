@@ -615,3 +615,262 @@
   margin-top: 15px;
   margin-bottom: 0;
 }
+
+/* Campaign Finance Styles */
+.campaign-finance-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.finance-metric {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--main-bg);
+  border-radius: var(--element-radius);
+  border: 1px solid var(--border-color);
+}
+
+.metric-label {
+  color: var(--secondary-text);
+  font-size: 0.9rem;
+}
+
+.metric-value {
+  color: var(--primary-text);
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+/* Donation Sources Breakdown */
+.donation-sources-breakdown {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-color);
+}
+
+.donation-sources-breakdown h4 {
+  margin: 0 0 16px 0;
+  color: var(--primary-text);
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.sources-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.source-item {
+  padding: 12px;
+  background: var(--main-bg);
+  border-radius: var(--element-radius);
+  border: 1px solid var(--border-color);
+  text-align: center;
+}
+
+.source-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.source-label {
+  font-weight: 600;
+  color: var(--primary-text);
+  font-size: 0.9rem;
+}
+
+.source-count {
+  font-size: 0.8rem;
+  color: var(--secondary-text);
+  font-style: italic;
+}
+
+.source-amount {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--accent-color);
+  margin-bottom: 4px;
+}
+
+.source-percentage {
+  font-size: 0.9rem;
+  color: var(--secondary-text);
+  font-weight: 500;
+}
+
+/* Donation Controls and List */
+.donation-controls {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 20px;
+  padding: 16px;
+  background: var(--secondary-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--element-radius);
+}
+
+.filter-group,
+.sort-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.filter-group label,
+.sort-group label {
+  color: var(--secondary-text);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.filter-group select,
+.sort-group select {
+  background: var(--main-bg);
+  border: 1px solid var(--border-color);
+  color: var(--primary-text);
+  padding: 8px 12px;
+  border-radius: var(--element-radius);
+  font-size: 0.9rem;
+}
+
+.donations-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.donation-item {
+  background: var(--secondary-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--element-radius);
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all var(--transition-speed);
+}
+
+.donation-item:hover {
+  background: var(--highlight-bg);
+  border-color: var(--accent-color);
+}
+
+.donation-item.individual {
+  border-left: 4px solid #4CAF50;
+}
+
+.donation-item.corporate {
+  border-left: 4px solid #FF9800;
+}
+
+.donation-item.union {
+  border-left: 4px solid #2196F3;
+}
+
+.donation-item.organization {
+  border-left: 4px solid var(--accent-color);
+}
+
+.donor-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+.donor-name {
+  color: var(--primary-text);
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.industry,
+.occupation {
+  color: var(--secondary-text);
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+.disclosure-badge,
+.anonymous-badge,
+.type-badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: var(--element-radius);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-left: 8px;
+}
+
+.disclosure-badge {
+  background: var(--accent-color);
+  color: var(--accent-text);
+}
+
+.anonymous-badge {
+  background: var(--secondary-text);
+  color: var(--secondary-bg);
+}
+
+.type-badge {
+  background: var(--secondary-bg);
+  color: var(--secondary-text);
+  border: 1px solid var(--border-color);
+}
+
+.type-badge.individual {
+  background: #4CAF50;
+  color: white;
+}
+
+.type-badge.corporate {
+  background: #FF9800;
+  color: white;
+}
+
+.type-badge.union {
+  background: #2196F3;
+  color: white;
+}
+
+.donation-details {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-end;
+  text-align: right;
+}
+
+.donation-details .amount {
+  color: var(--primary-text);
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.donation-details .date {
+  color: var(--secondary-text);
+  font-size: 0.85rem;
+}
+
+.more-donations-note {
+  text-align: center;
+  color: var(--secondary-text);
+  font-style: italic;
+  padding: 16px;
+  background: var(--main-bg);
+  border-radius: var(--element-radius);
+  border: 1px solid var(--border-color);
+}
