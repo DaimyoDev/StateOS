@@ -4,11 +4,11 @@
   justify-content: center;
   align-items: flex-start; /* Align panel to top */
   padding: 20px;
-  min-height: 100vh; /* Ensure it can fill the viewport */
+  height: 100vh; /* Fixed viewport height */
   background-color: var(--primary-bg);
   font-family: var(--font-main);
   width: 100%; /* Takes full width of parent */
-  overflow-y: auto; /* Allow this container to scroll IF .manage-panel gets taller than viewport */
+  overflow: hidden; /* No scrolling on container */
 }
 
 .manage-panel {
@@ -22,16 +22,12 @@
 
   display: flex; /* Make this a flex container */
   flex-direction: column; /* Stack its children vertically */
-  /* Set a max-height for the panel if you want it to not exceed viewport,
-     otherwise, the .manage-politicians-container will handle scrolling.
-     For a modal-like feel, you might constrain its height.
-     Let's assume for now it can grow and the outer container scrolls if needed.
-     OR, if you want the panel itself to have a fixed height with internal scroll:
-  */
-  max-height: calc(
-    100vh - 40px
-  ); /* Example: 100% viewport height minus top/bottom padding of parent */
+
+  /* Constrain the panel to viewport height */
+  height: calc(100vh - 40px); /* Fixed height: viewport minus padding */
+  max-height: calc(100vh - 40px); /* Ensure it never exceeds this */
   overflow: hidden; /* The panel itself shouldn't show scrollbars directly */
+  box-sizing: border-box; /* Include any borders/padding in the size calculation */
 }
 
 .manage-title {
@@ -49,10 +45,13 @@
   color: var(--secondary-text);
   padding: 40px; /* More padding if it's the only content */
   font-style: italic;
-  flex-grow: 1; /* Allow it to take space if no list */
+  flex: 1; /* Take remaining space between title and actions */
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.politician-list {
+.manage-politicians-container .politician-list {
   list-style: none;
   padding: 0 30px; /* Add side padding here instead of on .manage-panel */
   margin: 0;
@@ -60,9 +59,11 @@
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 20px;
 
-  flex-grow: 1; /* Allows the list to take available space and push actions down */
+  flex: 1; /* Take remaining space between title and actions */
   overflow-y: auto; /* THIS MAKES THE LIST ITSELF SCROLLABLE */
   padding-bottom: 20px; /* Space before the action bar */
+  min-height: 0 !important; /* Essential for flexbox scrolling - override conflicting styles */
+  max-height: none !important; /* Ensure no unwanted height constraints - override conflicting styles */
 }
 
 .politician-list-item {
@@ -72,10 +73,11 @@
   padding: 15px;
   display: flex;
   flex-direction: column; /* Stack info and actions vertically within the card */
-  justify-content: space-between; /* Pushes actions to the bottom if info doesn't fill */
+  justify-content: flex-start; /* Don't stretch - just stack naturally */
   box-shadow: var(--panel-shadow); /* Optional: subtle shadow for each card */
   transition: transform var(--transition-speed),
     box-shadow var(--transition-speed);
+  height: fit-content; /* Only as tall as needed */
 }
 
 .politician-list-item:hover {
@@ -85,16 +87,8 @@
 }
 
 .politician-info {
-  margin-bottom: 15px; /* Space between info and actions */
-  flex-grow: 1; /* Allow info to take up space */
-}
-
-.politician-name {
-  font-weight: 600; /* Inter weight */
-  font-size: 1.1em;
-  color: var(--primary-text);
-  display: block;
-  margin-bottom: 3px;
+  margin-bottom: 0; /* Remove bottom margin since actions now have top margin */
+  /* Remove flex-grow to not stretch the info section */
 }
 
 .politician-name {
@@ -115,30 +109,33 @@
 
 .politician-actions {
   display: flex;
-  flex-direction: column; /* Stack action buttons vertically */
+  flex-direction: row; /* Stack action buttons horizontally */
   gap: 8px; /* Space between action buttons */
-  margin-top: auto; /* Push actions to the bottom of the card */
+  margin-top: 10px; /* Small space from info section */
+  flex-wrap: wrap; /* Allow wrapping if needed on small screens */
 }
 
 .politician-actions .small-button {
   /* From previous styling for delete button */
-  width: 100%; /* Make buttons take full width of the actions container */
-  padding: 8px 10px; /* Adjust padding for these buttons */
+  flex: 1; /* Share available width equally among buttons */
+  padding: 8px 12px; /* Adjust padding for these buttons */
   font-size: 0.9em;
+  min-width: 60px; /* Ensure buttons have minimum readable width */
 }
 
 /* Screen actions at the bottom of the panel */
 .screen-actions {
-  /* This is your sticky bottom bar */
-  margin-top: auto; /* Pushes it to the bottom if list is short */
-  flex-shrink: 0; /* Prevent it from shrinking */
+  flex-shrink: 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
   border-top: 1px solid var(--border-color);
-  padding: 20px 40px; /* Match horizontal padding */
-  background-color: var(--ui-panel-bg); /* Ensure it has a background */
-  /* If .manage-panel has border-radius, you might want to round bottom corners here too */
+  padding: 12px 40px;
+  margin-top: 10px;
+  margin-bottom: 10px;
+  background-color: var(--ui-panel-bg);
   border-bottom-left-radius: var(--element-radius);
   border-bottom-right-radius: var(--element-radius);
+  height: 60px;
+  box-sizing: border-box;
 }

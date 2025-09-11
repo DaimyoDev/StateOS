@@ -56,19 +56,29 @@ const LiveVoteSession = () => {
     const relevantCommitteeType = getRelevantCommitteeForBill(bill);
     if (!relevantCommitteeType) return [];
 
-    // Generate committee membership (similar to StateOverviewTab logic)
-    const allLegislators = governmentOffices.filter(office => 
-      office.level?.includes('_house') || office.level?.includes('_senate')
-    );
+    // Extract actual politicians from legislative offices
+    const allLegislators = [];
+    governmentOffices.forEach(office => {
+      if (office.level?.includes('_house') || office.level?.includes('_senate')) {
+        // Handle both single holder and multi-member offices
+        if (office.holder) {
+          allLegislators.push(office.holder);
+        }
+        if (office.members && Array.isArray(office.members)) {
+          allLegislators.push(...office.members);
+        }
+      }
+    });
     
     const legislatureSize = allLegislators.length;
-    const committeeSize = Math.max(3, Math.floor(legislatureSize * 0.18));
+    // Committee should be much smaller - typically 5-15 members
+    const committeeSize = Math.min(15, Math.max(5, Math.floor(legislatureSize * 0.15)));
     
-    // For demo purposes, use a consistent selection based on bill ID
+    // For consistent committee selection based on bill ID, use politician IDs for sorting
     const seed = parseInt(bill.id.slice(-4), 16) || 1;
     const shuffledLegislators = [...allLegislators].sort((a, b) => {
-      const aHash = (a.officeId?.charCodeAt(0) || 0) * seed;
-      const bHash = (b.officeId?.charCodeAt(0) || 0) * seed;
+      const aHash = (a.id?.charCodeAt(0) || 0) * seed;
+      const bHash = (b.id?.charCodeAt(0) || 0) * seed;
       return aHash - bHash;
     });
     
@@ -145,8 +155,12 @@ const LiveVoteSession = () => {
   useEffect(() => {
     if (!bill || !session) return;
 
+    // Only check for votes from current voting members, ignore old votes from different stages
+    const currentVotesCast = bill.councilVotesCast || {};
+    const votingMemberIds = new Set(votingMembers.map(m => m.id));
+    
     const unvotedMembers = votingMembers.filter(
-      (m) => m.id !== playerId && !(bill.councilVotesCast && bill.councilVotesCast[m.id])
+      (m) => m.id !== playerId && !currentVotesCast[m.id]
     );
     if (unvotedMembers.length === 0) return;
 
@@ -184,10 +198,15 @@ const LiveVoteSession = () => {
   useEffect(() => {
     if (!bill || votingMembers.length === 0) return;
 
-    const totalVotesCast = Object.keys(bill.councilVotesCast || {}).length;
+    // Only count votes from current voting members
+    const currentVotesCast = bill.councilVotesCast || {};
+    const votingMemberIds = new Set(votingMembers.map(m => m.id));
+    
+    const votesFromCurrentMembers = Object.entries(currentVotesCast)
+      .filter(([memberId, vote]) => votingMemberIds.has(memberId)).length;
     const totalVoters = votingMembers.length;
 
-    if (totalVotesCast >= totalVoters) {
+    if (votesFromCurrentMembers >= totalVoters) {
       const timer = setTimeout(() => {
         endVotingSession();
       }, 2000);
@@ -201,8 +220,10 @@ const LiveVoteSession = () => {
   };
 
   const handleSkip = () => {
+    const currentVotesCast = bill.councilVotesCast || {};
+    
     votingMembers.forEach((m) => {
-      if (m.id !== playerId && !(bill.councilVotesCast && bill.councilVotesCast[m.id])) {
+      if (m.id !== playerId && !currentVotesCast[m.id]) {
         const voteChoice = decideAIVote(
           m,
           bill,
@@ -221,9 +242,12 @@ const LiveVoteSession = () => {
   // Calculate vote tallies by party
   const votesByParty = useMemo(() => {
     const partyVotes = {};
+    const currentVotesCast = bill.councilVotesCast || {};
+    
     votingMembers.forEach((member) => {
-      const partyName = member.partyName || 'Independent';
-      const vote = bill.councilVotesCast?.[member.id] || 'pending';
+      // Try multiple possible party field names
+      const partyName = member.partyName || member.party || member.partyAffiliation || 'Independent';
+      const vote = currentVotesCast[member.id] || 'pending';
       
       if (!partyVotes[partyName]) {
         partyVotes[partyName] = { yea: 0, nay: 0, abstain: 0, pending: 0 };
@@ -233,12 +257,21 @@ const LiveVoteSession = () => {
     return partyVotes;
   }, [votingMembers, bill.councilVotesCast]);
 
-  const yeaCount = bill.votes?.yea?.length || 0;
-  const nayCount = bill.votes?.nay?.length || 0;
-  const abstainCount = bill.votes?.abstain?.length || 0;
+  // Calculate vote counts from councilVotesCast, but only count votes from current voting members
+  const currentVotesCast = bill.councilVotesCast || {};
+  const votingMemberIds = new Set(votingMembers.map(m => m.id));
+  
+  // Only count votes from current voting members to avoid counting old votes from different stages
+  const relevantVotes = Object.entries(currentVotesCast)
+    .filter(([memberId, vote]) => votingMemberIds.has(memberId))
+    .map(([memberId, vote]) => vote);
+  
+  const yeaCount = relevantVotes.filter(vote => vote === 'yea').length;
+  const nayCount = relevantVotes.filter(vote => vote === 'nay').length;
+  const abstainCount = relevantVotes.filter(vote => vote === 'abstain').length;
 
   // Chart data for overall vote distribution
-  const pendingCount = votingMembers.length - yeaCount - nayCount - abstainCount;
+  const pendingCount = Math.max(0, votingMembers.length - yeaCount - nayCount - abstainCount);
 
   // Resolve theme colors from CSS variables (with sensible fallbacks)
   const rootStyles = typeof window !== 'undefined' ? getComputedStyle(document.documentElement) : null;
@@ -329,7 +362,7 @@ const LiveVoteSession = () => {
                         {m.firstName || m.name} {m.lastName || ""}
                       </span>
                       <span className="voter-party">
-                        {m.partyName ? `(${m.partyName})` : "(Independent)"}
+                        {(m.partyName || m.party || m.partyAffiliation) ? `(${m.partyName || m.party || m.partyAffiliation})` : "(Independent)"}
                       </span>
                     </div>
                     <span className="vote-status">

@@ -23,6 +23,7 @@ import {
   generateInitialBudget,
   generateStateBudget,
   generateNationalBudget,
+  calculateStateEducationDistribution,
 } from "./economics/budgetCalculations";
 import {
   generateEconomicProfile,
@@ -504,6 +505,7 @@ export const generateCitiesForState = ({
   countryId,
   regionId,
   basePoliticalLandscape,
+  stateEducationFunding = 0,
 }) => {
   const cities = [];
   let remainingPopulation = totalPopulation;
@@ -520,6 +522,25 @@ export const generateCitiesForState = ({
         usedNames,
       });
       cities.push(onlyCity);
+      
+      // Distribute state education funding to single city
+      if (stateEducationFunding > 0) {
+        const educationDistribution = calculateStateEducationDistribution(
+          stateEducationFunding,
+          cities,
+          'hybrid'
+        );
+        
+        const cityEducationFunding = educationDistribution[onlyCity.id] || 0;
+        if (cityEducationFunding > 0) {
+          onlyCity.stats.budget.incomeSources.stateEducationFunding = cityEducationFunding;
+          onlyCity.stats.budget.totalAnnualIncome += cityEducationFunding;
+          onlyCity.stats.budget.expenseAllocations.publicEducation += cityEducationFunding;
+          onlyCity.stats.budget.totalAnnualExpenses = Object.values(onlyCity.stats.budget.expenseAllocations)
+            .reduce((sum, val) => sum + val, 0);
+          onlyCity.stats.budget.balance = onlyCity.stats.budget.totalAnnualIncome - onlyCity.stats.budget.totalAnnualExpenses;
+        }
+      }
     }
     return cities;
   }
@@ -589,6 +610,35 @@ export const generateCitiesForState = ({
     cities.push(nextCity);
     usedNames.add(nextCity.name);
     remainingPopulation -= nextCityPopulation;
+  }
+
+  // Distribute state education funding among cities
+  if (stateEducationFunding > 0 && cities.length > 0) {
+    const educationDistribution = calculateStateEducationDistribution(
+      stateEducationFunding,
+      cities,
+      'hybrid' // Use hybrid funding formula (60% per-student, 40% needs-based)
+    );
+    
+    // Update each city's budget to include state education funding
+    cities.forEach(city => {
+      const cityEducationFunding = educationDistribution[city.id] || 0;
+      if (cityEducationFunding > 0) {
+        // Add state education funding to city's income sources
+        city.stats.budget.incomeSources.stateEducationFunding = cityEducationFunding;
+        
+        // Update total annual income
+        city.stats.budget.totalAnnualIncome += cityEducationFunding;
+        
+        // Add the state funding to the education department budget
+        city.stats.budget.expenseAllocations.publicEducation += cityEducationFunding;
+        
+        // Recalculate total expenses and balance
+        city.stats.budget.totalAnnualExpenses = Object.values(city.stats.budget.expenseAllocations)
+          .reduce((sum, val) => sum + val, 0);
+        city.stats.budget.balance = city.stats.budget.totalAnnualIncome - city.stats.budget.totalAnnualExpenses;
+      }
+    });
   }
 
   return cities;
@@ -721,11 +771,20 @@ export const generateFullStateData = (params = {}) => {
     else determinedType = "Region"; // Generic fallback
   }
 
+  // Pre-calculate state education funding for distribution to cities
+  // Use a reasonable default GDP per capita since we don't have city data yet
+  const preliminaryStateBudget = generateStateBudget({
+    population: totalPopulation,
+    gdpPerCapita: 40000, // Default GDP per capita for preliminary calculation
+    countryId,
+  });
+  
   const cities = generateCitiesForState({
     totalPopulation,
     countryId,
     regionId: id,
     basePoliticalLandscape: normalizedBaseLandscape,
+    stateEducationFunding: preliminaryStateBudget.expenseAllocations.localEducationFunding,
   });
 
   if (cities.length === 0) {
@@ -817,6 +876,9 @@ export const generateFullStateData = (params = {}) => {
     gdpPerCapita: aggregatedEconomicProfile.gdpPerCapita,
     countryId: params.countryId,
   });
+  
+  // The localEducationFunding from preliminary calculation has already been distributed to cities,
+  // so the final state budget correctly shows this allocation
 
   // --- NEW: Aggregate state-level service stats from cities so UI has data ---
   const weightedAverage = (items) => {

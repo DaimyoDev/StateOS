@@ -184,8 +184,8 @@ const _advanceBillToNextStage = (bill, level, currentDate) => {
   if (level === 'city') {
     // City bills: under_review -> pending_vote -> passed/failed
     if (bill.status === 'under_review' || bill.currentStage === 'introduction') {
-      if (progressChance < 0.8) { // High chance for city bills to advance
-        const nextStageDate = _addDays(currentDate, Math.floor(Math.random() * 7) + 3); // 3-10 days
+      if (progressChance < 0.9) { // Very high chance for city bills to advance (increased from 0.8)
+        const nextStageDate = _addDays(currentDate, Math.floor(Math.random() * 5) + 1); // 1-6 days (shortened)
         return {
           ...bill,
           status: 'pending_vote',
@@ -653,6 +653,57 @@ export const createTimeSlice = (set, get) => {
           // Clear the queue AFTER processing yesterday's votes
           get().actions.clearVoteQueue?.();
         }
+
+        // --- PHASE 3a-2: Auto-process overdue pending votes ---
+        // Process bills that have been in pending_vote status for more than 1 day
+        // This prevents bills from getting stuck if user doesn't view voting sessions
+        const finalCampaignAfterVoteProcessing = get().activeCampaign;
+        ['city', 'state', 'national'].forEach(level => {
+          const levelState = get()[level];
+          if (!levelState?.proposedBills) return;
+          
+          levelState.proposedBills.forEach(bill => {
+            if (bill.status === 'pending_vote' && bill.voteScheduledFor) {
+              const daysSinceScheduled = _daysBetween(bill.voteScheduledFor, effectiveDate);
+              
+              // Auto-process if vote was scheduled 2+ days ago (gives user time to see it)
+              if (daysSinceScheduled >= 2) {
+                console.log(`[Auto Vote Processing] Processing overdue vote for bill: ${bill.name || bill.id} (${daysSinceScheduled} days overdue)`);
+                const aiVotes = get().actions.runAllAIVotesForBill?.(bill.id, level);
+                get().actions.finalizeBillVote?.(bill.id, level, aiVotes);
+              }
+            }
+            
+            // Safety mechanism: Force progression of bills stuck for too long
+            if (bill.dateProposed) {
+              const daysSinceProposed = _daysBetween(bill.dateProposed, effectiveDate);
+              const maxDaysForLevel = level === 'city' ? 21 : 45; // City: 3 weeks, State/National: 6+ weeks
+              
+              if (daysSinceProposed >= maxDaysForLevel && (bill.status === 'under_review' || bill.status === 'in_committee')) {
+                console.log(`[Safety Progression] Force advancing stuck bill: ${bill.name || bill.id} (${daysSinceProposed} days old, status: ${bill.status})`);
+                // Force the bill to advance to pending_vote
+                const advancedBill = _advanceBillToNextStage(bill, level, effectiveDate);
+                if (advancedBill !== bill) {
+                  // Apply the advancement immediately
+                  const stateAfterSafetyAdvance = get();
+                  set((state) => {
+                    const updatedProposedBills = state[level].proposedBills.map(b => 
+                      b.id === bill.id ? advancedBill : b
+                    );
+                    
+                    return {
+                      ...state,
+                      [level]: {
+                        ...state[level],
+                        proposedBills: updatedProposedBills
+                      }
+                    };
+                  });
+                }
+              }
+            }
+          });
+        });
 
         // --- PHASE 3b: Daily Legislation Processing for NEW day ---
         get().actions.processImpendingVotes?.(); // Finds and queues votes for the NEW day

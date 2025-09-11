@@ -154,7 +154,6 @@ const EMPTY_ARRAY = [];
 
 // Pagination constants
 const POLITICIANS_PER_PAGE = 20;
-const INITIAL_LOAD_COUNT = 10;
 
 function PoliticiansTab() {
   const relationships = useGameStore((state) => state.politicianRelationships);
@@ -176,7 +175,6 @@ function PoliticiansTab() {
   const [stateFilter, setStateFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
 
   // CHANGED: Collect politicians from all levels using the hierarchical structure
   const aiPoliticians = useMemo(() => {
@@ -364,16 +362,6 @@ function PoliticiansTab() {
     }
   }, []);
 
-  // Load more politicians (for infinite scroll alternative)
-  const loadMorePoliticians = useCallback(() => {
-    if (currentPage < totalPages && !isLoading) {
-      setIsLoading(true);
-      setTimeout(() => {
-        setCurrentPage(prev => prev + 1);
-        setIsLoading(false);
-      }, 100); // Small delay to show loading state
-    }
-  }, [currentPage, totalPages, isLoading]);
 
   return (
     <div className="politicians-tab-container">
@@ -547,18 +535,6 @@ function PoliticiansTab() {
         </div>
       )}
 
-      {/* Load More Button (Alternative to pagination) */}
-      {currentPage < totalPages && (
-        <div className="load-more-section">
-          <button
-            className="action-button"
-            onClick={loadMorePoliticians}
-            disabled={isLoading}
-          >
-            {isLoading ? "Loading..." : `Load More Politicians (${totalCount - paginatedPoliticians.length} remaining)`}
-          </button>
-        </div>
-      )}
     </div>
   );
 }

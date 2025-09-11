@@ -1,6 +1,7 @@
 .politicians-tab-container {
   padding: 20px;
-  height: 100%;
+  min-height: 120vh; /* Make container taller than viewport */
+  height: auto; /* Allow container to expand vertically */
   display: flex;
   flex-direction: column;
 }
@@ -22,7 +23,8 @@
 
 .politician-list {
   flex-grow: 1;
-  overflow-y: auto;
+  min-height: 80vh; /* Give the list more vertical space */
+  overflow-y: visible; /* Allow natural overflow since container handles scrolling */
   padding-right: 10px; /* For scrollbar spacing */
 }
 
@@ -321,21 +323,30 @@
   font-size: 1.1em;
 }
 
-/* Pagination Controls */
+/* Pagination Controls - Sticky Modal */
 .pagination-controls {
+  position: fixed;
+  bottom: 80px; /* Position above time advancement buttons */
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
   justify-content: center;
   align-items: center;
   gap: 10px;
-  margin-top: 30px;
-  padding: 20px;
+  padding: 15px 20px;
   background: var(--secondary-bg);
-  border: 1px solid var(--border-color);
+  border: 2px solid var(--accent-color);
   border-radius: var(--element-radius);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  z-index: 1000; /* Ensure it appears above other content */
+  backdrop-filter: blur(10px);
+  min-width: 400px;
 }
 
 .pagination-controls button {
   min-width: 80px;
+  font-weight: 600;
+  transition: all 0.2s ease;
 }
 
 .pagination-controls button:disabled {
@@ -354,26 +365,15 @@
 .page-info {
   margin: 0 15px;
   padding: 8px 16px;
-  background: var(--primary-bg);
-  border: 1px solid var(--border-color);
+  background: var(--accent-color);
+  color: var(--button-text);
   border-radius: var(--element-radius);
-  font-weight: 600;
-  color: var(--primary-text);
+  font-weight: 700;
   min-width: 120px;
   text-align: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
-/* Load More Section */
-.load-more-section {
-  text-align: center;
-  margin-top: 20px;
-  padding: 20px;
-}
-
-.load-more-section .action-button {
-  min-width: 200px;
-  padding: 12px 24px;
-}
 
 /* Performance Optimizations */
 .politician-list {
@@ -412,6 +412,9 @@
   .pagination-controls {
     flex-wrap: wrap;
     gap: 8px;
+    min-width: 320px;
+    bottom: 70px; /* Adjust position for smaller screens */
+    padding: 12px 15px;
   }
   
   .pagination-controls button {
@@ -423,6 +426,7 @@
   .page-info {
     min-width: 100px;
     margin: 0 8px;
+    font-size: 0.9em;
   }
   
   .politician-search {

@@ -224,11 +224,51 @@ export const processBillStage = (bill, aiVotes, legislature, politicalSystemId, 
   
   if (stageConfig.step.includes('vote') || stageConfig.step.includes('approval')) {
     // This stage requires a vote
-    const legislatureSize = (legislature?.lowerHouse?.length || 0) + (legislature?.upperHouse?.length || 0);
+    let legislatureSize = 0;
+    
+    // Check if this is a committee stage
+    const isCommitteeStage = currentStage.includes('committee') || 
+                           currentStage === 'committee_assignment' ||
+                           currentStage === 'committee_markup' ||
+                           currentStage === 'committee_review';
+    
+    if (isCommitteeStage) {
+      // For committee votes, use the number of people who actually voted
+      legislatureSize = Object.keys(bill.councilVotesCast || {}).length;
+    } else {
+      // For full legislature votes, calculate legislature size based on the level
+      if (bill.level === 'city') {
+        // For city bills, count the members array directly
+        legislatureSize = legislature?.members?.length || 0;
+      } else {
+        // For state/national bills, use upper/lower house structure
+        legislatureSize = (legislature?.lowerHouse?.length || 0) + (legislature?.upperHouse?.length || 0);
+      }
+    }
+    
     const majorityNeeded = Math.floor(legislatureSize / 2) + 1;
     
-    const yeaVotes = Object.values(aiVotes || {}).filter(v => v === 'yea' || v === 'YEA').length;
+    // Count all votes from the bill's councilVotesCast (includes both AI and player votes)
+    const allVotes = Object.values(bill.councilVotesCast || {});
+    const yeaVotes = allVotes.filter(v => 
+      v === 'yea' || v === 'YEA' || v === 'YEA_PLAYER'
+    ).length;
+    const nayVotes = allVotes.filter(v => 
+      v === 'nay' || v === 'NAY' || v === 'NAY_PLAYER'
+    ).length;
+    const abstainVotes = allVotes.filter(v => 
+      v === 'abstain' || v === 'ABSTAIN' || v === 'ABSTAIN_PLAYER'
+    ).length;
+    
+    console.log(`[Bill Vote Processing] Bill: ${bill.name}`);
+    console.log(`[Bill Vote Processing] Legislature size: ${legislatureSize}, Majority needed: ${majorityNeeded}`);
+    console.log(`[Bill Vote Processing] All votes cast:`, bill.councilVotesCast);
+    console.log(`[Bill Vote Processing] Vote counts - Yea: ${yeaVotes}, Nay: ${nayVotes}, Abstain: ${abstainVotes}`);
+    console.log(`[Bill Vote Processing] Total votes cast: ${allVotes.length}`);
+    
     stageResult = yeaVotes >= majorityNeeded ? 'passed' : 'failed';
+    
+    console.log(`[Bill Vote Processing] Stage result: ${stageResult}`);
   }
   
   // Update stage history

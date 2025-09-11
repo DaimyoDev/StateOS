@@ -7,6 +7,8 @@ import CareerPathwaysChart from "../../charts/CareerPathwaysChart";
 import PoliticianCard from "../../PoliticianCard"; // NEW: Import PoliticianCard
 import CitySummaryTab from "../../CitySummaryTab"; // NEW: Import CitySummaryTab
 import CityServicesTab from "./CityServicesTab"; // NEW: Import CityServicesTab
+import CityDemographicsTab from "../../CityDemographicsTab"; // NEW: Import CityDemographicsTab
+import CityBudgetTab from "../../CityBudgetTab"; // NEW: Import CityBudgetTab
 import "./GovernmentSubTabStyles.css";
 import "./CityOverviewTab.css";
 
@@ -890,190 +892,11 @@ const CityOverviewTab = ({ campaignData, activeSubTab = "summary", governmentSub
       case "summary":
         return <CitySummaryTab cityData={cityData} />;
       case "demographics":
-        return (
-          <section className="city-section">
-            <h4>Demographics</h4>
-            {demographics ? (
-              <div className="city-stats-grid two-col">
-                {ageDistribution && (
-                  <div className="stat-item sub-section">
-                    <strong>Age Distribution:</strong>
-                    <ul>
-                      <li>
-                        Youth (0-17):{" "}
-                        {formatPercentage(ageDistribution.youth, 0)}
-                      </li>
-                      <li>
-                        Young Adult (18-34):{" "}
-                        {formatPercentage(ageDistribution.youngAdult, 0)}
-                      </li>
-                      <li>
-                        Adult (35-59):{" "}
-                        {formatPercentage(ageDistribution.adult, 0)}
-                      </li>
-                      <li>
-                        Senior (60+):{" "}
-                        {formatPercentage(ageDistribution.senior, 0)}
-                      </li>
-                    </ul>
-                  </div>
-                )}
-                {educationLevels && (
-                  <div className="stat-item sub-section">
-                    <strong>Education Levels (Adults):</strong>
-                    <ul>
-                      <li>
-                        High School or Less:{" "}
-                        {formatPercentage(educationLevels.highSchoolOrLess, 0)}
-                      </li>
-                      <li>
-                        Some College:{" "}
-                        {formatPercentage(educationLevels.someCollege, 0)}
-                      </li>
-                      <li>
-                        Bachelors or Higher:{" "}
-                        {formatPercentage(educationLevels.bachelorsOrHigher, 0)}
-                      </li>
-                    </ul>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <p>No demographic data available.</p>
-            )}
-          </section>
-        );
+        return <CityDemographicsTab cityData={cityData} themeColors={currentTheme?.colors} themeFonts={currentTheme?.fonts} />;
       case "services":
         return <CityServicesTab cityData={cityData} themeColors={currentTheme?.colors} themeFonts={currentTheme?.fonts} />;
       case "budget":
-        return (
-          <>
-            {budget ? (
-              <section className="city-section">
-                <h4>City Budget & Taxes (Annual Estimate)</h4>
-                <div className="city-stats-grid two-col budget-summary-grid">
-                  <div className="stat-item">
-                    <strong>Total Income:</strong> ${" "}
-                    {budget.totalAnnualIncome?.toLocaleString() || "N/A"}
-                  </div>
-                  <div className="stat-item">
-                    <strong>Total Expenses:</strong> ${" "}
-                    {budget.totalAnnualExpenses?.toLocaleString() || "N/A"}
-                  </div>
-                  <div className="stat-item">
-                    <strong>Balance:</strong>{" "}
-                    <span
-                      className={
-                        budget.balance >= 0 ? "text-success" : "text-error"
-                      }
-                    >
-                      ${budget.balance?.toLocaleString() || "N/A"}
-                    </span>
-                  </div>
-                  <div className="stat-item">
-                    <strong>Accumulated Debt/Surplus:</strong>
-                    <span
-                      className={
-                        budget.accumulatedDebt > 0
-                          ? "text-error"
-                          : budget.accumulatedDebt < 0
-                          ? "text-success"
-                          : "text-neutral"
-                      }
-                    >
-                      $
-                      {Math.abs(budget.accumulatedDebt)?.toLocaleString() ||
-                        "N/A"}
-                      {budget.accumulatedDebt > 0
-                        ? " (Debt)"
-                        : budget.accumulatedDebt < 0
-                        ? " (Surplus)"
-                        : " (Balanced)"}
-                    </span>
-                  </div>
-                </div>
-
-                {taxRates && (
-                  <div className="tax-rates-subsection">
-                    <h5>Current Tax Rates:</h5>
-                    <div className="city-stats-grid three-col">
-                      <div className="stat-item">
-                        Property Tax:{" "}
-                        <span>
-                          {formatPercentage(taxRates.property * 100, 2)}
-                        </span>
-                      </div>
-                      <div className="stat-item">
-                        Sales Tax:{" "}
-                        <span>{formatPercentage(taxRates.sales * 100, 1)}</span>
-                      </div>
-                      <div className="stat-item">
-                        Business Tax:{" "}
-                        <span>
-                          {formatPercentage(taxRates.business * 100, 1)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <div className="budget-details-container">
-                  <div className="budget-column income-sources">
-                    <h5>Detailed Income Sources:</h5>
-                    {incomeSources &&
-                    typeof incomeSources === "object" &&
-                    Object.keys(incomeSources).length > 0 ? (
-                      <ul className="budget-breakdown-list">
-                        {Object.entries(incomeSources).map(([key, value]) => (
-                          <li key={`income-${key}`}>
-                            <span>{formatBudgetKey(key)}:</span>
-                            <span>
-                              $
-                              {typeof value === "number"
-                                ? value.toLocaleString()
-                                : String(value)}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p>No detailed income sources available.</p>
-                    )}
-                  </div>
-
-                  <div className="budget-column expense-allocations">
-                    <h5>Detailed Expense Allocations:</h5>
-                    {expenseAllocations &&
-                    typeof expenseAllocations === "object" &&
-                    Object.keys(expenseAllocations).length > 0 ? (
-                      <ul className="budget-breakdown-list">
-                        {Object.entries(expenseAllocations).map(
-                          ([key, value]) => {
-                            return (
-                              <li key={`expense-${key}`}>
-                                <span>{formatBudgetKey(key)}:</span>
-                                <span>
-                                  $
-                                  {typeof value === "number"
-                                    ? value.toLocaleString()
-                                    : String(value)}
-                                </span>
-                              </li>
-                            );
-                          }
-                        )}
-                      </ul>
-                    ) : (
-                      <p>No detailed expense allocations available.</p>
-                    )}
-                  </div>
-                </div>
-              </section>
-            ) : (
-              <p>No budget data available.</p>
-            )}
-          </>
-        );
+        return <CityBudgetTab cityData={cityData} themeColors={currentTheme?.colors} themeFonts={currentTheme?.fonts} />;
       case "government":
         return (
           <section className="city-officials-section city-section">

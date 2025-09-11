@@ -248,6 +248,7 @@ export const createLegislationSlice = (set, get) => ({
 
     // NEW: Process a bill through its current stage in the political system workflow
     processBillStage: (billId, level, aiVotes = {}) => {
+      console.log(`[Legislation] processBillStage called for ${billId} at ${level} level with ${Object.keys(aiVotes).length} AI votes`);
       set((state) => {
         let bill = null;
         let foundLevel = null;
@@ -265,10 +266,12 @@ export const createLegislationSlice = (set, get) => ({
         }
 
         if (!bill) {
+          console.log(`[Legislation] processBillStage: Bill ${billId} not found in any level`);
           return state;
         }
 
         level = foundLevel;
+        console.log(`[Legislation] processBillStage: Processing bill "${bill.name}" (${billId}) at ${level} level, current status: ${bill.status}`);
 
         // Get political system and legislature info
         const countryData = state.activeCampaign.availableCountries?.find(c => c.id === state.activeCampaign.countryId) ||
@@ -276,8 +279,17 @@ export const createLegislationSlice = (set, get) => ({
         const politicalSystemId = countryData?.politicalSystemId || bill.politicalSystemId || 'PRESIDENTIAL_REPUBLIC';
         const legislature = getLegislatureDetails(state.activeCampaign, level);
 
+        // Merge AI votes into the bill's vote record before processing
+        const billWithAIVotes = {
+          ...bill,
+          councilVotesCast: {
+            ...(bill.councilVotesCast || {}),
+            ...aiVotes
+          }
+        };
+
         // Process the bill through its current stage
-        const processedBill = processBillStage(bill, aiVotes, legislature, politicalSystemId, state.activeCampaign.currentDate);
+        const processedBill = processBillStage(billWithAIVotes, aiVotes, legislature, politicalSystemId, state.activeCampaign.currentDate);
 
         // Handle the result based on the bill's new status
         let newActiveLegislationList = [...state[level].activeLegislation];
@@ -406,6 +418,7 @@ export const createLegislationSlice = (set, get) => ({
 
     // DEPRECATED: Legacy function for backward compatibility - now uses the new stage system
     finalizeBillVote: (billId, level, aiVotes = {}) => {
+      console.log(`[Legislation] finalizeBillVote called for ${billId} at ${level} level with ${Object.keys(aiVotes).length} AI votes`);
       // For backward compatibility, just call the new processBillStage function
       get().actions.processBillStage(billId, level, aiVotes);
     },
@@ -1153,6 +1166,7 @@ export const createLegislationSlice = (set, get) => ({
 
       for (const aiMember of aiCouncilMembers) {
         if (bill.councilVotesCast && bill.councilVotesCast[aiMember.id]) {
+          console.log(`[AI VOTING] Skipping ${aiMember.name || aiMember.id} - vote already cast: ${bill.councilVotesCast[aiMember.id]}`);
           continue; // Skip if vote already cast
         }
 
@@ -1174,15 +1188,18 @@ export const createLegislationSlice = (set, get) => ({
             }
           );
           votes[aiMember.id] = voteChoice;
+          console.log(`[AI VOTING] ${aiMember.name || aiMember.id} voted: ${voteChoice}`);
         } catch (error) {
           console.error(
             `[runAllAIVotesForBill Debug] Error calling decideAIVote for ${aiMember.id}:`,
             error
           );
           votes[aiMember.id] = "abstain"; // Default to abstain on error
+          console.log(`[AI VOTING] ${aiMember.name || aiMember.id} defaulted to: abstain (due to error)`);
         }
       }
 
+      console.log(`[AI VOTING] Final vote tally for ${bill.name || billId}:`, votes);
       return votes; // Return the calculated votes
     },
 
