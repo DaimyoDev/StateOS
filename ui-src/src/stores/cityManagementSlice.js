@@ -172,13 +172,26 @@ const generateCityGovernment = (cityData, countryId = 'USA', allPartiesInScope =
   governmentOffices.push({
     id: 'mayor',
     title: 'Mayor',
+    officeNameTemplateId: 'mayor',
     holderId: mayor.id,
     level: 'city',
-    electionCycle: 4
+    electionCycle: 4,
+    instanceIdBase: `${cityData.id}_mayor`, // Unique identifier for election matching
+    officeName: `Mayor of ${cityData.name}`,
+    holder: {
+      id: mayor.id,
+      name: `${mayor.firstName} ${mayor.lastName}`,
+      partyId: mayor.partyId,
+      partyName: mayor.partyName,
+      partyColor: mayor.partyColor,
+      role: `Mayor of ${cityData.name}`
+    }
   });
 
   // Generate city council members using population-based sizing
   const councilSize = getCityCouncilSize(cityData.population, countryId);
+  const councilMembers = [];
+  
   for (let i = 0; i < councilSize; i++) {
     const councilMember = generateFullAIPolitician(
       countryId,
@@ -190,14 +203,29 @@ const generateCityGovernment = (cityData, countryId = 'USA', allPartiesInScope =
     );
     politicians.set(councilMember.id, councilMember);
     
-    governmentOffices.push({
-      id: `council_${i + 1}`,
-      title: `City Council District ${i + 1}`,
-      holderId: councilMember.id,
-      level: 'city',
-      electionCycle: 4
+    // Add member to the council array
+    councilMembers.push({
+      id: councilMember.id,
+      name: `${councilMember.firstName} ${councilMember.lastName}`,
+      partyId: councilMember.partyId,
+      partyName: councilMember.partyName,
+      partyColor: councilMember.partyColor,
+      role: `City Council Member (District ${i + 1})`
     });
   }
+  
+  // Create a single multi-member city council office
+  governmentOffices.push({
+    id: 'city_council',
+    title: 'City Council',
+    officeNameTemplateId: 'city_council',
+    level: 'city',
+    electionCycle: 4,
+    numberOfSeatsToFill: councilSize,
+    officeName: `${cityData.name} City Council`,
+    members: councilMembers,
+    instanceIdBase: `${cityData.id}_city_council` // Unique identifier for election matching
+  });
 
   return { politicians, governmentOffices };
 };
@@ -226,7 +254,7 @@ const getCityGovernmentOffices = (activeCampaign, cityId) => {
 };
 
 /**
- * Calculates city data on-demand when player views it
+ * Calculates city data using pre-generated politicians (no lazy loading)
  */
 const calculateCityData = (cityId, baseData, currentDate, monthsSinceLastUpdate = 0, countryId = 'USA', allParties = []) => {
   // If baseData already has complete stats (from campaign setup), use them
@@ -268,19 +296,14 @@ const calculateCityData = (cityId, baseData, currentDate, monthsSinceLastUpdate 
     Math.max(monthsSinceLastUpdate, 12)
   );
 
-  // Generate government if not exists
-  const governmentData = generateCityGovernment(
-    { ...baseData, id: cityId }, 
-    countryId,
-    allParties
-  );
+  // NO LONGER GENERATE POLITICIANS - they should already exist from campaign setup
+  // Politicians and government offices are now pre-generated during campaign loading
 
   return {
     ...baseData,
     id: cityId,
     stats: updatedStats,
     ...legislationData,
-    ...governmentData,
     lastCalculated: currentDate
   };
 };
@@ -358,6 +381,9 @@ const calculateBillPassChance = (bill, cityData) => {
   return Math.max(0.1, Math.min(0.9, passChance));
 };
 
+// Export the generateCityGovernment function for use during campaign setup
+export { generateCityGovernment };
+
 export const createCityManagementSlice = (set, get) => ({
   // State
   availableCities: new Map(), // cityId -> city data
@@ -400,28 +426,19 @@ export const createCityManagementSlice = (set, get) => ({
           }
         }
 
-        // Clear current city legislation when switching
+        // Update campaign with city data (politicians already exist from campaign setup)
         const updatedCampaign = {
           ...activeCampaign,
           startingCity: cityData,
-          // Clear city-level legislation
+          // Update city-level legislation
           city: {
             proposedBills: cityData.proposedBills || [],
             activeLegislation: cityData.activeLegislation || [],
             passedBillsArchive: cityData.passedBillsArchive || [],
             failedBillsArchive: cityData.failedBillsArchive || []
-          },
-          // Update politicians with city government
-          politicians: {
-            ...activeCampaign.politicians,
-            // Merge city politicians into the existing structure
-            base: new Map([
-              ...(activeCampaign.politicians?.base || new Map()),
-              ...(cityData.politicians || new Map())
-            ])
           }
-          // The government offices are now in hierarchical structure - no need to merge here
-          // They are handled by the campaign setup and politicalEntities.js
+          // Politicians and government offices are already in the campaign from setup
+          // No need to merge or generate new ones
         };
 
         // Update available cities cache

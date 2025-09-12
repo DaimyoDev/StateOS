@@ -336,6 +336,74 @@ export const createCampaignSetupSlice = (set, get) => {
           generateCoalitionsForEntity(city.id, city, "city");
         });
 
+        setLoadingGame(true, "Generating politicians for all cities...");
+        await pause(50);
+
+        // Generate politicians for ALL cities in the country during loading
+        const { generateCityGovernment } = await import("../stores/cityManagementSlice.js");
+        const allCityPoliticians = [];
+        const allCityGovernmentOffices = [];
+
+        // Iterate through all regions and their cities
+        for (const region of currentCountryData.regions || []) {
+          for (const city of region.cities || []) {
+            const { politicians: cityPoliticians, governmentOffices: cityOffices } = generateCityGovernment(
+              city,
+              setupState.selectedCountryId,
+              setupState.generatedPartiesInCountry
+            );
+
+            // Add city politicians to the collection
+            if (cityPoliticians && cityPoliticians.size > 0) {
+              cityPoliticians.forEach((politician, id) => {
+                allCityPoliticians.push(politician);
+              });
+            }
+
+            // Store city offices in hierarchical structure with proper holder references
+            if (cityOffices && cityOffices.length > 0) {
+              if (!initialGovernmentOffices.cities) {
+                initialGovernmentOffices.cities = {};
+              }
+              
+              // Convert holderId references to full holder objects and handle multi-member offices
+              const processedCityOffices = cityOffices.map(office => {
+                if (office.holderId) {
+                  // Single-holder office (mayor)
+                  const politician = cityPoliticians.get(office.holderId);
+                  return {
+                    ...office,
+                    holder: politician || null // Set holder to the full politician object
+                  };
+                } else if (office.members) {
+                  // Multi-member office (city council) - members already have proper structure
+                  return office;
+                }
+                return office;
+              });
+              
+              initialGovernmentOffices.cities[city.id] = {
+                executive: processedCityOffices.filter(office => office.title === 'Mayor'),
+                legislative: processedCityOffices.filter(office => office.title.includes('Council')),
+                judicial: []
+              };
+            }
+          }
+        }
+
+        // Add all city politicians to the campaign store in one batch
+        if (allCityPoliticians.length > 0) {
+          console.log(`[CITY POLITICIANS] Generated ${allCityPoliticians.length} politicians for ${currentCountryData.regions?.reduce((total, region) => total + (region.cities?.length || 0), 0)} cities`);
+          addMultiplePoliticiansToStore(
+            allCityPoliticians,
+            "activeCampaign.politicians"
+          );
+          
+          // Add city politician IDs to relationship initialization (department heads already handled earlier)
+          const cityPoliticianIds = allCityPoliticians.map(p => p.id);
+          initializeRelationships(cityPoliticianIds);
+        }
+
         // 2. Generate coalitions for all states/regions in the country
         currentCountryData.regions?.forEach((region) => {
           generateCoalitionsForEntity(region.id, region, "state");

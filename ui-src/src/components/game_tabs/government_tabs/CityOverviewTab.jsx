@@ -1045,7 +1045,7 @@ const CityOverviewTab = ({ campaignData, activeSubTab = "summary", governmentSub
                       const isNewPartyGroup = governmentFilter === "party" && index === 0 || (governmentFilter === "party" && currentParty !== prevParty);
                       
                       return (
-                        <React.Fragment key={office.officeId}>
+                        <React.Fragment key={office.officeId || office.id || `council_${index}`}>
                           {isNewPartyGroup && governmentFilter === "party" && (
                             <div className="party-group-header" style={{ gridColumn: "1 / -1" }}>
                               <span className="party-group-name" style={{ color: politician?.partyColor || "#888" }}>
