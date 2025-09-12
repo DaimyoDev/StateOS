@@ -4,6 +4,7 @@ import { decideAndAuthorAIBill } from "../aiProposal.js";
 import { getRandomElement } from "../../utils/core.js";
 import { getBillProgressionWorkflow, processBillStage, getNextBillStage } from "../../utils/billProgressionUtils.js";
 import { addDaysToDate } from "../../stores/legislationSlice.js";
+import { getCityLegislationState, getAllCityBills } from "../../utils/legislationUtils.js";
 
 /**
  * Handles all legislative-related monthly updates including AI bill proposals
@@ -87,8 +88,13 @@ export class LegislativeUpdater {
       try {
         // Get available policies for the city level
         const availablePolicyIds = this._getAvailablePolicyIds(campaign, "city");
-        const activeLegislation = getFromStore?.()?.city?.activeLegislation || [];
-        const proposedLegislation = getFromStore?.()?.city?.proposedBills || [];
+        
+        // Get city legislation from hierarchical structure
+        const cityId = campaign.startingCity?.id;
+        const state = getFromStore?.() || {};
+        const cityLegislation = getCityLegislationState(state, cityId) || { activeLegislation: [], proposedBills: [] };
+        const activeLegislation = cityLegislation.activeLegislation || [];
+        const proposedLegislation = cityLegislation.proposedBills || [];
         
         const bill = decideAndAuthorAIBill(
           randomMember,
@@ -140,8 +146,13 @@ export class LegislativeUpdater {
         };
         
         const availablePolicyIds = this._getAvailablePolicyIds(campaign, "city");
-        const activeLegislation = getFromStore?.()?.city?.activeLegislation || [];
-        const proposedLegislation = getFromStore?.()?.city?.proposedBills || [];
+        
+        // Get city legislation from hierarchical structure
+        const cityId = campaign.startingCity?.id;
+        const state = getFromStore?.() || {};
+        const cityLegislation = getCityLegislationState(state, cityId) || { activeLegislation: [], proposedBills: [] };
+        const activeLegislation = cityLegislation.activeLegislation || [];
+        const proposedLegislation = cityLegislation.proposedBills || [];
         
         const bill = decideAndAuthorAIBill(
           mockAdvocate,

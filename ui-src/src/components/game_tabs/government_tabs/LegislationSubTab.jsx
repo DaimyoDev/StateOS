@@ -41,10 +41,28 @@ const getStageDisplayName = (stageName, level) => {
 
 const LegislationSubTab = ({ campaignData, currentLevel = 'city', activeTab = 'proposed' }) => {
   const proposedBills = useGameStore(
-    (state) => state[currentLevel]?.proposedBills || EMPTY_ARRAY
+    (state) => {
+      if (currentLevel === 'city') {
+        // Use hierarchical structure for city bills
+        const cityId = campaignData?.startingCity?.id;
+        return state.cities?.[cityId]?.proposedBills || EMPTY_ARRAY;
+      } else {
+        // Use flat structure for state/national bills
+        return state[currentLevel]?.proposedBills || EMPTY_ARRAY;
+      }
+    }
   );
   const activeLegislation = useGameStore(
-    (state) => state[currentLevel]?.activeLegislation || EMPTY_ARRAY
+    (state) => {
+      if (currentLevel === 'city') {
+        // Use hierarchical structure for city legislation
+        const cityId = campaignData?.startingCity?.id;
+        return state.cities?.[cityId]?.activeLegislation || EMPTY_ARRAY;
+      } else {
+        // Use flat structure for state/national legislation
+        return state[currentLevel]?.activeLegislation || EMPTY_ARRAY;
+      }
+    }
   );
 
   const { openPolicyVoteDetailsModal, openBillDetailsModal, openBillAuthoringModal, getGovernmentOfficesForContext } = useGameStore(

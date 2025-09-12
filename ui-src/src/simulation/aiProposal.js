@@ -980,15 +980,15 @@ export const shouldAIProposeBasedOnNeeds = (
   let bestScore = -Infinity;
 
   // Determine urgency thresholds based on conditions first
-  let urgencyThreshold = 3.0; // Moderate base threshold to reduce spam
+  let urgencyThreshold = 1.5; // Reduced base threshold to allow more proposals
 
   // Lower threshold (more likely to propose) in crisis situations
   if (financialState.hasDireFinances) {
-    urgencyThreshold = 1.5; // Lower threshold for dire finances
+    urgencyThreshold = 0.8; // Lower threshold for dire finances
   } else if (financialState.isStrainedFinances) {
-    urgencyThreshold = 2.0; // Moderate threshold for strained finances
+    urgencyThreshold = 1.0; // Moderate threshold for strained finances
   } else if (financialState.hasLargeSurplus) {
-    urgencyThreshold = 2.5; // Slightly lower threshold with surplus
+    urgencyThreshold = 1.2; // Slightly lower threshold with surplus
   }
 
   // Score policies with early exit when we find a good enough candidate
@@ -1007,7 +1007,7 @@ export const shouldAIProposeBasedOnNeeds = (
     }
 
     // Early exit if we found a policy that exceeds threshold by a good margin
-    if (urgencyScore >= urgencyThreshold + 1.0) {
+    if (urgencyScore >= urgencyThreshold + 0.5) {
       bestPolicy = { ...policy, urgencyScore };
       break;
     }

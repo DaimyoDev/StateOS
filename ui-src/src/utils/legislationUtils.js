@@ -130,3 +130,45 @@ export const getStatsForLevel = (campaign, level) => {
       return null;
   }
 };
+
+// Helper functions for hierarchical city legislation structure
+export const getCityLegislationState = (legislationState, cityId) => {
+  if (!cityId || !legislationState.cities) return null;
+  return legislationState.cities[cityId] || null;
+};
+
+export const getAllCityBills = (legislationState) => {
+  if (!legislationState.cities) return [];
+  
+  const allBills = [];
+  Object.entries(legislationState.cities).forEach(([cityId, cityLegislation]) => {
+    const cityBills = cityLegislation.proposedBills.map(bill => ({
+      ...bill,
+      cityId,
+      level: 'city'
+    }));
+    allBills.push(...cityBills);
+  });
+  
+  return allBills;
+};
+
+export const findBillInHierarchy = (legislationState, billId) => {
+  // Check city bills first
+  for (const [cityId, cityLegislation] of Object.entries(legislationState.cities || {})) {
+    const bill = cityLegislation.proposedBills.find(b => b.id === billId);
+    if (bill) {
+      return { bill, level: 'city', cityId };
+    }
+  }
+  
+  // Check state and national bills
+  for (const level of ['state', 'national']) {
+    const bill = legislationState[level]?.proposedBills?.find(b => b.id === billId);
+    if (bill) {
+      return { bill, level };
+    }
+  }
+  
+  return null;
+};

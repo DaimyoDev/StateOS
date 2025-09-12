@@ -14,6 +14,8 @@ import {
 } from "../simulation/aiProposal.js";
 import { mergeAIProposals } from "../simulation/billMerging.js";
 import { decideAIVote } from "../simulation/aiVoting.js";
+import { calculateCityPartyLineVotes } from "../simulation/partyLineVoting.js";
+import { batchProcessCityProposals, batchProcessCityVoting, createLegislationActivitySummary } from "../simulation/cityLegislationManager.js";
 import {
   getLegislatureDetails,
   getStatsForLevel,
@@ -78,13 +80,15 @@ const recalculateBudgetsForLevel = (campaignState, level) => {
   }
 };
 
+const getInitialCityLegislationState = () => ({
+  proposedBills: [],
+  activeLegislation: [],
+  passedBillsArchive: [],
+  failedBillsHistory: [], // Track failed bills for AI memory
+});
+
 const getInitialLegislationState = () => ({
-  city: {
-    proposedBills: [],
-    activeLegislation: [],
-    passedBillsArchive: [],
-    failedBillsHistory: [], // Track failed bills for AI memory
-  },
+  cities: {}, // Will be populated with cityId -> getInitialCityLegislationState() structure
   state: {
     proposedBills: [],
     activeLegislation: [],
@@ -140,6 +144,9 @@ export const createLegislationSlice = (set, get) => ({
     national: [...FEDERAL_POLICIES, ...GENERAL_POLICIES],
   },
 
+  // Auto-migration and initialization flag
+  _migrationChecked: false,
+
   actions: {
     resetLegislationState: () =>
       set({
@@ -151,6 +158,103 @@ export const createLegislationSlice = (set, get) => ({
         },
       }),
 
+    // Initialize legislation for a specific city
+    initializeCityLegislation: (cityId) => {
+      set((state) => {
+        if (!state.cities[cityId]) {
+          return {
+            ...state,
+            cities: {
+              ...state.cities,
+              [cityId]: getInitialCityLegislationState(),
+            },
+          };
+        }
+        return state;
+      });
+    },
+
+    // Initialize legislation for the active campaign's starting city
+    initializeActiveCityLegislation: () => {
+      const state = get();
+      const cityId = state.activeCampaign?.startingCity?.id;
+      if (cityId) {
+        get().actions.initializeCityLegislation(cityId);
+      }
+    },
+
+    // Migration function: Move old flat city legislation to hierarchical structure
+    migrateToHierarchicalCityStructure: () => {
+      set((state) => {
+        // Check if we have old flat 'city' data that needs migration
+        if (state.city && typeof state.city === 'object' && 
+            (state.city.proposedBills || state.city.activeLegislation)) {
+          
+          console.log('[LegislationSlice] Migrating old flat city legislation to hierarchical structure');
+          
+          const cityId = state.activeCampaign?.startingCity?.id;
+          if (!cityId) {
+            console.warn('[LegislationSlice] Cannot migrate: no starting city ID found');
+            return state;
+          }
+          
+          const newState = {
+            ...state,
+            cities: {
+              ...state.cities,
+              [cityId]: {
+                proposedBills: state.city.proposedBills || [],
+                activeLegislation: state.city.activeLegislation || [],
+                passedBillsArchive: state.city.passedBillsArchive || [],
+                failedBillsHistory: state.city.failedBillsHistory || [],
+              }
+            },
+            _migrationChecked: true
+          };
+          
+          // Remove the old flat city property
+          delete newState.city;
+          
+          console.log(`[LegislationSlice] Migration completed for city ${cityId}`);
+          return newState;
+        }
+        
+        return state;
+      });
+    },
+
+    // Ensure migration and initialization are complete
+    ensureLegislationStructure: () => {
+      const state = get();
+      
+      // Run migration if not checked yet
+      if (!state._migrationChecked) {
+        get().actions.migrateToHierarchicalCityStructure();
+        set((s) => ({ ...s, _migrationChecked: true }));
+      }
+      
+      // Initialize active city if needed
+      const cityId = state.activeCampaign?.startingCity?.id;
+      if (cityId && !state.cities[cityId]) {
+        get().actions.initializeCityLegislation(cityId);
+      }
+    },
+
+    // Helper function to get city legislation state, ensuring it's initialized
+    getCityLegislationState: (state, cityId) => {
+      if (!cityId) {
+        // Fallback: use the player's starting city
+        cityId = state.activeCampaign?.startingCity?.id;
+      }
+      
+      if (!state.cities[cityId]) {
+        // Initialize the city's legislation state if it doesn't exist
+        state.cities[cityId] = getInitialCityLegislationState();
+      }
+      
+      return state.cities[cityId];
+    },
+
     proposeBill: (
       level,
       billName,
@@ -159,10 +263,28 @@ export const createLegislationSlice = (set, get) => ({
       proposerName,
       parameters = null,
       billType = "new",
-      targetLawId = null
+      targetLawId = null,
+      cityId = null // New parameter for city-specific bills
     ) => {
+      // Ensure proper legislation structure before proposing
+      get().actions.ensureLegislationStructure();
+      
       set((state) => {
-        if (!state[level]) {
+        // Handle hierarchical city structure
+        if (level === "city") {
+          if (!cityId) {
+            cityId = state.activeCampaign?.startingCity?.id;
+          }
+          if (!cityId) {
+            console.error('[proposeBill] Cannot propose city bill: no cityId provided and no starting city found');
+            return state;
+          }
+          
+          // Ensure city legislation state is initialized
+          if (!state.cities[cityId]) {
+            state.cities[cityId] = getInitialCityLegislationState();
+          }
+        } else if (!state[level]) {
           return state;
         }
 
@@ -217,12 +339,27 @@ export const createLegislationSlice = (set, get) => ({
           type: "info",
         });
 
-        return {
-          [level]: {
-            ...state[level],
-            proposedBills: [...state[level].proposedBills, newBill],
-          },
-        };
+        // Store the bill in appropriate hierarchical structure
+        if (level === "city") {
+          return {
+            ...state,
+            cities: {
+              ...state.cities,
+              [cityId]: {
+                ...state.cities[cityId],
+                proposedBills: [...state.cities[cityId].proposedBills, newBill],
+              },
+            },
+          };
+        } else {
+          return {
+            ...state,
+            [level]: {
+              ...state[level],
+              proposedBills: [...state[level].proposedBills, newBill],
+            },
+          };
+        }
       });
     },
 
@@ -258,16 +395,33 @@ export const createLegislationSlice = (set, get) => ({
       set((state) => {
         let bill = null;
         let foundLevel = null;
+        let foundCityId = null;
 
         // Find the bill and its level
-        for (const key of ["city", "state", "national"]) {
-          const foundBill = state[key].proposedBills.find(
+        // Check city bills first (hierarchical structure)
+        for (const cityId of Object.keys(state.cities)) {
+          const foundBill = state.cities[cityId].proposedBills.find(
             (b) => b.id === billId
           );
           if (foundBill) {
             bill = foundBill;
-            foundLevel = key;
+            foundLevel = "city";
+            foundCityId = cityId;
             break;
+          }
+        }
+        
+        // Check state and national bills (flat structure)
+        if (!bill) {
+          for (const key of ["state", "national"]) {
+            const foundBill = state[key].proposedBills.find(
+              (b) => b.id === billId
+            );
+            if (foundBill) {
+              bill = foundBill;
+              foundLevel = key;
+              break;
+            }
           }
         }
 
@@ -307,10 +461,15 @@ export const createLegislationSlice = (set, get) => ({
         );
 
         // Handle the result based on the bill's new status
-        let newActiveLegislationList = [...state[level].activeLegislation];
-        let newPassedBillsArchive = [...state[level].passedBillsArchive];
-        let newFailedBillsHistory = [...state[level].failedBillsHistory];
-        let updatedBills = [...state[level].proposedBills];
+        // Get the appropriate legislation state based on level and city
+        const legislationState = foundLevel === "city" 
+          ? state.cities[foundCityId] 
+          : state[foundLevel];
+          
+        let newActiveLegislationList = [...legislationState.activeLegislation];
+        let newPassedBillsArchive = [...legislationState.passedBillsArchive];
+        let newFailedBillsHistory = [...legislationState.failedBillsHistory];
+        let updatedBills = [...legislationState.proposedBills];
 
         // Update the bill in the proposed bills list
         const billIndex = updatedBills.findIndex((b) => b.id === billId);
@@ -435,15 +594,33 @@ export const createLegislationSlice = (set, get) => ({
           }
         }
 
-        return {
-          [level]: {
-            ...state[level],
-            proposedBills: updatedBills,
-            activeLegislation: newActiveLegislationList,
-            passedBillsArchive: newPassedBillsArchive,
-            failedBillsHistory: newFailedBillsHistory,
-          },
-        };
+        // Return updated state with proper hierarchical structure
+        if (foundLevel === "city") {
+          return {
+            ...state,
+            cities: {
+              ...state.cities,
+              [foundCityId]: {
+                ...state.cities[foundCityId],
+                proposedBills: updatedBills,
+                activeLegislation: newActiveLegislationList,
+                passedBillsArchive: newPassedBillsArchive,
+                failedBillsHistory: newFailedBillsHistory,
+              },
+            },
+          };
+        } else {
+          return {
+            ...state,
+            [foundLevel]: {
+              ...state[foundLevel],
+              proposedBills: updatedBills,
+              activeLegislation: newActiveLegislationList,
+              passedBillsArchive: newPassedBillsArchive,
+              failedBillsHistory: newFailedBillsHistory,
+            },
+          };
+        }
       });
     },
 
@@ -465,14 +642,32 @@ export const createLegislationSlice = (set, get) => ({
         let foundLevel = null;
 
         // Find the bill and its level
-        for (const key of ["city", "state", "national"]) {
-          const foundBill = state[key].proposedBills.find(
+        let foundCityId = null;
+        
+        // Check city bills first (hierarchical structure)
+        for (const cityId of Object.keys(state.cities)) {
+          const foundBill = state.cities[cityId].proposedBills.find(
             (b) => b.id === billId
           );
           if (foundBill) {
             bill = foundBill;
-            foundLevel = key;
+            foundLevel = "city";
+            foundCityId = cityId;
             break;
+          }
+        }
+        
+        // Check state and national bills (flat structure)
+        if (!bill) {
+          for (const key of ["state", "national"]) {
+            const foundBill = state[key].proposedBills.find(
+              (b) => b.id === billId
+            );
+            if (foundBill) {
+              bill = foundBill;
+              foundLevel = key;
+              break;
+            }
           }
         }
 
@@ -515,9 +710,14 @@ export const createLegislationSlice = (set, get) => ({
         };
         get().actions.generateAndAddNewsForAllOutlets?.(voteEvent);
 
-        let newActiveLegislationList = [...state[level].activeLegislation];
-        let newPassedBillsArchive = [...state[level].passedBillsArchive];
-        let newFailedBillsHistory = [...state[level].failedBillsHistory];
+        // Get the appropriate legislation state based on level and city (legacy function)
+        const legislationState = foundLevel === "city" 
+          ? state.cities[foundCityId] 
+          : state[foundLevel];
+          
+        let newActiveLegislationList = [...legislationState.activeLegislation];
+        let newPassedBillsArchive = [...legislationState.passedBillsArchive];
+        let newFailedBillsHistory = [...legislationState.failedBillsHistory];
 
         if (billDidPass) {
           const passedBillRecord = {
@@ -613,7 +813,7 @@ export const createLegislationSlice = (set, get) => ({
           }
         }
 
-        const updatedBills = state[level].proposedBills.filter(
+        const updatedBills = legislationState.proposedBills.filter(
           (b) => b.id !== billId
         );
 
@@ -627,15 +827,33 @@ export const createLegislationSlice = (set, get) => ({
           type: billDidPass ? "success" : "error",
         });
 
-        return {
-          [level]: {
-            ...state[level],
-            proposedBills: updatedBills,
-            activeLegislation: newActiveLegislationList,
-            passedBillsArchive: newPassedBillsArchive,
-            failedBillsHistory: newFailedBillsHistory,
-          },
-        };
+        // Return updated state with proper hierarchical structure (legacy function)
+        if (foundLevel === "city") {
+          return {
+            ...state,
+            cities: {
+              ...state.cities,
+              [foundCityId]: {
+                ...state.cities[foundCityId],
+                proposedBills: updatedBills,
+                activeLegislation: newActiveLegislationList,
+                passedBillsArchive: newPassedBillsArchive,
+                failedBillsHistory: newFailedBillsHistory,
+              },
+            },
+          };
+        } else {
+          return {
+            ...state,
+            [foundLevel]: {
+              ...state[foundLevel],
+              proposedBills: updatedBills,
+              activeLegislation: newActiveLegislationList,
+              passedBillsArchive: newPassedBillsArchive,
+              failedBillsHistory: newFailedBillsHistory,
+            },
+          };
+        }
       });
     },
 
@@ -644,6 +862,9 @@ export const createLegislationSlice = (set, get) => ({
       if (!activeCampaign || !level) {
         return;
       }
+
+      // Ensure proper legislation structure before processing
+      get().actions.ensureLegislationStructure();
 
       // PERFORMANCE OPTIMIZATION: Only get government offices relevant to this level and player's context
       const cityId = level === "city" ? activeCampaign?.startingCity?.id : null;
@@ -665,9 +886,11 @@ export const createLegislationSlice = (set, get) => ({
         (m) => m.id !== activeCampaign.playerPoliticianId
       );
 
+
       const individualProposals = [];
       // Track proposals made in this cycle so each AI can see previous ones
       let proposalsThisCycle = [];
+
 
       aiLegislators.forEach((ai) => {
         // Replace random dice roll with intelligent need-based decision making
@@ -675,12 +898,30 @@ export const createLegislationSlice = (set, get) => ({
         const availablePolicies = state.availablePolicies?.[level] || [];
         const availablePolicyIds = availablePolicies.map((p) => p.id);
         const relevantStats = getStatsForLevel(activeCampaign, level);
-        const activeLegislation = get()[level]?.activeLegislation || [];
-        const existingProposedBills = get()[level]?.proposedBills || [];
+        
+        // Get legislation state based on hierarchical structure
+        let activeLegislation, existingProposedBills;
+        if (level === "city") {
+          const cityLegislation = state.cities?.[cityId] || { activeLegislation: [], proposedBills: [] };
+          activeLegislation = cityLegislation.activeLegislation || [];
+          existingProposedBills = cityLegislation.proposedBills || [];
+        } else {
+          activeLegislation = state[level]?.activeLegislation || [];
+          existingProposedBills = state[level]?.proposedBills || [];
+        }
         const proposedLegislation = [
           ...existingProposedBills,
           ...proposalsThisCycle,
         ];
+
+        // Get failed bills history based on hierarchical structure
+        let failedBillsHistory;
+        if (level === "city") {
+          const cityLegislation = state.cities?.[cityId] || { failedBillsHistory: [] };
+          failedBillsHistory = cityLegislation.failedBillsHistory || [];
+        } else {
+          failedBillsHistory = state[level]?.failedBillsHistory || [];
+        }
 
         const shouldPropose = shouldAIProposeBasedOnNeeds(
           ai,
@@ -689,9 +930,10 @@ export const createLegislationSlice = (set, get) => ({
           activeLegislation,
           proposedLegislation,
           availablePolicies,
-          get()[level]?.failedBillsHistory || [],
+          failedBillsHistory,
           activeCampaign.currentDate
         );
+
 
         if (shouldPropose) {
           const authoredBill = decideAndAuthorAIBill(
@@ -728,11 +970,23 @@ export const createLegislationSlice = (set, get) => ({
 
       if (individualProposals.length > 0) {
         const state = get();
+        
+        // Get legislation state based on hierarchical structure for context
+        let contextActiveLegislation, contextProposedBills;
+        if (level === "city") {
+          const cityLegislation = state.cities?.[cityId] || { activeLegislation: [], proposedBills: [] };
+          contextActiveLegislation = cityLegislation.activeLegislation || [];
+          contextProposedBills = cityLegislation.proposedBills || [];
+        } else {
+          contextActiveLegislation = state[level]?.activeLegislation || [];
+          contextProposedBills = state[level]?.proposedBills || [];
+        }
+        
         const context = {
           level,
           cityStats: getStatsForLevel(activeCampaign, level),
-          activeLegislation: state[level]?.activeLegislation || [],
-          proposedBills: state[level]?.proposedBills || [],
+          activeLegislation: contextActiveLegislation,
+          proposedBills: contextProposedBills,
           governmentOffices: contextualOffices || [],
           allPolicyDefsForLevel: state.availablePolicies[level].reduce(
             (acc, p) => ({ ...acc, [p.id]: p }),
@@ -749,7 +1003,11 @@ export const createLegislationSlice = (set, get) => ({
             bill.name,
             bill.policies,
             primaryProposer.id,
-            primaryProposer.name
+            primaryProposer.name,
+            null, // parameters
+            "new", // billType
+            null, // targetLawId
+            cityId // cityId for hierarchical city structure
           );
         });
       }
@@ -862,7 +1120,151 @@ export const createLegislationSlice = (set, get) => ({
         const updates = {};
         let hasChanges = false;
 
-        for (const level of ["city", "state", "national"]) {
+        // Process hierarchical city legislation
+        for (const cityId of Object.keys(state.cities)) {
+          const cityLegislation = state.cities[cityId];
+          const activeLegislation = cityLegislation.activeLegislation;
+          const effectsToApplyNow = [];
+          const updatedLegislation = [];
+          
+          // Process city legislation (same logic as before)
+          for (let i = 0; i < activeLegislation.length; i++) {
+            const leg = activeLegislation[i];
+
+            // Fix legacy legislation with undefined properties
+            if (leg.monthsUntilEffective === undefined) {
+              leg.monthsUntilEffective = 0; // Apply immediately for existing legislation
+            }
+            if (leg.effectsApplied === undefined) {
+              leg.effectsApplied = false;
+            }
+
+            if (leg.monthsUntilEffective > 0) {
+              // Update both the bill level and policy level monthsUntilEffective
+              const updatedPolicies =
+                leg.policies?.map((policy) => ({
+                  ...policy,
+                  monthsUntilEffective: Math.max(
+                    0,
+                    (policy.monthsUntilEffective || leg.monthsUntilEffective) -
+                      1
+                  ),
+                })) || [];
+
+              updatedLegislation.push({
+                ...leg,
+                monthsUntilEffective: leg.monthsUntilEffective - 1,
+                policies: updatedPolicies,
+              });
+              hasChanges = true;
+            } else if (leg.monthsUntilEffective === 0 && !leg.effectsApplied) {
+              effectsToApplyNow.push(leg);
+
+              // Update policies to mark as effective
+              const updatedPolicies =
+                leg.policies?.map((policy) => ({
+                  ...policy,
+                  monthsUntilEffective: 0,
+                  effectsApplied: true,
+                })) || [];
+
+              updatedLegislation.push({
+                ...leg,
+                effectsApplied: true,
+                policies: updatedPolicies,
+              });
+              hasChanges = true;
+            } else {
+              updatedLegislation.push(leg);
+            }
+          }
+
+          if (hasChanges) {
+            if (!updates.cities) updates.cities = {};
+            updates.cities[cityId] = {
+              ...state.cities[cityId],
+              activeLegislation: updatedLegislation,
+            };
+          }
+
+          // Process effects outside of state update
+          if (effectsToApplyNow.length > 0) {
+            effectsToApplyNow.forEach((law) => {
+              if (!law.policies || !Array.isArray(law.policies)) return;
+
+              law.policies.forEach((policy) => {
+                if (policy.effects && Array.isArray(policy.effects)) {
+                  policy.effects.forEach((effect) => {
+                    applyPolicyEffect(
+                      state.activeCampaign,
+                      { ...effect, level: "city" },
+                      policy.chosenParameters
+                    );
+                  });
+                }
+
+                // Handle parameterized policies...
+                if (
+                  policy.isParameterized &&
+                  policy.parameterDetails &&
+                  policy.chosenParameters
+                ) {
+                  const pDetails = policy.parameterDetails;
+                  const chosenValue = policy.chosenParameters[pDetails.key];
+
+                  if (chosenValue !== undefined) {
+                    // Handle budget and tax rate changes
+                    if (pDetails.targetBudgetLine || pDetails.targetTaxRate) {
+                      const tempEffect = {
+                        targetStat:
+                          pDetails.targetBudgetLine || pDetails.targetTaxRate,
+                        change: chosenValue,
+                        type:
+                          pDetails.valueType === "percentage_point"
+                            ? "percentage_point_change"
+                            : "absolute_change",
+                        isBudgetItem: !!pDetails.targetBudgetLine,
+                        isTaxRate: !!pDetails.targetTaxRate,
+                        level: "city",
+                      };
+                      applyPolicyEffect(state.activeCampaign, tempEffect);
+                    }
+
+                    // Handle simulation variables
+                    if (policy.setsSimulationVariable && pDetails.targetStat) {
+                      const tempEffect = {
+                        targetStat: pDetails.targetStat,
+                        change: chosenValue,
+                        type:
+                          pDetails.adjustmentType === "set_value"
+                            ? "absolute_set_rate"
+                            : "absolute_change",
+                        level: "city",
+                        setsSimulationVariable: true,
+                        parameterDetails: pDetails,
+                        parameters: { [pDetails.key]: chosenValue },
+                      };
+                      applyPolicyEffect(state.activeCampaign, tempEffect);
+                    }
+                  }
+                }
+
+                newsEventsToAdd.push({
+                  headline: `Policy Enacted: "${policy.name}" (city)`,
+                  summary: `The policy has now taken full effect.`,
+                  type: "policy_enacted",
+                  policyId: policy.id,
+                });
+              });
+            });
+
+            // Recalculate budgets for affected city
+            recalculateBudgetsForLevel(state.activeCampaign, "city");
+          }
+        }
+        
+        // Process state and national legislation (flat structure)
+        for (const level of ["state", "national"]) {
           const activeLegislation = state[level].activeLegislation;
           const effectsToApplyNow = [];
           const updatedLegislation = [];
@@ -1031,9 +1433,18 @@ export const createLegislationSlice = (set, get) => ({
 
         if (hasChanges) {
           const newState = { ...state };
-          // Ensure proper immutable updates for each level
-          Object.keys(updates).forEach((level) => {
-            newState[level] = { ...newState[level], ...updates[level] };
+          // Ensure proper immutable updates for each level and cities
+          Object.keys(updates).forEach((key) => {
+            if (key === "cities") {
+              // Handle hierarchical city updates
+              newState.cities = { ...newState.cities };
+              Object.keys(updates.cities).forEach((cityId) => {
+                newState.cities[cityId] = { ...newState.cities[cityId], ...updates.cities[cityId] };
+              });
+            } else {
+              // Handle flat state/national updates
+              newState[key] = { ...newState[key], ...updates[key] };
+            }
           });
           return newState;
         }
@@ -1050,17 +1461,97 @@ export const createLegislationSlice = (set, get) => ({
     },
 
     processDailyBillCommentary: () => {
+      // Ensure proper legislation structure before processing
+      get().actions.ensureLegislationStructure();
+      
       set((state) => {
         const { activeCampaign } = state;
 
-        for (const level of ["city", "state", "national"]) {
+        // Process hierarchical city legislation
+        for (const cityId of Object.keys(state.cities || {})) {
+          const cityLegislation = state.cities[cityId];
+          
+          // PERFORMANCE OPTIMIZATION: Only fetch government offices relevant to this city
+          const contextualGovernmentOffices =
+            get().actions.getGovernmentOfficesForContext(
+              "city",
+              cityId,
+              null
+            );
+          const { members: legislators } = getLegislatureDetails(
+            activeCampaign,
+            "city",
+            contextualGovernmentOffices
+          );
+          const relevantStats = getStatsForLevel(activeCampaign, "city");
+
+          if (!legislators || !relevantStats) continue;
+
+          const updatedBills = cityLegislation.proposedBills.map((bill) => {
+            if (bill.status !== "pending_vote") return bill;
+
+            const newStances = [...(bill.publicStances || [])];
+
+            legislators.forEach((ai) => {
+              if (ai.isPlayer || ai.id === activeCampaign.playerPoliticianId)
+                return;
+              const hasStance = newStances.some(
+                (s) => s.politicianId === ai.id
+              );
+              if (hasStance) return;
+
+              if (Math.random() < 0.25) {
+                const voteLeaning = decideAIVote(
+                  ai,
+                  bill,
+                  relevantStats,
+                  cityLegislation.activeLegislation,
+                  cityLegislation.proposedBills,
+                  contextualGovernmentOffices,
+                  // Convert array to object with policy IDs as keys, and include bill-specific policies
+                  {
+                    ...state.availablePolicies["city"].reduce((acc, policy) => {
+                      acc[policy.id] = policy;
+                      return acc;
+                    }, {}),
+                    ...(bill.policyDefinitions || {}),
+                  }
+                );
+
+                let stance = "undecided";
+                if (voteLeaning === "yea") stance = "leaning_yea";
+                if (voteLeaning === "nay") stance = "leaning_nay";
+
+                const politicianData = activeCampaign.politicians.state.get(
+                  ai.id
+                );
+
+                newStances.push({
+                  politicianId: ai.id,
+                  stance,
+                  name: ai.name || politicianData?.name || "AI Politician",
+                  party: ai.party || politicianData?.party || "Independent",
+                  date: activeCampaign.currentDate,
+                });
+              }
+            });
+            return { ...bill, publicStances: newStances };
+          });
+
+          state = {
+            ...state,
+            cities: {
+              ...state.cities,
+              [cityId]: { ...state.cities[cityId], proposedBills: updatedBills },
+            },
+          };
+        }
+
+        // Process state and national legislation (flat structure)
+        for (const level of ["state", "national"]) {
           // PERFORMANCE OPTIMIZATION: Only fetch government offices relevant to this level
-          const cityId =
-            level === "city" ? activeCampaign?.startingCity?.id : null;
-          const stateId =
-            level === "state" || level === "city"
-              ? activeCampaign?.regionId
-              : null;
+          const cityId = activeCampaign?.startingCity?.id;
+          const stateId = level === "state" ? activeCampaign?.regionId : null;
           const contextualGovernmentOffices =
             get().actions.getGovernmentOfficesForContext(
               level,
@@ -1139,11 +1630,24 @@ export const createLegislationSlice = (set, get) => ({
 
     runAllAIVotesForBill: (billId, level) => {
       const { activeCampaign, availablePolicies } = get();
-      const bill = get()[level]?.proposedBills.find((b) => b.id === billId);
+      
+      // Find the bill in hierarchical structure
+      let bill = null;
+      if (level === "city") {
+        // Look through all cities for the bill
+        const state = get();
+        for (const cityId of Object.keys(state.cities)) {
+          bill = state.cities[cityId].proposedBills.find((b) => b.id === billId);
+          if (bill) break;
+        }
+      } else {
+        bill = get()[level]?.proposedBills.find((b) => b.id === billId);
+      }
 
       if (!bill) return {};
 
       let members = [];
+      let isPlayerCity = false;
 
       if (level === "city") {
         // For city bills, get city council members directly
@@ -1162,6 +1666,13 @@ export const createLegislationSlice = (set, get) => ({
         });
 
         members = councilMembers;
+        
+        // Determine if this is the player's city
+        // For now, city bills are always for the player's starting city, so we use individual AI voting
+        // In the future, when we have multiple cities, we'll check bill.cityId against player's current city
+        const playerCityId = activeCampaign?.startingCity?.id;
+        const billCityId = bill.cityId || bill.targetCityId || playerCityId; // Bill's target city
+        isPlayerCity = billCityId === playerCityId;
       } else {
         // For state/national bills, use the existing system
         const cityId = activeCampaign?.startingCity?.id;
@@ -1200,37 +1711,68 @@ export const createLegislationSlice = (set, get) => ({
         );
       }
 
-      const votes = {};
+      // Use different voting systems based on whether this is the player's city
+      let votes = {};
+      
+      if (level === "city" && !isPlayerCity) {
+        // Non-player cities use efficient party-line voting
+        console.log(`[runAllAIVotesForBill] Using party-line voting for non-player city bill: ${bill.name}`);
+        
+        const allParties = [
+          ...(activeCampaign.generatedPartiesSnapshot || []),
+          ...(activeCampaign.customPartiesSnapshot || [])
+        ];
+        
+        const cityStats = stats; // City stats for contextual voting
+        votes = calculateCityPartyLineVotes(members, bill, cityStats, allParties);
+        
+      } else {
+        // Player's city or state/national level uses individual AI voting for more detail
+        console.log(`[runAllAIVotesForBill] Using individual AI voting for player city/state bill: ${bill.name}`);
+        
+        for (const aiMember of aiCouncilMembers) {
+          if (bill.councilVotesCast && bill.councilVotesCast[aiMember.id]) {
+            continue; // Skip if vote already cast
+          }
 
-      for (const aiMember of aiCouncilMembers) {
-        if (bill.councilVotesCast && bill.councilVotesCast[aiMember.id]) {
-          continue; // Skip if vote already cast
-        }
-
-        try {
-          const voteChoice = decideAIVote(
-            aiMember,
-            bill,
-            stats,
-            get()[level].activeLegislation,
-            get()[level].proposedBills,
-            governmentOffices,
-            // Convert array to object with policy IDs as keys, and include bill-specific policies
-            {
-              ...policiesForLevel.reduce((acc, policy) => {
-                acc[policy.id] = policy;
-                return acc;
-              }, {}),
-              ...(bill.policyDefinitions || {}),
+          try {
+            // Get legislation state based on hierarchical structure
+            const state = get();
+            let activeLegislation, proposedBills;
+            if (level === "city") {
+              const cityId = activeCampaign?.startingCity?.id;
+              const cityLegislation = state.cities?.[cityId] || { activeLegislation: [], proposedBills: [] };
+              activeLegislation = cityLegislation.activeLegislation || [];
+              proposedBills = cityLegislation.proposedBills || [];
+            } else {
+              activeLegislation = state[level]?.activeLegislation || [];
+              proposedBills = state[level]?.proposedBills || [];
             }
-          );
-          votes[aiMember.id] = voteChoice;
-        } catch (error) {
-          console.error(
-            `[runAllAIVotesForBill Debug] Error calling decideAIVote for ${aiMember.id}:`,
-            error
-          );
-          votes[aiMember.id] = "abstain"; // Default to abstain on error
+            
+            const voteChoice = decideAIVote(
+              aiMember,
+              bill,
+              stats,
+              activeLegislation,
+              proposedBills,
+              governmentOffices,
+              // Convert array to object with policy IDs as keys, and include bill-specific policies
+              {
+                ...policiesForLevel.reduce((acc, policy) => {
+                  acc[policy.id] = policy;
+                  return acc;
+                }, {}),
+                ...(bill.policyDefinitions || {}),
+              }
+            );
+            votes[aiMember.id] = voteChoice;
+          } catch (error) {
+            console.error(
+              `[runAllAIVotesForBill Debug] Error calling decideAIVote for ${aiMember.id}:`,
+              error
+            );
+            votes[aiMember.id] = "abstain"; // Default to abstain on error
+          }
         }
       }
 
@@ -1243,8 +1785,22 @@ export const createLegislationSlice = (set, get) => ({
     },
     
     processGubernatorialDecision: (billId, level) => {
+      // Ensure proper legislation structure before processing
+      get().actions.ensureLegislationStructure();
+      
       const state = get();
-      const bill = state[level]?.proposedBills?.find(b => b.id === billId);
+      
+      // Find the bill in hierarchical structure
+      let bill = null;
+      if (level === "city") {
+        // Look through all cities for the bill
+        for (const cityId of Object.keys(state.cities)) {
+          bill = state.cities[cityId].proposedBills.find(b => b.id === billId);
+          if (bill) break;
+        }
+      } else {
+        bill = state[level]?.proposedBills?.find(b => b.id === billId);
+      }
       
       if (!bill || bill.status !== 'awaiting_signature') {
         console.error(`[GUBERNATORIAL] Bill ${billId} not found or not awaiting signature`);
@@ -1282,33 +1838,81 @@ export const createLegislationSlice = (set, get) => ({
         console.log(`[GUBERNATORIAL] Governor ${governor.name || 'Governor'} VETOED "${bill.name}"`);
         // Bill gets vetoed - mark as failed
         set((state) => {
-          const levelBills = state[level].proposedBills;
-          const billIndex = levelBills.findIndex(b => b.id === billId);
-          
-          if (billIndex !== -1) {
-            const vetoedBill = {
-              ...levelBills[billIndex],
-              status: 'vetoed',
-              gubernatorialInfo: {
-                ...levelBills[billIndex].gubernatorialInfo,
+          // Handle hierarchical city structure
+          if (level === "city") {
+            // Find the city containing this bill
+            let targetCityId = null;
+            for (const cityId of Object.keys(state.cities)) {
+              const foundBill = state.cities[cityId].proposedBills.find(b => b.id === billId);
+              if (foundBill) {
+                targetCityId = cityId;
+                break;
+              }
+            }
+            
+            if (!targetCityId) return state;
+            
+            const cityLegislation = state.cities[targetCityId];
+            const billIndex = cityLegislation.proposedBills.findIndex(b => b.id === billId);
+            
+            if (billIndex !== -1) {
+              const vetoedBill = {
+                ...cityLegislation.proposedBills[billIndex],
                 status: 'vetoed',
-                vetoDate: activeCampaign.currentDate,
-                vetoedBy: governor.name || 'Governor'
-              }
-            };
+                gubernatorialInfo: {
+                  ...cityLegislation.proposedBills[billIndex].gubernatorialInfo,
+                  status: 'vetoed',
+                  vetoDate: activeCampaign.currentDate,
+                  vetoedBy: governor.name || 'Governor'
+                }
+              };
+              
+              // Move to failed bills history
+              const newFailedBillsHistory = [...(cityLegislation.failedBillsHistory || []), vetoedBill];
+              const newProposedBills = cityLegislation.proposedBills.filter(b => b.id !== billId);
+              
+              return {
+                ...state,
+                cities: {
+                  ...state.cities,
+                  [targetCityId]: {
+                    ...cityLegislation,
+                    proposedBills: newProposedBills,
+                    failedBillsHistory: newFailedBillsHistory
+                  }
+                }
+              };
+            }
+          } else {
+            // Handle flat state/national structure
+            const levelBills = state[level].proposedBills;
+            const billIndex = levelBills.findIndex(b => b.id === billId);
             
-            // Move to failed bills history
-            const newFailedBillsHistory = [...(state[level].failedBillsHistory || []), vetoedBill];
-            const newProposedBills = levelBills.filter(b => b.id !== billId);
-            
-            return {
-              ...state,
-              [level]: {
-                ...state[level],
-                proposedBills: newProposedBills,
-                failedBillsHistory: newFailedBillsHistory
-              }
-            };
+            if (billIndex !== -1) {
+              const vetoedBill = {
+                ...levelBills[billIndex],
+                status: 'vetoed',
+                gubernatorialInfo: {
+                  ...levelBills[billIndex].gubernatorialInfo,
+                  status: 'vetoed',
+                  vetoDate: activeCampaign.currentDate,
+                  vetoedBy: governor.name || 'Governor'
+                }
+              };
+              
+              // Move to failed bills history
+              const newFailedBillsHistory = [...(state[level].failedBillsHistory || []), vetoedBill];
+              const newProposedBills = levelBills.filter(b => b.id !== billId);
+              
+              return {
+                ...state,
+                [level]: {
+                  ...state[level],
+                  proposedBills: newProposedBills,
+                  failedBillsHistory: newFailedBillsHistory
+                }
+              };
+            }
           }
           
           return state;
@@ -1365,14 +1969,23 @@ export const createLegislationSlice = (set, get) => ({
     },
 
     processImpendingVotes: () => {
+      // Ensure proper legislation structure before processing
+      get().actions.ensureLegislationStructure();
+      
       const state = get();
       const currentDate = state.activeCampaign.currentDate;
 
-      const allProposedBills = [
-        ...state.city.proposedBills,
-        ...state.state.proposedBills,
-        ...state.national.proposedBills,
-      ];
+      // Collect all proposed bills from hierarchical structure
+      const allProposedBills = [];
+      
+      // Add city bills from hierarchical structure
+      Object.values(state.cities || {}).forEach(cityLegislation => {
+        allProposedBills.push(...(cityLegislation.proposedBills || []));
+      });
+      
+      // Add state and national bills
+      allProposedBills.push(...(state.state.proposedBills || []));
+      allProposedBills.push(...(state.national.proposedBills || []));
 
       const votesToQueue = [];
       const existingQueue = state.voteQueue || [];
@@ -1456,6 +2069,72 @@ export const createLegislationSlice = (set, get) => ({
 
       // Return the list of votes found so the caller can use it immediately
       return votesToQueue;
+    },
+
+    // Party-based legislation system for non-player cities
+    processPartyBasedLegislation: () => {
+      const { activeCampaign } = get();
+      if (!activeCampaign) return;
+
+      const playerCityId = activeCampaign.startingCity?.id;
+      const allParties = [
+        ...(activeCampaign.generatedPartiesSnapshot || []),
+        ...(activeCampaign.customPartiesSnapshot || [])
+      ];
+      
+      // For now, we only have the player's city, but this is the framework
+      // for when we have multiple cities
+      const allCities = [activeCampaign.startingCity].filter(Boolean);
+      
+      if (allCities.length === 0 || allParties.length === 0) return;
+
+      // Get appropriate policy definitions
+      const allPolicyDefs = CITY_POLICIES; // City level for now
+      
+      try {
+        // Batch process proposals for non-player cities
+        const newProposals = batchProcessCityProposals(
+          allCities,
+          playerCityId,
+          allParties,
+          allPolicyDefs,
+          activeCampaign.currentDate
+        );
+
+        // Add new proposals to city legislation
+        Object.entries(newProposals).forEach(([cityId, proposals]) => {
+          if (proposals.length > 0) {
+            console.log(`[PartyLegislation] Adding ${proposals.length} party-proposed bills to city ${cityId}`);
+            
+            // For now, add to the main city's proposed bills since we only have one city
+            // In future, this would go to each city's individual legislation store
+            proposals.forEach(proposal => {
+              get().actions.proposeBill(
+                'city',
+                proposal.policies,
+                proposal.name,
+                proposal.proposingPartyName || 'Unknown Party',
+                proposal.id
+              );
+            });
+          }
+        });
+
+        // Create activity summary for monitoring/debugging
+        const activitySummary = createLegislationActivitySummary(newProposals, {});
+        
+        if (activitySummary.totalProposals > 0) {
+          console.log('[PartyLegislation] Activity Summary:', {
+            totalProposals: activitySummary.totalProposals,
+            citiesActive: activitySummary.totalCitiesWithActivity,
+            themes: activitySummary.proposalsByTheme,
+            partiesActive: activitySummary.partiesActive.length
+          });
+        }
+
+      } catch (error) {
+        console.error('[PartyLegislation] Error processing party-based legislation:', error);
+      }
     },
   },
 });

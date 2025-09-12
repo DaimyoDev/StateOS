@@ -792,6 +792,9 @@ export const createTimeSlice = (set, get) => {
         ['city', 'state', 'national'].forEach(level => {
           get().actions.processAIProposals?.(level);
         });
+        
+        // Party-based proposals for non-player cities (runs alongside individual AI proposals)
+        get().actions.processPartyBasedLegislation?.();
 
         // Monthly updates
         if (effectiveDate.day === 1) {

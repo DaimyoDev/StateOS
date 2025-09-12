@@ -113,16 +113,16 @@ export class MonthlyOrchestrator {
       };
       results.newsItems.push(...partyPopularityResults.newsItems);
 
-      // Phase 4: Legislative Updates
-      // Generate new bills and process existing ones
+      // Phase 4: Legislative Updates - DISABLED
+      // Monthly AI bill generation has been disabled per user request
       results.executionOrder.push("legislative_update");
-      const billGenerationResults = this.legislativeUpdater.generateAIBills(campaign, getFromStore);
-      results.newBills = billGenerationResults.newBills;
-      results.newsItems.push(...billGenerationResults.newsItems);
+      // const billGenerationResults = this.legislativeUpdater.generateAIBills(campaign, getFromStore);
+      // results.newBills = billGenerationResults.newBills;
+      // results.newsItems.push(...billGenerationResults.newsItems);
 
-      const billLifecycleResults = this.legislativeUpdater.processBillLifecycle(campaign, getFromStore);
-      results.billUpdates = billLifecycleResults.billUpdates;
-      results.newsItems.push(...billLifecycleResults.newsItems);
+      // const billLifecycleResults = this.legislativeUpdater.processBillLifecycle(campaign, getFromStore);
+      // results.billUpdates = billLifecycleResults.billUpdates;
+      // results.newsItems.push(...billLifecycleResults.newsItems);
 
       // Phase 5: Event Processing
       // Process random events and their cascading effects
