@@ -81,9 +81,21 @@ const PolicyVoteDetailsModal = ({ isOpen, onClose, proposalData }) => {
         partyName: "Unknown",
       };
 
-    const yeaVoters = (proposalData.votes.yea || []).map(resolveVoter);
-    const nayVoters = (proposalData.votes.nay || []).map(resolveVoter);
-    const abstainVoters = (proposalData.votes.abstain || []).map(resolveVoter);
+    // Extract voters from councilVotesCast
+    const yeaVoters = [];
+    const nayVoters = [];
+    const abstainVoters = [];
+    
+    Object.entries(proposalData.councilVotesCast).forEach(([memberId, vote]) => {
+      const voter = resolveVoter(memberId);
+      if (vote === 'yea' || vote === 'YEA' || vote === 'YEA_PLAYER') {
+        yeaVoters.push(voter);
+      } else if (vote === 'nay' || vote === 'NAY' || vote === 'NAY_PLAYER') {
+        nayVoters.push(voter);
+      } else if (vote === 'abstain' || vote === 'ABSTAIN' || vote === 'ABSTAIN_PLAYER') {
+        abstainVoters.push(voter);
+      }
+    });
 
     // 3. Aggregate votes by party
     const byParty = new Map();
@@ -103,9 +115,9 @@ const PolicyVoteDetailsModal = ({ isOpen, onClose, proposalData }) => {
         }
 
         const partyVote = byParty.get(details.partyName);
-        if (vote === "yea") partyVote.yea++;
-        else if (vote === "nay") partyVote.nay++;
-        else if (vote === "abstain") partyVote.abstain++;
+        if (vote === "yea" || vote === "YEA" || vote === "YEA_PLAYER") partyVote.yea++;
+        else if (vote === "nay" || vote === "NAY" || vote === "NAY_PLAYER") partyVote.nay++;
+        else if (vote === "abstain" || vote === "ABSTAIN" || vote === "ABSTAIN_PLAYER") partyVote.abstain++;
       }
     );
 
@@ -121,10 +133,10 @@ const PolicyVoteDetailsModal = ({ isOpen, onClose, proposalData }) => {
     return null;
   }
 
-  const { name, votes, policies } = proposalData;
-  const totalYea = votes?.yea?.length || 0;
-  const totalNay = votes?.nay?.length || 0;
-  const totalAbstain = votes?.abstain?.length || 0;
+  const { name, policies } = proposalData;
+  const totalYea = voteBreakdown.yea.length;
+  const totalNay = voteBreakdown.nay.length;
+  const totalAbstain = voteBreakdown.abstain.length;
 
   return (
     <Modal
@@ -142,7 +154,7 @@ const PolicyVoteDetailsModal = ({ isOpen, onClose, proposalData }) => {
             {policies.map((p) => (
               <li key={p.policyId}>
                 <strong>{p.policyName}</strong>
-                <p className="policy-detail-text">{getPolicyDetailsText(p)}</p>
+                <p className="policy-detail-text">{getPolicyDetailsText(p, proposalData.level)}</p>
               </li>
             ))}
           </ul>

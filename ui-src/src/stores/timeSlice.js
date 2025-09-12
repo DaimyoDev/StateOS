@@ -5,6 +5,7 @@ import { simulateAICampaignDayForPolitician } from "../utils/aiUtils.js";
 import { rehydrateLeanCampaigner } from "../entities/personnel.js";
 import { pollingOptimizer } from "../General Scripts/OptimizedPollingFunctions.js";
 import { shouldGenerateRandomEvent, generateRandomEvent, processRandomEvent } from "../simulation/randomEventsSystem.js";
+import { getNextBillStage, getBillProgressionWorkflow, processBillStage } from "../utils/billProgressionUtils.js";
 
 /**
  * Apply orchestrated state updates using nested path notation
@@ -119,7 +120,7 @@ const _processDailyBillProgressions = (state, campaign) => {
       
       // Check if bill should progress today
       const shouldProgress = _shouldBillProgressToday(billToProcess, currentDate);
-      console.log(`[Bill Progress] Bill ${bill.name || bill.id} should progress: ${shouldProgress}, scheduled for: ${billToProcess.stageScheduledFor?.month}/${billToProcess.stageScheduledFor?.day}/${billToProcess.stageScheduledFor?.year}`);
+      console.log(`[Bill Progress] Bill ${bill.name || bill.id} should progress: ${shouldProgress}, scheduled for: ${billToProcess.stageScheduledFor?.month}/${billToProcess.stageScheduledFor?.day}/${billToProcess.stageScheduledFor?.year}, stage: ${billToProcess.currentStage}, status: ${billToProcess.status}`);
       
       if (shouldProgress) {
         const advancedBill = _advanceBillToNextStage(billToProcess, level, currentDate);
@@ -182,59 +183,90 @@ const _advanceBillToNextStage = (bill, level, currentDate) => {
   const progressChance = Math.random();
   
   if (level === 'city') {
-    // City bills: under_review -> pending_vote -> passed/failed
-    if (bill.status === 'under_review' || bill.currentStage === 'introduction') {
-      if (progressChance < 0.9) { // Very high chance for city bills to advance (increased from 0.8)
-        const nextStageDate = _addDays(currentDate, Math.floor(Math.random() * 5) + 1); // 1-6 days (shortened)
-        return {
-          ...bill,
-          status: 'pending_vote',
-          currentStage: 'public_review',
-          stageScheduledFor: nextStageDate,
-          voteScheduledFor: nextStageDate,
-          stageHistory: [
-            ...(bill.stageHistory || []),
-            {
-              stage: bill.currentStage || 'introduction',
-              completedOn: currentDate,
-              status: 'passed'
+    // City bills: Use the new detailed stage progression system
+    if (bill.status === 'under_review' || bill.status === 'pending_vote') {
+      // Use the imported bill progression utils
+      const politicalSystemId = 'CITY_COUNCIL'; // Use city council workflow
+      
+      // For non-voting stages, advance automatically with high probability  
+      const workflow = getBillProgressionWorkflow(politicalSystemId, 'city');
+      const currentStageConfig = Object.values(workflow).find(config => config.step === bill.currentStage);
+      
+      if (currentStageConfig && bill.currentStage !== 'council_vote') {
+        // This is a non-voting stage, advance with high probability
+        if (progressChance < 0.9) {
+          const nextStage = getNextBillStage(bill, politicalSystemId, currentDate);
+          if (nextStage) {
+            console.log(`[Bill Progress] Advancing city bill ${bill.name} from ${bill.currentStage} to ${nextStage.stage}`);
+            
+            // Update status based on stage
+            let newStatus = bill.status;
+            if (nextStage.stage === 'council_vote') {
+              newStatus = 'pending_vote';
             }
-          ]
-        };
+            
+            return {
+              ...bill,
+              status: newStatus,
+              currentStage: nextStage.stage,
+              stageScheduledFor: nextStage.scheduledFor,
+              stageHistory: [
+                ...(bill.stageHistory || []),
+                {
+                  stage: bill.currentStage,
+                  completedOn: currentDate,
+                  status: 'passed'
+                }
+              ],
+              // Don't override council vote info - keep the original scheduled date
+              councilVoteInfo: bill.councilVoteInfo
+            };
+          }
+        }
+      } else if (bill.status === 'pending_vote') {
+        // Bill is ready for voting - DON'T automatically pass/fail here
+        console.log(`[Bill Progress] City bill ${bill.name || bill.id} is ready for voting - letting vote queue system handle it`);
+        return bill; // Keep the bill in pending_vote status for the vote queue system
       }
-    } else if (bill.status === 'pending_vote' || bill.currentStage === 'public_review') {
-      // Bill is ready for voting - DON'T automatically pass/fail here
-      // The vote queue system and VoteAlert should handle this
-      console.log(`[Bill Progress] Bill ${bill.name || bill.id} is ready for voting - letting vote queue system handle it`);
-      return bill; // Keep the bill in pending_vote status for the vote queue system
     }
   } else {
-    // State/national bills: in_committee -> pending_vote -> passed/failed
-    if (bill.status === 'in_committee') {
-      if (progressChance < 0.4) {
-        const committeeVoteChance = Math.random();
-        if (committeeVoteChance < 0.7) {
-          const nextStageDate = _addDays(currentDate, Math.floor(Math.random() * 21) + 14); // 2-5 weeks
-          return {
-            ...bill,
-            status: 'pending_vote',
-            stageScheduledFor: nextStageDate,
-            voteScheduledFor: nextStageDate
-          };
-        } else {
-          return {
-            ...bill,
-            status: 'failed',
-            stageScheduledFor: null,
-            dateFailed: currentDate
-          };
+    // State/national bills: Use the proper processBillStage function
+    if (bill.status === 'in_committee' || bill.status === 'pending_vote' || bill.status === 'floor_consideration') {
+      const countryData = bill.country || { politicalSystemId: 'PRESIDENTIAL_REPUBLIC' };
+      const politicalSystemId = countryData.politicalSystemId || 'PRESIDENTIAL_REPUBLIC';
+      
+      // Check if this is a non-voting stage that should auto-advance
+      const nonVotingStages = ['committee_assignment', 'proposal_submitted', 'public_comment_period'];
+      const isNonVotingStage = nonVotingStages.includes(bill.currentStage);
+      
+      if (isNonVotingStage) {
+        // Auto-advance non-voting stages using proper processBillStage function
+        console.log(`[Bill Progress] ${bill.name} at non-voting stage ${bill.currentStage}, progress chance: ${progressChance.toFixed(2)}, threshold: 0.8`);
+        if (progressChance < 0.8) {
+          console.log(`[Bill Progress] Auto-advancing ${bill.name} from non-voting stage ${bill.currentStage} using processBillStage`);
+          
+          try {
+            // Use the proper processBillStage function which handles committee vote scheduling
+            const advancedBill = processBillStage(bill, {}, {}, politicalSystemId, currentDate);
+            
+            // Debug the result
+            if (advancedBill.currentStage !== bill.currentStage) {
+              console.log(`[Bill Progress] SUCCESS: ${bill.name} advanced from ${bill.currentStage} to ${advancedBill.currentStage}`);
+            } else {
+              console.log(`[Bill Progress] NO CHANGE: ${bill.name} still at ${bill.currentStage}, status: ${advancedBill.status}`);
+            }
+            
+            return advancedBill;
+          } catch (error) {
+            console.error(`[Bill Progress] Error advancing ${bill.name}:`, error);
+            return bill;
+          }
         }
+      } else {
+        // For voting stages, don't auto-advance - let the voting system handle it
+        console.log(`[Bill Progress] ${bill.name} at voting stage ${bill.currentStage} - letting vote system handle it`);
+        return bill; // Don't modify voting stage bills
       }
-    } else if (bill.status === 'pending_vote') {
-      // Bill is ready for voting - DON'T automatically pass/fail here
-      // The vote queue system and VoteAlert should handle this
-      console.log(`[Bill Progress] ${level} bill ${bill.name || bill.id} is ready for voting - letting vote queue system handle it`);
-      return bill; // Keep the bill in pending_vote status for the vote queue system
     }
   }
   
@@ -547,9 +579,6 @@ export const createTimeSlice = (set, get) => {
         
         // Process daily staff tasks before AI actions
         get().actions.processDailyStaffTasks?.();
-        
-        // Check for bills that are now due for voting (after daily progression)
-        get().actions.processImpendingVotes?.();
 
         // --- PHASE 3: Post-date-advancement operations (using the NEW date) ---
         // Get the campaign state AFTER the date advancement. This is crucial for monthly updates and AI.
@@ -642,16 +671,48 @@ export const createTimeSlice = (set, get) => {
         // --- PHASE 3a: Daily Legislation Processing ---
         // These actions are now self-contained and iterate through city, state, and national levels.
         // --- PHASE 3a: Process Yesterday's Queued Votes ---
-        // Auto-process votes from the PREVIOUS day if a live session wasn't started.
+        // Auto-process votes from PREVIOUS days if a live session wasn't started.
+        // BUT: Don't auto-process votes that were just added today - give user a chance to see them
         const { isVotingSessionActive, voteQueue } = get();
         if (!isVotingSessionActive && voteQueue && voteQueue.length > 0) {
-          const votesToProcess = [...voteQueue]; // Process the queue from the previous day
-          votesToProcess.forEach((vote) => {
-            const aiVotes = get().actions.runAllAIVotesForBill?.(vote.billId, vote.level);
-            get().actions.finalizeBillVote?.(vote.billId, vote.level, aiVotes);
+          console.log(`[Auto Vote Processing] Checking ${voteQueue.length} votes in queue for auto-processing`);
+          
+          // Only auto-process votes that are from previous days, not today
+          const votesToProcess = voteQueue.filter(vote => {
+            // Find the bill to check when it was added to queue
+            const bill = get()[vote.level]?.proposedBills?.find(b => b.id === vote.billId);
+            if (!bill) return false;
+            
+            // Get the appropriate vote date
+            let voteDate = null;
+            if (bill.level === 'city' && bill.councilVoteInfo?.councilVoteScheduled) {
+              voteDate = bill.councilVoteInfo.councilVoteScheduled;
+            } else if (bill.level !== 'city' && bill.committeeInfo?.committeeVoteScheduled) {
+              voteDate = bill.committeeInfo.committeeVoteScheduled;
+            }
+            
+            if (!voteDate) return false;
+            
+            const daysSinceScheduled = _daysBetween(voteDate, effectiveDate);
+            const shouldAutoProcess = daysSinceScheduled >= 1; // Only auto-process if vote was due yesterday or earlier
+            
+            console.log(`[Auto Vote Processing] Bill ${bill.name}: scheduled ${daysSinceScheduled} days ago, auto-process: ${shouldAutoProcess}`);
+            return shouldAutoProcess;
           });
-          // Clear the queue AFTER processing yesterday's votes
-          get().actions.clearVoteQueue?.();
+          
+          if (votesToProcess.length > 0) {
+            console.log(`[Auto Vote Processing] Auto-processing ${votesToProcess.length} overdue votes`);
+            votesToProcess.forEach((vote) => {
+              const aiVotes = get().actions.runAllAIVotesForBill?.(vote.billId, vote.level);
+              get().actions.finalizeBillVote?.(vote.billId, vote.level, aiVotes);
+            });
+            
+            // Only remove the processed votes from the queue
+            const remainingQueue = voteQueue.filter(vote => !votesToProcess.includes(vote));
+            set({ voteQueue: remainingQueue });
+          } else {
+            console.log(`[Auto Vote Processing] No overdue votes to auto-process`);
+          }
         }
 
         // --- PHASE 3a-2: Auto-process overdue pending votes ---
@@ -663,14 +724,33 @@ export const createTimeSlice = (set, get) => {
           if (!levelState?.proposedBills) return;
           
           levelState.proposedBills.forEach(bill => {
-            if (bill.status === 'pending_vote' && bill.voteScheduledFor) {
-              const daysSinceScheduled = _daysBetween(bill.voteScheduledFor, effectiveDate);
+            if (bill.status === 'pending_vote') {
+              // Get the appropriate vote date
+              let voteDate = null;
+              if (bill.level === 'city' && bill.councilVoteInfo?.councilVoteScheduled) {
+                voteDate = bill.councilVoteInfo.councilVoteScheduled;
+              } else if (bill.level !== 'city' && bill.committeeInfo?.committeeVoteScheduled) {
+                voteDate = bill.committeeInfo.committeeVoteScheduled;
+              }
               
-              // Auto-process if vote was scheduled 2+ days ago (gives user time to see it)
-              if (daysSinceScheduled >= 2) {
-                console.log(`[Auto Vote Processing] Processing overdue vote for bill: ${bill.name || bill.id} (${daysSinceScheduled} days overdue)`);
-                const aiVotes = get().actions.runAllAIVotesForBill?.(bill.id, level);
-                get().actions.finalizeBillVote?.(bill.id, level, aiVotes);
+              if (voteDate) {
+                const daysSinceScheduled = _daysBetween(voteDate, effectiveDate);
+                
+                // Auto-process if vote was scheduled 2+ days ago (gives user time to see it)
+                if (daysSinceScheduled >= 2) {
+                  console.log(`[Auto Vote Processing] Processing overdue vote for bill: ${bill.name || bill.id} (${daysSinceScheduled} days overdue)`);
+                  const aiVotes = get().actions.runAllAIVotesForBill?.(bill.id, level);
+                  get().actions.finalizeBillVote?.(bill.id, level, aiVotes);
+                }
+              }
+            } else if (bill.status === 'awaiting_signature' && bill.gubernatorialInfo?.decisionScheduled) {
+              // Process gubernatorial decisions that are due
+              const decisionDate = bill.gubernatorialInfo.decisionScheduled;
+              const daysSinceScheduled = _daysBetween(decisionDate, effectiveDate);
+              
+              if (daysSinceScheduled >= 0) { // Process on the scheduled date
+                console.log(`[Auto Gubernatorial Processing] Processing gubernatorial decision for bill: ${bill.name || bill.id}`);
+                get().actions.processGubernatorialDecision?.(bill.id, level);
               }
             }
             

@@ -9,7 +9,12 @@ export const getBillProgressionWorkflow = (politicalSystemId, level = 'state') =
     return BILL_PROGRESSION_WORKFLOWS.CITY_COUNCIL || BILL_PROGRESSION_WORKFLOWS.PRESIDENTIAL_REPUBLIC;
   }
   
-  // State and federal levels use the full political system workflow
+  // State level uses simplified state workflow
+  if (level === 'state') {
+    return BILL_PROGRESSION_WORKFLOWS.STATE_LEGISLATURE || BILL_PROGRESSION_WORKFLOWS.PRESIDENTIAL_REPUBLIC;
+  }
+  
+  // National/federal level uses the full political system workflow
   if (!politicalSystemId || !BILL_PROGRESSION_WORKFLOWS[politicalSystemId]) {
     // Fallback to presidential republic if no system found
     return BILL_PROGRESSION_WORKFLOWS.PRESIDENTIAL_REPUBLIC;
@@ -31,24 +36,24 @@ export const getCommitteeMembershipRules = (politicalSystemId) => {
 // Determine the next stage for a bill based on its current stage and political system
 export const getNextBillStage = (bill, politicalSystemId, currentDate) => {
   const workflow = getBillProgressionWorkflow(politicalSystemId, bill.level);
-  const currentStage = bill.currentStage || 'introduction';
+  const currentStage = bill.currentStage || 'committee_assignment';
   
-  // Define the stage progression order based on political system
-  const stageOrder = Object.keys(workflow);
-  const currentIndex = stageOrder.indexOf(currentStage);
+  // Find current stage by matching actual step names, not workflow keys
+  const workflowEntries = Object.entries(workflow);
+  const currentIndex = workflowEntries.findIndex(([key, config]) => config.step === currentStage);
   
-  if (currentIndex === -1 || currentIndex >= stageOrder.length - 1) {
+  if (currentIndex === -1 || currentIndex >= workflowEntries.length - 1) {
     return null; // Bill has completed all stages
   }
   
-  const nextStageName = stageOrder[currentIndex + 1];
-  const nextStageConfig = workflow[nextStageName];
+  const [nextStageKey, nextStageConfig] = workflowEntries[currentIndex + 1];
+  const actualNextStageName = nextStageConfig.step;
   
   // Calculate when this stage should be scheduled
   const daysToAdd = Math.floor(Math.random() * (nextStageConfig.duration.max - nextStageConfig.duration.min + 1)) + nextStageConfig.duration.min;
   
   return {
-    stage: nextStageName,
+    stage: actualNextStageName,
     scheduledFor: addDaysToDate(currentDate, daysToAdd),
     requirements: nextStageConfig.requirements,
     step: nextStageConfig.step
@@ -58,7 +63,9 @@ export const getNextBillStage = (bill, politicalSystemId, currentDate) => {
 // Check if a bill meets the requirements for its current stage
 export const checkStageRequirements = (bill, stage, legislature, politicalSystemId) => {
   const workflow = getBillProgressionWorkflow(politicalSystemId, bill.level);
-  const stageConfig = workflow[stage];
+  
+  // Find stage config by matching step name
+  const stageConfig = Object.values(workflow).find(config => config.step === stage);
   
   if (!stageConfig) return false;
   
@@ -91,24 +98,61 @@ export const initializeBillStages = (bill, politicalSystemId, currentDate) => {
   const firstStage = Object.keys(workflow)[0];
   const firstStageConfig = workflow[firstStage];
   
+  // Use the actual step name, not the workflow key
+  const actualStageName = firstStageConfig.step;
+  
   // Calculate initial stage completion date
   const daysToAdd = Math.floor(Math.random() * (firstStageConfig.duration.max - firstStageConfig.duration.min + 1)) + firstStageConfig.duration.min;
   
   const enhancedBill = {
     ...bill,
-    currentStage: firstStage,
+    currentStage: actualStageName,
     stageScheduledFor: addDaysToDate(currentDate, daysToAdd),
     stageHistory: [{
-      stage: firstStage,
+      stage: actualStageName,
       enteredOn: currentDate,
       status: 'in_progress'
     }],
     politicalSystemId
   };
 
-  // For state/national bills, add committee information
-  if (bill.level !== 'city') {
+  // Add level-specific vote information
+  if (bill.level === 'city') {
+    // City bills get council vote info - schedule for end of full process
+    // Calculate total time: proposal_submitted (1-3) + public_comment_period (7-14) days
+    const proposalDays = daysToAdd; // Current stage duration (1-3 days)
+    const publicCommentDays = Math.floor(Math.random() * 8) + 7; // 7-14 days for public comment
+    const totalDaysUntilVote = proposalDays + publicCommentDays;
+    
+    const councilVoteDate = addDaysToDate(currentDate, totalDaysUntilVote);
+    enhancedBill.councilVoteInfo = {
+      councilVoteScheduled: councilVoteDate,
+      councilType: 'City Council',
+      voteType: 'council_vote',
+      jurisdiction: ['local_ordinances', 'city_budget', 'zoning'],
+      voteStatus: 'scheduled'
+    };
+    
+    // Only use council vote date for actual council vote stage, not earlier stages
+    const isCityVotingStage = actualStageName === 'council_vote';
+    
+    if (isCityVotingStage) {
+      enhancedBill.stageScheduledFor = councilVoteDate;
+    }
+  } else {
+    // State/national bills get committee information
     enhancedBill.committeeInfo = assignBillToCommittee(bill, politicalSystemId, currentDate);
+    
+    // Only use committee vote date for actual voting stages, not assignment
+    const isCommitteeVotingStage = actualStageName && (
+      actualStageName === 'committee_markup' ||
+      actualStageName === 'committee_review'
+    );
+    
+    // committee_assignment should use its own duration, not committee vote date
+    if (isCommitteeVotingStage && enhancedBill.committeeInfo?.committeeVoteScheduled) {
+      enhancedBill.stageScheduledFor = enhancedBill.committeeInfo.committeeVoteScheduled;
+    }
   }
 
   return enhancedBill;
@@ -186,28 +230,59 @@ const assignBillToCommittee = (bill, politicalSystemId, currentDate) => {
   
   const committeeData = COMMITTEE_TYPES.STANDING[assignedCommittee] || COMMITTEE_TYPES.STANDING.JUDICIARY;
   
-  // Schedule committee vote
-  const committeeMeetingDays = Math.floor(Math.random() * 21) + 14; // 14-35 days
-  const committeeVoteDate = addDaysToDate(currentDate, committeeMeetingDays);
-  
+  // Don't schedule committee vote yet - this happens when advancing to committee_markup
   return {
     assignedCommittee: assignedCommittee,
     committeeName: committeeData.name,
     committeeJurisdiction: committeeData.jurisdiction,
-    committeeVoteScheduled: committeeVoteDate,
+    committeeVoteScheduled: null, // Will be scheduled when advancing to committee_markup
     committeeStatus: 'under_review',
     assignedDate: currentDate
   };
 };
 
+// Map current stage to appropriate status
+const getStatusFromStage = (stage, level) => {
+  if (!stage) return 'unknown';
+  
+  // City level stages
+  if (level === 'city') {
+    switch (stage) {
+      case 'proposal_submitted': return 'under_review';
+      case 'public_comment_period': return 'under_review';
+      case 'council_vote': return 'pending_vote';
+      default: return 'under_review';
+    }
+  }
+  
+  // State/National level stages
+  switch (stage) {
+    case 'committee_assignment': return 'in_committee';
+    case 'committee_markup': return 'in_committee';
+    case 'committee_review': return 'in_committee';
+    case 'committee_vote': return 'pending_vote';
+    case 'floor_consideration': return 'floor_consideration';
+    case 'floor_debate': return 'floor_consideration';
+    case 'floor_vote': return 'pending_vote';
+    case 'second_chamber': return 'second_chamber';
+    case 'gubernatorial_action': return 'awaiting_signature';
+    case 'presidential_action': return 'awaiting_signature';
+    default: return 'in_progress';
+  }
+};
+
 // Process a bill through its current stage
 export const processBillStage = (bill, aiVotes, legislature, politicalSystemId, currentDate) => {
+  console.log(`[BILL STAGE PROCESSING] Processing "${bill.name}" at stage "${bill.currentStage}" with ${Object.keys(aiVotes || {}).length} votes`);
+  
   const workflow = getBillProgressionWorkflow(politicalSystemId, bill.level);
-  const currentStage = bill.currentStage || 'introduction';
-  const stageConfig = workflow[currentStage];
+  const currentStage = bill.currentStage || 'committee_assignment';
+  
+  // Find stage config by matching step name
+  const stageConfig = Object.values(workflow).find(config => config.step === currentStage);
   
   if (!stageConfig) {
-    return { ...bill, status: 'error', error: 'Invalid stage configuration' };
+    return { ...bill, status: 'error', error: `Invalid stage configuration for stage: ${currentStage}` };
   }
   
   // Check if requirements are met
@@ -222,8 +297,45 @@ export const processBillStage = (bill, aiVotes, legislature, politicalSystemId, 
   // Determine if the stage passes based on the step type and voting
   let stageResult = 'passed';
   
-  if (stageConfig.step.includes('vote') || stageConfig.step.includes('approval')) {
+  // Define which stages actually require voting
+  const actualVotingStages = [
+    'committee_vote',
+    'committee_markup', // This is the actual committee voting stage
+    'council_vote',
+    'floor_vote', // Actual floor voting stage
+    'floor_consideration' // Floor consideration requires a floor vote
+  ];
+  
+  // Non-voting stages that should auto-advance
+  const nonVotingStages = [
+    'committee_assignment',
+    'proposal_submitted', 
+    'public_comment_period'
+  ];
+  
+  const isVotingStage = actualVotingStages.includes(stageConfig.step);
+  const isNonVotingStage = nonVotingStages.includes(stageConfig.step);
+  
+  if (isNonVotingStage) {
+    // Non-voting stages automatically pass
+    console.log(`[BILL PROGRESSION] Auto-advancing "${bill.name}" through non-voting stage: ${currentStage}`);
+    stageResult = 'passed';
+  } else if (isVotingStage) {
     // This stage requires a vote
+    // Check if any votes have actually been cast (including votes passed as aiVotes parameter)
+    const existingVotes = Object.values(bill.councilVotesCast || {});
+    const newVotes = Object.values(aiVotes || {});
+    const totalVotesCast = existingVotes.length + newVotes.length;
+    
+    if (totalVotesCast === 0) {
+      console.log(`[ERROR] No votes cast for voting stage "${currentStage}" on bill "${bill.name}"`);
+      return {
+        ...bill,
+        status: 'error',
+        error: `No votes cast for voting stage: ${currentStage}`
+      };
+    }
+    
     let legislatureSize = 0;
     
     // Check if this is a committee stage
@@ -260,33 +372,68 @@ export const processBillStage = (bill, aiVotes, legislature, politicalSystemId, 
       v === 'abstain' || v === 'ABSTAIN' || v === 'ABSTAIN_PLAYER'
     ).length;
     
-    console.log(`[Bill Vote Processing] Bill: ${bill.name}`);
-    console.log(`[Bill Vote Processing] Legislature size: ${legislatureSize}, Majority needed: ${majorityNeeded}`);
-    console.log(`[Bill Vote Processing] All votes cast:`, bill.councilVotesCast);
-    console.log(`[Bill Vote Processing] Vote counts - Yea: ${yeaVotes}, Nay: ${nayVotes}, Abstain: ${abstainVotes}`);
-    console.log(`[Bill Vote Processing] Total votes cast: ${allVotes.length}`);
-    
     stageResult = yeaVotes >= majorityNeeded ? 'passed' : 'failed';
-    
-    console.log(`[Bill Vote Processing] Stage result: ${stageResult}`);
   }
   
-  // Update stage history
-  const updatedStageHistory = [
-    ...(bill.stageHistory || []),
-    {
-      stage: currentStage,
-      completedOn: currentDate,
-      status: stageResult
-    }
-  ];
+  // Update stage history - find and update the current stage entry instead of adding a new one
+  const existingStageHistory = bill.stageHistory || [];
+  
+  // Find the most recent entry for the current stage that's still in progress
+  const currentStageIndex = existingStageHistory.findIndex(entry => 
+    entry.stage === currentStage && 
+    entry.status === 'in_progress' && 
+    !entry.completedOn
+  );
+  
+  let updatedStageHistory;
+  if (currentStageIndex !== -1) {
+    // Update the existing in-progress entry
+    updatedStageHistory = existingStageHistory.map((entry, index) => 
+      index === currentStageIndex 
+        ? { ...entry, completedOn: currentDate, status: stageResult }
+        : entry
+    );
+  } else {
+    // Fallback: add new entry if somehow not found
+    updatedStageHistory = [
+      ...existingStageHistory,
+      {
+        stage: currentStage,
+        completedOn: currentDate,
+        status: stageResult
+      }
+    ];
+  }
   
   if (stageResult === 'failed') {
+    // Calculate vote tallies if this was a voting stage
+    let voteData = {};
+    const votingStages = [
+      'committee_vote',
+      'committee_markup', // Committee markup involves voting
+      'council_vote',
+      'floor_vote',
+      'floor_consideration'
+    ];
+    
+    if (votingStages.includes(stageConfig.step) || stageConfig.step.includes('vote') || stageConfig.step.includes('approval')) {
+      const allVotes = Object.values(bill.councilVotesCast || {});
+      voteData = {
+        yeaVotes: allVotes.filter(v => v === 'yea' || v === 'YEA' || v === 'YEA_PLAYER').length,
+        nayVotes: allVotes.filter(v => v === 'nay' || v === 'NAY' || v === 'NAY_PLAYER').length,
+        abstainVotes: allVotes.filter(v => v === 'abstain' || v === 'ABSTAIN' || v === 'ABSTAIN_PLAYER').length
+      };
+      
+      console.log(`[VOTE TALLY] "${bill.name}" failed at ${stageConfig.step} with votes: ${voteData.yeaVotes} Yea, ${voteData.nayVotes} Nay, ${voteData.abstainVotes} Abstain`);
+    }
+
     return {
       ...bill,
       status: 'failed',
       stageHistory: updatedStageHistory,
-      failureStage: currentStage
+      failureStage: currentStage,
+      dateFailed: currentDate,
+      ...voteData
     };
   }
   
@@ -303,18 +450,159 @@ export const processBillStage = (bill, aiVotes, legislature, politicalSystemId, 
     };
   }
   
-  return {
+  // Update stage scheduling based on vote info
+  let finalStageScheduledFor = nextStage.scheduledFor;
+  let floorVoteInfo = bill.floorVoteInfo;
+  let updatedCommitteeInfo = bill.committeeInfo; // Initialize early for use in scheduling
+  
+  // Check stage types for scheduling logic
+  const isGubernatorialStage = nextStage.stage === 'gubernatorial_action';
+  const isFloorStage = nextStage.stage === 'floor_consideration';
+  
+  // For city bills moving to voting stages, use council vote info
+  if (bill.level === 'city') {
+    const isCityVotingStage = nextStage.stage === 'council_vote';
+    
+    if (isCityVotingStage && bill.councilVoteInfo?.councilVoteScheduled) {
+      finalStageScheduledFor = bill.councilVoteInfo.councilVoteScheduled;
+    }
+  } else {
+    // For state/national bills moving to committee stages, handle committee scheduling
+    const isCommitteeStage = nextStage.stage && (
+      nextStage.stage.includes('committee') || 
+      nextStage.stage === 'committee_assignment' ||
+      nextStage.stage === 'committee_markup' ||
+      nextStage.stage === 'committee_review'
+    );
+    
+    if (isCommitteeStage) {
+      if (nextStage.stage === 'committee_markup') {
+        // When advancing TO committee_markup, schedule the committee vote
+        console.log(`[DEBUG] Bill "${bill.name}" advancing to committee_markup. Current committee vote scheduled: ${bill.committeeInfo?.committeeVoteScheduled ? 'YES' : 'NO'}`);
+        
+        if (!bill.committeeInfo?.committeeVoteScheduled) {
+          // Schedule committee vote if not already scheduled
+          const committeeMeetingDays = Math.floor(Math.random() * 21) + 14; // 14-35 days
+          const committeeVoteDate = addDaysToDate(currentDate, committeeMeetingDays);
+          
+          console.log(`[COMMITTEE VOTE SCHEDULING] Bill "${bill.name}" advancing to committee markup on ${currentDate.month}/${currentDate.day}/${currentDate.year}`);
+          console.log(`[COMMITTEE VOTE SCHEDULING] Committee vote scheduled for ${committeeVoteDate.month}/${committeeVoteDate.day}/${committeeVoteDate.year} (in ${committeeMeetingDays} days)`);
+          
+          // Update committee info with vote date
+          updatedCommitteeInfo = {
+            ...bill.committeeInfo,
+            committeeVoteScheduled: committeeVoteDate
+          };
+          
+          finalStageScheduledFor = committeeVoteDate;
+        } else {
+          // Use existing committee vote date
+          finalStageScheduledFor = bill.committeeInfo.committeeVoteScheduled;
+        }
+      } else if (nextStage.stage === 'committee_assignment') {
+        // committee_assignment is non-voting, so use calculated duration
+        finalStageScheduledFor = nextStage.scheduledFor;
+      }
+    }
+    
+    // For floor consideration stage, schedule a floor vote
+    if (isFloorStage) {
+      // Schedule floor vote 7-21 days after advancing to floor consideration
+      const floorVoteDays = Math.floor(Math.random() * 15) + 7; // 7-21 days
+      const floorVoteDate = addDaysToDate(currentDate, floorVoteDays);
+      
+      console.log(`[FLOOR VOTE SCHEDULING] Bill "${bill.name}" advancing to floor consideration on ${currentDate.month}/${currentDate.day}/${currentDate.year}`);
+      console.log(`[FLOOR VOTE SCHEDULING] Floor vote scheduled for ${floorVoteDate.month}/${floorVoteDate.day}/${floorVoteDate.year} (in ${floorVoteDays} days)`);
+      
+      floorVoteInfo = {
+        floorVoteScheduled: floorVoteDate,
+        floorVoteType: bill.level === 'state' ? 'state_legislature' : 'congress',
+        voteStatus: 'scheduled'
+      };
+      
+      // The floor consideration stage should wait until the floor vote date
+      finalStageScheduledFor = floorVoteDate;
+    }
+    
+    // For gubernatorial action stage, schedule the governor's decision
+    if (isGubernatorialStage) {
+      // Schedule governor's decision 3-10 days after bill reaches this stage
+      const decisionDays = Math.floor(Math.random() * 8) + 3; // 3-10 days
+      const decisionDate = addDaysToDate(currentDate, decisionDays);
+      
+      console.log(`[GUBERNATORIAL SCHEDULING] Bill "${bill.name}" sent to governor on ${currentDate.month}/${currentDate.day}/${currentDate.year}`);
+      console.log(`[GUBERNATORIAL SCHEDULING] Governor decision scheduled for ${decisionDate.month}/${decisionDate.day}/${decisionDate.year} (in ${decisionDays} days)`);
+      
+      // Add gubernatorial decision info to bill
+      const gubernatorialInfo = {
+        decisionScheduled: decisionDate,
+        status: 'under_review',
+        sentToGovernor: currentDate
+      };
+      
+      // Update the final result to include gubernatorial info
+      finalStageScheduledFor = decisionDate;
+      
+      // We'll add this to the result below
+    }
+  }
+
+  // Add new stage entry for the next stage
+  const finalStageHistory = [
+    ...updatedStageHistory,
+    {
+      stage: nextStage.stage,
+      enteredOn: currentDate,
+      status: 'in_progress'
+    }
+  ];
+
+  // Update committee status if bill is moving past committee stage
+  // updatedCommitteeInfo already declared above
+  const wasCommitteeStage = currentStage && (
+    currentStage.includes('committee') || 
+    currentStage === 'committee_assignment' ||
+    currentStage === 'committee_markup' ||
+    currentStage === 'committee_review'
+  );
+  const isLeavingCommittee = wasCommitteeStage && !nextStage.stage.includes('committee');
+  
+  if (isLeavingCommittee && bill.committeeInfo) {
+    console.log(`[COMMITTEE] "${bill.name}" committee status: ${stageResult === 'passed' ? 'passed' : 'completed'}`);
+    updatedCommitteeInfo = {
+      ...updatedCommitteeInfo, // Preserve any previous updates (like scheduled vote date)
+      committeeStatus: stageResult === 'passed' ? 'passed' : 'completed',
+      committeeVoteCompleted: currentDate
+    };
+  }
+
+  const result = {
     ...bill,
     currentStage: nextStage.stage,
-    stageScheduledFor: nextStage.scheduledFor,
-    stageHistory: updatedStageHistory,
-    stageRequirements: nextStage.requirements
+    status: getStatusFromStage(nextStage.stage, bill.level),
+    stageScheduledFor: finalStageScheduledFor,
+    stageHistory: finalStageHistory,
+    stageRequirements: nextStage.requirements,
+    committeeInfo: updatedCommitteeInfo,
+    floorVoteInfo: floorVoteInfo
   };
+  
+  // Add gubernatorial info if advancing to gubernatorial stage
+  if (isGubernatorialStage) {
+    result.gubernatorialInfo = {
+      decisionScheduled: finalStageScheduledFor,
+      status: 'under_review',
+      sentToGovernor: currentDate
+    };
+  }
+  
+  return result;
 };
 
 // Get a human-readable description of what happens in each stage
 export const getStageDescription = (stageName, workflow) => {
-  const stageConfig = workflow[stageName];
+  // Find stage config by matching step name
+  const stageConfig = Object.values(workflow).find(config => config.step === stageName);
   if (!stageConfig) return 'Unknown stage';
   
   const descriptions = {
@@ -333,6 +621,7 @@ export const getStageDescription = (stageName, workflow) => {
     second_chamber: 'Bill moves to the other chamber for consideration',
     conference_committee: 'Conference committee resolves differences between chambers',
     presidential_signature: 'Bill awaits presidential signature or veto',
+    gubernatorial_action: 'Bill awaits governor signature or veto',
     veto_override: 'Legislature attempts to override presidential veto',
     royal_assent: 'Bill awaits ceremonial royal approval',
     first_reading: 'Bill is formally introduced and read for the first time',

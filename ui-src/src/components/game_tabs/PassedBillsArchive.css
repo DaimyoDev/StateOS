@@ -16,6 +16,10 @@
   transition: box-shadow 0.3s ease;
 }
 
+.failed-bill-card {
+  border-left: 5px solid var(--error-text);
+}
+
 .archive-card:hover {
   box-shadow: var(--item-hover-shadow);
 }
@@ -101,4 +105,8 @@
 
 .vote-tally-item .tally-nay strong {
   color: var(--error-text);
+}
+
+.vote-tally-item .tally-abstain strong {
+  color: var(--warning-text);
 }

@@ -88,12 +88,16 @@ const FailedBillsArchive = ({ level = 'city' }) => {
 
           <div className="final-vote-tally">
             <div className="vote-tally-item tally-yea">
-              <strong>{bill.yeaVotes}</strong>
+              <strong>{bill.yeaVotes ?? 0}</strong>
               <span>Yea</span>
             </div>
             <div className="vote-tally-item tally-nay">
-              <strong>{bill.nayVotes}</strong>
+              <strong>{bill.nayVotes ?? 0}</strong>
               <span>Nay</span>
+            </div>
+            <div className="vote-tally-item tally-abstain">
+              <strong>{bill.abstainVotes ?? 0}</strong>
+              <span>Abstain</span>
             </div>
           </div>
         </div>

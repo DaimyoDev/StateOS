@@ -414,34 +414,41 @@ export class LegislativeUpdater {
       reason: ''
     };
 
-    const progressChance = Math.random();
+    const currentStage = bill.currentStage;
+    console.log(`[LEGISLATIVE UPDATES] Processing bill "${bill.name}" at stage: ${currentStage}`);
     
-    if (bill.status === 'in_committee') {
-      if (progressChance < 0.3) {
-        // Committee votes to advance bill
-        const committeeVoteChance = Math.random();
-        if (committeeVoteChance < 0.7) {
-          advancement.statusChanged = true;
-          advancement.newStatus = 'pending_vote';
-          advancement.reason = 'Bill advanced from committee to floor vote';
-        } else {
-          advancement.statusChanged = true;
-          advancement.newStatus = 'failed';
-          advancement.reason = 'Bill failed in committee review';
-        }
-      }
-    } else if (bill.status === 'pending_vote') {
-      // Simulate the floor vote outcome
-      const voteChance = Math.random();
-      if (voteChance < 0.6) {
+    // Only auto-advance non-voting stages
+    const nonVotingStages = ['committee_assignment'];
+    const votingStages = ['committee_markup', 'committee_review', 'floor_consideration', 'floor_vote'];
+    
+    if (nonVotingStages.includes(currentStage)) {
+      // Auto-advance non-voting stages (like committee_assignment)
+      console.log(`[LEGISLATIVE UPDATES] Auto-advancing bill "${bill.name}" from non-voting stage: ${currentStage}`);
+      
+      try {
+        const { processBillStage } = require('../../utils/billProgressionUtils.js');
+        const { getLegislatureDetails } = require('../../utils/legislationUtils.js');
+        
+        const legislature = getLegislatureDetails(campaign, bill.level);
+        // Pass empty votes object for non-voting stages
+        getFromStore().actions.processBillStage(bill.id, bill.level, {});
+        
         advancement.statusChanged = true;
-        advancement.newStatus = 'passed';
-        advancement.reason = `Bill passed by ${bill.level} legislature`;
-      } else {
-        advancement.statusChanged = true;
-        advancement.newStatus = 'failed';
-        advancement.reason = `Bill failed to gain sufficient ${bill.level} legislative support`;
+        advancement.newStatus = 'advanced';
+        advancement.reason = `Bill automatically advanced from ${currentStage}`;
+        
+        console.log(`[LEGISLATIVE UPDATES] Bill "${bill.name}" auto-advanced from ${currentStage}`);
+        
+      } catch (error) {
+        console.error(`[LEGISLATIVE UPDATES] Error auto-advancing bill "${bill.name}":`, error);
       }
+      
+    } else if (votingStages.includes(currentStage)) {
+      // Don't auto-advance voting stages - these need actual votes
+      console.log(`[LEGISLATIVE UPDATES] Bill "${bill.name}" at voting stage ${currentStage} - waiting for actual vote`);
+      
+    } else {
+      console.log(`[LEGISLATIVE UPDATES] Bill "${bill.name}" at unknown stage: ${currentStage}`);
     }
 
     return advancement;

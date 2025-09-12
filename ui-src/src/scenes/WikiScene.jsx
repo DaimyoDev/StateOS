@@ -475,144 +475,219 @@ const sections = [
     id: 'education-system',
     title: 'Education System',
     content: (
-      <>
-        <p>
-          The education system manages public schools, student populations, academic performance, 
-          and career pathways. It integrates with government departments, budgets, and political 
-          decision-making to create a realistic educational environment.
-        </p>
+      <div className="wiki-cards-container">
+        <div className="wiki-card">
+          <h3>System Overview</h3>
+          <p>
+            The education system is fully integrated with city government, featuring realistic student populations, 
+            academic performance tracking, budget management, and employment calculations. Education departments 
+            are major budget consumers with thousands of employees serving diverse student demographics.
+          </p>
+        </div>
 
-        <h3>School District Organization</h3>
-        <h4>District Structure</h4>
-        <ul>
-          <li><strong>City School Districts</strong>: Each city manages its own public education system</li>
-          <li><strong>Student Populations</strong>: Districts serve thousands to hundreds of thousands of students</li>
-          <li><strong>Geographic Coverage</strong>: Districts encompass multiple neighborhoods and demographics</li>
-          <li><strong>Administrative Oversight</strong>: Education departments manage district operations and budgets</li>
-        </ul>
+        <div className="wiki-card">
+          <h3>Student Demographics & Coalitions</h3>
+          <ul>
+            <li><strong>Coalition-Based Students</strong>: Student populations mirror city demographic coalitions</li>
+            <li><strong>Realistic Numbers</strong>: Districts serve 10,000-50,000+ students depending on city size</li>
+            <li><strong>Demographic Diversity</strong>: Students represent all community backgrounds and socioeconomic levels</li>
+            <li><strong>Geographic Distribution</strong>: Students come from different neighborhoods with varying characteristics</li>
+            <li><strong>Performance Tracking</strong>: Academic outcomes tracked by demographic group</li>
+          </ul>
+        </div>
 
-        <h4>Student Demographics</h4>
-        <p>Students are organized into coalition groups representing different community segments:</p>
-        <ul>
-          <li><strong>Demographic Variety</strong>: Students from various backgrounds, ages, and socioeconomic levels</li>
-          <li><strong>Coalition Representation</strong>: Student populations mirror broader community demographics</li>
-          <li><strong>Geographic Distribution</strong>: Students from different areas of the city with varying characteristics</li>
-          <li><strong>Population Tracking</strong>: Detailed counts for each demographic group within the district</li>
-        </ul>
+        <div className="wiki-card">
+          <h3>Socioeconomic Status Breakdown</h3>
+          <ul>
+            <li><strong>Upper Class (10-15%)</strong>: High-income families, private tutoring, excellent home support</li>
+            <li><strong>Upper-Middle Class (20-25%)</strong>: Professional families, strong parental involvement, college-bound expectations</li>
+            <li><strong>Middle Class (25-30%)</strong>: Moderate resources, average home support, mixed academic outcomes</li>
+            <li><strong>Working Class (20-25%)</strong>: Limited resources, variable family support, economic pressures affecting education</li>
+            <li><strong>Lower Class (15-20%)</strong>: Financial hardship, minimal educational resources, higher dropout risk</li>
+            <li><strong>Poverty Level (5-10%)</strong>: Severe economic disadvantage, homelessness risk, emergency needs priority</li>
+          </ul>
+        </div>
 
-        <h3>Academic Performance System</h3>
-        <h4>Performance Metrics</h4>
-        <ul>
-          <li><strong>Academic Scores</strong>: Standardized performance ratings by demographic group</li>
-          <li><strong>Achievement Levels</strong>: Color-coded performance indicators (red=struggling, yellow=average, green=excelling)</li>
-          <li><strong>Demographic Analysis</strong>: Performance tracking across different student populations</li>
-          <li><strong>Trend Monitoring</strong>: Historical performance data and improvement tracking</li>
-        </ul>
 
-        <h4>Performance Factors</h4>
-        <ul>
-          <li><strong>Funding Levels</strong>: Education budget directly impacts academic outcomes</li>
-          <li><strong>Teacher Ratios</strong>: Student-teacher ratios affect classroom effectiveness</li>
-          <li><strong>Resource Availability</strong>: School facilities, technology, and materials</li>
-          <li><strong>Community Support</strong>: Socioeconomic factors and family engagement</li>
-        </ul>
+        <div className="wiki-card">
+          <h3>Academic Performance System</h3>
+          <ul>
+            <li><strong>Coalition-Based Scoring</strong>: Each demographic coalition has academic performance ratings</li>
+            <li><strong>Color-Coded Indicators</strong>: Red (struggling), Yellow (average), Green (excelling) performance levels</li>
+            <li><strong>Funding Impact</strong>: Education budget directly affects academic outcomes</li>
+            <li><strong>Service Quality Rating</strong>: Education quality contributes to overall city service ratings</li>
+            <li><strong>Performance Factors</strong>: Student-teacher ratios, resources, and community support affect outcomes</li>
+          </ul>
+        </div>
 
-        <h3>Career Pathways System</h3>
-        <h4>Post-Graduation Tracking</h4>
-        <p>The system tracks what happens to students after graduation:</p>
-        <ul>
-          <li><strong>College-Bound</strong>: Students pursuing higher education (typically 30-50%)</li>
-          <li><strong>Trade Schools</strong>: Students entering vocational training programs (typically 15-25%)</li>
-          <li><strong>Employment</strong>: Students joining the workforce directly (typically 20-35%)</li>
-          <li><strong>Other Outcomes</strong>: Students with alternative paths or challenges (typically 5-15%)</li>
-        </ul>
+        <div className="wiki-card">
+          <h3>Academic Scoring & Assessment Details</h3>
+          <ul>
+            <li><strong>Performance Scale (0-100)</strong>: Standardized scoring system for all academic metrics</li>
+            <li><strong>Reading Proficiency</strong>: 0-40 (Below Basic), 41-60 (Basic), 61-80 (Proficient), 81-100 (Advanced)</li>
+            <li><strong>Math Achievement</strong>: Similar scale with emphasis on problem-solving and analytical skills</li>
+            <li><strong>Science Literacy</strong>: STEM comprehension and practical application assessment</li>
+            <li><strong>Graduation Rates</strong>: Percentage of students completing high school education</li>
+            <li><strong>College Readiness</strong>: SAT/ACT equivalent scores and preparatory course completion</li>
+            <li><strong>Attendance Rates</strong>: Daily attendance as indicator of engagement and support</li>
+            <li><strong>Disciplinary Incidents</strong>: Behavioral metrics affecting learning environment</li>
+            <li><strong>Special Programs</strong>: AP courses, vocational training, arts participation rates</li>
+          </ul>
+        </div>
 
-        <h4>Career Preparation</h4>
-        <ul>
-          <li><strong>Academic Tracks</strong>: College preparatory programs and advanced placement courses</li>
-          <li><strong>Vocational Training</strong>: Technical education and trade skill development</li>
-          <li><strong>Career Counseling</strong>: Guidance programs helping students choose appropriate paths</li>
-          <li><strong>Industry Partnerships</strong>: Connections with local businesses for internships and job placement</li>
-        </ul>
+        <div className="wiki-card">
+          <h3>Performance by Socioeconomic Status</h3>
+          <ul>
+            <li><strong>Upper Class Students</strong>: Typically score 85-95, high college enrollment, extensive extracurriculars</li>
+            <li><strong>Upper-Middle Class</strong>: Average 75-90 scores, strong graduation rates, good college prep</li>
+            <li><strong>Middle Class</strong>: Range 65-80, mixed outcomes, moderate support systems</li>
+            <li><strong>Working Class</strong>: Average 55-70, economic pressures affect performance</li>
+            <li><strong>Lower Class</strong>: Struggle with 45-65 range, higher dropout risk, limited resources</li>
+            <li><strong>Poverty Level</strong>: Often below 50, requires intensive intervention and support</li>
+            <li><strong>Achievement Gaps</strong>: 30-40 point spreads between highest and lowest performing groups</li>
+          </ul>
+        </div>
 
-        <h3>Budget Integration</h3>
-        <h4>Education Department Funding</h4>
-        <ul>
-          <li><strong>Budget Allocation</strong>: Education departments receive major portion of city budgets</li>
-          <li><strong>Per-Student Spending</strong>: Budget divided by student population for spending analysis</li>
-          <li><strong>Staff Compensation</strong>: Teacher salaries and benefits consume majority of education budget</li>
-          <li><strong>Infrastructure Costs</strong>: School building maintenance, technology, and transportation</li>
-        </ul>
+        <div className="wiki-card">
+          <h3>Employment & Staffing</h3>
+          <ul>
+            <li><strong>Major Employer</strong>: Education departments typically employ 15,000-30,000+ people in large cities</li>
+            <li><strong>Teacher Ratios</strong>: Calculated at approximately 20:1 student-teacher ratio</li>
+            <li><strong>Administrative Staff</strong>: Principals, counselors, and support staff (typically 25% of total employees)</li>
+            <li><strong>Support Personnel</strong>: Custodians, food service, transportation, and paraprofessionals</li>
+            <li><strong>Budget Impact</strong>: Employee salaries consume 70-80% of education department budgets</li>
+          </ul>
+        </div>
 
-        <h4>Staffing Requirements</h4>
-        <ul>
-          <li><strong>Teacher Employment</strong>: Calculated based on student-teacher ratios (typically 20:1)</li>
-          <li><strong>Administrative Staff</strong>: Principals, counselors, and district administrators (typically 25% of total staff)</li>
-          <li><strong>Support Personnel</strong>: Custodians, food service, transportation, and paraprofessionals</li>
-          <li><strong>Realistic Headcounts</strong>: Employee counts match actual educational requirements</li>
-        </ul>
+        <div className="wiki-card">
+          <h3>Budget Integration</h3>
+          <ul>
+            <li><strong>Major Budget Line</strong>: Education typically represents 40-60% of city budgets</li>
+            <li><strong>Per-Student Spending</strong>: Budget automatically calculated per student for analysis</li>
+            <li><strong>Realistic Costs</strong>: Teacher salaries based on actual regional wage data</li>
+            <li><strong>Policy Impact</strong>: Education funding policies directly affect budget and performance</li>
+            <li><strong>Efficiency Metrics</strong>: Cost per student and academic outcome analysis available</li>
+          </ul>
+        </div>
 
-        <h3>Data Visualization</h3>
-        <h4>Student Coalition Charts</h4>
-        <ul>
-          <li><strong>Demographic Breakdown</strong>: Pie charts showing student population distribution</li>
-          <li><strong>Performance Analysis</strong>: Bar charts displaying academic scores by demographic</li>
-          <li><strong>Career Pathways</strong>: Visualization of post-graduation outcomes</li>
-          <li><strong>Trend Tracking</strong>: Historical data showing changes over time</li>
-        </ul>
+        <div className="wiki-card">
+          <h3>Data Visualization & Analytics</h3>
+          <ul>
+            <li><strong>Student Coalition Charts</strong>: Visual breakdown of student demographics</li>
+            <li><strong>Performance Dashboards</strong>: Academic achievement by coalition group</li>
+            <li><strong>Budget Analytics</strong>: Spending per student and departmental comparisons</li>
+            <li><strong>Trend Analysis</strong>: Historical performance and spending data</li>
+            <li><strong>Employment Tracking</strong>: Teacher and staff headcount visualization</li>
+          </ul>
+        </div>
 
-        <h4>Budget Analytics</h4>
-        <ul>
-          <li><strong>Per-Student Metrics</strong>: Cost analysis and spending efficiency</li>
-          <li><strong>Department Comparisons</strong>: Education spending versus other city services</li>
-          <li><strong>Resource Allocation</strong>: Breakdown of where education dollars are spent</li>
-          <li><strong>Performance ROI</strong>: Correlation between spending and academic outcomes</li>
-        </ul>
+        <div className="wiki-card">
+          <h3>Policy & Government Integration (Current System)</h3>
+          <ul>
+            <li><strong>Budget Policies ✓</strong>: Education funding adjustments through legislative process (IMPLEMENTED)</li>
+            <li><strong>Multi-Level Budgets ✓</strong>: City, state, and federal education funding interact (IMPLEMENTED)</li>
+            <li><strong>Employment Integration ✓</strong>: Teacher hiring affects city employment statistics (IMPLEMENTED)</li>
+            <li><strong>Service Quality ✓</strong>: Education performance impacts city service ratings (IMPLEMENTED)</li>
+          </ul>
+        </div>
 
-        <h3>Policy Integration</h3>
-        <h4>Education Policies</h4>
-        <ul>
-          <li><strong>Funding Policies</strong>: Legislation affecting education budget allocations</li>
-          <li><strong>Academic Standards</strong>: Policies setting curriculum and performance requirements</li>
-          <li><strong>Teacher Policies</strong>: Certification, compensation, and working condition regulations</li>
-          <li><strong>School Choice</strong>: Charter schools, vouchers, and district transfer policies</li>
-        </ul>
+        <div className="wiki-card">
+          <h3>Planned Policy Features (Not Yet Implemented)</h3>
+          <ul>
+            <li><strong>Performance Standards</strong>: Academic requirements set through policy legislation</li>
+            <li><strong>Teacher Policies</strong>: Compensation and working condition regulations via bills</li>
+            <li><strong>Curriculum Standards</strong>: Subject requirements and educational approaches</li>
+            <li><strong>School Choice Policies</strong>: Charter schools, vouchers, and district transfers</li>
+            <li><strong>Special Education</strong>: Disabilities services and inclusion requirements</li>
+            <li><strong>Technology Integration</strong>: Digital learning and infrastructure policies</li>
+            <li><strong>Testing & Assessment</strong>: Standardized testing requirements and accountability</li>
+          </ul>
+        </div>
 
-        <h4>Government Oversight</h4>
-        <ul>
-          <li><strong>City Level</strong>: Local school boards and education department management</li>
-          <li><strong>State Level</strong>: State education standards and funding formulas</li>
-          <li><strong>Federal Level</strong>: National education policy and federal funding programs</li>
-          <li><strong>Regulatory Compliance</strong>: Meeting standards and reporting requirements</li>
-        </ul>
+        <div className="wiki-card">
+          <h3>Community Impact (Current System)</h3>
+          <ul>
+            <li><strong>Budget Competition ✓</strong>: Education competes with other services for funding (IMPLEMENTED)</li>
+            <li><strong>Employment Impact ✓</strong>: Major employer affecting city job statistics (IMPLEMENTED)</li>
+            <li><strong>Service Integration ✓</strong>: Performance affects overall city service quality (IMPLEMENTED)</li>
+            <li><strong>Demographic Analysis ✓</strong>: Performance tracked by population groups (IMPLEMENTED)</li>
+          </ul>
+        </div>
 
-        <h3>Community Impact</h3>
-        <h4>Economic Effects</h4>
-        <ul>
-          <li><strong>Workforce Development</strong>: Educated graduates support local economic growth</li>
-          <li><strong>Property Values</strong>: Good schools increase neighborhood desirability</li>
-          <li><strong>Business Attraction</strong>: Companies prefer locations with strong school systems</li>
-          <li><strong>Long-term Investment</strong>: Education spending pays dividends over decades</li>
-        </ul>
+        <div className="wiki-card">
+          <h3>Planned Community Features (Not Yet Implemented)</h3>
+          <ul>
+            <li><strong>Economic Development</strong>: Educated workforce attracts businesses and investment</li>
+            <li><strong>Property Values</strong>: Good schools increase neighborhood desirability and real estate prices</li>
+            <li><strong>Social Mobility</strong>: Education provides pathways for demographic advancement between classes</li>
+            <li><strong>Crime Reduction</strong>: Better education correlates with lower neighborhood crime rates</li>
+            <li><strong>Civic Engagement</strong>: Educated citizens participate more in democracy and voting</li>
+            <li><strong>Cultural Programs</strong>: Arts, sports, and community activities through schools</li>
+            <li><strong>Adult Education</strong>: Continuing education and workforce development programs</li>
+          </ul>
+        </div>
 
-        <h4>Social Outcomes</h4>
-        <ul>
-          <li><strong>Social Mobility</strong>: Education provides pathways out of poverty</li>
-          <li><strong>Civic Engagement</strong>: Educated citizens participate more in democracy</li>
-          <li><strong>Crime Reduction</strong>: Better education correlates with lower crime rates</li>
-          <li><strong>Community Cohesion</strong>: Schools serve as neighborhood anchors and gathering places</li>
-        </ul>
+        <div className="wiki-card">
+          <h3>Planned Education Sub-Coalitions (Not Yet Implemented)</h3>
+          <p><em>These would be specialized coalitions within existing demographic coalitions, focused on education:</em></p>
+          <ul>
+            <li><strong>Progressive Education Coalition</strong>: Advocates for increased education funding, teacher unions, equity programs</li>
+            <li><strong>Conservative Education Coalition</strong>: Supports school choice, traditional curricula, fiscal responsibility</li>
+            <li><strong>Moderate Education Coalition</strong>: Seeks balanced approaches, pragmatic solutions, bi-partisan support</li>
+            <li><strong>Business Education Coalition</strong>: Focuses on workforce development, STEM education, career preparation</li>
+            <li><strong>Parent Coalition</strong>: Prioritizes student safety, academic achievement, transparent communication</li>
+            <li><strong>Teacher Coalition</strong>: Advocates for professional development, competitive wages, classroom resources</li>
+            <li><strong>Community Education Coalition</strong>: Emphasizes local engagement, cultural programs, neighborhood schools</li>
+          </ul>
+        </div>
 
-        <h3>Strategic Considerations</h3>
-        <ul>
-          <li><strong>Budget Priorities</strong>: Balance education funding with other essential services</li>
-          <li><strong>Performance Monitoring</strong>: Track academic outcomes to guide policy decisions</li>
-          <li><strong>Equity Concerns</strong>: Ensure all demographic groups receive quality education</li>
-          <li><strong>Future Planning</strong>: Anticipate enrollment changes and infrastructure needs</li>
-          <li><strong>Community Engagement</strong>: Involve parents and stakeholders in educational decisions</li>
-          <li><strong>Teacher Retention</strong>: Competitive compensation and working conditions to attract quality educators</li>
-        </ul>
-      </>
+        <div className="wiki-card">
+          <h3>Planned Curriculum & Instruction Policies</h3>
+          <p><em>These policies would determine how subjects are taught and which academic areas are prioritized:</em></p>
+          <ul>
+            <li><strong>Early Literacy Initiative</strong>: Phonics-based "Science of Reading" curriculum for K-3. +10-15 Reading Proficiency for Poverty/Lower/Working Class over 2-3 years</li>
+            <li><strong>Advanced Placement Acceleration</strong>: Expand AP course offerings. +10 College Readiness for Upper-Middle/Middle Class, higher per-pupil costs</li>
+            <li><strong>STEM Excellence Program</strong>: Focus on science, technology, engineering, math curricula and resources</li>
+            <li><strong>Arts Integration Initiative</strong>: Comprehensive arts education across all grade levels</li>
+            <li><strong>Multilingual Education</strong>: Dual-language programs and ESL support expansion</li>
+          </ul>
+        </div>
+
+        <div className="wiki-card">
+          <h3>Planned Student Support & Environment Policies</h3>
+          <p><em>These policies would focus on mitigating out-of-school factors that create achievement gaps:</em></p>
+          <ul>
+            <li><strong>Community Schools Initiative</strong>: Schools as community hubs with wraparound services. +15-20% Attendance, major reduction in Disciplinary Incidents for Poverty/Lower Class</li>
+            <li><strong>Restorative Justice Program</strong>: Replace zero tolerance with mediation/conflict resolution. Sharp drop in Disciplinary Incidents, +2-3 point bonus to all academic scores</li>
+            <li><strong>Mental Health Support</strong>: On-site counselors and therapy services for students</li>
+            <li><strong>Nutrition & Wellness</strong>: Comprehensive meal programs and health services</li>
+            <li><strong>Extended Learning Time</strong>: After-school and summer programs to prevent learning loss</li>
+          </ul>
+        </div>
+
+        <div className="wiki-card">
+          <h3>Planned Teacher Development & Specialization</h3>
+          <p><em>These policies would focus on improving instruction quality and providing specialized support:</em></p>
+          <ul>
+            <li><strong>Targeted Professional Development Grants</strong>: Intensive teacher training in specific subjects. +5-7 point improvement in chosen subject area for 1-2 years</li>
+            <li><strong>Specialized Instructor Hiring Initiative</strong>: Hire reading specialists, special ed teachers, counselors. Major Reading Proficiency boost for lowest tiers, improved College Readiness for upper tiers</li>
+            <li><strong>Master Teacher Program</strong>: Advanced certification and mentorship opportunities</li>
+            <li><strong>Technology Integration Training</strong>: Digital literacy and educational technology skills</li>
+            <li><strong>Retention & Recruitment Incentives</strong>: Competitive compensation and benefits packages</li>
+          </ul>
+        </div>
+
+        <div className="wiki-card">
+          <h3>Strategic Considerations</h3>
+          <ul>
+            <li><strong>Budget Balancing</strong>: Education competes with other services for funding</li>
+            <li><strong>Performance Monitoring</strong>: Track outcomes to guide policy decisions</li>
+            <li><strong>Demographic Equity</strong>: Ensure all coalition groups receive quality education</li>
+            <li><strong>Long-term Investment</strong>: Education improvements take time to show results</li>
+            <li><strong>Political Considerations</strong>: Education is often a major campaign issue</li>
+          </ul>
+        </div>
+      </div>
     )
   },
   {

@@ -18,6 +18,7 @@ import {
 } from "./personnel";
 import { IDEOLOGY_DEFINITIONS } from "../data/ideologiesData";
 import { normalizePartyPopularities } from "../utils/electionUtils";
+import { COMMITTEE_SYSTEMS, COMMITTEE_TYPES } from "../data/legislativeCommittees";
 // New modular imports for economics
 import {
   generateInitialBudget,
@@ -181,6 +182,23 @@ export const createGovernmentOffice = (params = {}) => ({
   termEnds: params.termEnds || { year: 2025, month: 11, day: 1 },
   numberOfSeatsToFill: params.numberOfSeatsToFill || 1,
   instanceIdBase: params.instanceIdBase,
+});
+
+export const createCommittee = (params = {}) => ({
+  id: params.id || `committee_${generateId()}`,
+  name: params.name || "Unnamed Committee",
+  type: params.type || "STANDING", // STANDING, SELECT, CONFERENCE
+  committeeType: params.committeeType || "GENERAL", // FINANCE, EDUCATION, etc.
+  level: params.level || "national", // national, state, city
+  countryId: params.countryId || null,
+  regionId: params.regionId || null,
+  cityId: params.cityId || null,
+  chair: params.chair || null,
+  members: params.members || [],
+  jurisdiction: params.jurisdiction || [],
+  keyPowers: params.keyPowers || [],
+  size: params.size || 0,
+  isSelect: params.isSelect || false,
 });
 
 export const generateFullSecondAdminRegionData = (params = {}) => {
@@ -1446,6 +1464,117 @@ const generateInitialNationalOffices = (
 };
 
 /**
+ * Generate committees for a specific government level
+ */
+const generateCommitteesForLevel = ({
+  level, // 'national', 'state', 'city'
+  allLegislators, // legislators to select from
+  countryData,
+  regionId = null,
+  cityId = null,
+  politicalSystemId = null,
+}) => {
+  const committees = [];
+  
+  if (allLegislators.length === 0) {
+    console.log(`[Committee Generation] No legislators available for ${level} level`);
+    return committees;
+  }
+
+  // Determine which committees to create based on level
+  let committeesToCreate = [];
+  
+  if (level === 'national') {
+    // National level gets all major standing committees
+    committeesToCreate = Object.entries(COMMITTEE_TYPES.STANDING);
+    // Add some select committees
+    committeesToCreate.push(...Object.entries(COMMITTEE_TYPES.SELECT));
+  } else if (level === 'state') {
+    // State level gets core committees relevant to state governance
+    committeesToCreate = [
+      ['FINANCE', COMMITTEE_TYPES.STANDING.FINANCE],
+      ['EDUCATION', COMMITTEE_TYPES.STANDING.EDUCATION],
+      ['HEALTH', COMMITTEE_TYPES.STANDING.HEALTH],
+      ['JUDICIARY', COMMITTEE_TYPES.STANDING.JUDICIARY],
+      ['TRANSPORTATION', COMMITTEE_TYPES.STANDING.TRANSPORTATION],
+      ['ENVIRONMENT', COMMITTEE_TYPES.STANDING.ENVIRONMENT],
+      ['AGRICULTURE', COMMITTEE_TYPES.STANDING.AGRICULTURE],
+      ['ETHICS', COMMITTEE_TYPES.SELECT.ETHICS],
+    ];
+  } else if (level === 'city') {
+    // City level gets committees relevant to local governance
+    committeesToCreate = [
+      ['FINANCE', { ...COMMITTEE_TYPES.STANDING.FINANCE, name: "Budget Committee" }],
+      ['TRANSPORTATION', { ...COMMITTEE_TYPES.STANDING.TRANSPORTATION, name: "Planning & Infrastructure Committee" }],
+      ['ENVIRONMENT', { ...COMMITTEE_TYPES.STANDING.ENVIRONMENT, name: "Environmental Committee" }],
+      ['HEALTH', { ...COMMITTEE_TYPES.STANDING.HEALTH, name: "Public Safety & Health Committee" }],
+    ];
+  }
+
+  const legislatureSize = allLegislators.length;
+  
+  committeesToCreate.forEach(([key, committee]) => {
+    // Calculate committee size based on legislature size and committee importance
+    const isMajorCommittee = ['JUDICIARY', 'FINANCE', 'FOREIGN_AFFAIRS'].includes(key);
+    const majorCommitteeSize = Math.max(3, Math.floor(legislatureSize * 0.18));
+    const minorCommitteeSize = Math.max(3, Math.floor(legislatureSize * 0.12));
+    const committeeSize = isMajorCommittee ? majorCommitteeSize : minorCommitteeSize;
+
+    // Select committee members
+    // Use deterministic selection based on committee type to ensure consistency
+    const seed = key.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const shuffledLegislators = [...allLegislators].sort((a, b) => {
+      const aHash = ((a.holder?.id || a.id)?.charCodeAt(0) || 0) * seed;
+      const bHash = ((b.holder?.id || b.id)?.charCodeAt(0) || 0) * seed;
+      return aHash - bHash;
+    });
+    
+    const selectedOffices = shuffledLegislators.slice(0, Math.min(committeeSize, shuffledLegislators.length));
+    
+    // Convert office holders to politicians with party info
+    const committeeMembers = selectedOffices.map(office => {
+      const politician = office.holder;
+      if (!politician) return null;
+      
+      return {
+        ...politician,
+        partyName: politician.partyName || politician.party || politician.partyAffiliation || 'Independent',
+        officeId: office.officeId, // Keep reference to their legislative office
+      };
+    }).filter(Boolean);
+
+    if (committeeMembers.length === 0) return;
+
+    // Select chair (usually from majority party if we can determine it)
+    // For now, just select the first member as chair
+    const chair = selectedOffices[0];
+
+    const newCommittee = createCommittee({
+      id: `${level}_${key.toLowerCase()}_${regionId || cityId || 'national'}`,
+      name: committee.name,
+      type: committee.isSelect ? 'SELECT' : 'STANDING',
+      committeeType: key,
+      level: level,
+      countryId: countryData?.id,
+      regionId: regionId,
+      cityId: cityId,
+      chair: chair,
+      members: selectedOffices,
+      jurisdiction: committee.jurisdiction,
+      keyPowers: committee.keyPowers,
+      size: committeeMembers.length,
+      isSelect: !!committee.isSelect,
+    });
+
+    committees.push(newCommittee);
+
+    console.log(`[Committee Generation] Created ${level} ${committee.name} with ${committeeMembers.length} members`);
+  });
+
+  return committees;
+};
+
+/**
  * Creates the initial hierarchical government office structure
  */
 export const createGovernmentOfficeStructure = () => ({
@@ -1454,6 +1583,7 @@ export const createGovernmentOfficeStructure = () => ({
     legislative: {
       lowerHouse: [],
       upperHouse: [],
+      committees: [],
     },
     judicial: [],
   },
@@ -1502,6 +1632,7 @@ const addOfficeToStructure = (structure, office) => {
         legislative: {
           lowerHouse: [],
           upperHouse: [],
+          committees: [],
         },
       };
     }
@@ -1525,6 +1656,7 @@ const addOfficeToStructure = (structure, office) => {
       structure.cities[cityId] = {
         executive: [],
         legislative: [],
+        committees: [],
       };
     }
 
@@ -1596,6 +1728,58 @@ export const generateInitialGovernmentOffices = ({
     addOfficeToStructure(structure, office);
   });
 
+  // Generate committees for each level after offices are created
+  console.log('[Committee Generation] Generating committees for all government levels...');
+
+  // Generate national committees
+  const nationalLegislators = [
+    ...structure.national.legislative.lowerHouse,
+    ...structure.national.legislative.upperHouse,
+  ];
+  if (nationalLegislators.length > 0) {
+    const nationalCommittees = generateCommitteesForLevel({
+      level: 'national',
+      allLegislators: nationalLegislators,
+      countryData,
+      politicalSystemId: countryData?.politicalSystemId,
+    });
+    structure.national.legislative.committees.push(...nationalCommittees);
+  }
+
+  // Generate state committees for each state
+  Object.keys(structure.states).forEach(stateId => {
+    const stateLegislators = [
+      ...structure.states[stateId].legislative.lowerHouse,
+      ...structure.states[stateId].legislative.upperHouse,
+    ];
+    if (stateLegislators.length > 0) {
+      const stateCommittees = generateCommitteesForLevel({
+        level: 'state',
+        allLegislators: stateLegislators,
+        countryData,
+        regionId: stateId,
+        politicalSystemId: countryData?.politicalSystemId,
+      });
+      structure.states[stateId].legislative.committees.push(...stateCommittees);
+    }
+  });
+
+  // Generate city committees for each city
+  Object.keys(structure.cities).forEach(cityId => {
+    const cityLegislators = structure.cities[cityId].legislative;
+    if (cityLegislators.length > 0) {
+      const cityCommittees = generateCommitteesForLevel({
+        level: 'city',
+        allLegislators: cityLegislators,
+        countryData,
+        cityId: cityId,
+        politicalSystemId: countryData?.politicalSystemId,
+      });
+      structure.cities[cityId].committees.push(...cityCommittees);
+    }
+  });
+
+  console.log('[Committee Generation] Committee generation complete');
   return structure;
 };
 
@@ -1626,6 +1810,34 @@ export const flattenGovernmentOffices = (structure) => {
   });
 
   return offices;
+};
+
+/**
+ * Helper function to get all committees from the hierarchical structure as a flat array
+ */
+export const flattenCommittees = (structure) => {
+  const committees = [];
+
+  // National committees
+  if (structure.national?.legislative?.committees) {
+    committees.push(...structure.national.legislative.committees);
+  }
+
+  // State committees
+  Object.values(structure.states).forEach((state) => {
+    if (state.legislative?.committees) {
+      committees.push(...state.legislative.committees);
+    }
+  });
+
+  // City committees
+  Object.values(structure.cities).forEach((city) => {
+    if (city.committees) {
+      committees.push(...city.committees);
+    }
+  });
+
+  return committees;
 };
 
 export const updateGovernmentOffice = (existingOffice, updates) => {

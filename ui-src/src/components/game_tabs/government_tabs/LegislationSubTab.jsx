@@ -164,9 +164,13 @@ const LegislationSubTab = ({ campaignData, currentLevel = 'city', activeTab = 'p
                   bill.status === "pending_vote";
                 const proposerName =
                   bill.proposerName || getPoliticianNameById(bill.proposerId);
-                const yeaVotes = bill.councilVotesCast ? Object.values(bill.councilVotesCast).filter(v => v === "yea" || v === "YEA").length : 0;
-                const nayVotes = bill.councilVotesCast ? Object.values(bill.councilVotesCast).filter(v => v === "nay" || v === "NAY").length : 0;
-                const abstainVotes = bill.councilVotesCast ? Object.values(bill.councilVotesCast).filter(v => v === "abstain").length : 0;
+                // Use stored vote data if available (for failed/passed bills), otherwise calculate from councilVotesCast
+                const yeaVotes = bill.yeaVotes !== undefined ? bill.yeaVotes : 
+                  (bill.councilVotesCast ? Object.values(bill.councilVotesCast).filter(v => v === "yea" || v === "YEA" || v === "YEA_PLAYER").length : 0);
+                const nayVotes = bill.nayVotes !== undefined ? bill.nayVotes : 
+                  (bill.councilVotesCast ? Object.values(bill.councilVotesCast).filter(v => v === "nay" || v === "NAY" || v === "NAY_PLAYER").length : 0);
+                const abstainVotes = bill.abstainVotes !== undefined ? bill.abstainVotes : 
+                  (bill.councilVotesCast ? Object.values(bill.councilVotesCast).filter(v => v === "abstain" || v === "ABSTAIN" || v === "ABSTAIN_PLAYER").length : 0);
 
                 return (
                   <li
@@ -204,16 +208,53 @@ const LegislationSubTab = ({ campaignData, currentLevel = 'city', activeTab = 'p
                       {bill.dateProposed?.month}/{bill.dateProposed?.day}/
                       {bill.dateProposed?.year}
                     </p>
-                    {bill.status === "pending_vote" && bill.voteScheduledFor && (
-                      <p className="voting-info">
-                        Vote scheduled for {bill.voteScheduledFor.month}/
-                        {bill.voteScheduledFor.day}/{bill.voteScheduledFor.year} (
-                        {calculateDaysRemaining(bill.voteScheduledFor)})
-                      </p>
+                    {/* Display vote scheduling info based on bill level */}
+                    {bill.status === "pending_vote" && (
+                      <>
+                        {bill.level === 'city' && bill.councilVoteInfo?.councilVoteScheduled && (
+                          <p className="voting-info">
+                            Council vote scheduled for {bill.councilVoteInfo.councilVoteScheduled.month}/
+                            {bill.councilVoteInfo.councilVoteScheduled.day}/{bill.councilVoteInfo.councilVoteScheduled.year} (
+                            {calculateDaysRemaining(bill.councilVoteInfo.councilVoteScheduled)})
+                          </p>
+                        )}
+                        {bill.level !== 'city' && bill.committeeInfo?.committeeVoteScheduled && (
+                          <p className="voting-info">
+                            Committee vote scheduled for {bill.committeeInfo.committeeVoteScheduled.month}/
+                            {bill.committeeInfo.committeeVoteScheduled.day}/{bill.committeeInfo.committeeVoteScheduled.year} (
+                            {calculateDaysRemaining(bill.committeeInfo.committeeVoteScheduled)})
+                          </p>
+                        )}
+                        {bill.level !== 'city' && bill.floorVoteInfo?.floorVoteScheduled && (
+                          <p className="voting-info">
+                            Floor vote scheduled for {bill.floorVoteInfo.floorVoteScheduled.month}/
+                            {bill.floorVoteInfo.floorVoteScheduled.day}/{bill.floorVoteInfo.floorVoteScheduled.year} (
+                            {calculateDaysRemaining(bill.floorVoteInfo.floorVoteScheduled)})
+                          </p>
+                        )}
+                      </>
                     )}
                     
-                    {/* Committee Information for State/National Bills */}
-                    {bill.committeeInfo && currentLevel !== 'city' && (
+                    {/* Floor Vote Information for State/National Bills at floor consideration stage */}
+                    {bill.floorVoteInfo && currentLevel !== 'city' && bill.status === 'floor_consideration' && (
+                      <div className="floor-vote-info">
+                        <h5>Floor Vote:</h5>
+                        <div className="floor-vote-details">
+                          {bill.floorVoteInfo.floorVoteScheduled && (
+                            <div className="floor-vote-date">
+                              Floor Vote: {bill.floorVoteInfo.floorVoteScheduled.month}/{bill.floorVoteInfo.floorVoteScheduled.day}/{bill.floorVoteInfo.floorVoteScheduled.year} (
+                              {calculateDaysRemaining(bill.floorVoteInfo.floorVoteScheduled)})
+                            </div>
+                          )}
+                          <div className="floor-vote-type">
+                            Type: {bill.floorVoteInfo.floorVoteType === 'state_legislature' ? 'State Legislature Vote' : 'Congressional Vote'}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Committee Information for State/National Bills - only show for active bills */}
+                    {bill.committeeInfo && currentLevel !== 'city' && bill.status !== 'failed' && bill.status !== 'passed' && (
                       <div className="committee-info">
                         <h5>Committee Assignment:</h5>
                         <div className="committee-details">
@@ -225,7 +266,11 @@ const LegislationSubTab = ({ campaignData, currentLevel = 'city', activeTab = 'p
                           </div>
                           {bill.committeeInfo.committeeVoteScheduled && (
                             <div className="committee-vote-date">
-                              Committee Vote: {bill.committeeInfo.committeeVoteScheduled.month}/{bill.committeeInfo.committeeVoteScheduled.day}/{bill.committeeInfo.committeeVoteScheduled.year} ({calculateDaysRemaining(bill.committeeInfo.committeeVoteScheduled)})
+                              Committee Vote: {bill.committeeInfo.committeeVoteScheduled.month}/{bill.committeeInfo.committeeVoteScheduled.day}/{bill.committeeInfo.committeeVoteScheduled.year} ({
+                                bill.committeeInfo.committeeStatus === 'passed' || bill.committeeInfo.committeeStatus === 'completed' 
+                                  ? 'Passed' 
+                                  : calculateDaysRemaining(bill.committeeInfo.committeeVoteScheduled)
+                              })
                             </div>
                           )}
                           <div className="committee-jurisdiction">
@@ -241,7 +286,19 @@ const LegislationSubTab = ({ campaignData, currentLevel = 'city', activeTab = 'p
                         <h5>Bill Progression:</h5>
                         <div className="timeline-container">
                           {bill.stageHistory && bill.stageHistory.length > 0 ? (
-                            bill.stageHistory.map((stage, index) => (
+                            // Filter out duplicate stages and show only the most recent status for each stage
+                            bill.stageHistory.reduce((uniqueStages, stage) => {
+                              const existingStageIndex = uniqueStages.findIndex(s => s.stage === stage.stage);
+                              if (existingStageIndex !== -1) {
+                                // Replace with the most recent status (completed over in_progress)
+                                if (stage.completedOn || (!uniqueStages[existingStageIndex].completedOn && stage.status !== 'in_progress')) {
+                                  uniqueStages[existingStageIndex] = stage;
+                                }
+                              } else {
+                                uniqueStages.push(stage);
+                              }
+                              return uniqueStages;
+                            }, []).map((stage, index) => (
                               <div key={index} className={`timeline-item ${stage.status}`}>
                                 <div className="timeline-dot"></div>
                                 <div className="timeline-content">
@@ -249,12 +306,21 @@ const LegislationSubTab = ({ campaignData, currentLevel = 'city', activeTab = 'p
                                     {getStageDisplayName(stage.stage, currentLevel)}
                                   </span>
                                   <span className="stage-date">
-                                    {stage.completedOn ? 
-                                      `Completed: ${stage.completedOn.month}/${stage.completedOn.day}/${stage.completedOn.year}` :
-                                      stage.enteredOn ? 
-                                      `Started: ${stage.enteredOn.month}/${stage.enteredOn.day}/${stage.enteredOn.year}` :
-                                      'In Progress'
-                                    }
+                                    {stage.stage === 'committee_assignment' ? (
+                                      // Committee assignment is a single event, not a start/complete process
+                                      stage.completedOn ? 
+                                        `Assigned: ${stage.completedOn.month}/${stage.completedOn.day}/${stage.completedOn.year}` :
+                                        stage.enteredOn ? 
+                                        `Assigned: ${stage.enteredOn.month}/${stage.enteredOn.day}/${stage.enteredOn.year}` :
+                                        'Assigning'
+                                    ) : (
+                                      // Other stages show start/complete progression
+                                      stage.completedOn ? 
+                                        `Completed: ${stage.completedOn.month}/${stage.completedOn.day}/${stage.completedOn.year}` :
+                                        stage.enteredOn ? 
+                                        `Started: ${stage.enteredOn.month}/${stage.enteredOn.day}/${stage.enteredOn.year}` :
+                                        'In Progress'
+                                    )}
                                   </span>
                                 </div>
                               </div>

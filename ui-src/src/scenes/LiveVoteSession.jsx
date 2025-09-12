@@ -48,42 +48,73 @@ const LiveVoteSession = () => {
     );
   }, [bill]);
 
-  // Get committee members if this is a committee vote
+  // Get committee members if this is a committee vote - using stored committees
   const committeeMembers = useMemo(() => {
-    if (!isCommitteeVote || !bill || !governmentOffices) return [];
+    if (!isCommitteeVote || !bill) return [];
+    
+    console.log(`[Committee Vote] Bill: ${bill.name}, Level: ${bill.level}`);
+    console.log(`[Committee Vote] Bill policies:`, bill.policies);
     
     // Determine which committee should handle this bill based on its policies
     const relevantCommitteeType = getRelevantCommitteeForBill(bill);
+    console.log(`[Committee Vote] Determined relevant committee type: ${relevantCommitteeType}`);
     if (!relevantCommitteeType) return [];
 
-    // Extract actual politicians from legislative offices
-    const allLegislators = [];
-    governmentOffices.forEach(office => {
-      if (office.level?.includes('_house') || office.level?.includes('_senate')) {
-        // Handle both single holder and multi-member offices
-        if (office.holder) {
-          allLegislators.push(office.holder);
-        }
-        if (office.members && Array.isArray(office.members)) {
-          allLegislators.push(...office.members);
-        }
+    // Get the government offices structure from the store
+    const governmentOfficesStructure = useGameStore.getState().activeCampaign?.governmentOffices;
+    if (!governmentOfficesStructure) {
+      console.log(`[Committee Vote] No government offices structure found`);
+      return [];
+    }
+
+    // Find the appropriate committee based on bill level and committee type
+    let targetCommittee = null;
+    
+    if (bill.level === 'national') {
+      targetCommittee = governmentOfficesStructure.national?.legislative?.committees?.find(
+        committee => committee.committeeType === relevantCommitteeType
+      );
+    } else if (bill.level === 'state') {
+      // Get the current region/state ID from the campaign
+      const currentRegionId = useGameStore.getState().activeCampaign?.regionId;
+      if (currentRegionId && governmentOfficesStructure.states?.[currentRegionId]) {
+        targetCommittee = governmentOfficesStructure.states[currentRegionId].legislative?.committees?.find(
+          committee => committee.committeeType === relevantCommitteeType
+        );
       }
-    });
+    } else if (bill.level === 'city') {
+      // Get the current city ID from the campaign
+      const currentCityId = useGameStore.getState().activeCampaign?.startingCity?.id;
+      if (currentCityId && governmentOfficesStructure.cities?.[currentCityId]) {
+        targetCommittee = governmentOfficesStructure.cities[currentCityId].committees?.find(
+          committee => committee.committeeType === relevantCommitteeType
+        );
+      }
+    }
+
+    if (!targetCommittee) {
+      console.log(`[Committee Vote] No ${relevantCommitteeType} committee found for ${bill.level} level`);
+      return [];
+    }
+
+    console.log(`[Committee Vote] Found stored committee: ${targetCommittee.name} with ${targetCommittee.members?.length || 0} members`);
+
+    // Extract the actual politicians from the committee members
+    const committeeMembers = (targetCommittee.members || []).map(office => {
+      const politician = office.holder;
+      if (!politician) return null;
+      
+      return {
+        ...politician,
+        partyName: politician.partyName || politician.party || politician.partyAffiliation || 'Independent'
+      };
+    }).filter(Boolean);
+
+    console.log(`[Committee Vote] Using stored ${targetCommittee.name} with ${committeeMembers.length} members:`, 
+      committeeMembers.map(m => ({id: m.id, name: `${m.firstName} ${m.lastName}`, party: m.partyName})));
     
-    const legislatureSize = allLegislators.length;
-    // Committee should be much smaller - typically 5-15 members
-    const committeeSize = Math.min(15, Math.max(5, Math.floor(legislatureSize * 0.15)));
-    
-    // For consistent committee selection based on bill ID, use politician IDs for sorting
-    const seed = parseInt(bill.id.slice(-4), 16) || 1;
-    const shuffledLegislators = [...allLegislators].sort((a, b) => {
-      const aHash = (a.id?.charCodeAt(0) || 0) * seed;
-      const bHash = (b.id?.charCodeAt(0) || 0) * seed;
-      return aHash - bHash;
-    });
-    
-    return shuffledLegislators.slice(0, Math.min(committeeSize, shuffledLegislators.length));
-  }, [isCommitteeVote, bill, governmentOffices]);
+    return committeeMembers;
+  }, [isCommitteeVote, bill]);
 
   // Get voting members (either committee or full legislature)
   const votingMembers = useMemo(() => {

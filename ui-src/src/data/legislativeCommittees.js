@@ -273,6 +273,30 @@ export const BILL_PROGRESSION_WORKFLOWS = {
     }
   },
   
+  // State-level legislature workflow (simplified, single chamber focus)
+  STATE_LEGISLATURE: {
+    introduction: {
+      step: "committee_assignment",
+      requirements: ["sponsor_member", "subject_matter_jurisdiction"],
+      duration: { min: 1, max: 3, unit: "days" }
+    },
+    committee_stage: {
+      step: "committee_markup",
+      requirements: ["committee_majority", "public_hearing_option"],
+      duration: { min: 7, max: 30, unit: "days" }
+    },
+    floor_stage: {
+      step: "floor_consideration", 
+      requirements: ["committee_approval", "scheduling"],
+      duration: { min: 3, max: 14, unit: "days" }
+    },
+    executive: {
+      step: "gubernatorial_action",
+      requirements: ["signature_or_veto", "veto_override_option"],
+      duration: { min: 7, max: 10, unit: "days" }
+    }
+  },
+  
   // Other systems follow similar patterns with variations...
 };
 

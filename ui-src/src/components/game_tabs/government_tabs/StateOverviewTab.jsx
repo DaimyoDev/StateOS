@@ -276,67 +276,20 @@ const StateOverviewTab = ({ campaignData, activeSubTab = "summary", governmentSu
     [lowerChamberOffices, getCompositionForChamber]
   );
 
-  // Generate committee assignments from current legislature members
+  // Get state committees from the pre-generated government structure
   const stateCommittees = useMemo(() => {
-    if (!committeeSystem) return {};
+    if (!stateGovernmentOffices?.legislative?.committees) return {};
     
-    const allLegislators = [...lowerChamberOffices, ...upperChamberOffices];
-    const committees = {};
-    
-    // Calculate committee sizes (roughly 15-20% of legislature for major committees)
-    const legislatureSize = allLegislators.length;
-    const majorCommitteeSize = Math.max(3, Math.floor(legislatureSize * 0.18));
-    const minorCommitteeSize = Math.max(3, Math.floor(legislatureSize * 0.12));
-    
-    // Assign members to committees
-    Object.entries(COMMITTEE_TYPES.STANDING).forEach(([key, committee], index) => {
-      const committeeSize = ['JUDICIARY', 'FINANCE', 'FOREIGN_AFFAIRS'].includes(key) ? 
-        majorCommitteeSize : minorCommitteeSize;
-      
-      // Randomly assign members (in a real system this would be more sophisticated)
-      const shuffledLegislators = [...allLegislators].sort(() => Math.random() - 0.5);
-      const members = shuffledLegislators.slice(0, committeeSize);
-      
-      // Select chair (usually from majority party)
-      const majorityParty = lowerChamberComposition.length > 0 ? 
-        lowerChamberComposition.reduce((a, b) => a.popularity > b.popularity ? a : b) : null;
-      
-      const majorityMembers = members.filter(m => {
-        const politician = getUpdatedPolitician(m.holder);
-        return politician?.partyName === majorityParty?.name;
-      });
-      
-      const chair = majorityMembers.length > 0 ? majorityMembers[0] : members[0];
-      
-      committees[key] = {
-        ...committee,
-        id: key,
-        members: members,
-        chair: chair,
-        size: members.length
-      };
-    });
-
-    // Handle Select Committees
-    Object.entries(COMMITTEE_TYPES.SELECT).forEach(([key, committee]) => {
-      const committeeSize = Math.max(3, Math.floor(legislatureSize * 0.10));
-      const shuffledLegislators = [...allLegislators].sort(() => Math.random() - 0.5);
-      const members = shuffledLegislators.slice(0, committeeSize);
-      
-      const chair = members[0];
-      
-      committees[key] = {
-        ...committee,
-        id: key,
-        members: members,
-        chair: chair,
-        size: members.length,
-        isSelect: true
-      };
+    // Convert committees array to object keyed by committee type
+    const committeesObject = {};
+    stateGovernmentOffices.legislative.committees.forEach(committee => {
+      if (committee.committeeType) {
+        committeesObject[committee.committeeType] = committee;
+      }
     });
     
-    return committees;
-  }, [committeeSystem, lowerChamberOffices, upperChamberOffices, lowerChamberComposition, getUpdatedPolitician]);
+    return committeesObject;
+  }, [stateGovernmentOffices]);
   
   const filteredLowerChamberMembers = useMemo(() => {
     if (governmentFilter === "party") {

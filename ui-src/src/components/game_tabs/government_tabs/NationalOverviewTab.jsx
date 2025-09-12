@@ -483,92 +483,61 @@ const NationalOverviewTab = ({ campaignData, activeSubTab = "summary", governmen
                       </div>
                     </div>
 
-                    {/* Standing Committees Grid */}
+                    {/* Committees Grid */}
                     <div className="committees-grid">
                       <div className="committees-category">
                         <h6>Standing Committees</h6>
                         <div className="committee-cards-grid">
-                          {Object.entries(COMMITTEE_TYPES.STANDING).map(([key, committee]) => (
-                            <div key={key} className="committee-card">
-                              <div className="committee-header">
-                                <h5 className="committee-name">{committee.name}</h5>
-                                <span className="committee-status vacant">Vacant Chair</span>
-                              </div>
+                          {nationalGovernmentOffices?.legislative?.committees?.length > 0 ? (
+                            nationalGovernmentOffices.legislative.committees.map((committee) => {
+                              const chairPolitician = committee.chair ? getUpdatedPolitician(committee.chair.holder) : null;
                               
-                              <div className="committee-summary">
-                                <div className="committee-stats">
-                                  <div className="stat-item">
-                                    <span className="stat-value">~{Math.floor(Math.random() * 10 + 5)}</span>
-                                    <span className="stat-label">Members</span>
-                                  </div>
-                                  <div className="stat-item">
-                                    <span className="stat-value">{committee.jurisdiction.length}</span>
-                                    <span className="stat-label">Areas</span>
-                                  </div>
-                                </div>
-                                
-                                <div className="committee-preview">
-                                  <strong>Jurisdiction</strong>
-                                  <div className="preview-tags">
-                                    {committee.jurisdiction.slice(0, 3).map((area) => (
-                                      <span key={area} className="preview-tag">
-                                        {area.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                                      </span>
-                                    ))}
-                                    {committee.jurisdiction.length > 3 && (
-                                      <span className="preview-tag more">+{committee.jurisdiction.length - 3} more</span>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Select Committees if applicable */}
-                      {Object.keys(COMMITTEE_TYPES.SELECT).length > 0 && (
-                        <div className="committees-category">
-                          <h6>Select Committees</h6>
-                          <div className="committee-cards-grid">
-                            {Object.entries(COMMITTEE_TYPES.SELECT).map(([key, committee]) => (
-                              <div key={key} className="committee-card select-committee">
-                                <div className="committee-header">
-                                  <h5 className="committee-name">{committee.name}</h5>
-                                  <span className="committee-status vacant">Vacant Chair</span>
-                                </div>
-                                
-                                <div className="committee-summary">
-                                  <div className="committee-stats">
-                                    <div className="stat-item">
-                                      <span className="stat-value">Select</span>
-                                      <span className="stat-label">Type</span>
-                                    </div>
-                                    <div className="stat-item">
-                                      <span className="stat-value">{committee.jurisdiction.length}</span>
-                                      <span className="stat-label">Areas</span>
-                                    </div>
+                              return (
+                                <div key={committee.id} className="committee-card">
+                                  <div className="committee-header">
+                                    <h5 className="committee-name">{committee.name}</h5>
+                                    <span className={`committee-status ${chairPolitician ? 'active' : 'vacant'}`}>
+                                      {chairPolitician ? `Chair: ${chairPolitician.firstName} ${chairPolitician.lastName}` : 'Vacant Chair'}
+                                    </span>
                                   </div>
                                   
-                                  <div className="committee-preview">
-                                    <strong>Jurisdiction</strong>
-                                    <div className="preview-tags">
-                                      {committee.jurisdiction.slice(0, 3).map((area) => (
-                                        <span key={area} className="preview-tag">
-                                          {area.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                                        </span>
-                                      ))}
-                                      {committee.jurisdiction.length > 3 && (
-                                        <span className="preview-tag more">+{committee.jurisdiction.length - 3} more</span>
-                                      )}
+                                  <div className="committee-summary">
+                                    <div className="committee-stats">
+                                      <div className="stat-item">
+                                        <span className="stat-value">{committee.size || committee.members?.length || 0}</span>
+                                        <span className="stat-label">Members</span>
+                                      </div>
+                                      <div className="stat-item">
+                                        <span className="stat-value">{committee.jurisdiction?.length || 0}</span>
+                                        <span className="stat-label">Areas</span>
+                                      </div>
+                                    </div>
+                                    
+                                    <div className="committee-preview">
+                                      <strong>Jurisdiction</strong>
+                                      <div className="preview-tags">
+                                        {committee.jurisdiction?.slice(0, 3).map((area) => (
+                                          <span key={area} className="preview-tag">
+                                            {area.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                          </span>
+                                        ))}
+                                        {committee.jurisdiction?.length > 3 && (
+                                          <span className="preview-tag more">+{committee.jurisdiction.length - 3} more</span>
+                                        )}
+                                      </div>
                                     </div>
                                   </div>
                                 </div>
-                              </div>
-                            ))}
-                          </div>
+                              );
+                            })
+                          ) : (
+                            <div className="committee-placeholder">
+                              <p>No committees have been generated yet.</p>
+                              <p className="committee-note">Committees are generated during campaign setup.</p>
+                            </div>
+                          )}
                         </div>
-                      )}
+                      </div>
                     </div>
                   </div>
                 )}
