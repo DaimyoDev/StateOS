@@ -322,11 +322,7 @@ export const createCampaignSetupSlice = (set, get) => {
               defaultDemographics,
               availableParties
             );
-            console.log(
-              `Generated default coalitions for ${entityType}: ${
-                entity?.name || entityId
-              }`
-            );
+            // Generated default coalitions silently
           }
         };
 
@@ -393,7 +389,7 @@ export const createCampaignSetupSlice = (set, get) => {
 
         // Add all city politicians to the campaign store in one batch
         if (allCityPoliticians.length > 0) {
-          console.log(`[CITY POLITICIANS] Generated ${allCityPoliticians.length} politicians for ${currentCountryData.regions?.reduce((total, region) => total + (region.cities?.length || 0), 0)} cities`);
+          // Generated city politicians silently
           addMultiplePoliticiansToStore(
             allCityPoliticians,
             "activeCampaign.politicians"
@@ -404,11 +400,17 @@ export const createCampaignSetupSlice = (set, get) => {
           initializeRelationships(cityPoliticianIds);
         }
 
+        setLoadingGame(true, "Generating regional coalition systems...");
+        await pause(30);
+        
         // 2. Generate coalitions for all states/regions in the country
         currentCountryData.regions?.forEach((region) => {
           generateCoalitionsForEntity(region.id, region, "state");
         });
 
+        setLoadingGame(true, "Generating legislative district coalitions...");
+        await pause(20);
+        
         // 3. Generate coalitions for congressional districts (only if they have proper demographic data)
         const congressionalDistricts =
           currentCountryData.congressionalDistricts ||
@@ -439,9 +441,9 @@ export const createCampaignSetupSlice = (set, get) => {
                   district,
                   "state_house_district"
                 );
-                console.log(`Generated coalitions for state house district: ${district.name || district.id}`);
+                // Generated coalitions for state house district silently
               } else {
-                console.log(`Skipped coalition generation for state house district ${district.name || district.id} - insufficient demographic data`);
+                // Skipped coalition generation - insufficient demographic data
               }
             });
           }
@@ -455,9 +457,9 @@ export const createCampaignSetupSlice = (set, get) => {
                   district,
                   "state_senate_district"
                 );
-                console.log(`Generated coalitions for state senate district: ${district.name || district.id}`);
+                // Generated coalitions for state senate district silently
               } else {
-                console.log(`Skipped coalition generation for state senate district ${district.name || district.id} - insufficient demographic data`);
+                // Skipped coalition generation - insufficient demographic data
               }
             });
           }
@@ -479,6 +481,9 @@ export const createCampaignSetupSlice = (set, get) => {
           }
         });
 
+        setLoadingGame(true, "Finalizing national coalition systems...");
+        await pause(20);
+        
         // 6. Generate national-level coalitions
         generateCoalitionsForEntity(
           currentCountryData.id,
@@ -492,8 +497,7 @@ export const createCampaignSetupSlice = (set, get) => {
         generateScheduledElections();
         resetLegislationState();
 
-        // Store pre-generated coalitions in activeCampaign
-        console.log(`[COALITION SETUP] Generated coalition systems:`, Object.keys(coalitionSystems));
+        // Store pre-generated coalitions in activeCampaign silently
         set((state) => ({
           activeCampaign: {
             ...state.activeCampaign,

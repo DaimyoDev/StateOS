@@ -1199,16 +1199,29 @@ const generateInitialStateOffices = (
 
   // --- Process Lower House ---
   if (lowerHouseType) {
+    console.log(`[DEBUG] Processing state lower house for region ${regionId}:`, {
+      electoralSystem: lowerHouseType.electoralSystem,
+      officeNameTemplate: lowerHouseType.officeNameTemplate,
+      hasDistricts: !!regionData.legislativeDistricts?.state_hr,
+      districtCount: regionData.legislativeDistricts?.state_hr?.length || 0
+    });
     const termLength = lowerHouseType.frequencyYears || 4;
 
     // *** NEW: Conditional logic based on the electoral system ***
     if (
       lowerHouseType.electoralSystem === "FPTP" &&
-      Array.isArray(regionData.legislativeDistricts?.state_hr)
+      Array.isArray(regionData.legislativeDistricts?.state_hr) &&
+      regionData.legislativeDistricts.state_hr.length > 0
     ) {
+      console.log(`[DEBUG] Creating FPTP state lower house seats from districts:`, regionData.legislativeDistricts.state_hr.length);
       // Logic for district-based systems (e.g., US State Legislatures)
       regionData.legislativeDistricts.state_hr.forEach((district) => {
-        const officeName = district.name;
+        // Skip districts without proper id or name
+        if (!district.id || !district.name) return;
+        const officeName = lowerHouseType.officeNameTemplate
+          .replace("{stateName}", regionData.name)
+          .replace("{regionName}", regionData.name)
+          .replace("{districtName}", district.name.replace(regionData.name, "").trim());
         const holder = generateFullAIPolitician(
           countryData.id,
           processedParties,
@@ -1237,15 +1250,24 @@ const generateInitialStateOffices = (
         );
       });
     } else if (
-      lowerHouseType.electoralSystem === "PartyListPR" ||
-      lowerHouseType.electoralSystem === "MMP"
+      (lowerHouseType.electoralSystem === "PartyListPR" ||
+      lowerHouseType.electoralSystem === "MMP") &&
+      !lowerHouseType.officeNameTemplate.includes("{districtName}")
     ) {
-      // Logic for multi-member systems (e.g., German Länder)
+      console.log(`[DEBUG] Checking PartyListPR/MMP fallback for state lower house:`, {
+        electoralSystem: lowerHouseType.electoralSystem,
+        templateIncludesDistrict: lowerHouseType.officeNameTemplate.includes("{districtName}"),
+        template: lowerHouseType.officeNameTemplate
+      });
+      // Logic for multi-member systems (e.g., German Länder) 
+      // Only create seats if the office name template doesn't require district names
       const numberOfSeats = calculateNumberOfSeats(
         lowerHouseType,
         regionData.population
       );
+      console.log(`[DEBUG] calculateNumberOfSeats returned:`, numberOfSeats);
       if (numberOfSeats > 0) {
+        console.log(`[DEBUG] Creating ${numberOfSeats} PartyListPR/MMP state lower house seats`);  
         const officeName = lowerHouseType.officeNameTemplate.replace(
           /{regionName}|{stateName}|{prefectureName}|{provinceName}/g,
           regionData.name
@@ -1286,11 +1308,17 @@ const generateInitialStateOffices = (
   // MODIFIED: Loop over the array of district objects for the Upper House
   if (
     upperHouseType &&
-    Array.isArray(regionData.legislativeDistricts?.state_senate)
+    Array.isArray(regionData.legislativeDistricts?.state_senate) &&
+    regionData.legislativeDistricts.state_senate.length > 0
   ) {
     const termLength = upperHouseType.frequencyYears || 4;
     regionData.legislativeDistricts.state_senate.forEach((district) => {
-      const officeName = district.name;
+      // Skip districts without proper id or name
+      if (!district.id || !district.name) return;
+      const officeName = upperHouseType.officeNameTemplate
+        .replace("{stateName}", regionData.name)
+        .replace("{regionName}", regionData.name)
+        .replace("{districtName}", district.name.replace(regionData.name, "").trim());
       const holder = generateFullAIPolitician(
         countryData.id,
         processedParties,
@@ -1385,11 +1413,20 @@ const generateInitialNationalOffices = (
 
   if (
     lowerHouseType &&
-    Array.isArray(countryData.nationalLowerHouseDistricts)
+    Array.isArray(countryData.nationalLowerHouseDistricts) &&
+    countryData.nationalLowerHouseDistricts.length > 0
   ) {
+    console.log(`[DEBUG] Creating national lower house seats from districts:`, {
+      districtCount: countryData.nationalLowerHouseDistricts.length,
+      template: lowerHouseType.officeNameTemplate
+    });
     const termLength = lowerHouseType.frequencyYears || 4;
     countryData.nationalLowerHouseDistricts.forEach((district) => {
-      const officeName = district.name;
+      // Skip districts without proper id or name
+      if (!district.id || !district.name) return;
+      const officeName = lowerHouseType.officeNameTemplate
+        .replace("{stateName}", district.stateId ? countryData.regions?.find(r => r.id === district.stateId)?.name || "Unknown State" : "Unknown State")
+        .replace("{districtName}", district.name.replace(/.*District\s/, "District "));
       const holder = generateFullAIPolitician(
         countryData.id,
         processedParties,
@@ -1421,10 +1458,13 @@ const generateInitialNationalOffices = (
   if (
     upperHouseType &&
     countryData.regions &&
-    Array.isArray(countryData.regions)
+    Array.isArray(countryData.regions) &&
+    countryData.regions.length > 0
   ) {
     const termLength = upperHouseType.frequencyYears || 6;
     countryData.regions.forEach((region) => {
+      // Skip regions without proper id or name
+      if (!region.id || !region.name) return;
       // Generate 2 senators per state/region (common pattern)
       for (let seatNum = 1; seatNum <= 2; seatNum++) {
         const officeName = upperHouseType.officeNameTemplate
@@ -1697,28 +1737,45 @@ export const generateInitialGovernmentOffices = ({
   regionId,
   availableParties,
 }) => {
+  console.log(`[DEBUG] ===== generateInitialGovernmentOffices START =====`);
+  console.log(`[DEBUG] Parameters:`, {
+    countryId: countryData?.id,
+    regionId,
+    cityId: city?.id,
+    cityName: city?.name,
+    electionTypeCount: countryElectionTypes?.length || 0
+  });
+  
   const processedParties = initializePartyIdeologyScores(
     availableParties,
     IDEOLOGY_DEFINITIONS
   );
 
+  console.log(`[DEBUG] Calling generateInitialLocalOffices...`);
   const localOffices = generateInitialLocalOffices(
     countryElectionTypes,
     city,
     processedParties,
     countryData
   );
+  console.log(`[DEBUG] Local offices created:`, localOffices.length);
+  
+  console.log(`[DEBUG] Calling generateInitialStateOffices...`);
   const stateOffices = generateInitialStateOffices(
     countryElectionTypes,
     regionId,
     processedParties,
     countryData
   );
+  console.log(`[DEBUG] State offices created:`, stateOffices.length);
+  
+  console.log(`[DEBUG] Calling generateInitialNationalOffices...`);
   const nationalOffices = generateInitialNationalOffices(
     countryElectionTypes,
     processedParties,
     countryData
   );
+  console.log(`[DEBUG] National offices created:`, nationalOffices.length);
 
   // Create hierarchical structure
   const structure = createGovernmentOfficeStructure();

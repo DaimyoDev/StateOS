@@ -3,7 +3,6 @@ import { A_LOGO } from "./anarchist/alogo";
 import { BALANCE } from "./centrist/balance";
 import { SICKLE_HAMMER } from "./communist/sicklehammer";
 import { LION_HEAD } from "./conservative/lionhead";
-import { POL_COMPBALL } from "./default/polcompball";
 import { TREE } from "./green/tree";
 import { TORCH } from "./liberal/torch";
 import { CROWN } from "./monarchist/crown";
@@ -17,6 +16,11 @@ import { BRAIN } from "./technocratic/brain";
 import { DNA } from "./transhumanist/dna";
 import { SNAKE } from "./libertarian/snake";
 import { ROSE } from "./socialDemocrat/rose";
+import { INTERLOCKING_RINGS } from "./default/interlockingRings";
+import { UPWARD_CHEVRONS } from "./default/upwardChevrons";
+import { STAR } from "./default/star";
+import { P } from "./default/p";
+import { WREATH } from "./default/wreath";
 
 export const SYMBOLS = {
   socialist: [WORKER_FIST],
@@ -37,5 +41,5 @@ export const SYMBOLS = {
   transhumanist: [DNA],
   libertarian: [SNAKE],
   social_democrat: [ROSE],
-  default: [POL_COMPBALL],
+  default: [INTERLOCKING_RINGS, UPWARD_CHEVRONS, STAR, P, WREATH],
 };

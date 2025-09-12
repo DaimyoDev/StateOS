@@ -544,9 +544,11 @@ export const getElectionInstances = (electionType, activeCampaign) => {
   }
 
   // --- Generic Fallback for unhandled single-instance national/state/province elections ---
-  // This is a very broad fallback.
+  // This is a very broad fallback, but excludes district-based elections that require specific district data
   else if (
     !instances.length && // Only if nothing else has matched
+    !electionType.level.includes("lower_house") && // Exclude house representatives that need districts
+    !electionType.level.includes("upper_house") && // Exclude senators that need state/region context
     (electionType.level.startsWith("national_") ||
       ((electionType.level.startsWith("local_state") ||
         electionType.level.startsWith("local_prefecture") ||

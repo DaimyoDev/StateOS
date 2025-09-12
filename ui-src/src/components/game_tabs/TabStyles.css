@@ -155,7 +155,7 @@
 }
 
 .subtab-dropdown-item.active:hover {
-  background-color: var(--accent-hover, #0056b3);
+  background-color: var(--button-hover-bg, var(--accent-color));
 }
 
 /* Responsive design for dropdown container */
